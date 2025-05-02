@@ -1,0 +1,54 @@
+const mongoose = require("mongoose");
+
+const express = require("express");
+const cookieParser = require("cookie-parser");
+require("dotenv").config();
+const bodyParser = require("body-parser");
+const cors = require("cors");
+
+const userRouter = require("./routes/userRoute.js");
+const patientRouter = require("./routes/patientRoute.js");
+const appointmentRouter = require("./routes/appointmentRoute.js");
+const doctorRouter = require("./routes/doctorRoute.js");
+const testimonialRouter = require("./routes/testimonials.js");
+const contactRouter = require("./routes/contactRoute.js");
+
+const app = express();
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(cookieParser());
+
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://om-shreenagar-dental-clinic.com",
+      "https://admin.om-shreenagar-dental-clinic.com",
+      "https://www.om-shreenagar-dental-clinic.com",
+    ],
+  })
+);
+
+mongoose
+  .connect(process.env.DB_URL)
+  .then(() => console.log("MongoDB connected successfully"))
+  .catch((err) => console.error("MongoDB connection error:", err));
+
+app.get("/", (req, res) => {
+  res.json("Server is running !");
+});
+
+app.use("/api/user", userRouter);
+app.use("/api/patient", patientRouter);
+app.use("/api/appointment", appointmentRouter);
+app.use("/api/doctor", doctorRouter);
+app.use("/api/testimonials", testimonialRouter);
+app.use("/api/contact", contactRouter);
+
+const port = process.env.PORT || 5000;
+
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
+});

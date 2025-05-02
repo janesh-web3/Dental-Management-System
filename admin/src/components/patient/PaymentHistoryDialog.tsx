@@ -1,0 +1,263 @@
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
+import { Patient, ToothData } from "@/types/patient";
+import { toast } from "react-toastify";
+import { Loader2 } from "lucide-react";
+import { crudRequest } from "@/lib/api";
+
+interface PaymentHistoryDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  selectedTeethMaps: Record<string, Record<string, ToothData>>;
+  onPaymentUpdate: (
+    mapKey: string,
+    toothNumber: string,
+    treatmentIndex: number,
+    newPaidAmount: number
+  ) => void;
+  patientId: string;
+  medicalDetailId: string;
+  patient: Patient; // Add the patient prop
+}
+
+export function PaymentHistoryDialog({
+  isOpen,
+  onClose,
+  selectedTeethMaps,
+  onPaymentUpdate,
+  patientId,
+  medicalDetailId,
+  patient
+}: PaymentHistoryDialogProps) {
+  const [newPayments, setNewPayments] = useState<Record<string, number>>({});
+  const [processingPayment, setProcessingPayment] = useState<string | null>(null);
+
+  // Prepare data for display - treatments with remaining balances
+  const treatmentsWithBalance: {
+    mapKey: string;
+    toothNumber: string;
+    treatmentIndex: number;
+    date: string;
+    tooth: ToothData;
+    treatment: {
+      _id?: string;
+      date: string;
+      treatmentAmount: number;
+      paidAmount: number;
+      remainingAmount: number;
+      treatedByDoctor?: string | null;
+      procedure?: string;
+      notes?: string;
+    };
+  }[] = [];
+
+  // Extract treatments with remaining amounts
+  Object.entries(selectedTeethMaps).forEach(([mapKey, teeth]) => {
+    Object.entries(teeth).forEach(([toothNumber, tooth]) => {
+      tooth.dailyTreatments?.forEach((treatment, index) => {
+        if (treatment.remainingAmount > 0) {
+          treatmentsWithBalance.push({
+            mapKey,
+            toothNumber,
+            treatmentIndex: index,
+            date: treatment.date,
+            tooth,
+            treatment: {
+              ...treatment,
+              _id: treatment._id
+            },
+          });
+        }
+      });
+    });
+  });
+
+  const handlePaymentChange = (key: string, value: string, remainingAmount: number) => {
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) && numValue >= 0) {
+      // Ensure the input doesn't exceed the remaining amount
+      const limitedValue = Math.min(numValue, remainingAmount);
+      
+      if (numValue > remainingAmount) {
+        toast.warning("Payment cannot exceed the remaining balance");
+      }
+      
+      setNewPayments((prev) => ({ ...prev, [key]: limitedValue }));
+    }
+  };
+
+  const handlePaymentSubmit = async (
+    mapKey: string,
+    toothNumber: string,
+    treatmentIndex: number,
+    currentPaid: number,
+    treatmentAmount: number,
+    dailyTreatmentId?: string
+  ) => {
+    const key = `${mapKey}-${toothNumber}-${treatmentIndex}`;
+    
+    if (processingPayment === key) return;
+    
+    const newAmount = newPayments[key] || 0;
+    const remainingAmount = treatmentAmount - currentPaid;
+    
+    if (newAmount <= 0) {
+      toast.error("Please enter a valid payment amount");
+      return;
+    }
+    
+    if (newAmount > remainingAmount) {
+      toast.error("Payment cannot exceed the remaining balance of ₹" + remainingAmount);
+      return;
+    }
+    
+    try {
+      setProcessingPayment(key);
+      
+      // Extract treatment ID from mapKey
+      // mapKey format is "medicalDetailIndex-treatmentIndex"
+      // For example: "0-0"
+      const [_, treatmentPlanIndex] = mapKey.split("-");
+      
+      // Get the treatment ID directly from formData using treatmentPlanIndex
+      const treatmentId = patient.medicalDetails[0]?.treatmentPlanning[parseInt(treatmentPlanIndex)]?._id;
+      
+      if (!dailyTreatmentId || !treatmentId) {
+        toast.error(`Missing required treatment information: ${!dailyTreatmentId ? 'Treatment Entry ID' : 'Treatment Plan ID'}`);
+        console.error("Missing IDs:", { dailyTreatmentId, treatmentId, mapKey, toothNumber });
+        return;
+      }
+      
+      // Call backend API to update payment
+       await crudRequest(
+        "PATCH",
+        `/patient/update-payment/${patientId}/${medicalDetailId}/${treatmentId}/${toothNumber}/${dailyTreatmentId}`,
+        { paidAmount: currentPaid + newAmount }
+      );
+      
+      // Update UI state via parent component
+      const totalPaid = currentPaid + newAmount;
+      onPaymentUpdate(mapKey, toothNumber, treatmentIndex, totalPaid);
+      
+      // Clear this entry from newPayments
+      setNewPayments((prev) => {
+        const { [key]: _, ...rest } = prev;
+        return rest;
+      });
+      
+      toast.success("Payment updated successfully");
+    } catch (error) {
+      console.error("Payment update error:", error);
+      toast.error("Failed to update payment: " + (error as Error).message);
+    } finally {
+      setProcessingPayment(null);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="text-xl">Edit Treatment Payments</DialogTitle>
+        </DialogHeader>
+
+        {treatmentsWithBalance.length === 0 ? (
+          <div className="py-8 text-center">
+            <p>No treatments with remaining balances found.</p>
+          </div>
+        ) : (
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+            {treatmentsWithBalance.map((item, _index) => {
+              const key = `${item.mapKey}-${item.toothNumber}-${item.treatmentIndex}`;
+              return (
+                <Card key={key} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="font-medium">
+                          Tooth {item.toothNumber} Treatment
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Date: {format(new Date(item.treatment.date), "PP")}
+                        </p>
+                        {item.tooth.procedure && (
+                          <p className="text-sm">
+                            Procedure: {item.tooth.procedure}
+                          </p>
+                        )}
+                        {item.treatment.notes && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Notes: {item.treatment.notes}
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-3 gap-2 text-sm">
+                          <div>
+                            <p className="text-muted-foreground">Total</p>
+                            <p className="font-medium">
+                              ₹{item.treatment.treatmentAmount}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Paid</p>
+                            <p className="font-medium text-green-600">
+                              ₹{item.treatment.paidAmount}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Due</p>
+                            <p className="font-medium text-red-600">
+                              ₹{item.treatment.remainingAmount}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 items-center gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Add payment"
+                            value={newPayments[key] || ""}
+                            onChange={(e) => handlePaymentChange(key, e.target.value, item.treatment.remainingAmount)}
+                            className="w-40"
+                            max={item.treatment.remainingAmount}
+                          />
+                          <Button 
+                            onClick={() => 
+                              handlePaymentSubmit(
+                                item.mapKey, 
+                                item.toothNumber, 
+                                item.treatmentIndex,
+                                item.treatment.paidAmount,
+                                item.treatment.treatmentAmount,
+                                item.treatment._id
+                              )
+                            }
+                            disabled={!newPayments[key] || processingPayment === key}
+                          >
+                            {processingPayment === key ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : "Pay"}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex justify-end mt-4">
+          <Button onClick={onClose}>Close</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -1155,18 +1155,16 @@ const getDashboardMetrics = async (req, res) => {
     const recentTreatments = await Patient.aggregate([
       { $unwind: "$medicalDetails" },
       { $unwind: "$medicalDetails.treatmentPlanning" },
-      { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
-      { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments" },
       {
         $match: {
-          "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": {
+          "medicalDetails.treatmentPlanning.treatmentDate": {
             $gte: fromDate,
             $lte: toDate
           }
         }
       },
       {
-        $sort: { "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": -1 }
+        $sort: { "medicalDetails.treatmentPlanning.treatmentDate": -1 }
       },
       {
         $limit: 10
@@ -1175,17 +1173,34 @@ const getDashboardMetrics = async (req, res) => {
         $project: {
           _id: 0,
           patientName: "$personalDetails.name",
-          treatment: { $ifNull: ["$medicalDetails.treatmentPlanning.selectedTeethDetails.procedure", "Treatment"] },
-          date: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date",
-          amount: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount",
+          treatment: { $ifNull: ["$medicalDetails.treatmentPlanning.treatmentDetails", "$medicalDetails.treatmentPlanning.treatmentFindings"] },
+          date: "$medicalDetails.treatmentPlanning.treatmentDate",
+          amount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount" },
           status: {
             $cond: {
-              if: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.isCompleted",
+              if: "$medicalDetails.treatmentPlanning.isCompleted",
               then: "Completed",
               else: "Pending"
             }
           },
-          documents: { $ifNull: ["$medicalDetails.treatmentPlanning.treatmentDocuments", []] }
+          documents: {
+            $cond: {
+              if: { $isArray: "$medicalDetails.treatmentPlanning.treatmentDocuments" },
+              then: {
+                $map: {
+                  input: "$medicalDetails.treatmentPlanning.treatmentDocuments",
+                  as: "doc",
+                  in: {
+                    name: "$$doc.fileName",
+                    url: "$$doc.fileUrl",
+                    description: "$$doc.description",
+                    uploadDate: "$$doc.uploadDate"
+                  }
+                }
+              },
+              else: []
+            }
+          }
         }
       }
     ]);

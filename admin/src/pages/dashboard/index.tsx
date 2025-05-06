@@ -73,7 +73,10 @@ interface DoctorAnalysis {
 interface TreatmentDocument {
   name: string;
   url: string;
-  type: string;
+  type?: string;
+  description?: string;
+  uploadDate?: string;
+  detectedType?: string;
 }
 
 interface RecentTreatment {
@@ -217,43 +220,71 @@ const Dashboard = () => {
       };
     }
 
-    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"];
+    // Common file extensions
+    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".dcm", ".dicom"];
     const pdfExtensions = [".pdf"];
     const docExtensions = [".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"];
+    const xrayExtensions = [".dcm", ".dicom"]; // DICOM is common for medical imaging
+    
+    const urlLower = doc.url.toLowerCase();
     
     // Check by extension
-    const isImage = imageExtensions.some(ext => doc.url.toLowerCase().endsWith(ext));
-    const isPdf = pdfExtensions.some(ext => doc.url.toLowerCase().endsWith(ext));
-    const isDoc = docExtensions.some(ext => doc.url.toLowerCase().endsWith(ext));
+    const isImage = imageExtensions.some(ext => urlLower.endsWith(ext));
+    const isPdf = pdfExtensions.some(ext => urlLower.endsWith(ext));
+    const isDoc = docExtensions.some(ext => urlLower.endsWith(ext));
+    const isXray = xrayExtensions.some(ext => urlLower.endsWith(ext));
+    
+    // Check by filename patterns typically used for dental X-rays
+    const hasXrayInName = (doc.name || "").toLowerCase().includes("xray") || 
+                          (doc.name || "").toLowerCase().includes("x-ray") ||
+                          (doc.name || "").toLowerCase().includes("dental scan") ||
+                          (doc.name || "").toLowerCase().includes("radiograph");
+                          
+    // Check by description patterns
+    const hasXrayInDescription = (doc.description || "").toLowerCase().includes("xray") || 
+                                (doc.description || "").toLowerCase().includes("x-ray") ||
+                                (doc.description || "").toLowerCase().includes("dental scan") ||
+                                (doc.description || "").toLowerCase().includes("radiograph");
     
     // Check by type if available
     const typeBasedCheck = doc.type ? {
       isImage: doc.type.includes("image"),
       isPdf: doc.type.includes("pdf") || doc.type.includes("application/pdf"),
-      isDoc: doc.type.includes("word") || doc.type.includes("excel") || doc.type.includes("powerpoint")
-    } : { isImage: false, isPdf: false, isDoc: false };
+      isDoc: doc.type.includes("word") || doc.type.includes("excel") || doc.type.includes("powerpoint"),
+      isXray: doc.type.includes("dicom") || doc.type.includes("image/dicom")
+    } : { isImage: false, isPdf: false, isDoc: false, isXray: false };
     
     // Combine checks
     const fileIsImage = isImage || typeBasedCheck.isImage;
     const fileIsPdf = isPdf || typeBasedCheck.isPdf;
     const fileIsDoc = isDoc || typeBasedCheck.isDoc;
+    const fileIsXray = isXray || typeBasedCheck.isXray || hasXrayInName || hasXrayInDescription;
     
     // Return icon based on file type
     let icon;
-    if (fileIsImage) {
+    let type = "unknown";
+    
+    if (fileIsXray) {
+      icon = <ImageIcon className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" />;
+      type = "xray";
+    } else if (fileIsImage) {
       icon = <ImageIcon className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />;
+      type = "image";
     } else if (fileIsPdf) {
       icon = <FileText className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" />;
+      type = "pdf";
     } else if (fileIsDoc) {
       icon = <FileText className="mr-2 h-4 w-4 text-green-600 dark:text-green-400" />;
+      type = "document";
     } else {
       icon = <FileText className="mr-2 h-4 w-4 text-gray-600 dark:text-gray-400" />;
+      type = "unknown";
     }
     
     // Enhance document with detected type
     const enhancedDoc = {
       ...doc,
-      detectedType: fileIsImage ? "image" : (fileIsPdf ? "pdf" : (fileIsDoc ? "document" : "unknown"))
+      detectedType: type
     };
     
     return { icon, enhancedDoc };
@@ -484,19 +515,41 @@ const Dashboard = () => {
                         </Badge>
                       </div>
                       {treatment.documents && treatment.documents.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {treatment.documents.filter(doc => doc && doc.url).map((doc, docIndex) => (
-                            <Button
-                              key={docIndex}
-                              variant="outline"
-                              size="sm"
-                              className="border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
-                              onClick={() => handleOpenDocument(doc)}
-                            >
-                              {getDocumentDetails(doc).icon}
-                              <span className="text-gray-700 dark:text-gray-300">{doc.name || "Unnamed document"}</span>
-                            </Button>
-                          ))}
+                        <div className="mt-2 flex flex-col space-y-2">
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                            {t("Treatment Documents")} ({treatment.documents.length})
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {treatment.documents.filter(doc => doc && doc.url).map((doc, docIndex) => (
+                              <div 
+                                key={docIndex}
+                                className="group relative"
+                              >
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                  onClick={() => handleOpenDocument(doc)}
+                                >
+                                  {getDocumentDetails(doc).icon}
+                                  <span className="text-gray-700 dark:text-gray-300">
+                                    {doc.name ? (doc.name.length > 20 ? `${doc.name.substring(0, 20)}...` : doc.name) : "Unnamed document"}
+                                  </span>
+                                </Button>
+                                {doc.description && (
+                                  <div className="absolute z-10 invisible group-hover:visible bg-white dark:bg-gray-800 shadow-lg rounded-md p-2 mt-1 text-xs max-w-[200px] top-full left-0">
+                                    <p className="font-semibold mb-1">{doc.name}</p>
+                                    <p className="text-gray-600 dark:text-gray-400">{doc.description}</p>
+                                    {doc.uploadDate && (
+                                      <p className="text-gray-500 dark:text-gray-500 mt-1">
+                                        {t("Uploaded")}: {format(new Date(doc.uploadDate), "MMM d, yyyy")}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -617,19 +670,41 @@ const Dashboard = () => {
                         </div>
                       </div>
                       {treatment.documents && treatment.documents.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {treatment.documents.filter(doc => doc && doc.url).map((doc, docIndex) => (
-                            <Button
-                              key={docIndex}
-                              variant="outline"
-                              size="sm"
-                              className="border-pink-300 dark:border-pink-600 hover:bg-pink-100 dark:hover:bg-pink-800"
-                              onClick={() => handleOpenDocument(doc)}
-                            >
-                              {getDocumentDetails(doc).icon}
-                              <span className="text-pink-700 dark:text-pink-300">{doc.name || "Unnamed document"}</span>
-                            </Button>
-                          ))}
+                        <div className="mt-2 flex flex-col space-y-2">
+                          <p className="text-xs font-medium text-pink-600 dark:text-pink-400">
+                            {t("Treatment Documents")} ({treatment.documents.length})
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {treatment.documents.filter(doc => doc && doc.url).map((doc, docIndex) => (
+                              <div 
+                                key={docIndex}
+                                className="group relative"
+                              >
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-pink-300 dark:border-pink-600 hover:bg-pink-100 dark:hover:bg-pink-800"
+                                  onClick={() => handleOpenDocument(doc)}
+                                >
+                                  {getDocumentDetails(doc).icon}
+                                  <span className="text-pink-700 dark:text-pink-300">
+                                    {doc.name ? (doc.name.length > 20 ? `${doc.name.substring(0, 20)}...` : doc.name) : "Unnamed document"}
+                                  </span>
+                                </Button>
+                                {doc.description && (
+                                  <div className="absolute z-10 invisible group-hover:visible bg-white dark:bg-pink-900 shadow-lg rounded-md p-2 mt-1 text-xs max-w-[200px] top-full left-0">
+                                    <p className="font-semibold mb-1 text-pink-800 dark:text-pink-200">{doc.name}</p>
+                                    <p className="text-pink-600 dark:text-pink-300">{doc.description}</p>
+                                    {doc.uploadDate && (
+                                      <p className="text-pink-500 dark:text-pink-400 mt-1">
+                                        {t("Uploaded")}: {format(new Date(doc.uploadDate), "MMM d, yyyy")}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>

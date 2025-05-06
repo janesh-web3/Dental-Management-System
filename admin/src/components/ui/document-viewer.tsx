@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X, Download, ZoomIn, ZoomOut, RotateCw, RotateCcw, Image, FileText } from "lucide-react";
+import { X, Download, ZoomIn, ZoomOut, RotateCw, RotateCcw, Image, FileText, SunIcon, MoonIcon } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 
 interface DocumentViewerProps {
   isOpen: boolean;
@@ -10,6 +11,8 @@ interface DocumentViewerProps {
     name: string;
     url: string;
     type?: string;
+    description?: string;
+    uploadDate?: string;
   };
 }
 
@@ -18,8 +21,25 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
   const [rotation, setRotation] = useState(0);
   const [isImage, setIsImage] = useState(false);
   const [isPdf, setIsPdf] = useState(false);
+  const [isXray, setIsXray] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Image enhancement controls for X-rays
+  const [brightness, setBrightness] = useState(100); // 100% is normal
+  const [contrast, setContrast] = useState(100); // 100% is normal
+  const [invert, setInvert] = useState(false); // For X-rays, inverted view is often helpful
+
+  // Format the upload date if available
+  const formattedUploadDate = document.uploadDate 
+    ? new Date(document.uploadDate).toLocaleDateString(undefined, { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }) 
+    : null;
 
   // Determine document type and set appropriate state
   useEffect(() => {
@@ -29,6 +49,9 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
     // Reset zoom and rotation when document changes
     setZoom(1);
     setRotation(0);
+    setBrightness(100);
+    setContrast(100);
+    setInvert(false);
     
     // Check if document or url is undefined
     if (!document || !document.url) {
@@ -38,18 +61,28 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
     }
     
     // Check document type
-    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"];
+    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".dcm", ".dicom"];
     const pdfExtensions = [".pdf"];
+    const xrayExtensions = [".dcm", ".dicom"];
     
     const urlLower = document.url.toLowerCase();
     const isImageByExtension = imageExtensions.some(ext => urlLower.endsWith(ext));
     const isPdfByExtension = pdfExtensions.some(ext => urlLower.endsWith(ext));
+    const isXrayByExtension = xrayExtensions.some(ext => urlLower.endsWith(ext));
     
     const isImageByType = document.type?.includes("image") || false;
     const isPdfByType = document.type?.includes("pdf") || document.type?.includes("application/pdf") || false;
+    const isXrayByType = document.type?.includes("xray") || document.type?.includes("x-ray") || 
+                       document.type?.includes("dicom") || false;
+    
+    // Check if name or description contains X-ray related terms
+    const nameOrDesc = ((document.name || "") + (document.description || "")).toLowerCase();
+    const isXrayByName = nameOrDesc.includes("xray") || nameOrDesc.includes("x-ray") || 
+                        nameOrDesc.includes("dental scan") || nameOrDesc.includes("radiograph");
     
     setIsImage(isImageByExtension || isImageByType);
     setIsPdf(isPdfByExtension || isPdfByType);
+    setIsXray(isXrayByExtension || isXrayByType || isXrayByName || document.type === "xray");
     
     setIsLoading(false);
   }, [document]);
@@ -61,7 +94,12 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
   const handleReset = () => {
     setZoom(1);
     setRotation(0);
+    setBrightness(100);
+    setContrast(100);
+    setInvert(false);
   };
+
+  const handleToggleInvert = () => setInvert(prev => !prev);
 
   const handleImageLoad = () => {
     setIsLoading(false);
@@ -70,6 +108,12 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
   const handleImageError = () => {
     setIsLoading(false);
     setError("Failed to load image. The file may be corrupted or in an unsupported format.");
+  };
+
+  const getImageFilters = () => {
+    let filters = `brightness(${brightness}%) contrast(${contrast}%)`;
+    if (invert) filters += " invert(100%)";
+    return filters;
   };
 
   const renderContent = () => {
@@ -110,7 +154,8 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
             style={{ 
               transform: `scale(${zoom}) rotate(${rotation}deg)`,
               maxHeight: '70vh',
-              transition: 'transform 0.3s ease'
+              transition: 'transform 0.3s ease',
+              filter: getImageFilters()
             }}
             className="object-contain"
             onLoad={handleImageLoad}
@@ -174,9 +219,14 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
               <FileText className="h-5 w-5 mr-2 text-blue-500" /> 
             )}
             <div>
-              <DialogTitle className="text-xl">{document.name}</DialogTitle>
+              <DialogTitle className="text-xl">
+                {document.name}
+                {isXray && <span className="text-sm ml-2 font-normal text-red-500">(X-ray)</span>}
+              </DialogTitle>
               <DialogDescription>
-                {isImage ? "Image viewer" : isPdf ? "PDF viewer" : "Document viewer"}
+                {isXray ? "X-ray viewer" : isImage ? "Image viewer" : isPdf ? "PDF viewer" : "Document viewer"}
+                {document.description && <span className="block text-xs mt-1 italic">{document.description}</span>}
+                {formattedUploadDate && <span className="block text-xs mt-0.5">Uploaded: {formattedUploadDate}</span>}
               </DialogDescription>
             </div>
           </div>
@@ -195,6 +245,16 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
                 <Button variant="outline" size="icon" onClick={handleRotateCounterClockwise}>
                   <RotateCcw className="h-4 w-4" />
                 </Button>
+                {isXray && (
+                  <Button 
+                    variant={invert ? "secondary" : "outline"} 
+                    size="icon" 
+                    onClick={handleToggleInvert}
+                    title="Invert colors"
+                  >
+                    {invert ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={handleReset}>
                   Reset
                 </Button>
@@ -210,6 +270,34 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
             </Button>
           </div>
         </DialogHeader>
+        
+        {isXray && (
+          <div className="px-4 py-2 border-b bg-gray-50 dark:bg-gray-900 flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs w-28">Brightness: {brightness}%</span>
+              <Slider
+                className="flex-1"
+                value={[brightness]}
+                min={50}
+                max={150}
+                step={1}
+                onValueChange={(vals) => setBrightness(vals[0])}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs w-28">Contrast: {contrast}%</span>
+              <Slider
+                className="flex-1"
+                value={[contrast]}
+                min={50}
+                max={150}
+                step={1}
+                onValueChange={(vals) => setContrast(vals[0])}
+              />
+            </div>
+          </div>
+        )}
+        
         <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
           {renderContent()}
         </div>

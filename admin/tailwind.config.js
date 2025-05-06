@@ -53,6 +53,56 @@ module.exports = {
         dashboard8 : {
           DEFAULT: "hsl(var(--dashboard8))",
         },
+        dashboard: {
+          patients: {
+            light: "#ebf5ff", // blue-50
+            dark: "#0c2544", // blue-950
+          },
+          doctors: {
+            light: "#ecfdf5", // green-50
+            dark: "#052e16", // green-950
+          },
+          appointments: {
+            light: "#f5f3ff", // purple-50
+            dark: "#2e1065", // purple-950
+          },
+          revenue: {
+            light: "#f0fdfa", // teal-50
+            dark: "#042f2e", // teal-950
+          },
+          financials: {
+            light: "#eef2ff", // indigo-50
+            dark: "#1e1b4b", // indigo-950
+          },
+          documents: {
+            light: "#f9fafb", // gray-50
+            dark: "#111827", // gray-900
+          },
+          performance: {
+            light: "#fffbeb", // amber-50
+            dark: "#451a03", // amber-950
+          },
+          todaysAppointments: {
+            light: "#ecfeff", // cyan-50
+            dark: "#083344", // cyan-950
+          },
+          treatments: {
+            light: "#fdf2f8", // pink-50
+            dark: "#4a044e", // pink-950
+          },
+          progress: {
+            light: "#f7fee7", // lime-50
+            dark: "#1a2e05", // lime-950
+          },
+          transactions: {
+            light: "#fff1f2", // rose-50
+            dark: "#4c0519", // rose-950
+          },
+          reports: {
+            light: "#f5f3ff", // violet-50
+            dark: "#2e1065", // violet-950
+          }
+        },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",

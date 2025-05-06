@@ -72,6 +72,20 @@
     --dashboard7: 355.6 100% 94.7%;
     --dashboard8: 220 14.3% 95.9%;
 
+    /* Dashboard card theme colors */
+    --dashboard-patients-bg: 213.8 100% 96.9%;       /* blue-50 */
+    --dashboard-doctors-bg: 158.1 100% 96.9%;        /* green-50 */
+    --dashboard-appointments-bg: 270 100% 98%;       /* purple-50 */
+    --dashboard-revenue-bg: 171.4 100% 96.9%;        /* teal-50 */
+    --dashboard-financials-bg: 225.9 100% 96.9%;     /* indigo-50 */
+    --dashboard-documents-bg: 210 40% 98%;           /* gray-50 */
+    --dashboard-performance-bg: 48 100% 96.1%;       /* amber-50 */
+    --dashboard-todaysapps-bg: 183.2 100% 96.3%;     /* cyan-50 */
+    --dashboard-treatments-bg: 327.3 100% 97.1%;     /* pink-50 */
+    --dashboard-progress-bg: 90 100% 95.5%;          /* lime-50 */
+    --dashboard-transactions-bg: 355.7 100% 97.3%;   /* rose-50 */
+    --dashboard-reports-bg: 270 100% 98%;            /* violet-50 */
+
     --calander: 0;
   }
 
@@ -84,6 +98,20 @@
     --dashboard6: 263.5 67.4% 34.9%;
     --dashboard7: 341.5 75.5% 30.4%;
     --dashboard8: 220.9 39.3% 11%;
+
+    /* Dashboard card theme colors - dark mode */
+    --dashboard-patients-bg: 216 71.7% 15.7%;        /* blue-950 */
+    --dashboard-doctors-bg: 158.3 64.5% 9.8%;        /* green-950 */
+    --dashboard-appointments-bg: 270.7 60.2% 26.3%;  /* purple-950 */
+    --dashboard-revenue-bg: 180 100% 10%;            /* teal-950 */
+    --dashboard-financials-bg: 243.2 46.4% 20.6%;    /* indigo-950 */
+    --dashboard-documents-bg: 222.2 47.4% 11.2%;     /* gray-900 */
+    --dashboard-performance-bg: 25.7 81% 14.7%;      /* amber-950 */
+    --dashboard-todaysapps-bg: 196.4 100% 14.7%;     /* cyan-950 */
+    --dashboard-treatments-bg: 291.1 77.4% 16.5%;    /* pink-950 */
+    --dashboard-progress-bg: 92.4 75% 10.2%;         /* lime-950 */
+    --dashboard-transactions-bg: 336.2 83.3% 15.7%;  /* rose-950 */
+    --dashboard-reports-bg: 270.7 60.2% 26.3%;       /* violet-950 */
 
     --calander: 1;
   }

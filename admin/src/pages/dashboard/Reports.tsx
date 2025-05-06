@@ -138,9 +138,9 @@ export function Reports() {
   }
 
   return (
-    <Card>
+    <Card className="bg-violet-50 dark:bg-violet-950 border-violet-200 dark:border-violet-800 shadow-sm transition-all">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle>Reports & Analytics</CardTitle>
+        <CardTitle className="text-violet-800 dark:text-violet-300">Reports & Analytics</CardTitle>
         <div className="flex items-center space-x-2">
           <DateRangePicker
             value={dateRange}
@@ -151,6 +151,7 @@ export function Reports() {
               variant="outline" 
               size="sm"
               onClick={handleResetDateRange}
+              className="border-violet-300 dark:border-violet-700 hover:bg-violet-100 dark:hover:bg-violet-900 text-violet-700 dark:text-violet-300"
             >
               All Time Data
             </Button>
@@ -159,7 +160,11 @@ export function Reports() {
             data={getCSVData()}
             filename={`${activeTab}-report-${format(new Date(), "yyyy-MM-dd")}.csv`}
           >
-            <Button variant="outline" size="sm">
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="border-violet-300 dark:border-violet-700 hover:bg-violet-100 dark:hover:bg-violet-900 text-violet-700 dark:text-violet-300"
+            >
               <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>
@@ -167,7 +172,7 @@ export function Reports() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-sm text-muted-foreground mb-4">
+        <div className="text-sm text-violet-700 dark:text-violet-400 mb-4">
           {isCustomDateRange ? (
             <p>
               Showing data from {format(dateRange.from, "MMM d, yyyy")} to {format(dateRange.to, "MMM d, yyyy")}
@@ -182,16 +187,16 @@ export function Reports() {
           className="space-y-4"
           onValueChange={setActiveTab}
         >
-          <TabsList>
-            <TabsTrigger value="appointments">
+          <TabsList className="bg-white dark:bg-violet-900">
+            <TabsTrigger value="appointments" className="data-[state=active]:bg-violet-100 dark:data-[state=active]:bg-violet-800 text-violet-800 dark:text-violet-300">
               <CalendarDays className="h-4 w-4 mr-2" />
               Appointments
             </TabsTrigger>
-            <TabsTrigger value="patients">
+            <TabsTrigger value="patients" className="data-[state=active]:bg-violet-100 dark:data-[state=active]:bg-violet-800 text-violet-800 dark:text-violet-300">
               <Users className="h-4 w-4 mr-2" />
               Patient Growth
             </TabsTrigger>
-            <TabsTrigger value="demographics">
+            <TabsTrigger value="demographics" className="data-[state=active]:bg-violet-100 dark:data-[state=active]:bg-violet-800 text-violet-800 dark:text-violet-300">
               <Activity className="h-4 w-4 mr-2" />
               Demographics
             </TabsTrigger>
@@ -199,21 +204,21 @@ export function Reports() {
 
           <TabsContent value="appointments" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <Card>
+              <Card className="bg-white dark:bg-violet-900 border-violet-100 dark:border-violet-700 shadow-sm hover:shadow-md transition-all">
                 <CardHeader className="py-3">
-                  <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
+                  <CardTitle className="text-sm font-medium text-violet-800 dark:text-violet-300">Total Appointments</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{metrics?.totalAppointments || 0}</div>
+                  <div className="text-2xl font-bold text-violet-900 dark:text-violet-50">{metrics?.totalAppointments || 0}</div>
                 </CardContent>
               </Card>
               
-              <Card>
+              <Card className="bg-white dark:bg-violet-900 border-violet-100 dark:border-violet-700 shadow-sm hover:shadow-md transition-all">
                 <CardHeader className="py-3">
-                  <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+                  <CardTitle className="text-sm font-medium text-violet-800 dark:text-violet-300">Completion Rate</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className="text-2xl font-bold text-violet-900 dark:text-violet-50">
                     {metrics?.appointmentDistribution?.length ? 
                       Math.round(
                         (metrics.appointmentDistribution.find(a => a.status === "accepted")?.count || 0) / 
@@ -223,12 +228,12 @@ export function Reports() {
                 </CardContent>
               </Card>
               
-              <Card>
+              <Card className="bg-white dark:bg-violet-900 border-violet-100 dark:border-violet-700 shadow-sm hover:shadow-md transition-all">
                 <CardHeader className="py-3">
-                  <CardTitle className="text-sm font-medium">Average per Day</CardTitle>
+                  <CardTitle className="text-sm font-medium text-violet-800 dark:text-violet-300">Average per Day</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className="text-2xl font-bold text-violet-900 dark:text-violet-50">
                     {metrics?.totalAppointments && dateRange.from && dateRange.to ? 
                       Math.round(metrics.totalAppointments / 
                         (Math.abs(dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24) + 1)
@@ -238,18 +243,18 @@ export function Reports() {
               </Card>
             </div>
             
-            <div className="h-[400px] w-full">
+            <div className="h-[400px] w-full bg-white dark:bg-violet-900 p-4 rounded-lg shadow-sm">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={metrics?.appointmentDistribution || []}
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="status" />
-                  <YAxis />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ddd7f7" />
+                  <XAxis dataKey="status" stroke="#8b5cf6" />
+                  <YAxis stroke="#8b5cf6" />
+                  <Tooltip contentStyle={{ backgroundColor: "#f5f3ff", borderColor: "#c4b5fd" }} />
                   <Legend />
-                  <Bar dataKey="count" fill="#8884d8" name="Appointments" />
+                  <Bar dataKey="count" fill="#8b5cf6" name="Appointments" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -257,32 +262,32 @@ export function Reports() {
 
           <TabsContent value="patients" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <Card>
+              <Card className="bg-white dark:bg-violet-900 border-violet-100 dark:border-violet-700 shadow-sm hover:shadow-md transition-all">
                 <CardHeader className="py-3">
-                  <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
+                  <CardTitle className="text-sm font-medium text-violet-800 dark:text-violet-300">Total Patients</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{metrics?.totalPatients || 0}</div>
+                  <div className="text-2xl font-bold text-violet-900 dark:text-violet-50">{metrics?.totalPatients || 0}</div>
                 </CardContent>
               </Card>
               
-              <Card>
+              <Card className="bg-white dark:bg-violet-900 border-violet-100 dark:border-violet-700 shadow-sm hover:shadow-md transition-all">
                 <CardHeader className="py-3">
-                  <CardTitle className="text-sm font-medium">New in Period</CardTitle>
+                  <CardTitle className="text-sm font-medium text-violet-800 dark:text-violet-300">New in Period</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className="text-2xl font-bold text-violet-900 dark:text-violet-50">
                     {metrics?.patientGrowth?.reduce((sum, item) => sum + item.count, 0) || 0}
                   </div>
                 </CardContent>
               </Card>
               
-              <Card>
+              <Card className="bg-white dark:bg-violet-900 border-violet-100 dark:border-violet-700 shadow-sm hover:shadow-md transition-all">
                 <CardHeader className="py-3">
-                  <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
+                  <CardTitle className="text-sm font-medium text-violet-800 dark:text-violet-300">Growth Rate</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className="text-2xl font-bold text-violet-900 dark:text-violet-50">
                     {metrics?.totalPatients && metrics?.patientGrowth ? 
                       Math.round(
                         (metrics.patientGrowth.reduce((sum, item) => sum + item.count, 0) / 
@@ -293,29 +298,32 @@ export function Reports() {
               </Card>
             </div>
             
-            <div className="h-[400px] w-full">
+            <div className="h-[400px] w-full bg-white dark:bg-violet-900 p-4 rounded-lg shadow-sm">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={metrics?.patientGrowth || []}
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ddd7f7" />
                   <XAxis 
                     dataKey="date" 
                     tickFormatter={(value) => format(new Date(value), "MMM d")}
+                    stroke="#8b5cf6" 
                   />
-                  <YAxis />
+                  <YAxis stroke="#8b5cf6" />
                   <Tooltip 
                     labelFormatter={(value) => format(new Date(value), "MMMM d, yyyy")}
+                    contentStyle={{ backgroundColor: "#f5f3ff", borderColor: "#c4b5fd" }}
                   />
                   <Legend />
                   <Line
                     type="monotone"
                     dataKey="count"
-                    stroke="#0088FE"
+                    stroke="#8b5cf6"
                     strokeWidth={2}
                     name="New Patients"
-                    activeDot={{ r: 8 }}
+                    activeDot={{ r: 8, fill: "#7c3aed" }}
+                    dot={{ fill: "#8b5cf6", r: 4 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -324,9 +332,9 @@ export function Reports() {
 
           <TabsContent value="demographics" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <Card>
+              <Card className="bg-white dark:bg-violet-900 border-violet-100 dark:border-violet-700 shadow-sm hover:shadow-md transition-all">
                 <CardHeader>
-                  <CardTitle>Patient Age Distribution</CardTitle>
+                  <CardTitle className="text-violet-800 dark:text-violet-300">Patient Age Distribution</CardTitle>
                 </CardHeader>
                 <CardContent className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -359,9 +367,9 @@ export function Reports() {
                 </CardContent>
               </Card>
               
-              <Card>
+              <Card className="bg-white dark:bg-violet-900 border-violet-100 dark:border-violet-700 shadow-sm hover:shadow-md transition-all">
                 <CardHeader>
-                  <CardTitle>Gender Distribution</CardTitle>
+                  <CardTitle className="text-violet-800 dark:text-violet-300">Gender Distribution</CardTitle>
                 </CardHeader>
                 <CardContent className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">

@@ -14,6 +14,8 @@ import {
   Clock,
   TrendingUp,
   TrendingDown,
+  Image as ImageIcon,
+  FileText as FileIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
@@ -26,6 +28,7 @@ import { Link } from "react-router-dom";
 import { useAdminContext } from "@/contexts/adminContext";
 import { RecentTransactions } from "./RecentTransactions";
 import { useTranslation } from "react-i18next";
+import { DocumentViewer } from "@/components/ui/document-viewer";
 import {
   LineChart,
   Line,
@@ -171,6 +174,8 @@ const Dashboard = () => {
   const { t } = useTranslation();
 
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<TreatmentDocument | null>(null);
 
   const [dateRange, setDateRange] = useState<{
     from: Date;
@@ -199,6 +204,80 @@ const Dashboard = () => {
       to: new Date()
     });
     setIsCustomDateRange(false);
+  };
+
+  // Function to determine document icon and type
+  const getDocumentDetails = (doc: TreatmentDocument) => {
+    // Check if doc or doc.url is undefined
+    if (!doc || !doc.url) {
+      // Return a default icon and empty document
+      return {
+        icon: <FileText className="mr-2 h-4 w-4 text-gray-600 dark:text-gray-400" />,
+        enhancedDoc: { ...doc, detectedType: "unknown" }
+      };
+    }
+
+    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"];
+    const pdfExtensions = [".pdf"];
+    const docExtensions = [".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"];
+    
+    // Check by extension
+    const isImage = imageExtensions.some(ext => doc.url.toLowerCase().endsWith(ext));
+    const isPdf = pdfExtensions.some(ext => doc.url.toLowerCase().endsWith(ext));
+    const isDoc = docExtensions.some(ext => doc.url.toLowerCase().endsWith(ext));
+    
+    // Check by type if available
+    const typeBasedCheck = doc.type ? {
+      isImage: doc.type.includes("image"),
+      isPdf: doc.type.includes("pdf") || doc.type.includes("application/pdf"),
+      isDoc: doc.type.includes("word") || doc.type.includes("excel") || doc.type.includes("powerpoint")
+    } : { isImage: false, isPdf: false, isDoc: false };
+    
+    // Combine checks
+    const fileIsImage = isImage || typeBasedCheck.isImage;
+    const fileIsPdf = isPdf || typeBasedCheck.isPdf;
+    const fileIsDoc = isDoc || typeBasedCheck.isDoc;
+    
+    // Return icon based on file type
+    let icon;
+    if (fileIsImage) {
+      icon = <ImageIcon className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />;
+    } else if (fileIsPdf) {
+      icon = <FileText className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" />;
+    } else if (fileIsDoc) {
+      icon = <FileText className="mr-2 h-4 w-4 text-green-600 dark:text-green-400" />;
+    } else {
+      icon = <FileText className="mr-2 h-4 w-4 text-gray-600 dark:text-gray-400" />;
+    }
+    
+    // Enhance document with detected type
+    const enhancedDoc = {
+      ...doc,
+      detectedType: fileIsImage ? "image" : (fileIsPdf ? "pdf" : (fileIsDoc ? "document" : "unknown"))
+    };
+    
+    return { icon, enhancedDoc };
+  };
+
+  const handleOpenDocument = (doc: TreatmentDocument) => {
+    // Make sure we have a valid document before trying to open it
+    if (!doc || !doc.url) {
+      console.error("Cannot open document: Invalid document or missing URL", doc);
+      return;
+    }
+    
+    const { enhancedDoc } = getDocumentDetails(doc);
+    setSelectedDocument({
+      ...enhancedDoc,
+      // Ensure we have a name for display purposes
+      name: enhancedDoc.name || "Document",
+      type: enhancedDoc.detectedType // Add the detected type
+    });
+    setViewerOpen(true);
+  };
+
+  const handleCloseViewer = () => {
+    setViewerOpen(false);
   };
 
   useEffect(() => {
@@ -286,52 +365,52 @@ const Dashboard = () => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 shadow-sm hover:shadow-md transition-all hover:bg-blue-100 dark:hover:bg-blue-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("Total Patients")}</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">{t("Total Patients")}</CardTitle>
+            <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardData?.totalPatients}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-blue-900 dark:text-blue-50">{dashboardData?.totalPatients}</div>
+            <p className="text-xs text-blue-700 dark:text-blue-400">
               {t("Active patients in the system")}
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 shadow-sm hover:shadow-md transition-all hover:bg-green-100 dark:hover:bg-green-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("Total Doctors")}</CardTitle>
-            <Stethoscope className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-green-800 dark:text-green-300">{t("Total Doctors")}</CardTitle>
+            <Stethoscope className="h-4 w-4 text-green-600 dark:text-green-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardData?.totalDoctors}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-green-900 dark:text-green-50">{dashboardData?.totalDoctors}</div>
+            <p className="text-xs text-green-700 dark:text-green-400">
               {t("Active doctors in the system")}
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800 shadow-sm hover:shadow-md transition-all hover:bg-purple-100 dark:hover:bg-purple-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("Total Appointments")}</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-purple-800 dark:text-purple-300">{t("Total Appointments")}</CardTitle>
+            <Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardData?.totalAppointments}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-purple-900 dark:text-purple-50">{dashboardData?.totalAppointments}</div>
+            <p className="text-xs text-purple-700 dark:text-purple-400">
               {t("Appointments in selected period")}
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800 shadow-sm hover:shadow-md transition-all hover:bg-teal-100 dark:hover:bg-teal-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("Total Revenue")}</CardTitle>
-            <IndianRupee className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-teal-800 dark:text-teal-300">{t("Total Revenue")}</CardTitle>
+            <IndianRupee className="h-4 w-4 text-teal-600 dark:text-teal-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-teal-900 dark:text-teal-50">
               ₹{dashboardData?.financialAnalysis.total.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-teal-700 dark:text-teal-400">
               {t("Total revenue in selected period")}
             </p>
           </CardContent>
@@ -339,84 +418,83 @@ const Dashboard = () => {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">{t("Overview")}</TabsTrigger>
-          <TabsTrigger value="analytics">{t("Analytics")}</TabsTrigger>
-          <TabsTrigger value="appointments">{t("Appointments")}</TabsTrigger>
-          <TabsTrigger value="doctors">{t("Doctors")}</TabsTrigger>
-          <TabsTrigger value="transactions">{t("Transactions")}</TabsTrigger>
-          <TabsTrigger value="reports">{t("Reports")}</TabsTrigger>
+        <TabsList className="bg-slate-100 dark:bg-slate-800">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950">{t("Overview")}</TabsTrigger>
+          <TabsTrigger value="analytics" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950">{t("Analytics")}</TabsTrigger>
+          <TabsTrigger value="appointments" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950">{t("Appointments")}</TabsTrigger>
+          <TabsTrigger value="doctors" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950">{t("Doctors")}</TabsTrigger>
+          <TabsTrigger value="transactions" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950">{t("Transactions")}</TabsTrigger>
+          <TabsTrigger value="reports" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950">{t("Reports")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4">
-              <CardHeader>
-                <CardTitle>{t("Financial Overview")}</CardTitle>
+            <Card className="col-span-4 bg-indigo-50 dark:bg-indigo-950 border-indigo-200 dark:border-indigo-800 shadow-sm hover:shadow-md transition-all">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-indigo-800 dark:text-indigo-300">{t("Financial Overview")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">{t("Daily Revenue")}</p>
-                    <p className="text-2xl font-bold">₹{dashboardData?.financialAnalysis.daily.toLocaleString()}</p>
+                  <div className="bg-white dark:bg-indigo-900 p-3 rounded-lg shadow-sm">
+                    <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">{t("Daily Revenue")}</p>
+                    <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-50">₹{dashboardData?.financialAnalysis.daily.toLocaleString()}</p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">{t("Weekly Revenue")}</p>
-                    <p className="text-2xl font-bold">₹{dashboardData?.financialAnalysis.weekly.toLocaleString()}</p>
+                  <div className="bg-white dark:bg-indigo-900 p-3 rounded-lg shadow-sm">
+                    <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">{t("Weekly Revenue")}</p>
+                    <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-50">₹{dashboardData?.financialAnalysis.weekly.toLocaleString()}</p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">{t("Monthly Revenue")}</p>
-                    <p className="text-2xl font-bold">₹{dashboardData?.financialAnalysis.monthly.toLocaleString()}</p>
+                  <div className="bg-white dark:bg-indigo-900 p-3 rounded-lg shadow-sm">
+                    <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">{t("Monthly Revenue")}</p>
+                    <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-50">₹{dashboardData?.financialAnalysis.monthly.toLocaleString()}</p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">{t("Total Revenue")}</p>
-                    <p className="text-2xl font-bold">₹{dashboardData?.financialAnalysis.total.toLocaleString()}</p>
+                  <div className="bg-white dark:bg-indigo-900 p-3 rounded-lg shadow-sm">
+                    <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">{t("Total Revenue")}</p>
+                    <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-50">₹{dashboardData?.financialAnalysis.total.toLocaleString()}</p>
                   </div>
                 </div>
-                <div className="mt-4 h-[300px]">
+                <div className="mt-4 h-[300px] bg-white dark:bg-indigo-900 p-3 rounded-lg">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={dashboardData?.financialAnalysis.revenueTrend}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="revenue" stroke="#8884d8" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#cdd7e7" />
+                      <XAxis dataKey="date" stroke="#6366f1" />
+                      <YAxis stroke="#6366f1" />
+                      <Tooltip contentStyle={{ backgroundColor: "#eef2ff", borderColor: "#a5b4fc" }} />
+                      <Line type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2} dot={{ fill: "#4f46e5", r: 4 }} activeDot={{ r: 6, fill: "#4338ca" }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle>{t("Recent Treatment Documents")}</CardTitle>
+            <Card className="col-span-3 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-gray-800 dark:text-gray-300">{t("Recent Treatment Documents")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-[400px]">
                   {dashboardData?.analytics.recentTreatments.map((treatment, index) => (
-                    <div key={index} className="mb-4">
+                    <div key={index} className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{treatment.patientName}</p>
-                          <p className="text-sm text-muted-foreground">{treatment.treatment}</p>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{treatment.patientName}</p>
+                          <p className="text-sm text-gray-700 dark:text-gray-400">{treatment.treatment}</p>
                         </div>
-                        <Badge variant={treatment.status === "Completed" ? "default" : "secondary"}>
+                        <Badge variant={treatment.status === "Completed" ? "default" : "secondary"} className={treatment.status === "Completed" ? "bg-green-500 hover:bg-green-600" : ""}>
                           {treatment.status}
                         </Badge>
                       </div>
                       {treatment.documents && treatment.documents.length > 0 && (
-                        <div className="mt-2 flex gap-2">
-                          {treatment.documents.map((doc, docIndex) => (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {treatment.documents.filter(doc => doc && doc.url).map((doc, docIndex) => (
                             <Button
                               key={docIndex}
                               variant="outline"
                               size="sm"
-                              asChild
+                              className="border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              onClick={() => handleOpenDocument(doc)}
                             >
-                              <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                                <FileText className="mr-2 h-4 w-4" />
-                                {doc.name}
-                              </a>
+                              {getDocumentDetails(doc).icon}
+                              <span className="text-gray-700 dark:text-gray-300">{doc.name || "Unnamed document"}</span>
                             </Button>
                           ))}
                         </div>
@@ -430,52 +508,52 @@ const Dashboard = () => {
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
-          <Card>
+          <Card className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 shadow-sm hover:shadow-md transition-all">
             <CardHeader>
-              <CardTitle>{t("Doctor Performance")}</CardTitle>
+              <CardTitle className="text-amber-800 dark:text-amber-300">{t("Doctor Performance")}</CardTitle>
             </CardHeader>
             <CardContent>
               {!dashboardData?.doctorPerformance || dashboardData.doctorPerformance.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-lg text-muted-foreground">No doctor data available</p>
-                  <p className="text-sm text-muted-foreground mt-2">Create doctors in the system to view performance analytics</p>
+                  <p className="text-lg text-amber-700 dark:text-amber-400">No doctor data available</p>
+                  <p className="text-sm text-amber-600 dark:text-amber-500 mt-2">Create doctors in the system to view performance analytics</p>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {dashboardData.doctorPerformance.map((doctor) => (
-                    <Card key={doctor._id}>
+                    <Card key={doctor._id} className="bg-white dark:bg-amber-900 border-amber-100 dark:border-amber-700">
                       <CardHeader>
                         <div className="flex items-center justify-between">
                           <div>
-                            <CardTitle className="text-lg">{doctor.doctorName}</CardTitle>
-                            <p className="text-sm text-muted-foreground">{doctor.specialization}</p>
+                            <CardTitle className="text-lg text-amber-900 dark:text-amber-100">{doctor.doctorName}</CardTitle>
+                            <p className="text-sm text-amber-700 dark:text-amber-300">{doctor.specialization}</p>
                           </div>
-                          <Avatar>
-                            <User className="h-6 w-6" />
+                          <Avatar className="bg-amber-100 dark:bg-amber-800">
+                            <User className="h-6 w-6 text-amber-600 dark:text-amber-300" />
                           </Avatar>
                         </div>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground">
+                            <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
                               {t("Completed Appointments")}
                             </p>
-                            <p className="text-2xl font-bold">{doctor.completedAppointments}</p>
+                            <p className="text-2xl font-bold text-amber-900 dark:text-amber-50">{doctor.completedAppointments}</p>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground">
+                            <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
                               {t("Patients Treated")}
                             </p>
-                            <p className="text-2xl font-bold">{doctor.patientsCount}</p>
+                            <p className="text-2xl font-bold text-amber-900 dark:text-amber-50">{doctor.patientsCount}</p>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground">
+                            <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
                               {t("Performance Rate")}
                             </p>
                             <div className="flex items-center gap-2">
-                              <Progress value={doctor.performanceRate} className="h-2" />
-                              <span className="text-sm font-medium">{doctor.performanceRate}%</span>
+                              <Progress value={doctor.performanceRate} className="h-2 bg-amber-200 dark:bg-amber-800" />
+                              <span className="text-sm font-medium text-amber-900 dark:text-amber-50">{doctor.performanceRate}%</span>
                             </div>
                           </div>
                         </div>
@@ -490,19 +568,22 @@ const Dashboard = () => {
 
         <TabsContent value="appointments" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            <Card>
+            <Card className="bg-cyan-50 dark:bg-cyan-950 border-cyan-200 dark:border-cyan-800 shadow-sm hover:shadow-md transition-all">
               <CardHeader>
-                <CardTitle>{t("Today's Appointments")}</CardTitle>
+                <CardTitle className="text-cyan-800 dark:text-cyan-300">{t("Today's Appointments")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-[400px]">
                   {dashboardData?.today.appointments.map((appointment) => (
-                    <div key={appointment.id} className="mb-4 flex items-center justify-between">
+                    <div key={appointment.id} className="mb-4 flex items-center justify-between p-3 bg-white dark:bg-cyan-900 rounded-lg shadow-sm">
                       <div>
-                        <p className="font-medium">{appointment.patientName}</p>
-                        <p className="text-sm text-muted-foreground">{appointment.time}</p>
+                        <p className="font-medium text-cyan-900 dark:text-cyan-50">{appointment.patientName}</p>
+                        <p className="text-sm text-cyan-700 dark:text-cyan-300">{appointment.time}</p>
                       </div>
-                      <Badge variant={appointment.status === "Completed" ? "default" : "secondary"}>
+                      <Badge 
+                        variant={appointment.status === "Completed" ? "default" : "secondary"}
+                        className={appointment.status === "Completed" ? "bg-green-500 hover:bg-green-600" : ""}
+                      >
                         {appointment.status}
                       </Badge>
                     </div>
@@ -511,27 +592,46 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-pink-50 dark:bg-pink-950 border-pink-200 dark:border-pink-800 shadow-sm hover:shadow-md transition-all">
               <CardHeader>
-                <CardTitle>{t("Recent Treatments")}</CardTitle>
+                <CardTitle className="text-pink-800 dark:text-pink-300">{t("Recent Treatments")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-[400px]">
                   {dashboardData?.analytics.recentTreatments.map((treatment, index) => (
-                    <div key={index} className="mb-4">
+                    <div key={index} className="mb-4 p-3 bg-white dark:bg-pink-900 rounded-lg shadow-sm">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{treatment.patientName}</p>
-                          <p className="text-sm text-muted-foreground">{treatment.treatment}</p>
-                          <p className="text-sm text-muted-foreground">{treatment.date}</p>
+                          <p className="font-medium text-pink-900 dark:text-pink-50">{treatment.patientName}</p>
+                          <p className="text-sm text-pink-700 dark:text-pink-300">{treatment.treatment}</p>
+                          <p className="text-sm text-pink-700 dark:text-pink-300">{treatment.date}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-medium">₹{treatment.amount}</p>
-                          <Badge variant={treatment.status === "Completed" ? "default" : "secondary"}>
+                          <p className="font-medium text-pink-900 dark:text-pink-50">₹{treatment.amount}</p>
+                          <Badge 
+                            variant={treatment.status === "Completed" ? "default" : "secondary"}
+                            className={treatment.status === "Completed" ? "bg-green-500 hover:bg-green-600" : ""}
+                          >
                             {treatment.status}
                           </Badge>
                         </div>
                       </div>
+                      {treatment.documents && treatment.documents.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {treatment.documents.filter(doc => doc && doc.url).map((doc, docIndex) => (
+                            <Button
+                              key={docIndex}
+                              variant="outline"
+                              size="sm"
+                              className="border-pink-300 dark:border-pink-600 hover:bg-pink-100 dark:hover:bg-pink-800"
+                              onClick={() => handleOpenDocument(doc)}
+                            >
+                              {getDocumentDetails(doc).icon}
+                              <span className="text-pink-700 dark:text-pink-300">{doc.name || "Unnamed document"}</span>
+                            </Button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </ScrollArea>
@@ -541,52 +641,52 @@ const Dashboard = () => {
         </TabsContent>
 
         <TabsContent value="doctors" className="space-y-4">
-          <Card>
+          <Card className="bg-lime-50 dark:bg-lime-950 border-lime-200 dark:border-lime-800 shadow-sm hover:shadow-md transition-all">
             <CardHeader>
-              <CardTitle>{t("Doctor Progress")}</CardTitle>
+              <CardTitle className="text-lime-800 dark:text-lime-300">{t("Doctor Progress")}</CardTitle>
             </CardHeader>
             <CardContent>
               {!dashboardData?.doctorPerformance || dashboardData.doctorPerformance.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-lg text-muted-foreground">No doctor data available</p>
-                  <p className="text-sm text-muted-foreground mt-2">Create doctors in the system to view progress data</p>
+                  <p className="text-lg text-lime-700 dark:text-lime-400">No doctor data available</p>
+                  <p className="text-sm text-lime-600 dark:text-lime-500 mt-2">Create doctors in the system to view progress data</p>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {dashboardData.doctorPerformance.map((doctor) => (
-                    <Card key={doctor._id}>
+                    <Card key={doctor._id} className="bg-white dark:bg-lime-900 border-lime-100 dark:border-lime-700">
                       <CardHeader>
                         <div className="flex items-center justify-between">
                           <div>
-                            <CardTitle className="text-lg">{doctor.doctorName}</CardTitle>
-                            <p className="text-sm text-muted-foreground">{doctor.specialization}</p>
+                            <CardTitle className="text-lg text-lime-900 dark:text-lime-100">{doctor.doctorName}</CardTitle>
+                            <p className="text-sm text-lime-700 dark:text-lime-300">{doctor.specialization}</p>
                           </div>
-                          <Avatar>
-                            <User className="h-6 w-6" />
+                          <Avatar className="bg-lime-100 dark:bg-lime-800">
+                            <User className="h-6 w-6 text-lime-600 dark:text-lime-300" />
                           </Avatar>
                         </div>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground">
+                            <p className="text-sm font-medium text-lime-700 dark:text-lime-300">
                               {t("Patients Treated")}
                             </p>
-                            <p className="text-2xl font-bold">{doctor.patientsCount}</p>
+                            <p className="text-2xl font-bold text-lime-900 dark:text-lime-50">{doctor.patientsCount}</p>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground">
+                            <p className="text-sm font-medium text-lime-700 dark:text-lime-300">
                               {t("Treatments Completed")}
                             </p>
-                            <p className="text-2xl font-bold">{doctor.treatmentsCompleted}</p>
+                            <p className="text-2xl font-bold text-lime-900 dark:text-lime-50">{doctor.treatmentsCompleted}</p>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground">
+                            <p className="text-sm font-medium text-lime-700 dark:text-lime-300">
                               {t("Performance Rate")}
                             </p>
                             <div className="flex items-center gap-2">
-                              <Progress value={doctor.performanceRate} className="h-2" />
-                              <span className="text-sm font-medium">{doctor.performanceRate}%</span>
+                              <Progress value={doctor.performanceRate} className="h-2 bg-lime-200 dark:bg-lime-800" />
+                              <span className="text-sm font-medium text-lime-900 dark:text-lime-50">{doctor.performanceRate}%</span>
                             </div>
                           </div>
                         </div>
@@ -599,14 +699,25 @@ const Dashboard = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="transactions">
+        <TabsContent value="transactions" className="space-y-4 transition-all duration-200">
           <RecentTransactions />
         </TabsContent>
 
-        <TabsContent value="reports">
-          <Reports />
+        <TabsContent value="reports" className="space-y-4 transition-all duration-200">
+          <div className="bg-violet-50 dark:bg-violet-950 border-violet-200 dark:border-violet-800 shadow-sm hover:shadow-md transition-all rounded-lg p-0.5">
+            <Reports />
+          </div>
         </TabsContent>
       </Tabs>
+
+      {/* Document Viewer Modal */}
+      {selectedDocument && (
+        <DocumentViewer 
+          isOpen={viewerOpen}
+          onClose={handleCloseViewer}
+          document={selectedDocument}
+        />
+      )}
     </div>
   );
 };

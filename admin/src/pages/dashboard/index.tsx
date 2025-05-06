@@ -5,11 +5,15 @@ import { format } from "date-fns";
 import {
   Users,
   Calendar,
-  DollarSign,
+  IndianRupee,
   Activity,
   User,
   CheckCircle2,
   FileText,
+  Stethoscope,
+  Clock,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
@@ -22,672 +26,585 @@ import { Link } from "react-router-dom";
 import { useAdminContext } from "@/contexts/adminContext";
 import { RecentTransactions } from "./RecentTransactions";
 import { useTranslation } from "react-i18next";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
+import { DateRange } from "react-day-picker";
+import { server } from "@/server";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Reports } from "./Reports";
+import { FinancialInsights } from "./FinancialInsights";
 
 interface DoctorAnalysis {
   _id: string;
+  doctorName: string;
+  appointments: number;
+  completionRate: number;
   name: string;
-  specialization?: string;
-  image?: string;
   totalAppointments: number;
   completedAppointments: number;
   todayAppointments: number;
+  averageRating: number;
+  specialization: string;
+  experience: number;
+  status: string;
+  patientsCount: number;
+  treatmentsCompleted: number;
+  revenue: number;
   performanceRate: number;
-  patientsCount: number; // Add this
-  treatmentsCompleted: number; // Add this
-  revenue: number; // Add this
 }
 
 interface TreatmentDocument {
-  fileName: string;
-  fileUrl: string;
-  uploadDate: Date;
+  name: string;
+  url: string;
+  type: string;
 }
 
 interface RecentTreatment {
   patientName: string;
   treatment: string;
-  date: Date;
+  date: string;
+  status: string;
   amount: number;
   documents?: TreatmentDocument[];
 }
+
+interface DashboardData {
+  totalPatients: number;
+  totalAppointments: number;
+  totalDoctors: number;
+  appointmentStatus: {
+    scheduled: number;
+    completed: number;
+    canceled: number;
+  };
+  patientGrowth: Array<{
+    date: string;
+    count: number;
+  }>;
+  appointmentDistribution: Array<{
+    status: string;
+    count: number;
+  }>;
+  doctorPerformance: Array<DoctorAnalysis>;
+  todayAppointmentsCount: number;
+  today: {
+    appointments: Array<{
+      id: string;
+      patientName: string;
+      time: string;
+      status: string;
+    }>;
+    revenue: number;
+    newPatients: number;
+  };
+  financialAnalysis: {
+    daily: number;
+    weekly: number;
+    monthly: number;
+    total: number;
+    revenueByDoctor: Array<{
+      doctorName: string;
+      revenue: number;
+    }>;
+    revenueByTreatment: Array<{
+      treatmentType: string;
+      revenue: number;
+    }>;
+    revenueTrend: Array<{
+      date: string;
+      revenue: number;
+    }>;
+    paymentMethods: Array<{
+      method: string;
+      amount: number;
+    }>;
+    profitMargin: number;
+    averageTransactionValue: number;
+  };
+  analytics: {
+    patientDemographics: {
+      ageGroups: Array<{
+        range: string;
+        count: number;
+      }>;
+      genderDistribution: Array<{
+        gender: string;
+        count: number;
+      }>;
+    };
+    appointmentAnalytics: {
+      byDay: Array<{
+        day: string;
+        count: number;
+      }>;
+      byTime: Array<{
+        hour: string;
+        count: number;
+      }>;
+    };
+    treatmentAnalytics: Array<{
+      treatment: string;
+      count: number;
+    }>;
+    recentTreatments: Array<RecentTreatment>;
+  };
+}
+
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8", "#82ca9d"];
 
 const Dashboard = () => {
   const { adminDetails } = useAdminContext();
   const { t } = useTranslation();
 
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [isCustomDateRange, setIsCustomDateRange] = useState(false);
+
+  const [dateRange, setDateRange] = useState<{
+    from: Date;
+    to: Date;
+  }>({
+    from: new Date(2020, 0, 1),
+    to: new Date(),
+  });
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"daily" | "weekly" | "monthly">("daily");
+
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    if (range?.from) {
+      setDateRange({
+        from: range.from,
+        to: range.to || range.from
+      });
+      setIsCustomDateRange(true);
+    }
+  };
+
+  const handleResetDateRange = () => {
+    setDateRange({
+      from: new Date(2020, 0, 1),
+      to: new Date()
+    });
+    setIsCustomDateRange(false);
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const response = await crudRequest("GET", "/user/dashboard");
-        setDashboardData(response);
+        setLoading(true);
+        const response = await crudRequest(
+          "GET",
+          `${server}/patient/dashboard-metrics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}`
+        ) as { data: DashboardData };
+        
+        console.log('Dashboard data received:', response);
+        console.log('Total doctors:', response.data?.totalDoctors);
+        console.log('Doctor performance data:', response.data?.doctorPerformance);
+        
+        setDashboardData(response.data);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
-        setDashboardData({
-          overview: {
-            totalPatients: 0,
-            totalDoctors: 0,
-            monthlyPatients: 0,
-            todayAppointmentsCount: 0,
-          },
-          appointments: {
-            today: [],
-            upcoming: [],
-          },
-          analytics: {
-            topTreatments: [],
-            recentTreatments: [],
-            financialAnalysis: {
-              daily: 0,
-              weekly: 0,
-              monthly: 0,
-              total: 0,
-            },
-            doctorAnalysis: [],
-          },
-        });
       } finally {
         setLoading(false);
       }
     };
-
+    
     fetchDashboardData();
-  }, []);
+  }, [dateRange]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center p-4">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  // Safe access to nested properties
-  const doctorAnalysis = dashboardData?.analytics?.doctorAnalysis || [];
-  const appointments = dashboardData?.appointments || {};
-  const overview = dashboardData?.overview || {};
-  const analytics = dashboardData?.analytics || {};
+  if (!dashboardData) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <p className="text-muted-foreground">No data available</p>
+      </div>
+    );
+  }
 
-  const renderOverviewCards = () => (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-      <Card className="bg-dashboard1">
-        <Link to="/patient">
+  return (
+    <div className="space-y-4 p-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold tracking-tight">{t("Dashboard")}</h2>
+        <div className="flex items-center gap-4">
+          <DateRangePicker
+            value={dateRange}
+            onChange={handleDateRangeChange}
+          />
+          {isCustomDateRange && (
+            <Button 
+              variant="outline" 
+              onClick={handleResetDateRange}
+              size="sm"
+            >
+              {t("All Time Data")}
+            </Button>
+          )}
+          <Select
+            value={viewMode}
+            onValueChange={(value: "daily" | "weekly" | "monthly") => setViewMode(value)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select view mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">{t("Daily")}</SelectItem>
+              <SelectItem value="weekly">{t("Weekly")}</SelectItem>
+              <SelectItem value="monthly">{t("Monthly")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="text-sm text-muted-foreground mb-2">
+        {isCustomDateRange ? (
+          <p>
+            {t("Showing data from")} {format(dateRange.from, "MMM d, yyyy")} {t("to")} {format(dateRange.to, "MMM d, yyyy")}
+          </p>
+        ) : (
+          <p>{t("Showing all-time data")}</p>
+        )}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("dashboard.totalPatients")}
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">{t("Total Patients")}</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{overview.totalPatients}</div>
+            <div className="text-2xl font-bold">{dashboardData?.totalPatients}</div>
             <p className="text-xs text-muted-foreground">
-              +{overview.monthlyPatients} {t("dashboard.thisMonth")}
+              {t("Active patients in the system")}
             </p>
           </CardContent>
-        </Link>
-      </Card>
-
-      <Card className="bg-dashboard2">
-        <Link to="/doctor">
+        </Card>
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("dashboard.totalDoctors")}
-            </CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">{t("Total Doctors")}</CardTitle>
+            <Stethoscope className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{overview.totalDoctors}</div>
+            <div className="text-2xl font-bold">{dashboardData?.totalDoctors}</div>
+            <p className="text-xs text-muted-foreground">
+              {t("Active doctors in the system")}
+            </p>
           </CardContent>
-        </Link>
-      </Card>
-
-      <Card className="bg-dashboard3">
-        <Link to="/appointment">
+        </Card>
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("dashboard.todayAppointments")}
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">{t("Total Appointments")}</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardData?.totalAppointments}</div>
+            <p className="text-xs text-muted-foreground">
+              {t("Appointments in selected period")}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t("Total Revenue")}</CardTitle>
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {overview.todayAppointmentsCount}
+              ₹{dashboardData?.financialAnalysis.total.toLocaleString()}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {t("Total revenue in selected period")}
+            </p>
           </CardContent>
-        </Link>
-      </Card>
-
-      {adminDetails.role === "admin" && (
-        <Card className="bg-dashboard4">
-          <Link to="/revenue">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Revenue
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ₹{analytics?.financialAnalysis?.total || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                ₹{analytics?.financialAnalysis?.monthly || 0} this month
-              </p>
-            </CardContent>
-          </Link>
         </Card>
-      )}
-
-      <Card className="bg-dashboard8">
-        <Link to="/appointment">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Appointment Status
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Pending</span>
-                <span className="font-medium">
-                  {overview.appointmentStats?.pending || 0}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Accepted</span>
-                <span className="font-medium text-green-600">
-                  {overview.appointmentStats?.accepted || 0}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Rejected</span>
-                <span className="font-medium text-red-600">
-                  {overview.appointmentStats?.rejected || 0}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Link>
-      </Card>
-    </div>
-  );
-
-  const renderDoctorCards = () => {
-    if (!doctorAnalysis.length) {
-      return (
-        <div className="col-span-full text-center py-4 text-muted-foreground">
-          {t("dashboard.noDoctorData")}
-        </div>
-      );
-    }
-
-    return doctorAnalysis.map((doctor: DoctorAnalysis) => (
-      <Card
-        key={doctor._id}
-        className="overflow-hidden hover:shadow-md transition-shadow"
-      >
-        <CardHeader className="flex flex-row items-center justify-between pb-2 bg-muted/20">
-          <div className="flex items-center space-x-2">
-            <Avatar className="h-10 w-10 bg-primary/10">
-              <User className="h-5 w-5" />
-            </Avatar>
-            <div>
-              <CardTitle className="text-md font-medium">
-                Dr. {doctor.name || t("dashboard.unknown")}
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">
-                {doctor.specialization || t("dashboard.generalDentist")}
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col p-3 rounded-lg bg-muted/10">
-                <span className="text-xs text-muted-foreground mb-1">
-                  {t("dashboard.patients")}
-                </span>
-                <span className="text-xl font-semibold">
-                  {doctor.patientsCount || 0}
-                </span>
-              </div>
-              <div className="flex flex-col p-3 rounded-lg bg-muted/10">
-                <span className="text-xs text-muted-foreground mb-1">
-                  {t("dashboard.treatmentsDone")}
-                </span>
-                <span className="text-xl font-semibold">
-                  {doctor.treatmentsCompleted || 0}
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {t("dashboard.performance")}
-                </span>
-                <span className="text-sm font-medium">
-                  {(doctor.performanceRate || 0).toFixed(1)}%
-                </span>
-              </div>
-              <Progress 
-                value={doctor.performanceRate} 
-                className={`h-2 ${
-                  doctor.performanceRate > 75
-                    ? "bg-green-500"
-                    : doctor.performanceRate > 50
-                    ? "bg-amber-500"
-                    : "bg-red-500"
-                }`}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="border rounded-md p-2 text-center">
-                <p className="text-xs text-muted-foreground mb-1">
-                  {t("dashboard.appointmentsCompleted")}
-                </p>
-                <p className="font-medium">
-                  {doctor.completedAppointments || 0}/{doctor.totalAppointments || 0}
-                </p>
-              </div>
-              <div className="border rounded-md p-2 text-center">
-                <p className="text-xs text-muted-foreground mb-1">
-                  {t("dashboard.avgTreatmentsPerPatient")}
-                </p>
-                <p className="font-medium">
-                  {doctor.patientsCount ? (doctor.treatmentsCompleted / doctor.patientsCount).toFixed(1) : 0}
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-border">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">
-                  {t("dashboard.todayAppointments")}
-                </span>
-                <Badge
-                  variant={doctor.todayAppointments > 0 ? "default" : "outline"}
-                >
-                  {doctor.todayAppointments}
-                </Badge>
-              </div>
-
-              {doctor.revenue > 0 && adminDetails.role === "admin" && (
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-sm text-muted-foreground">
-                    {t("dashboard.revenue")}
-                  </span>
-                  <span className="text-sm font-medium text-green-600">
-                    ₹{doctor.revenue?.toLocaleString("en-IN") || 0}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    ));
-  };
-
-  const renderTreatmentDocuments = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Recent Treatment Documents</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[300px]">
-          {!analytics.recentTreatments ||
-          analytics.recentTreatments.length === 0 ? (
-            <div className="text-center py-4 text-muted-foreground">
-              No recent documents available
-            </div>
-          ) : (
-            analytics.recentTreatments.map(
-              (treatment: RecentTreatment, treatmentIndex: number) => (
-                <div key={treatmentIndex}>
-                  {treatment.documents && treatment.documents.length > 0 ? (
-                    treatment.documents.map(
-                      (doc: TreatmentDocument, idx: number) => (
-                        <div
-                          key={`${treatmentIndex}-${idx}`}
-                          className="flex items-center space-x-4 p-4 border-b last:border-0 hover:bg-muted/50"
-                        >
-                          <FileText className="h-4 w-4 text-blue-500" />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">
-                              {doc.fileName || "Unnamed Document"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Patient: {treatment.patientName} •{" "}
-                              {treatment.date
-                                ? format(
-                                    new Date(treatment.date),
-                                    "MMM d, yyyy"
-                                  )
-                                : "No date"}
-                            </p>
-                          </div>
-                          {doc.fileUrl && (
-                            <Button variant="outline" size="sm" asChild>
-                              <a
-                                href={doc.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                View
-                              </a>
-                            </Button>
-                          )}
-                        </div>
-                      )
-                    )
-                  ) : (
-                    <div className="text-center py-2 text-muted-foreground">
-                      No documents for this treatment
-                    </div>
-                  )}
-                </div>
-              )
-            )
-          )}
-        </ScrollArea>
-      </CardContent>
-    </Card>
-  );
-
-  const renderFinancialOverview = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Financial Overview</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-4">
-          <div className="p-4 bg-muted/10 rounded-lg space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">
-              Daily Revenue
-            </p>
-            <p className="text-lg md:text-xl font-bold text-green-500">
-              ₹
-              {analytics?.financialAnalysis?.daily?.toLocaleString("en-IN") ||
-                0}
-            </p>
-          </div>
-          <div className="p-4 bg-muted/10 rounded-lg space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">
-              Weekly Revenue
-            </p>
-            <p className="text-lg md:text-xl font-bold text-green-500">
-              ₹
-              {analytics?.financialAnalysis?.weekly?.toLocaleString("en-IN") ||
-                0}
-            </p>
-          </div>
-          <div className="p-4 bg-muted/10 rounded-lg space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">
-              Monthly Revenue
-            </p>
-            <p className="text-lg md:text-xl font-bold text-green-500">
-              ₹
-              {analytics?.financialAnalysis?.monthly?.toLocaleString("en-IN") ||
-                0}
-            </p>
-          </div>
-          <div className="p-4 bg-muted/10 rounded-lg space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">
-              Total Revenue
-            </p>
-            <p className="text-lg md:text-xl font-bold text-green-500">
-              ₹
-              {analytics?.financialAnalysis?.total?.toLocaleString("en-IN") ||
-                0}
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  const renderRecentTreatments = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Recent Treatments</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[400px]">
-          {analytics.recentTreatments?.length === 0 ? (
-            <div className="text-center py-4 text-muted-foreground">
-              No recent treatments available
-            </div>
-          ) : (
-            analytics.recentTreatments?.map(
-              (treatment: RecentTreatment, index: number) => (
-                <div
-                  key={index}
-                  className="flex items-center space-x-4 p-4 border-b last:border-0 hover:bg-muted/50"
-                >
-                  <Activity className="h-4 w-4 text-blue-500" />
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium">
-                      {treatment.patientName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {treatment.treatment}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">
-                      ₹{treatment.amount?.toLocaleString("en-IN")}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(treatment.date), "MMM d, yyyy")}
-                    </p>
-                  </div>
-                </div>
-              )
-            )
-          )}
-        </ScrollArea>
-      </CardContent>
-    </Card>
-  );
-
-  const renderAppointments = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Today's Appointments</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[400px]">
-          {appointments.today?.length === 0 ? (
-            <div className="text-center py-4 text-muted-foreground">
-              No appointments scheduled for today
-            </div>
-          ) : (
-            appointments.today?.map((apt: any) => (
-              <div
-                key={apt._id}
-                className="flex items-center space-x-4 p-4 border-b last:border-0 hover:bg-muted/50"
-              >
-                <CheckCircle2
-                  className={cn(
-                    "h-4 w-4",
-                    apt.hasVisited ? "text-green-500" : "text-yellow-500"
-                  )}
-                />
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium">
-                    {apt.firstName} {apt.lastName}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    with Dr. {apt?.doctor?.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{apt.subject}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">
-                    {format(
-                      new Date(`${apt.appointmentDate} ${apt.appointmentTime}`),
-                      "hh:mm a"
-                    )}
-                  </p>
-                  <Badge variant={apt.hasVisited ? "default" : "secondary"}>
-                    {apt.hasVisited ? "Completed" : "Pending"}
-                  </Badge>
-                </div>
-              </div>
-            ))
-          )}
-        </ScrollArea>
-      </CardContent>
-    </Card>
-  );
-
-  return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">
-          {t("dashboard.title")}
-        </h2>
       </div>
-
-      {renderOverviewCards()}
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="overview">
-            {t("dashboard.tabs.overview")}
-          </TabsTrigger>
-          <TabsTrigger value="analytics">
-            {t("dashboard.tabs.analytics")}
-          </TabsTrigger>
-          <TabsTrigger value="appointments">
-            {t("dashboard.tabs.appointments")}
-          </TabsTrigger>
-          <TabsTrigger value="doctors">
-            {t("dashboard.tabs.doctors")}
-          </TabsTrigger>
-          <TabsTrigger value="transactions">
-            {t("dashboard.tabs.transactions")}
-          </TabsTrigger>
+          <TabsTrigger value="overview">{t("Overview")}</TabsTrigger>
+          <TabsTrigger value="analytics">{t("Analytics")}</TabsTrigger>
+          <TabsTrigger value="appointments">{t("Appointments")}</TabsTrigger>
+          <TabsTrigger value="doctors">{t("Doctors")}</TabsTrigger>
+          <TabsTrigger value="transactions">{t("Transactions")}</TabsTrigger>
+          <TabsTrigger value="reports">{t("Reports")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-            {renderTreatmentDocuments()}
-            {adminDetails.role === "admin" && renderFinancialOverview()}
-          </div>
-        </TabsContent>
-        <TabsContent value="analytics">
-          <div className="space-y-4">
-            <Card>
-              <CardHeader className="flex items-center justify-between">
-                <CardTitle>Doctor Performance</CardTitle>
-                <Link to="/doctor" className="text-sm text-primary hover:underline">
-                  View All Doctors
-                </Link>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+            <Card className="col-span-4">
+              <CardHeader>
+                <CardTitle>{t("Financial Overview")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  {doctorAnalysis.length === 0 ? (
-                    <div className="text-center py-4 text-muted-foreground">
-                      {t('dashboard.noDoctorData')}
-                    </div>
-                  ) : (
-                    doctorAnalysis.map((doctor: DoctorAnalysis) => (
-                      <div key={doctor._id} className="space-y-3 pb-5 border-b last:border-0">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Avatar>
-                              <User className="h-4 w-4" />
-                            </Avatar>
-                            <div>
-                              <span className="font-medium">Dr. {doctor.name}</span>
-                              <p className="text-xs text-muted-foreground">
-                                {doctor.specialization || t('dashboard.generalDentist')}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-sm font-medium">
-                              {doctor.completedAppointments} / {doctor.totalAppointments}
-                            </span>
-                            <p className="text-xs text-muted-foreground">{t('dashboard.appointmentsCompleted')}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-4 gap-2 my-2">
-                          <div className="p-2 bg-muted/10 rounded text-center">
-                            <p className="text-xs text-muted-foreground">{t('dashboard.patients')}</p>
-                            <p className="text-lg font-semibold">{doctor.patientsCount || 0}</p>
-                          </div>
-                          <div className="p-2 bg-muted/10 rounded text-center">
-                            <p className="text-xs text-muted-foreground">{t('dashboard.treatmentsDone')}</p>
-                            <p className="text-lg font-semibold">{doctor.treatmentsCompleted || 0}</p>
-                          </div>
-                          <div className="p-2 bg-muted/10 rounded text-center">
-                            <p className="text-xs text-muted-foreground">{t('dashboard.avgPerPatient')}</p>
-                            <p className="text-lg font-semibold">
-                              {doctor.patientsCount ? (doctor.treatmentsCompleted / doctor.patientsCount).toFixed(1) : "0"}
-                            </p>
-                          </div>
-                          {adminDetails.role === "admin" && (
-                            <div className="p-2 bg-muted/10 rounded text-center">
-                              <p className="text-xs text-muted-foreground">{t('dashboard.revenue')}</p>
-                              <p className="text-lg font-semibold text-green-600">
-                                ₹{doctor.revenue?.toLocaleString("en-IN") || 0}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">
-                              {t('dashboard.performance')}
-                            </span>
-                            <span className="text-sm font-medium">
-                              {(doctor.performanceRate || 0).toFixed(1)}%
-                            </span>
-                          </div>
-                          <Progress 
-                            value={doctor.performanceRate} 
-                            className={`h-2 ${
-                              doctor.performanceRate > 75 ? "bg-green-500" : 
-                              doctor.performanceRate > 50 ? "bg-amber-500" : "bg-red-500"
-                            }`}
-                          />
-                        </div>
-                      </div>
-                    ))
-                  )}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{t("Daily Revenue")}</p>
+                    <p className="text-2xl font-bold">₹{dashboardData?.financialAnalysis.daily.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{t("Weekly Revenue")}</p>
+                    <p className="text-2xl font-bold">₹{dashboardData?.financialAnalysis.weekly.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{t("Monthly Revenue")}</p>
+                    <p className="text-2xl font-bold">₹{dashboardData?.financialAnalysis.monthly.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{t("Total Revenue")}</p>
+                    <p className="text-2xl font-bold">₹{dashboardData?.financialAnalysis.total.toLocaleString()}</p>
+                  </div>
+                </div>
+                <div className="mt-4 h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={dashboardData?.financialAnalysis.revenueTrend}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="revenue" stroke="#8884d8" />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
-            
-            {/* You can add more analytics cards here */}
+
+            <Card className="col-span-3">
+              <CardHeader>
+                <CardTitle>{t("Recent Treatment Documents")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[400px]">
+                  {dashboardData?.analytics.recentTreatments.map((treatment, index) => (
+                    <div key={index} className="mb-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{treatment.patientName}</p>
+                          <p className="text-sm text-muted-foreground">{treatment.treatment}</p>
+                        </div>
+                        <Badge variant={treatment.status === "Completed" ? "default" : "secondary"}>
+                          {treatment.status}
+                        </Badge>
+                      </div>
+                      {treatment.documents && treatment.documents.length > 0 && (
+                        <div className="mt-2 flex gap-2">
+                          {treatment.documents.map((doc, docIndex) => (
+                            <Button
+                              key={docIndex}
+                              variant="outline"
+                              size="sm"
+                              asChild
+                            >
+                              <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                                <FileText className="mr-2 h-4 w-4" />
+                                {doc.name}
+                              </a>
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </ScrollArea>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="appointments">
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-            {renderAppointments()}
+        <TabsContent value="analytics" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("Doctor Performance")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!dashboardData?.doctorPerformance || dashboardData.doctorPerformance.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-lg text-muted-foreground">No doctor data available</p>
+                  <p className="text-sm text-muted-foreground mt-2">Create doctors in the system to view performance analytics</p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {dashboardData.doctorPerformance.map((doctor) => (
+                    <Card key={doctor._id}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-lg">{doctor.doctorName}</CardTitle>
+                            <p className="text-sm text-muted-foreground">{doctor.specialization}</p>
+                          </div>
+                          <Avatar>
+                            <User className="h-6 w-6" />
+                          </Avatar>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">
+                              {t("Completed Appointments")}
+                            </p>
+                            <p className="text-2xl font-bold">{doctor.completedAppointments}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">
+                              {t("Patients Treated")}
+                            </p>
+                            <p className="text-2xl font-bold">{doctor.patientsCount}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">
+                              {t("Performance Rate")}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Progress value={doctor.performanceRate} className="h-2" />
+                              <span className="text-sm font-medium">{doctor.performanceRate}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            {adminDetails.role === "admin" && renderRecentTreatments()}
+        <TabsContent value="appointments" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("Today's Appointments")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[400px]">
+                  {dashboardData?.today.appointments.map((appointment) => (
+                    <div key={appointment.id} className="mb-4 flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{appointment.patientName}</p>
+                        <p className="text-sm text-muted-foreground">{appointment.time}</p>
+                      </div>
+                      <Badge variant={appointment.status === "Completed" ? "default" : "secondary"}>
+                        {appointment.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("Recent Treatments")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[400px]">
+                  {dashboardData?.analytics.recentTreatments.map((treatment, index) => (
+                    <div key={index} className="mb-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{treatment.patientName}</p>
+                          <p className="text-sm text-muted-foreground">{treatment.treatment}</p>
+                          <p className="text-sm text-muted-foreground">{treatment.date}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">₹{treatment.amount}</p>
+                          <Badge variant={treatment.status === "Completed" ? "default" : "secondary"}>
+                            {treatment.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </ScrollArea>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
         <TabsContent value="doctors" className="space-y-4">
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-            {renderDoctorCards()}
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("Doctor Progress")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!dashboardData?.doctorPerformance || dashboardData.doctorPerformance.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-lg text-muted-foreground">No doctor data available</p>
+                  <p className="text-sm text-muted-foreground mt-2">Create doctors in the system to view progress data</p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {dashboardData.doctorPerformance.map((doctor) => (
+                    <Card key={doctor._id}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-lg">{doctor.doctorName}</CardTitle>
+                            <p className="text-sm text-muted-foreground">{doctor.specialization}</p>
+                          </div>
+                          <Avatar>
+                            <User className="h-6 w-6" />
+                          </Avatar>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">
+                              {t("Patients Treated")}
+                            </p>
+                            <p className="text-2xl font-bold">{doctor.patientsCount}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">
+                              {t("Treatments Completed")}
+                            </p>
+                            <p className="text-2xl font-bold">{doctor.treatmentsCompleted}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">
+                              {t("Performance Rate")}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Progress value={doctor.performanceRate} className="h-2" />
+                              <span className="text-sm font-medium">{doctor.performanceRate}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
-        <TabsContent value="transactions" className="space-y-4">
+
+        <TabsContent value="transactions">
           <RecentTransactions />
+        </TabsContent>
+
+        <TabsContent value="reports">
+          <Reports />
         </TabsContent>
       </Tabs>
     </div>

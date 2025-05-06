@@ -12,6 +12,8 @@ const {
   updateTreatmentStatus,
   getRecentTransactions,
   getNextSerialNumber,
+  getFinancialInsights,
+  getDashboardMetrics,
 } = require("../controller/patientCtrl.js");
 const cloudinary = require("../config/cloudinary");
 const Patient = require("../model/Patient");
@@ -736,5 +738,9 @@ router.post("/send-email", async (req, res) => {
     });
   }
 });
+
+router.get("/financial-insights", getFinancialInsights);
+
+router.get("/dashboard-metrics", getDashboardMetrics);
 
 module.exports = router;

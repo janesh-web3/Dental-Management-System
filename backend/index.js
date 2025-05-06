@@ -47,7 +47,7 @@ app.use("/api/doctor", doctorRouter);
 app.use("/api/testimonials", testimonialRouter);
 app.use("/api/contact", contactRouter);
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 8080;
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);

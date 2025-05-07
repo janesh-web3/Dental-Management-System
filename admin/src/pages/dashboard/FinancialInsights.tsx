@@ -66,7 +66,7 @@ export function FinancialInsights() {
   });
   const [financialData, setFinancialData] = useState<FinancialData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [viewMode, setViewMode] = useState<"daily" | "weekly" | "monthly" | "yearly">("daily");
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
     if (range?.from) {
@@ -92,7 +92,7 @@ export function FinancialInsights() {
         setLoading(true);
         const response = await crudRequest<{ data: FinancialData }>(
           "GET",
-          `${server}/patient/financial-insights?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}`
+          `${server}/patient/financial-insights?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&viewMode=${viewMode}`
         );
         setFinancialData(response.data);
       } catch (error) {
@@ -103,7 +103,7 @@ export function FinancialInsights() {
     };
     
     fetchFinancialData();
-  }, [dateRange]);
+  }, [dateRange, viewMode]);
 
   const getPaymentMethods = () => {
     // Sample data - in a real app, this would come from the API
@@ -147,7 +147,7 @@ export function FinancialInsights() {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle>Financial Insights</CardTitle>
         <div className="flex items-center space-x-2">
-          <Select value={viewMode} onValueChange={(value: "daily" | "weekly" | "monthly") => setViewMode(value)}>
+          <Select value={viewMode} onValueChange={(value: "daily" | "weekly" | "monthly" | "yearly") => setViewMode(value)}>
             <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="View mode" />
             </SelectTrigger>
@@ -155,6 +155,7 @@ export function FinancialInsights() {
               <SelectItem value="daily">Daily</SelectItem>
               <SelectItem value="weekly">Weekly</SelectItem>
               <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="yearly">Yearly</SelectItem>
             </SelectContent>
           </Select>
           <DateRangePicker

@@ -36,9 +36,7 @@ export default function Sidebar({ className }: SidebarProps) {
         )}
       >
         {!isMinimized && (
-          <h1 className="text-2xl font-bold bg-white rounded-full">
-            <img src="logos.png" alt="logo" className="h-20 w-20"/>
-          </h1>
+          <img src="logo.png" alt="logo" className="h-20 w-20" />
         )}
         {/* <img src="vite.svg" alt="logo" className="h-20 w-20" /> */}
         <ChevronsLeft

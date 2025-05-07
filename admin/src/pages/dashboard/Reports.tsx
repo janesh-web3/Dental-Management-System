@@ -16,7 +16,6 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { crudRequest } from "@/lib/api";
 import { server } from "@/server";
 import { CSVLink } from "react-csv";
-
 import {
   LineChart,
   Line,
@@ -32,6 +31,13 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DashboardMetrics {
   totalPatients: number;
@@ -60,6 +66,7 @@ export function Reports() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("appointments");
+  const [viewMode, setViewMode] = useState<"daily" | "weekly" | "monthly" | "yearly">("daily");
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
     if (range?.from) {
@@ -85,7 +92,7 @@ export function Reports() {
         setLoading(true);
         const response = await crudRequest<{ data: DashboardMetrics }>(
           "GET",
-          `${server}/patient/dashboard-metrics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}`
+          `${server}/patient/dashboard-metrics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&viewMode=${viewMode}`
         );
         setMetrics(response.data);
       } catch (error) {
@@ -96,7 +103,7 @@ export function Reports() {
     };
 
     fetchMetrics();
-  }, [dateRange]);
+  }, [dateRange, viewMode]);
 
   const getCSVData = () => {
     if (!metrics) return [];
@@ -142,6 +149,17 @@ export function Reports() {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-violet-800 dark:text-violet-300">Reports & Analytics</CardTitle>
         <div className="flex items-center space-x-2">
+          <Select value={viewMode} onValueChange={(value: "daily" | "weekly" | "monthly" | "yearly") => setViewMode(value)}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="View mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="yearly">Yearly</SelectItem>
+            </SelectContent>
+          </Select>
           <DateRangePicker
             value={dateRange}
             onChange={handleDateRangeChange}

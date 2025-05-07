@@ -676,7 +676,7 @@ const getNextSerialNumber = async (req, res) => {
 
 const getFinancialInsights = async (req, res) => {
   try {
-    const { from, to } = req.query;
+    const { from, to, viewMode = 'daily' } = req.query;
     const fromDate = new Date(from);
     const toDate = new Date(to);
     
@@ -698,23 +698,6 @@ const getFinancialInsights = async (req, res) => {
       path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
       model: "Doctor"
     });
-
-    // Calculate daily revenue
-    const dailyRevenue = patients.reduce((total, patient) => {
-      return total + patient.medicalDetails.reduce((medTotal, medDetail) => {
-        return medTotal + medDetail.treatmentPlanning.reduce((planTotal, plan) => {
-          return planTotal + plan.selectedTeethDetails.reduce((toothTotal, tooth) => {
-            return toothTotal + tooth.dailyTreatments.reduce((treatmentTotal, treatment) => {
-              const treatmentDate = new Date(treatment.date);
-              if (isAllTimeRequest || (treatmentDate >= fromDate && treatmentDate <= toDate)) {
-                return treatmentTotal + (treatment.paidAmount || 0);
-              }
-              return treatmentTotal;
-            }, 0);
-          }, 0);
-        }, 0);
-      }, 0);
-    }, 0);
 
     // Calculate revenue by doctor - adjusted for all-time request
     const revenueByDoctor = {};
@@ -752,11 +735,30 @@ const getFinancialInsights = async (req, res) => {
       });
     });
 
+    // Get grouping format based on viewMode
+    let dateFormat;
+    switch(viewMode) {
+      case 'daily':
+        dateFormat = "%Y-%m-%d";
+        break;
+      case 'weekly':
+        dateFormat = "%Y-%U"; // Year and week number (0-53)
+        break;
+      case 'monthly':
+        dateFormat = "%Y-%m";
+        break;
+      case 'yearly':
+        dateFormat = "%Y";
+        break;
+      default:
+        dateFormat = "%Y-%m-%d";
+    }
+
     // Calculate revenue trend (daily) - with limit for all-time queries
     let revenueTrend = [];
     
     if (isAllTimeRequest) {
-      // For all-time, group by month instead of day and limit to most recent data
+      // For all-time, group by selected period instead of day
       const aggregateResult = await Patient.aggregate([
         { $unwind: "$medicalDetails" },
         { $unwind: "$medicalDetails.treatmentPlanning" },
@@ -766,7 +768,7 @@ const getFinancialInsights = async (req, res) => {
           $group: {
             _id: {
               $dateToString: {
-                format: "%Y-%m",
+                format: dateFormat,
                 date: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date"
               }
             },
@@ -774,14 +776,17 @@ const getFinancialInsights = async (req, res) => {
           }
         },
         { $sort: { _id: 1 } },
-        { $limit: 24 }, // Show last 24 months for all-time data
+        { $limit: viewMode === 'yearly' ? 10 : viewMode === 'monthly' ? 24 : 30 }, // Adjust limit based on view mode
         {
           $project: {
             _id: 0,
             date: { 
               $concat: [
                 "$_id", 
-                "-01T00:00:00.000Z" // Convert YYYY-MM to YYYY-MM-01T00:00:00.000Z for date parsing
+                viewMode === 'daily' ? "T00:00:00.000Z" : 
+                viewMode === 'weekly' ? "-1T00:00:00.000Z" : 
+                viewMode === 'monthly' ? "-01T00:00:00.000Z" : 
+                "-01-01T00:00:00.000Z" // For yearly
               ]
             },
             revenue: 1
@@ -791,43 +796,82 @@ const getFinancialInsights = async (req, res) => {
       
       revenueTrend = aggregateResult;
     } else {
-      const currentDate = new Date(fromDate);
-      while (currentDate <= toDate) {
-        const dayRevenue = patients.reduce((total, patient) => {
-          return total + patient.medicalDetails.reduce((medTotal, medDetail) => {
-            return medTotal + medDetail.treatmentPlanning.reduce((planTotal, plan) => {
-              return planTotal + plan.selectedTeethDetails.reduce((toothTotal, tooth) => {
-                return toothTotal + tooth.dailyTreatments.reduce((treatmentTotal, treatment) => {
-                  const treatmentDate = new Date(treatment.date);
-                  if (treatmentDate.toDateString() === currentDate.toDateString()) {
-                    return treatmentTotal + (treatment.paidAmount || 0);
-                  }
-                  return treatmentTotal;
-                }, 0);
-              }, 0);
-            }, 0);
-          }, 0);
-        }, 0);
-
-        revenueTrend.push({
-          date: currentDate.toISOString(),
-          revenue: dayRevenue
-        });
-
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
+      // Use aggregation for date-specific queries as well for consistency
+      revenueTrend = await Patient.aggregate([
+        { $unwind: "$medicalDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning" },
+        { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments" },
+        {
+          $match: {
+            "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": {
+              $gte: fromDate,
+              $lte: toDate
+            }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: {
+                format: dateFormat,
+                date: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date"
+              }
+            },
+            revenue: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount" }
+          }
+        },
+        { $sort: { _id: 1 } },
+        {
+          $project: {
+            _id: 0,
+            date: { 
+              $concat: [
+                "$_id", 
+                viewMode === 'daily' ? "T00:00:00.000Z" : 
+                viewMode === 'weekly' ? "-1T00:00:00.000Z" : 
+                viewMode === 'monthly' ? "-01T00:00:00.000Z" : 
+                "-01-01T00:00:00.000Z" // For yearly
+              ]
+            },
+            revenue: 1
+          }
+        }
+      ]);
     }
 
     // Determine appropriate period for calculating daily/weekly/monthly revenue
-    let dailyAvg, weeklyAvg, monthlyAvg;
+    let dailyAvg, weeklyAvg, monthlyAvg, yearlyAvg;
     
     if (isAllTimeRequest) {
       // For all-time, calculate based on total months of data
       const totalRevenue = revenueTrend.reduce((sum, item) => sum + item.revenue, 0);
-      const monthSpan = revenueTrend.length || 1; // Use number of months from trend data
-      monthlyAvg = totalRevenue / monthSpan;
-      weeklyAvg = monthlyAvg / 4.33; // Average weeks per month
-      dailyAvg = weeklyAvg / 7;
+      
+      if (viewMode === 'yearly') {
+        const yearSpan = revenueTrend.length || 1;
+        yearlyAvg = totalRevenue / yearSpan;
+        monthlyAvg = yearlyAvg / 12;
+        weeklyAvg = monthlyAvg / 4.33;
+        dailyAvg = weeklyAvg / 7;
+      } else if (viewMode === 'monthly') {
+        const monthSpan = revenueTrend.length || 1;
+        monthlyAvg = totalRevenue / monthSpan;
+        yearlyAvg = monthlyAvg * 12;
+        weeklyAvg = monthlyAvg / 4.33;
+        dailyAvg = weeklyAvg / 7;
+      } else if (viewMode === 'weekly') {
+        const weekSpan = revenueTrend.length || 1;
+        weeklyAvg = totalRevenue / weekSpan;
+        monthlyAvg = weeklyAvg * 4.33;
+        yearlyAvg = monthlyAvg * 12;
+        dailyAvg = weeklyAvg / 7;
+      } else { // daily
+        const daySpan = revenueTrend.length || 1;
+        dailyAvg = totalRevenue / daySpan;
+        weeklyAvg = dailyAvg * 7;
+        monthlyAvg = dailyAvg * 30;
+        yearlyAvg = dailyAvg * 365;
+      }
     } else {
       // Calculate based on date range
       const totalRevenue = revenueTrend.reduce((sum, item) => sum + item.revenue, 0);
@@ -835,11 +879,13 @@ const getFinancialInsights = async (req, res) => {
       dailyAvg = totalRevenue / daySpan;
       weeklyAvg = dailyAvg * 7;
       monthlyAvg = dailyAvg * 30;
+      yearlyAvg = dailyAvg * 365;
     }
 
     const totalRevenue = isAllTimeRequest 
       ? revenueTrend.reduce((sum, item) => sum + item.revenue, 0)
-      : monthlyAvg * 12; // For specific date ranges, annualize the monthly average
+      : (viewMode === 'yearly' ? yearlyAvg : viewMode === 'monthly' ? monthlyAvg : viewMode === 'weekly' ? weeklyAvg : dailyAvg) * 
+        (viewMode === 'yearly' ? 1 : viewMode === 'monthly' ? 12 : viewMode === 'weekly' ? 52 : 365); // Annualize based on view mode
 
     res.status(200).json({
       success: true,
@@ -847,6 +893,7 @@ const getFinancialInsights = async (req, res) => {
         daily: dailyAvg,
         weekly: weeklyAvg,
         monthly: monthlyAvg,
+        yearly: yearlyAvg,
         total: totalRevenue,
         revenueByDoctor: Object.entries(revenueByDoctor).map(([doctorName, revenue]) => ({
           doctorName,
@@ -871,7 +918,7 @@ const getFinancialInsights = async (req, res) => {
 
 const getDashboardMetrics = async (req, res) => {
   try {
-    const { from, to } = req.query;
+    const { from, to, viewMode = 'daily' } = req.query;
     const fromDate = new Date(from);
     const toDate = new Date(to);
     
@@ -933,7 +980,26 @@ const getDashboardMetrics = async (req, res) => {
       appointmentDate: today.toISOString().split('T')[0],
     }).populate('doctor');
 
-    // Get patient growth data
+    // Get date format based on viewMode
+    let dateFormat;
+    switch(viewMode) {
+      case 'daily':
+        dateFormat = "%Y-%m-%d";
+        break;
+      case 'weekly':
+        dateFormat = "%Y-%U"; // Year and week number (0-53)
+        break;
+      case 'monthly':
+        dateFormat = "%Y-%m";
+        break;
+      case 'yearly':
+        dateFormat = "%Y";
+        break;
+      default:
+        dateFormat = "%Y-%m-%d";
+    }
+
+    // Get patient growth data with viewMode-based aggregation
     const patientGrowth = await Patient.aggregate([
       {
         $match: createdAtMatchQuery
@@ -942,7 +1008,7 @@ const getDashboardMetrics = async (req, res) => {
         $group: {
           _id: {
             $dateToString: {
-              format: "%Y-%m-%d",
+              format: dateFormat,
               date: "$createdAt"
             }
           },
@@ -959,8 +1025,8 @@ const getDashboardMetrics = async (req, res) => {
           count: 1
         }
       },
-      // If all-time query, limit to most recent 30 data points
-      ...(isAllTimeRequest ? [{ $limit: 30 }] : [])
+      // If all-time query, limit to most recent data points (adjust based on view mode)
+      ...(isAllTimeRequest ? [{ $limit: viewMode === 'yearly' ? 10 : viewMode === 'monthly' ? 24 : 30 }] : [])
     ]);
 
     // Default to empty array if no results
@@ -1081,10 +1147,11 @@ const getDashboardMetrics = async (req, res) => {
       }];
     }
 
-    // Calculate financial data from patient treatments
+    // Calculate financial data from patient treatments with viewMode-based aggregation
     let dailyRevenue = 0;
     let weeklyRevenue = 0;
     let monthlyRevenue = 0;
+    let yearlyRevenue = 0;
     let totalRevenue = 0;
     let revenueTrend = [];
 
@@ -1115,7 +1182,7 @@ const getDashboardMetrics = async (req, res) => {
           $group: {
             _id: {
               $dateToString: {
-                format: "%Y-%m-%d",
+                format: dateFormat,
                 date: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date"
               }
             },
@@ -1139,13 +1206,38 @@ const getDashboardMetrics = async (req, res) => {
       // Calculate total revenue
       totalRevenue = treatmentRevenue.reduce((sum, day) => sum + day.revenue, 0);
       
-      // Calculate daily, weekly, and monthly revenue
+      // Calculate revenues based on viewMode
       const oneDay = 24 * 60 * 60 * 1000;
       const daysDiff = Math.round(Math.abs((toDate - fromDate) / oneDay)) + 1;
       
-      dailyRevenue = daysDiff > 0 ? totalRevenue / daysDiff : 0;
-      weeklyRevenue = dailyRevenue * 7;
-      monthlyRevenue = dailyRevenue * 30;
+      // Adjust calculation based on viewMode
+      if (viewMode === 'daily') {
+        dailyRevenue = totalRevenue / treatmentRevenue.length || 0;
+        weeklyRevenue = dailyRevenue * 7;
+        monthlyRevenue = dailyRevenue * 30; 
+        yearlyRevenue = dailyRevenue * 365;
+      } else if (viewMode === 'weekly') {
+        weeklyRevenue = totalRevenue / treatmentRevenue.length || 0;
+        dailyRevenue = weeklyRevenue / 7;
+        monthlyRevenue = weeklyRevenue * 4.33;
+        yearlyRevenue = monthlyRevenue * 12;
+      } else if (viewMode === 'monthly') {
+        monthlyRevenue = totalRevenue / treatmentRevenue.length || 0;
+        dailyRevenue = monthlyRevenue / 30;
+        weeklyRevenue = monthlyRevenue / 4.33;
+        yearlyRevenue = monthlyRevenue * 12;
+      } else if (viewMode === 'yearly') {
+        yearlyRevenue = totalRevenue / treatmentRevenue.length || 0;
+        monthlyRevenue = yearlyRevenue / 12;
+        weeklyRevenue = monthlyRevenue / 4.33;
+        dailyRevenue = weeklyRevenue / 7;
+      } else {
+        // Default fallback to daily mode
+        dailyRevenue = daysDiff > 0 ? totalRevenue / daysDiff : 0;
+        weeklyRevenue = dailyRevenue * 7;
+        monthlyRevenue = dailyRevenue * 30;
+        yearlyRevenue = dailyRevenue * 365;
+      }
 
     } catch (error) {
       console.error("Error calculating revenue:", error);
@@ -1230,6 +1322,7 @@ const getDashboardMetrics = async (req, res) => {
           daily: dailyRevenue,
           weekly: weeklyRevenue,
           monthly: monthlyRevenue,
+          yearly: yearlyRevenue,
           total: totalRevenue,
           revenueByDoctor: doctorPerformance.map(doctor => ({
             doctorName: doctor.doctorName,

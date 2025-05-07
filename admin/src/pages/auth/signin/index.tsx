@@ -18,10 +18,7 @@ export default function SignInPage() {
       <div className="relative flex-col hidden h-full p-10 text-white bg-muted dark:border-r lg:flex">
         <div className="absolute inset-0 bg-primary dark:bg-secondary" />
         <div className="relative z-20 flex items-center text-lg font-medium ">
-          <p className="bg-white rounded-full">
-            <img src="logos.png" alt="logo" className="h-20 w-20"/>
-          </p>
-          {/* <img src="vite.svg" alt="logo" className="h-20 w-20" /> */}
+            <img src="crown.jpg" alt="logo" className="h-20 w-20 rounded-full"/>
         </div>
         <div className="relative z-20 mt-auto">
           <blockquote className="space-y-2">

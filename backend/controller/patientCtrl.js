@@ -951,7 +951,6 @@ const getDashboardMetrics = async (req, res) => {
     const doctorCount = await Doctor.countDocuments();
     const dentistCount = await User.countDocuments({ role: "dentist" });
     const totalDoctors = doctorCount + dentistCount;
-    console.log(`Found ${doctorCount} doctors in Doctor collection and ${dentistCount} dentists in User collection`);
 
     // Get total appointments - use date filter only if not all-time
     const appointmentsQuery = isAllTimeRequest 
@@ -973,11 +972,11 @@ const getDashboardMetrics = async (req, res) => {
     };
 
     // Get today's appointments
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
 
     const todayAppointments = await Appointment.find({
-      appointmentDate: today.toISOString().split('T')[0],
+      appointmentDate: todayDate.toISOString().split('T')[0],
     }).populate('doctor');
 
     // Get date format based on viewMode
@@ -1147,37 +1146,129 @@ const getDashboardMetrics = async (req, res) => {
       }];
     }
 
-    // Calculate financial data from patient treatments with viewMode-based aggregation
-    let dailyRevenue = 0;
-    let weeklyRevenue = 0;
-    let monthlyRevenue = 0;
-    let yearlyRevenue = 0;
-    let totalRevenue = 0;
-    let revenueTrend = [];
+    // ------------------- FINANCIAL ANALYSIS SECTION -------------------
+    // Set up time periods for revenue calculations
+    const now = new Date();
+    const currentDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(currentDay);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Start of current week (Sunday)
+    const startOfWeek = new Date(currentDay);
+    startOfWeek.setDate(currentDay.getDate() - currentDay.getDay());
+    
+    // Start of current month
+    const startOfMonth = new Date(currentDay.getFullYear(), currentDay.getMonth(), 1);
+    
+    // End of current month
+    const endOfMonth = new Date(currentDay.getFullYear(), currentDay.getMonth() + 1, 0);
 
-    // Daily treatment revenue calculations
-    try {
-      const treatmentRevenue = await Patient.aggregate([
-        {
-          $unwind: "$medicalDetails"
-        },
-        {
-          $unwind: "$medicalDetails.treatmentPlanning"
-        },
-        {
-          $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails"
-        },
-        {
-          $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments"
-        },
+    // Revenue aggregation functions
+    const getDailyRevenue = async () => {
+      const result = await Patient.aggregate([
+        { $unwind: "$medicalDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning" },
+        { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments" },
         {
           $match: {
+            "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": {
+              $gte: currentDay,
+              $lt: tomorrow
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            revenue: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount" }
+          }
+        }
+      ]);
+      return result.length > 0 ? result[0].revenue : 0;
+    };
+
+    const getWeeklyRevenue = async () => {
+      const result = await Patient.aggregate([
+        { $unwind: "$medicalDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning" },
+        { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments" },
+        {
+          $match: {
+            "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": {
+              $gte: startOfWeek,
+              $lt: tomorrow
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            revenue: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount" }
+          }
+        }
+      ]);
+      return result.length > 0 ? result[0].revenue : 0;
+    };
+
+    const getMonthlyRevenue = async () => {
+      const result = await Patient.aggregate([
+        { $unwind: "$medicalDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning" },
+        { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments" },
+        {
+          $match: {
+            "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": {
+              $gte: startOfMonth,
+              $lte: endOfMonth
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            revenue: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount" }
+          }
+        }
+      ]);
+      return result.length > 0 ? result[0].revenue : 0;
+    };
+
+    const getTotalRevenue = async () => {
+      const result = await Patient.aggregate([
+        { $unwind: "$medicalDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning" },
+        { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments" },
+        {
+          $group: {
+            _id: null,
+            revenue: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount" }
+          }
+        }
+      ]);
+      return result.length > 0 ? result[0].revenue : 0;
+    };
+
+    const getRevenueTrend = async () => {
+      // Use a more flexible match for the date range when needed
+      let dateMatchCondition = isAllTimeRequest 
+        ? {} 
+        : { 
             "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": {
               $gte: fromDate,
               $lte: toDate
             }
-          }
-        },
+          };
+      
+      const result = await Patient.aggregate([
+        { $unwind: "$medicalDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning" },
+        { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments" },
+        { $match: dateMatchCondition },
         {
           $group: {
             _id: {
@@ -1189,9 +1280,9 @@ const getDashboardMetrics = async (req, res) => {
             revenue: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount" }
           }
         },
-        {
-          $sort: { _id: 1 }
-        },
+        { $sort: { _id: 1 } },
+        // Limit results if all-time
+        ...(isAllTimeRequest ? [{ $limit: 30 }] : []),
         {
           $project: {
             _id: 0,
@@ -1200,59 +1291,51 @@ const getDashboardMetrics = async (req, res) => {
           }
         }
       ]);
+      
+      return result;
+    };
 
-      revenueTrend = treatmentRevenue;
-      
-      // Calculate total revenue
-      totalRevenue = treatmentRevenue.reduce((sum, day) => sum + day.revenue, 0);
-      
-      // Calculate revenues based on viewMode
-      const oneDay = 24 * 60 * 60 * 1000;
-      const daysDiff = Math.round(Math.abs((toDate - fromDate) / oneDay)) + 1;
-      
-      // Adjust calculation based on viewMode
-      if (viewMode === 'daily') {
-        dailyRevenue = totalRevenue / treatmentRevenue.length || 0;
-        weeklyRevenue = dailyRevenue * 7;
-        monthlyRevenue = dailyRevenue * 30; 
-        yearlyRevenue = dailyRevenue * 365;
-      } else if (viewMode === 'weekly') {
-        weeklyRevenue = totalRevenue / treatmentRevenue.length || 0;
-        dailyRevenue = weeklyRevenue / 7;
-        monthlyRevenue = weeklyRevenue * 4.33;
-        yearlyRevenue = monthlyRevenue * 12;
-      } else if (viewMode === 'monthly') {
-        monthlyRevenue = totalRevenue / treatmentRevenue.length || 0;
-        dailyRevenue = monthlyRevenue / 30;
-        weeklyRevenue = monthlyRevenue / 4.33;
-        yearlyRevenue = monthlyRevenue * 12;
-      } else if (viewMode === 'yearly') {
-        yearlyRevenue = totalRevenue / treatmentRevenue.length || 0;
-        monthlyRevenue = yearlyRevenue / 12;
-        weeklyRevenue = monthlyRevenue / 4.33;
-        dailyRevenue = weeklyRevenue / 7;
-      } else {
-        // Default fallback to daily mode
-        dailyRevenue = daysDiff > 0 ? totalRevenue / daysDiff : 0;
-        weeklyRevenue = dailyRevenue * 7;
-        monthlyRevenue = dailyRevenue * 30;
-        yearlyRevenue = dailyRevenue * 365;
-      }
+    // Get revenue data using Promise.all for better performance
+    const [dailyRevenue, weeklyRevenue, monthlyRevenue, totalRevenue, revenueTrend] = await Promise.all([
+      getDailyRevenue(),
+      getWeeklyRevenue(),
+      getMonthlyRevenue(),
+      getTotalRevenue(),
+      getRevenueTrend()
+    ]);
 
-    } catch (error) {
-      console.error("Error calculating revenue:", error);
-    }
-    
+    // Calculate derived values
+    // Yearly revenue estimation based on monthly
+    const yearlyRevenue = monthlyRevenue * 12;
+
+    // Log financial data for debugging
+    console.log(`Financial overview:`);
+    console.log(`- Today's revenue: ${dailyRevenue}`);
+    console.log(`- This week's revenue: ${weeklyRevenue}`);
+    console.log(`- This month's revenue: ${monthlyRevenue}`);
+    console.log(`- Yearly revenue (estimate): ${yearlyRevenue}`);
+    console.log(`- Total revenue (all time): ${totalRevenue}`);
+    console.log(`- Revenue trend data points: ${revenueTrend.length}`);
+
     // Get recent treatments
     const recentTreatments = await Patient.aggregate([
       { $unwind: "$medicalDetails" },
       { $unwind: "$medicalDetails.treatmentPlanning" },
       {
         $match: {
-          "medicalDetails.treatmentPlanning.treatmentDate": {
-            $gte: fromDate,
-            $lte: toDate
-          }
+          // Use more flexible date matching to ensure we get some results
+          $or: [
+            { 
+              "medicalDetails.treatmentPlanning.treatmentDate": { 
+                $exists: true,
+                ...(isAllTimeRequest ? {} : {
+                  $gte: fromDate,
+                  $lte: toDate
+                }) 
+              } 
+            },
+            { "medicalDetails.treatmentPlanning.treatmentDocuments.0": { $exists: true } }
+          ]
         }
       },
       {
@@ -1263,7 +1346,8 @@ const getDashboardMetrics = async (req, res) => {
       },
       {
         $project: {
-          _id: 0,
+          _id: 1, // Include the ID for debugging
+          patientId: "$_id",
           patientName: "$personalDetails.name",
           treatment: { $ifNull: ["$medicalDetails.treatmentPlanning.treatmentDetails", "$medicalDetails.treatmentPlanning.treatmentFindings"] },
           date: "$medicalDetails.treatmentPlanning.treatmentDate",
@@ -1275,6 +1359,14 @@ const getDashboardMetrics = async (req, res) => {
               else: "Pending"
             }
           },
+          treatmentPlanningId: "$medicalDetails.treatmentPlanning._id",
+          documentCount: { 
+            $cond: { 
+              if: { $isArray: "$medicalDetails.treatmentPlanning.treatmentDocuments" }, 
+              then: { $size: "$medicalDetails.treatmentPlanning.treatmentDocuments" }, 
+              else: 0 
+            } 
+          },
           documents: {
             $cond: {
               if: { $isArray: "$medicalDetails.treatmentPlanning.treatmentDocuments" },
@@ -1285,8 +1377,8 @@ const getDashboardMetrics = async (req, res) => {
                   in: {
                     name: "$$doc.fileName",
                     url: "$$doc.fileUrl",
-                    description: "$$doc.description",
-                    uploadDate: "$$doc.uploadDate"
+                    description: { $ifNull: ["$$doc.description", ""] },
+                    uploadDate: { $ifNull: ["$$doc.uploadDate", ""] }
                   }
                 }
               },
@@ -1297,6 +1389,14 @@ const getDashboardMetrics = async (req, res) => {
       }
     ]);
     
+    // Log the first document for debugging
+    if (recentTreatments.length > 0) {
+      console.log("First recent treatment document count:", recentTreatments[0].documentCount);
+      console.log("First recent treatment documents:", JSON.stringify(recentTreatments[0].documents));
+    } else {
+      console.log("No recent treatments found");
+    }
+
     // Format the response to match frontend expectation
     res.status(200).json({
       data: {
@@ -1313,7 +1413,7 @@ const getDashboardMetrics = async (req, res) => {
             status: apt.status
           })),
           revenue: dailyRevenue,
-          newPatients: patientGrowth.find(p => p.date === today.toISOString().split('T')[0])?.count || 0
+          newPatients: patientGrowth.find(p => p.date === todayDate.toISOString().split('T')[0])?.count || 0
         },
         patientGrowth,
         appointmentDistribution,

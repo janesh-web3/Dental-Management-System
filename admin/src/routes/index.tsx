@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from "react";
 import { Navigate, Outlet, useRoutes } from "react-router-dom";
 import PrivateRoute from "./PrivateRoute";
 import DoctorProtectedRoute from "./DoctorProtectedRoute";
+import AdminOrDoctorRoute from "./AdminOrDoctorRoute";
 
 import Loading from "@/pages/not-found/loading";
 import Doctor from "@/pages/doctor";
@@ -44,7 +45,7 @@ const AppRouter: React.FC = () => {
       children: [
         { path: "/", element: <Dashboard />, index: true },
         { path: "/patient", element: <Patient /> },
-        { path: "/doctor", element: <Doctor /> },
+        { path: "/doctors", element: <Doctor /> },
         { path: "/appointment", element: <Appointment /> },
         { path: "/user", element: <User /> },
         { path: "/settings", element: <Setting /> },
@@ -64,13 +65,13 @@ const AppRouter: React.FC = () => {
     {
       path: "/doctor",
       element: (
-        <DoctorProtectedRoute>
+        <AdminOrDoctorRoute>
           <Suspense fallback={<Loading />}>
             <DoctorLayout>
               <Outlet />
             </DoctorLayout>
           </Suspense>
-        </DoctorProtectedRoute>
+        </AdminOrDoctorRoute>
       ),
       children: [
         // Redirect from /doctor to /doctor/dashboard

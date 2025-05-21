@@ -1,10 +1,8 @@
 import PageHead from "@/components/shared/page-head";
 import { DoctorTable } from "./Table";
-import DoctorLayout from "@/components/layout/doctor-layout";
 
 const Doctor = () => {
   return (
-    <DoctorLayout>
       <div>
         <PageHead title="Doctor Management" />
 
@@ -12,7 +10,6 @@ const Doctor = () => {
           <DoctorTable />
         </div>
       </div>
-    </DoctorLayout>
   );
 };
 

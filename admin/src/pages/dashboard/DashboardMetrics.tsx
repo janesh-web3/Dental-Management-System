@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { crudRequest } from "@/lib/api";
 import { server } from "@/server";
 import { CSVLink } from "react-csv";
+import { DateRange } from "react-day-picker";
 import {
   BarChart,
   Bar,
@@ -67,7 +68,7 @@ export function DashboardMetrics() {
   const fetchMetrics = async () => {
     try {
       setLoading(true);
-      const response = await crudRequest(
+      const response = await crudRequest<{ data: DashboardMetrics }>(
         "GET",
         `${server}/user/dashboard-metrics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}`
       );
@@ -174,7 +175,14 @@ export function DashboardMetrics() {
           <div className="flex items-center space-x-2">
             <DateRangePicker
               value={dateRange}
-              onChange={setDateRange}
+              onChange={(range: DateRange | undefined) => {
+                if (range?.from) {
+                  setDateRange({
+                    from: range.from,
+                    to: range.to || range.from
+                  });
+                }
+              }}
             />
             <CSVLink
               data={handleExportCSV()}
@@ -235,7 +243,7 @@ export function DashboardMetrics() {
                         `${name} (${(percent * 100).toFixed(0)}%)`
                       }
                     >
-                      {metrics?.appointmentDistribution.map((entry, index) => (
+                      {metrics?.appointmentDistribution.map((_entry, index) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={COLORS[index % COLORS.length]}

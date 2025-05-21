@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 
 const doctorSchema = new mongoose.Schema({
   name: {
@@ -7,6 +8,11 @@ const doctorSchema = new mongoose.Schema({
   },
   email: {
     type: String,
+    unique: true,
+  },
+  password: {
+    type: String,
+    required: true,
   },
   age: {
     type: String,
@@ -113,10 +119,29 @@ const doctorSchema = new mongoose.Schema({
   ],
 });
 
-doctorSchema.pre("save", function (next) {
+doctorSchema.pre("save", async function (next) {
   this.updatedAt = Date.now();
+  
+  // Only hash the password if it has been modified (or is new)
+  if (this.isModified("password") && this.password) {
+    try {
+      // Generate a salt
+      const salt = await bcrypt.genSalt(10);
+      // Hash the password along with the new salt
+      this.password = await bcrypt.hash(this.password, salt);
+    } catch (error) {
+      return next(error);
+    }
+  }
+  
   next();
 });
+
+// Method to compare password for login
+doctorSchema.methods.comparePassword = async function(candidatePassword) {
+  if (!this.password) return false;
+  return await bcrypt.compare(candidatePassword, this.password);
+};
 
 doctorSchema.methods.calculateAverageRating = function () {
   if (this.reviews.length === 0) return 0;

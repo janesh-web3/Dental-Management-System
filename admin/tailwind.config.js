@@ -18,8 +18,8 @@ module.exports = {
     },
     extend: {
       colors: {
-        selectedTooth: "#3b82f6", // Tailwind blue
-        defaultTooth: "#e5e7eb", // Tailwind gray
+        selectedTooth: "hsl(221 83% 53%)", // Primary blue
+        defaultTooth: "hsl(220 14% 96%)", // Secondary gray
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -55,52 +55,52 @@ module.exports = {
         },
         dashboard: {
           patients: {
-            light: "#ebf5ff", // blue-50
-            dark: "#0c2544", // blue-950
+            light: "hsl(221 83% 96%)", // blue
+            dark: "hsl(221 83% 20%)", 
           },
           doctors: {
-            light: "#ecfdf5", // green-50
-            dark: "#052e16", // green-950
+            light: "hsl(174 84% 96%)", // teal
+            dark: "hsl(174 84% 20%)", 
           },
           appointments: {
-            light: "#f5f3ff", // purple-50
-            dark: "#2e1065", // purple-950
+            light: "hsl(262 83% 96%)", // purple
+            dark: "hsl(262 83% 20%)", 
           },
           revenue: {
-            light: "#f0fdfa", // teal-50
-            dark: "#042f2e", // teal-950
+            light: "hsl(150 84% 96%)", // green
+            dark: "hsl(150 84% 20%)", 
           },
           financials: {
-            light: "#eef2ff", // indigo-50
-            dark: "#1e1b4b", // indigo-950
+            light: "hsl(199 89% 96%)", // cyan
+            dark: "hsl(199 89% 20%)", 
           },
           documents: {
-            light: "#f9fafb", // gray-50
-            dark: "#111827", // gray-900
+            light: "hsl(232 23% 96%)", // slate
+            dark: "hsl(232 23% 20%)", 
           },
           performance: {
-            light: "#fffbeb", // amber-50
-            dark: "#451a03", // amber-950
+            light: "hsl(43 96% 96%)", // amber
+            dark: "hsl(43 96% 20%)", 
           },
           todaysAppointments: {
-            light: "#ecfeff", // cyan-50
-            dark: "#083344", // cyan-950
+            light: "hsl(187 75% 96%)", // sky
+            dark: "hsl(187 75% 20%)", 
           },
           treatments: {
-            light: "#fdf2f8", // pink-50
-            dark: "#4a044e", // pink-950
+            light: "hsl(336 84% 96%)", // pink
+            dark: "hsl(336 84% 20%)", 
           },
           progress: {
-            light: "#f7fee7", // lime-50
-            dark: "#1a2e05", // lime-950
+            light: "hsl(142 71% 96%)", // emerald
+            dark: "hsl(142 71% 20%)", 
           },
           transactions: {
-            light: "#fff1f2", // rose-50
-            dark: "#4c0519", // rose-950
+            light: "hsl(0 84% 96%)", // red
+            dark: "hsl(0 84% 20%)", 
           },
           reports: {
-            light: "#f5f3ff", // violet-50
-            dark: "#2e1065", // violet-950
+            light: "hsl(280 87% 96%)", // violet
+            dark: "hsl(280 87% 20%)", 
           }
         },
         secondary: {

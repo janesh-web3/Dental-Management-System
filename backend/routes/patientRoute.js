@@ -14,6 +14,7 @@ const {
   getNextSerialNumber,
   getFinancialInsights,
   getDashboardMetrics,
+  getPatientDemographics,
 } = require("../controller/patientCtrl.js");
 const cloudinary = require("../config/cloudinary");
 const Patient = require("../model/Patient");
@@ -742,5 +743,8 @@ router.post("/send-email", async (req, res) => {
 router.get("/financial-insights", getFinancialInsights);
 
 router.get("/dashboard-metrics", getDashboardMetrics);
+
+// Test route for demographics
+router.get("/demographics-test", getPatientDemographics);
 
 module.exports = router;

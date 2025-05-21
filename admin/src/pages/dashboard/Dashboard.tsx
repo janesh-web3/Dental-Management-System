@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { Users, Calendar, Stethoscope, Clock, TrendingUp, TrendingDown } from "lucide-react";
 import { format } from "date-fns";
 import { crudRequest } from "@/lib/api";
@@ -281,7 +280,7 @@ export function Dashboard() {
                           `${name} (${(percent * 100).toFixed(0)}%)`
                         }
                       >
-                        {dashboardData?.appointmentDistribution.map((entry, index) => (
+                        {dashboardData?.appointmentDistribution.map((_, index) => (
                           <Cell
                             key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}

@@ -4,6 +4,7 @@ export type Doctor = {
     age: string;
     nmcNumber: string;
     email: string;
+    password?: string; 
     contactNumber: string;
     address: string;
     qualifications: string[];
@@ -14,4 +15,3 @@ export type Doctor = {
     isActive: boolean;
     appointments: string[];
   };
-  

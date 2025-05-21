@@ -15,7 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash, Plus, Eye } from "lucide-react";
+import { MoreHorizontal, Edit, Trash, Plus, Eye, Key } from "lucide-react";
 import { crudRequest } from "@/lib/api";
 import AddDoctor from "./AddDoctor";
 import PopupModal from "@/components/shared/popup-modal";
@@ -23,6 +23,7 @@ import Loading from "@/pages/not-found/loading";
 import Error from "@/pages/not-found/error";
 import ViewDoctor from "@/components/doctor/ViewDoctor";
 import UpdateDoctorModal from "@/components/doctor/UpdateDoctorModal";
+import ChangePasswordModal from "@/components/doctor/ChangePasswordModal";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +43,7 @@ export function DoctorTable() {
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
   const [doctorToDelete, setDoctorToDelete] = useState<Doctor | null>(null);
   const { adminDetails } = useAdminContext();
@@ -160,6 +162,15 @@ export function DoctorTable() {
                     >
                       View <Eye size={17} />
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSelectedDoctor(doctor);
+                        setIsPasswordModalOpen(true);
+                      }}
+                      className="flex justify-between cursor-pointer"
+                    >
+                      Change Password <Key size={17} />
+                    </DropdownMenuItem>
                     {adminDetails.role === "admin" && (
                       <DropdownMenuItem
                         onClick={() => handleDeleteClick(doctor)}
@@ -233,6 +244,16 @@ export function DoctorTable() {
           isOpen={isUpdateModalOpen}
           onClose={() => {
             setIsUpdateModalOpen(false);
+            setSelectedDoctor(null);
+          }}
+          doctor={selectedDoctor}
+        />
+      )}
+      {selectedDoctor && (
+        <ChangePasswordModal
+          isOpen={isPasswordModalOpen}
+          onClose={() => {
+            setIsPasswordModalOpen(false);
             setSelectedDoctor(null);
           }}
           doctor={selectedDoctor}

@@ -6,26 +6,17 @@ import {
   Users,
   Calendar,
   IndianRupee,
-  Activity,
   User,
-  CheckCircle2,
   FileText,
   Stethoscope,
-  Clock,
-  TrendingUp,
-  TrendingDown,
   Image as ImageIcon,
-  FileText as FileIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { crudRequest } from "@/lib/api";
-import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { useAdminContext } from "@/contexts/adminContext";
 import { RecentTransactions } from "./RecentTransactions";
 import { useTranslation } from "react-i18next";
 import { DocumentViewer } from "@/components/ui/document-viewer";
@@ -37,12 +28,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
 } from "recharts";
 import { DateRange } from "react-day-picker";
 import { server } from "@/server";
@@ -55,7 +40,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Reports } from "./Reports";
-import { FinancialInsights } from "./FinancialInsights";
 
 interface DoctorAnalysis {
   _id: string;
@@ -176,17 +160,7 @@ interface DashboardData {
   };
 }
 
-const COLORS = [
-  "#0088FE",
-  "#00C49F",
-  "#FFBB28",
-  "#FF8042",
-  "#8884D8",
-  "#82ca9d",
-];
-
 const Dashboard = () => {
-  const { adminDetails } = useAdminContext();
   const { t } = useTranslation();
 
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
@@ -854,9 +828,9 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-pink-50 dark:bg-pink-950 border-pink-200 dark:border-pink-800 shadow-sm hover:shadow-md transition-all">
+            <Card className="shadow-sm hover:shadow-md transition-all bg-dashboard-treatments-light dark:bg-dashboard-treatments-dark border-dashboard-treatments-light/50 dark:border-dashboard-treatments-dark/50">
               <CardHeader>
-                <CardTitle className="text-pink-800 dark:text-pink-300">
+                <CardTitle className="text-dashboard-treatments-dark/70 dark:text-dashboard-treatments-light/90">
                   {t("Recent Treatments")}
                 </CardTitle>
               </CardHeader>
@@ -866,22 +840,23 @@ const Dashboard = () => {
                     (treatment, index) => (
                       <div
                         key={index}
-                        className="mb-4 p-3 bg-white dark:bg-pink-900 rounded-lg shadow-sm"
+                        className="mb-4 p-3 rounded-lg shadow-sm dark:bg-[hsl(12,50%,10%)]"
+                        style={{ backgroundColor: 'white', color: 'hsl(12, 50%, 30%)' }}
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-medium text-pink-900 dark:text-pink-50">
+                            <p className="font-medium dark:text-[hsl(12,80%,80%)]" style={{ color: 'hsl(12, 50%, 25%)' }}>
                               {treatment.patientName}
                             </p>
-                            <p className="text-sm text-pink-700 dark:text-pink-300">
+                            <p className="text-sm dark:text-[hsl(12,70%,70%)]" style={{ color: 'hsl(12, 40%, 40%)' }}>
                               {treatment.treatment}
                             </p>
-                            <p className="text-sm text-pink-700 dark:text-pink-300">
+                            <p className="text-sm dark:text-[hsl(12,70%,70%)]" style={{ color: 'hsl(12, 40%, 40%)' }}>
                               {treatment.date}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-medium text-pink-900 dark:text-pink-50">
+                            <p className="font-medium dark:text-[hsl(12,80%,80%)]" style={{ color: 'hsl(12, 50%, 25%)' }}>
                               ₹{treatment.amount}
                             </p>
                             <Badge
@@ -903,7 +878,7 @@ const Dashboard = () => {
                         {treatment.documents &&
                           treatment.documents.length > 0 && (
                             <div className="mt-2 flex flex-col space-y-2">
-                              <p className="text-xs font-medium text-pink-600 dark:text-pink-400">
+                              <p className="text-xs font-medium dark:text-[hsl(12,70%,70%)]" style={{ color: 'hsl(12, 40%, 40%)' }}>
                                 {t("Treatment Documents")} (
                                 {treatment.documents.length})
                               </p>
@@ -918,11 +893,12 @@ const Dashboard = () => {
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        className="border-pink-300 dark:border-pink-600 hover:bg-pink-100 dark:hover:bg-pink-800"
+                                        className="hover:bg-amber-100 dark:hover:bg-[hsl(12,40%,15%)] dark:border-[hsl(12,40%,30%)] dark:text-[hsl(12,70%,70%)]"
+                                        style={{ borderColor: 'hsl(12, 30%, 80%)', color: 'hsl(12, 50%, 40%)' }}
                                         onClick={() => handleOpenDocument(doc)}
                                       >
                                         {getDocumentDetails(doc).icon}
-                                        <span className="text-pink-700 dark:text-pink-300">
+                                        <span>
                                           {doc.name
                                             ? doc.name.length > 20
                                               ? `${doc.name.substring(0, 20)}...`
@@ -931,15 +907,15 @@ const Dashboard = () => {
                                         </span>
                                       </Button>
                                       {doc.description && (
-                                        <div className="absolute z-10 invisible group-hover:visible bg-white dark:bg-pink-900 shadow-lg rounded-md p-2 mt-1 text-xs max-w-[200px] top-full left-0">
-                                          <p className="font-semibold mb-1 text-pink-800 dark:text-pink-200">
+                                        <div className="absolute z-10 invisible group-hover:visible bg-white shadow-lg rounded-md p-2 mt-1 text-xs max-w-[200px] top-full left-0 dark:bg-[hsl(12,50%,10%)]" style={{ backgroundColor: 'white' }}>
+                                          <p className="font-semibold mb-1 dark:text-[hsl(12,80%,80%)]" style={{ color: 'hsl(12, 50%, 30%)' }}>
                                             {doc.name}
                                           </p>
-                                          <p className="text-pink-600 dark:text-pink-300">
+                                          <p className="dark:text-[hsl(12,70%,70%)]" style={{ color: 'hsl(12, 40%, 40%)' }}>
                                             {doc.description}
                                           </p>
                                           {doc.uploadDate && (
-                                            <p className="text-pink-500 dark:text-pink-400 mt-1">
+                                            <p className="mt-1 dark:text-[hsl(12,60%,60%)]" style={{ color: 'hsl(12, 30%, 60%)' }}>
                                               {t("Uploaded")}:{" "}
                                               {format(
                                                 new Date(doc.uploadDate),

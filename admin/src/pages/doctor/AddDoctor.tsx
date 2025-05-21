@@ -32,6 +32,7 @@ interface Availability {
 interface FormData {
   name: string;
   email: string;
+  password: string;
   age: string;
   contactNumber: string;
   address: string;
@@ -55,6 +56,7 @@ const AddDoctor: React.FC<AddDoctorProps> = ({ modalClose }) => {
   const [formData, setFormData] = useState<FormData>({
     name: "",
     email: "",
+    password: "",
     age: "",
     contactNumber: "",
     address: "",
@@ -80,6 +82,26 @@ const AddDoctor: React.FC<AddDoctorProps> = ({ modalClose }) => {
 
   const [imagePreview, setImagePreview] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong' | ''>('');
+
+  const checkPasswordStrength = (password: string) => {
+    if (!password) {
+      setPasswordStrength('');
+      return;
+    }
+    
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChars = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    const isLongEnough = password.length >= 8;
+    
+    const score = [hasLowerCase, hasUpperCase, hasNumbers, hasSpecialChars, isLongEnough].filter(Boolean).length;
+    
+    if (score <= 2) setPasswordStrength('weak');
+    else if (score <= 4) setPasswordStrength('medium');
+    else setPasswordStrength('strong');
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -91,6 +113,10 @@ const AddDoctor: React.FC<AddDoctorProps> = ({ modalClose }) => {
       setFormData((prev) => ({ ...prev, [name]: checked }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
+      
+      if (name === 'password') {
+        checkPasswordStrength(value);
+      }
     }
   };
 
@@ -142,22 +168,23 @@ const AddDoctor: React.FC<AddDoctorProps> = ({ modalClose }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-   const data = {
-    name : formData.name,
-    email : formData.email,
-    age : formData.age,
-    contactNumber : formData.contactNumber,
-    address : formData.address,
-    totalPatientChecked : formData.totalPatients,
-    totalRating : formData.totalRating,
-    nmcNumber : formData.nmcNumber,
-    description : formData.description,
-    specialization : formData.specialization,
-    qualifications : formData.qualifications,
-    experienceYears : formData.experienceYears,
-    image : formData.image,
-    availability : formData.availability,
-   }
+    const data = {
+      name : formData.name,
+      email : formData.email,
+      password : formData.password,
+      age : formData.age,
+      contactNumber : formData.contactNumber,
+      address : formData.address,
+      totalPatientChecked : formData.totalPatients,
+      totalRating : formData.totalRating,
+      nmcNumber : formData.nmcNumber,
+      description : formData.description,
+      specialization : formData.specialization,
+      qualifications : formData.qualifications,
+      experienceYears : formData.experienceYears,
+      image : formData.image,
+      availability : formData.availability,
+    }
 
     try {
       await crudRequest("POST", "/doctor/add-doctor", data, {
@@ -186,33 +213,71 @@ const AddDoctor: React.FC<AddDoctorProps> = ({ modalClose }) => {
       
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Personal Information Section */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           <h3 className="text-lg font-semibold border-b pb-2">Personal Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Name</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium mb-1">
+                Name *
+              </label>
               <Input
-                type="text"
+                id="name"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full"
-                placeholder="Dr. John Doe"
+                required
               />
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Email</label>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium mb-1">
+                Email *
+              </label>
               <Input
-                type="email"
+                id="email"
                 name="email"
+                type="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full"
-                placeholder="doctor@example.com"
+                required
               />
             </div>
-
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium mb-1">
+                Password *
+              </label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                minLength={6}
+              />
+              {passwordStrength && (
+                <div className="mt-1">
+                  <div className="text-xs">Password strength: 
+                    <span className={`font-medium ${
+                      passwordStrength === 'weak' ? 'text-red-500' : 
+                      passwordStrength === 'medium' ? 'text-yellow-500' : 
+                      'text-green-500'
+                    }`}>
+                      {passwordStrength}
+                    </span>
+                  </div>
+                  <div className="h-1 w-full bg-gray-200 mt-1 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full ${
+                        passwordStrength === 'weak' ? 'w-1/3 bg-red-500' : 
+                        passwordStrength === 'medium' ? 'w-2/3 bg-yellow-500' : 
+                        'w-full bg-green-500'
+                      }`}
+                    />
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters</p>
+            </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Age</label>
               <Input

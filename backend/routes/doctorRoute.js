@@ -6,7 +6,10 @@ const {
   getDoctor,
   deleteDoctor,
   updateDoctor,
+  updateDoctorPassword,
 } = require("../controller/doctorCtrl.js");
+const { doctorLogin, getCurrentDoctor } = require("../controller/doctorAuthCtrl.js");
+const { protectDoctorRoute } = require("../middleware/doctorAuthMiddleware.js");
 const { upload } = require("../middleware/multer.js");
 const Doctor = require("../model/Doctor.js");
 
@@ -53,11 +56,17 @@ router.get("/ensure-doctor-exists", async (req, res) => {
   }
 });
 
+// Doctor authentication routes
+router.post("/login", doctorLogin);
+router.get("/get-current-doctor", protectDoctorRoute, getCurrentDoctor);
+
+// Doctor CRUD routes
 router.post("/add-doctor", upload.single('image'), addDoctor);
 router.get("/get-pagination-doctor", getPaginatedDoctor);
 router.get("/get-doctor", getDoctor);
 router.delete("/delete-doctor/:id", deleteDoctor);
 router.put("/update-doctor/:id", upload.single('image'), updateDoctor);
+router.put("/update-password/:id", updateDoctorPassword);
 
 router.post("/doctors/:id/reviews", async (req, res) => {
   try {

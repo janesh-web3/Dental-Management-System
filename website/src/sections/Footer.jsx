@@ -7,7 +7,7 @@ const Footer = () => {
         <div className="flex w-full max-md:flex-col">
           <div className="flex flex-wrap items-center justify-center flex-1 gap-5 small-compact">
             <p className="opacity-70">
-              Copyright,{" "}
+             2025 © Copyright,{" "}
               <a href="https://crownagi.com" target="_blank">
                 Crown Mantra AGI
               </a>

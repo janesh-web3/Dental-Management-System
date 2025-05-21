@@ -4,8 +4,16 @@ const { deleteFile } = require("../middleware/multer.js");
 
 const addDoctor = async (req, res) => {
   try {
-    console.log(req.body);
     let doctorData = {};
+    console.log(req.body);
+
+    // Validate required fields
+    if (!req.body.email || !req.body.password) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Email and password are required fields" 
+      });
+    }
 
     if (req.file) {
       const cloudinaryResponse = await cloudinary.uploader.upload(
@@ -21,13 +29,36 @@ const addDoctor = async (req, res) => {
       doctorData = req.body;
     }
 
+    // Check if doctor with this email already exists
+    const existingDoctor = await Doctor.findOne({ email: doctorData.email });
+    if (existingDoctor) {
+      return res.status(400).json({
+        success: false,
+        message: "A doctor with this email already exists"
+      });
+    }
+
+    // Create new doctor with password
     const newDoctor = new Doctor(doctorData);
 
     await newDoctor.save();
-    res.status(201).json(newDoctor);
+    
+    // Remove password from response for security
+    const doctorResponse = newDoctor.toObject();
+    delete doctorResponse.password;
+    
+    res.status(201).json({
+      success: true,
+      message: "Doctor created successfully",
+      data: doctorResponse
+    });
   } catch (error) {
     console.error("Error saving doctor:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ 
+      success: false,
+      message: "Error creating doctor",
+      error: error.message 
+    });
   }
 };
 
@@ -114,9 +145,60 @@ const updateDoctor = async (req, res) => {
       { new: true }
     );
 
-    res.status(200).json(doctor);
+    // Remove password from response for security
+    const doctorResponse = doctor.toObject();
+    delete doctorResponse.password;
+
+    res.status(200).json(doctorResponse);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+// Update doctor password
+const updateDoctorPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword) {
+      return res.status(400).json({ 
+        success: false,
+        message: "New password is required" 
+      });
+    }
+
+    // Password strength validation
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters long"
+      });
+    }
+
+    const doctor = await Doctor.findById(id);
+    if (!doctor) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Doctor not found" 
+      });
+    }
+
+    // Update password (will be hashed by pre-save hook)
+    doctor.password = newPassword;
+    await doctor.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully"
+    });
+  } catch (error) {
+    console.error("Error updating doctor password:", error);
+    res.status(400).json({ 
+      success: false,
+      message: "Error updating password",
+      error: error.message 
+    });
   }
 };
 
@@ -126,4 +208,5 @@ module.exports = {
   getDoctor,
   deleteDoctor,
   updateDoctor,
+  updateDoctorPassword,
 };

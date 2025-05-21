@@ -10,6 +10,7 @@ const userRouter = require("./routes/userRoute.js");
 const patientRouter = require("./routes/patientRoute.js");
 const appointmentRouter = require("./routes/appointmentRoute.js");
 const doctorRouter = require("./routes/doctorRoute.js");
+const doctorAdminRouter = require("./routes/doctorAdminRoute.js");
 const testimonialRouter = require("./routes/testimonials.js");
 const contactRouter = require("./routes/contactRoute.js");
 
@@ -24,9 +25,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "http://localhost:5174",
-      "https://om-shreenagar-dental-clinic.com",
-      "https://admin.om-shreenagar-dental-clinic.com",
-      "https://www.om-shreenagar-dental-clinic.com",
+      "https://dms.crownagi.com",
     ],
   })
 );
@@ -44,6 +43,7 @@ app.use("/api/user", userRouter);
 app.use("/api/patient", patientRouter);
 app.use("/api/appointment", appointmentRouter);
 app.use("/api/doctor", doctorRouter);
+app.use("/api/doctor-admin", doctorAdminRouter);
 app.use("/api/testimonials", testimonialRouter);
 app.use("/api/contact", contactRouter);
 

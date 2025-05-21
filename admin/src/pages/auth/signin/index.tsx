@@ -1,9 +1,13 @@
 import UserAuthForm from "./components/user-auth-form";
+import DoctorAuthForm from "./components/doctor-auth-form";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import { useState } from "react";
 
 export default function SignInPage() {
+  const [activeTab, setActiveTab] = useState<'user' | 'doctor'>('user');
+
   return (
     <div className="relative flex-col items-center justify-center h-screen md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
       <Link
@@ -36,10 +40,39 @@ export default function SignInPage() {
               Login to your account
             </h1>
             <p className="text-sm text-muted-foreground">
-              Enter your phone number and password below to login your account
+              {activeTab === 'user' 
+                ? "Enter your phone number and password below to login your account"
+                : "Enter your email and password below to login as a doctor"
+              }
             </p>
           </div>
-          <UserAuthForm />
+          
+          {/* Login tabs */}
+          <div className="flex border-b mb-4">
+            <button
+              className={`py-2 px-4 font-medium ${
+                activeTab === 'user'
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-gray-500'
+              }`}
+              onClick={() => setActiveTab('user')}
+            >
+              Admin Login
+            </button>
+            <button
+              className={`py-2 px-4 font-medium ${
+                activeTab === 'doctor'
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-gray-500'
+              }`}
+              onClick={() => setActiveTab('doctor')}
+            >
+              Doctor Login
+            </button>
+          </div>
+          
+          {activeTab === 'user' ? <UserAuthForm /> : <DoctorAuthForm />}
+          
           <p className="px-8 text-sm text-center text-muted-foreground">
             By clicking continue, you agree to our{" "}
             <Link

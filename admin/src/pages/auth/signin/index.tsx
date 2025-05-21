@@ -1,12 +1,13 @@
 import UserAuthForm from "./components/user-auth-form";
 import DoctorAuthForm from "./components/doctor-auth-form";
+import{ PatientAuthForm }from "./components/patient-auth-form";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 
 export default function SignInPage() {
-  const [activeTab, setActiveTab] = useState<'user' | 'doctor'>('user');
+  const [activeTab, setActiveTab] = useState<'user' | 'doctor' | 'patient'>('user');
 
   return (
     <div className="relative flex-col items-center justify-center h-screen md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
@@ -42,7 +43,9 @@ export default function SignInPage() {
             <p className="text-sm text-muted-foreground">
               {activeTab === 'user' 
                 ? "Enter your phone number and password below to login your account"
-                : "Enter your email and password below to login as a doctor"
+                : activeTab === 'doctor'
+                ? "Enter your email and password below to login as a doctor"
+                : "Enter your email and password below to login as a patient"
               }
             </p>
           </div>
@@ -69,9 +72,23 @@ export default function SignInPage() {
             >
               Doctor Login
             </button>
+            <button
+              className={`py-2 px-4 font-medium ${
+                activeTab === 'patient'
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-gray-500'
+              }`}
+              onClick={() => setActiveTab('patient')}
+            >
+              Patient Login
+            </button>
           </div>
           
-          {activeTab === 'user' ? <UserAuthForm /> : <DoctorAuthForm />}
+          {activeTab === 'user' 
+            ? <UserAuthForm /> 
+            : activeTab === 'doctor' 
+            ? <DoctorAuthForm /> 
+            : <PatientAuthForm />}
           
           <p className="px-8 text-sm text-center text-muted-foreground">
             By clicking continue, you agree to our{" "}

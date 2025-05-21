@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from "react";
 import { Navigate, Outlet, useRoutes } from "react-router-dom";
 import PrivateRoute from "./PrivateRoute";
 import DoctorProtectedRoute from "./DoctorProtectedRoute";
+import PatientProtectedRoute from "./PatientProtectedRoute.tsx";
 import AdminOrDoctorRoute from "./AdminOrDoctorRoute";
 
 import Loading from "@/pages/not-found/loading";
@@ -61,6 +62,15 @@ const AppRouter: React.FC = () => {
   const DoctorPatients = lazy(() => import("@/pages/doctor/patients"));
   const DoctorLayout = lazy(() => import("@/components/layout/doctor-layout"));
 
+  // Import patient pages and layout components
+  const PatientDashboard = lazy(() => import("@/pages/patient-admin/dashboard"));
+  const PatientAppointments = lazy(() => import("@/pages/patient-admin/appointments"));
+  const PatientTreatments = lazy(() => import("@/pages/patient-admin/treatments"));
+  const PatientBills = lazy(() => import("@/pages/patient-admin/bills"));
+  const PatientProfile = lazy(() => import("@/pages/patient-admin/profile"));
+  const PatientLoginPage = lazy(() => import("@/pages/patient-admin/login"));
+  const PatientLayout = lazy(() => import("@/components/layout/patient-layout"));
+
   const doctorRoutes = [
     {
       path: "/doctor",
@@ -104,14 +114,55 @@ const AppRouter: React.FC = () => {
     },
   ];
 
+  // Patient routes
+  const patientRoutes = [
+    {
+      path: "/patient",
+      element: (
+        <PatientProtectedRoute>
+          <Suspense fallback={<Loading />}>
+            <PatientLayout>
+              <Outlet />
+            </PatientLayout>
+          </Suspense>
+        </PatientProtectedRoute>
+      ),
+      children: [
+        // Redirect from /patient to /patient/dashboard
+        { path: "", element: <Navigate to="/patient/dashboard" replace /> },
+        { 
+          path: "dashboard", 
+          element: <PatientDashboard />
+        },
+        { 
+          path: "appointments", 
+          element: <PatientAppointments /> 
+        },
+        { 
+          path: "treatments", 
+          element: <PatientTreatments /> 
+        },
+        { 
+          path: "bills", 
+          element: <PatientBills /> 
+        },
+        { 
+          path: "profile", 
+          element: <PatientProfile /> 
+        },
+      ],
+    },
+  ];
+
   const publicRoutes = [
     { path: "/login", element: <SignInPage />, index: true },
     { path: "/doctor/login", element: <SignInPage /> },
+    { path: "/patient/login", element: <PatientLoginPage /> },
     { path: "/404", element: <NotFound /> },
     { path: "*", element: <Navigate to="/404" replace /> },
   ];
 
-  const routes = useRoutes([...dashboardRoutes, ...doctorRoutes, ...publicRoutes]);
+  const routes = useRoutes([...dashboardRoutes, ...doctorRoutes, ...patientRoutes, ...publicRoutes]);
 
   return routes;
 };

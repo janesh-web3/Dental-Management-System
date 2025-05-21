@@ -37,7 +37,9 @@ export default function DashboardNav({
     <nav className="grid items-start gap-2">
       <TooltipProvider>
         {items.map((item, index) => {
-          const Icon = Icons[item.icon || "arrowRight"];
+          // Use a fallback icon if the specified icon doesn't exist
+          const iconName = item.icon || "arrowRight";
+          const Icon = Icons[iconName] || Icons["arrowRight"];
           return (
             item.href && (
               <Tooltip key={index}>

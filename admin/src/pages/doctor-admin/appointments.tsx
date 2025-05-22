@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { format } from "date-fns";
+import { format, parseISO, isToday, isTomorrow, isYesterday } from "date-fns";
+import { crudRequest } from "@/lib/api";
 import {
   Card,
   CardContent,
@@ -44,15 +44,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+
 import { useToast } from "@/components/ui/use-toast";
 import {
-  CalendarIcon,
   Loader2,
   Plus,
   Search,
@@ -122,11 +116,13 @@ const Appointments: React.FC = () => {
   }
 
   const [loading, setLoading] = useState<boolean>(true);
+  // We'll only use groupedAppointments for display, but we keep the appointments array for other operations
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [groupedAppointments, setGroupedAppointments] = useState<{[key: string]: Appointment[]}>({});
   const [totalPages, setTotalPages] = useState<number>(1);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState<boolean>(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState<boolean>(false);
   const [currentAppointment, setCurrentAppointment] =
@@ -171,23 +167,113 @@ const Appointments: React.FC = () => {
     fetchAppointments();
   }, [doctorId, currentPage, searchTerm, statusFilter]);
 
+  // Initialize the create appointment form when dialog is opened
+  useEffect(() => {
+    if (isCreateDialogOpen) {
+      form.reset({
+        firstName: "",
+        lastName: "",
+        age: "",
+        address: "",
+        phoneNumber: "",
+        gender: "Male",
+        appointmentDate: new Date(),
+        appointmentTime: "",
+        subject: "",
+        reason: "",
+        comments: "",
+      });
+    }
+  }, [isCreateDialogOpen, form]);
+
+  // Define the response type for appointments
+  interface AppointmentResponse {
+    success: boolean;
+    data: {
+      appointments: Appointment[];
+      totalPages: number;
+      currentPage: number;
+      totalAppointments: number;
+    };
+    message?: string;
+  }
+
+  // Function to format date for display
+  const formatAppointmentDate = (dateString: string | undefined) => {
+    if (!dateString) {
+      return "Unknown Date";
+    }
+    
+    try {
+      const date = parseISO(dateString);
+      
+      if (isNaN(date.getTime())) {
+        return "Invalid Date";
+      }
+      
+      if (isToday(date)) {
+        return "Today";
+      } else if (isTomorrow(date)) {
+        return "Tomorrow";
+      } else if (isYesterday(date)) {
+        return "Yesterday";
+      }
+      
+      return format(date, "EEEE, MMMM d, yyyy");
+    } catch (error) {
+      console.error("Error parsing date:", error);
+      return "Invalid Date";
+    }
+  };
+
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        `/api/doctor-admin/appointments/${doctorId}`,
+      const response = await crudRequest<AppointmentResponse>(
+        'GET',
+        `/doctor-admin/appointments/${doctorId}`,
         {
           params: {
-            page: currentPage,
-            limit: 10,
             search: searchTerm,
-            status: statusFilter,
+            status: statusFilter !== 'all' ? statusFilter : undefined,
           },
         }
       );
 
-      setAppointments(response.data.data.appointments);
-      setTotalPages(response.data.data.totalPages);
+      console.log(response);
+
+      if (response.success && response.data) {
+        try {
+          // Get the appointments directly from the response
+          const appointments = response.data.appointments || [];
+          setAppointments(appointments);
+          
+          // Group appointments by date for display
+          const grouped: {[key: string]: Appointment[]} = {};
+          if (Array.isArray(appointments)) {
+            appointments.forEach(appointment => {
+              if (appointment && appointment.appointmentDate) {
+                const formattedDate = formatAppointmentDate(appointment.appointmentDate);
+                if (!grouped[formattedDate]) {
+                  grouped[formattedDate] = [];
+                }
+                grouped[formattedDate].push(appointment);
+              }
+            });
+          }
+          setGroupedAppointments(grouped);
+          
+          // Get total pages directly from the response
+          setTotalPages(response.data.totalPages || 1);
+        } catch (err) {
+          console.error("Error processing appointment data:", err);
+          setAppointments([]);
+          setGroupedAppointments({});
+          setTotalPages(1);
+        }
+      } else {
+        throw new Error(response.message || 'Failed to fetch appointments');
+      }
     } catch (error) {
       console.error("Error fetching appointments:", error);
       toast({
@@ -208,19 +294,24 @@ const Appointments: React.FC = () => {
         appointmentDate: format(values.appointmentDate, "yyyy-MM-dd"),
       };
 
-      await axios.post(
-        `/api/doctor-admin/appointments/${doctorId}`,
-        formattedValues
+      const response = await crudRequest<{ success: boolean; message?: string }>(
+        'POST',
+        `/doctor-admin/appointments/${doctorId}`,
+        { data: formattedValues }
       );
 
-      toast({
-        title: "Success",
-        description: "Appointment created successfully",
-      });
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "Appointment created successfully",
+        });
 
-      setIsCreateDialogOpen(false);
-      form.reset();
-      fetchAppointments();
+        setIsCreateDialogOpen(false);
+        form.reset();
+        fetchAppointments();
+      } else {
+        throw new Error(response.message || 'Failed to create appointment');
+      }
     } catch (error) {
       console.error("Error creating appointment:", error);
       toast({
@@ -243,19 +334,24 @@ const Appointments: React.FC = () => {
         appointmentDate: format(values.appointmentDate, "yyyy-MM-dd"),
       };
 
-      await axios.put(
-        `/api/doctor-admin/appointments/${doctorId}/${currentAppointment._id}`,
-        formattedValues
+      const response = await crudRequest<{ success: boolean; message?: string }>(
+        'PUT',
+        `/doctor-admin/appointments/${doctorId}/${currentAppointment._id}`,
+        { data: formattedValues }
       );
 
-      toast({
-        title: "Success",
-        description: "Appointment updated successfully",
-      });
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "Appointment updated successfully",
+        });
 
-      setIsEditDialogOpen(false);
-      editForm.reset();
-      fetchAppointments();
+        setIsEditDialogOpen(false);
+        editForm.reset();
+        fetchAppointments();
+      } else {
+        throw new Error(response.message || 'Failed to update appointment');
+      }
     } catch (error) {
       console.error("Error updating appointment:", error);
       toast({
@@ -271,16 +367,21 @@ const Appointments: React.FC = () => {
   const handleCancelAppointment = async (appointmentId: string) => {
     try {
       setLoading(true);
-      await axios.put(
-        `/api/doctor-admin/appointments/${doctorId}/${appointmentId}/cancel`
+      const response = await crudRequest<{ success: boolean; message?: string }>(
+        'PUT',
+        `/doctor-admin/appointments/${doctorId}/${appointmentId}/cancel`
       );
 
-      toast({
-        title: "Success",
-        description: "Appointment cancelled successfully",
-      });
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "Appointment cancelled successfully",
+        });
 
-      fetchAppointments();
+        fetchAppointments();
+      } else {
+        throw new Error(response.message || 'Failed to cancel appointment');
+      }
     } catch (error) {
       console.error("Error cancelling appointment:", error);
       toast({
@@ -330,7 +431,25 @@ const Appointments: React.FC = () => {
             </div>
             <Dialog
               open={isCreateDialogOpen}
-              onOpenChange={setIsCreateDialogOpen}
+              onOpenChange={(open) => {
+                setIsCreateDialogOpen(open);
+                if (!open) {
+                  // Reset form when dialog is closed
+                  form.reset({
+                    firstName: "",
+                    lastName: "",
+                    age: "",
+                    address: "",
+                    phoneNumber: "",
+                    gender: "Male",
+                    appointmentDate: new Date(),
+                    appointmentTime: "",
+                    subject: "",
+                    reason: "",
+                    comments: "",
+                  });
+                }
+              }}
             >
               <DialogTrigger asChild>
                 <Button>
@@ -338,7 +457,7 @@ const Appointments: React.FC = () => {
                   New Appointment
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px]">
+              <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Create New Appointment</DialogTitle>
                   <DialogDescription>
@@ -351,7 +470,7 @@ const Appointments: React.FC = () => {
                     onSubmit={form.handleSubmit(handleCreateAppointment)}
                     className="space-y-4"
                   >
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="firstName"
@@ -381,7 +500,7 @@ const Appointments: React.FC = () => {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="age"
@@ -451,44 +570,25 @@ const Appointments: React.FC = () => {
                       )}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="appointmentDate"
                         render={({ field }) => (
-                          <FormItem className="flex flex-col">
+                          <FormItem>
                             <FormLabel>Appointment Date</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant={"outline"}
-                                    className={`w-full pl-3 text-left font-normal ${
-                                      !field.value && "text-muted-foreground"
-                                    }`}
-                                  >
-                                    {field.value ? (
-                                      format(field.value, "PPP")
-                                    ) : (
-                                      <span>Pick a date</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                className="w-auto p-0"
-                                align="start"
-                              >
-                                <Calendar
-                                  mode="single"
-                                  selected={field.value}
-                                  onSelect={field.onChange}
-                                  disabled={(date) => date < new Date()}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
+                            <FormControl>
+                              <Input 
+                                type="date" 
+                                {...field} 
+                                value={field.value ? format(field.value, "yyyy-MM-dd") : ""}
+                                onChange={(e) => {
+                                  const date = e.target.value ? new Date(e.target.value) : null;
+                                  field.onChange(date);
+                                }}
+                                min={format(new Date(), "yyyy-MM-dd")}
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -590,10 +690,10 @@ const Appointments: React.FC = () => {
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="All">All Statuses</SelectItem>
-                <SelectItem value="Pending">Pending</SelectItem>
-                <SelectItem value="Accepted">Accepted</SelectItem>
-                <SelectItem value="Rejected">Rejected</SelectItem>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="accepted">Accepted</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -604,79 +704,98 @@ const Appointments: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Patient Name</TableHead>
-                      <TableHead>Date & Time</TableHead>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {appointments.length > 0 ? (
-                      appointments.map((appointment) => (
-                        <TableRow key={appointment._id}>
-                          <TableCell className="font-medium">
-                            {appointment.firstName} {appointment.lastName}
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div>{appointment.appointmentDate}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {appointment.appointmentTime}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>{appointment.subject}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                appointment.status === "Accepted"
-                                  ? "default"
-                                  : appointment.status === "Rejected"
-                                    ? "destructive"
-                                    : "outline"
-                              }
-                            >
-                              {appointment.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => openEditDialog(appointment)}
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() =>
-                                  handleCancelAppointment(appointment._id)
-                                }
-                                disabled={appointment.status === "Rejected"}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
+              {appointments.length > 0 && Object.keys(groupedAppointments).length > 0 ? (
+                <div className="space-y-6">
+                  {Object.entries(groupedAppointments).map(([date, dateAppointments]) => (
+                    <div key={date} className="space-y-2">
+                      <h3 className="text-lg font-semibold">{date}</h3>
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Patient Name</TableHead>
+                              <TableHead>Time</TableHead>
+                              <TableHead>Subject</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {dateAppointments.map((appointment) => (
+                              <TableRow key={appointment._id}>
+                                <TableCell className="font-medium">
+                                  {appointment.firstName} {appointment.lastName}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm">
+                                    {appointment.appointmentTime}
+                                  </div>
+                                </TableCell>
+                                <TableCell>{appointment.subject}</TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={
+                                      appointment.status.toLowerCase() === "accepted"
+                                        ? "default"
+                                        : appointment.status.toLowerCase() === "rejected"
+                                          ? "destructive"
+                                          : "outline"
+                                    }
+                                  >
+                                    {appointment.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      onClick={() => openEditDialog(appointment)}
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      onClick={() =>
+                                        handleCancelAppointment(appointment._id)
+                                      }
+                                      disabled={appointment.status.toLowerCase() === "rejected"}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Patient Name</TableHead>
+                        <TableHead>Date & Time</TableHead>
+                        <TableHead>Subject</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-8">
                           No appointments found
                         </TableCell>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
 
               {totalPages > 1 && (
                 <div className="flex justify-center mt-4">
@@ -713,8 +832,18 @@ const Appointments: React.FC = () => {
       </Card>
 
       {/* Edit Appointment Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+      <Dialog 
+        open={isEditDialogOpen} 
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) {
+            // Reset form when dialog is closed without saving
+            setCurrentAppointment(null);
+            editForm.reset();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Appointment</DialogTitle>
             <DialogDescription>
@@ -727,7 +856,7 @@ const Appointments: React.FC = () => {
               onSubmit={editForm.handleSubmit(handleEditAppointment)}
               className="space-y-4"
             >
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={editForm.control}
                   name="firstName"
@@ -757,7 +886,7 @@ const Appointments: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={editForm.control}
                   name="age"
@@ -827,40 +956,25 @@ const Appointments: React.FC = () => {
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={editForm.control}
                   name="appointmentDate"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem>
                       <FormLabel>Appointment Date</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={`w-full pl-3 text-left font-normal ${
-                                !field.value && "text-muted-foreground"
-                              }`}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <FormControl>
+                        <Input 
+                          type="date" 
+                          {...field} 
+                          value={field.value ? format(field.value, "yyyy-MM-dd") : ""}
+                          onChange={(e) => {
+                            const date = e.target.value ? new Date(e.target.value) : null;
+                            field.onChange(date);
+                          }}
+                          min={format(new Date(), "yyyy-MM-dd")}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

@@ -38,7 +38,7 @@ const doctorSchema = new mongoose.Schema({
     min: 0,
   },
   totalPatients: {
-    type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Doctor" }],
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Patient" }],
   },
   totalPatientChecked: {
     type: Number,

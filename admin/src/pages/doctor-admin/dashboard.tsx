@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { crudRequest } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -37,6 +37,19 @@ interface DashboardData {
   };
 }
 
+  /**
+   * A dashboard component for doctors, displaying quick statistics and upcoming appointments.
+   *
+   * @remarks
+   * The component fetches data from the server when mounted and displays the following information:
+   * - Total appointments
+   * - Total patients
+   * - Treatments in progress
+   * - Today's appointments
+   * - Upcoming appointments
+   *
+   * @returns A dashboard component with the above information
+   */
 const Dashboard: React.FC = () => {
    const { doctorDetails } = useDoctorAuthContext();
     
@@ -50,8 +63,16 @@ const Dashboard: React.FC = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`/api/doctor-admin/dashboard/${doctorId}`);
-        setDashboardData(response.data.data);
+        const response = await crudRequest<{
+          success: boolean;
+          data: DashboardData;
+        }>('GET', `/doctor-admin/dashboard/${doctorId}`);
+        
+        if (response.success && response.data) {
+          setDashboardData(response.data);
+        } else {
+          throw new Error('Failed to fetch dashboard data');
+        }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         toast({
@@ -79,7 +100,7 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 p-4">
       {/* Quick Statistics */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

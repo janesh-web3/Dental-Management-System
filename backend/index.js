@@ -6,6 +6,7 @@ require("dotenv").config();
 const bodyParser = require("body-parser");
 const cors = require("cors");
 
+// Import routes
 const userRouter = require("./routes/userRoute.js");
 const patientRouter = require("./routes/patientRoute.js");
 const appointmentRouter = require("./routes/appointmentRoute.js");
@@ -13,6 +14,9 @@ const doctorRouter = require("./routes/doctorRoute.js");
 const doctorAdminRouter = require("./routes/doctorAdminRoute.js");
 const testimonialRouter = require("./routes/testimonials.js");
 const contactRouter = require("./routes/contactRoute.js");
+
+// Import utilities
+const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
 
 const app = express();
 
@@ -51,4 +55,9 @@ const port = process.env.PORT || 8080;
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
+  
+  // Schedule automatic updates of doctor patient counts
+  // Update every 30 minutes by default
+  scheduleDoctorPatientCountUpdates(30);
+  console.log('Scheduled automatic doctor patient count updates');
 });

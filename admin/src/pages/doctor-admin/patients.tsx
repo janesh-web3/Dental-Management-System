@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { crudRequest } from "@/lib/api";
+import { format, formatDistance } from "date-fns";
 import {
   Card,
   CardContent,
@@ -34,15 +35,91 @@ import {
   Phone,
   MapPin,
   Mail,
-  FileText,
-  AlertTriangle,
-  Clipboard,
   FileImage,
+  Filter,
+  CheckCircle,
+  Clock,
+  Activity,
 } from "lucide-react";
 import { useDoctorAuthContext } from "@/contexts/doctorAuthContext";
 
 interface PatientsProps {
   doctorId: string;
+}
+
+interface DailyTreatment {
+  _id: string;
+  date: string;
+  treatmentAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  notes: string;
+  treatedByDoctor: string;
+  procedure: string;
+  isCompleted: boolean;
+}
+
+interface ToothDetail {
+  _id: string;
+  number: string;
+  details: string;
+  position: string;
+  procedure: string;
+  side: string;
+  dailyTreatments: DailyTreatment[];
+  totalTreatmentAmount: number;
+  totalPaidAmount: number;
+  totalRemainingAmount: number;
+  startDate: string;
+  isCompleted: boolean;
+}
+
+interface TreatmentPlan {
+  _id: string;
+  patientType: string;
+  advancedAmount: string;
+  balanceAmount: string;
+  isCompleted: boolean;
+  selectedTeethDetails: ToothDetail[];
+  teethNumber: string;
+  treatmentAmount: string;
+  treatmentDate: string;
+  treatmentDetails: string;
+  treatedByDoctor: string;
+  treatmentDocuments: Array<{
+    fileName: string;
+    fileUrl: string;
+    uploadDate: string;
+    description: string;
+  }>;
+  treatmentFindings: string;
+  completionDate: string | null;
+  clinicalFindings: string[];
+  otherFindings: string;
+  followUpDate: string;
+}
+
+interface MedicalDetail {
+  chiefComplaint: string;
+  diagnosis: string;
+  investigation: {
+    blood: string;
+    xray: string;
+  };
+  medicalHistory: {
+    bloodPressure: string;
+    diabetes: boolean;
+    thyroid: boolean;
+    bleedingDisorder: boolean;
+    pregnancy: boolean;
+    asthma: boolean;
+    allergies: string;
+    otherConditions: string;
+    noMedicalIssues: boolean;
+  };
+  patientType: string;
+  treatmentPlanning: TreatmentPlan[];
+  followUpDate: string;
 }
 
 interface Patient {
@@ -57,43 +134,7 @@ interface Patient {
     referredBy: string;
     checkUpDate: string;
   };
-  medicalDetails: Array<{
-    chiefComplaint: string;
-    diagnosis: string;
-    investigation: {
-      blood: string;
-      xray: string;
-    };
-    medicalHistory: {
-      bloodPressure: string;
-      diabetes: boolean;
-      thyroid: boolean;
-      bleedingDisorder: boolean;
-      pregnancy: boolean;
-      asthma: boolean;
-      allergies: string;
-      otherConditions: string;
-      noMedicalIssues: boolean;
-    };
-    patientType: string;
-    treatmentPlanning: Array<{
-      isCompleted: boolean;
-      selectedTeethDetails: Array<any>;
-      teethNumber: string;
-      treatmentDate: string;
-      treatmentDocuments: Array<{
-        fileName: string;
-        fileUrl: string;
-        uploadDate: string;
-        description: string;
-      }>;
-      treatmentFindings: string;
-      clinicalFindings: string[];
-      otherFindings: string;
-      followUpDate: string;
-    }>;
-    followUpDate: string;
-  }>;
+  medicalDetails: MedicalDetail[];
 }
 
 interface PatientDetails {
@@ -123,6 +164,7 @@ const Patients: React.FC = () => {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedPatient, setSelectedPatient] = useState<PatientDetails | null>(
     null
   );
@@ -132,24 +174,35 @@ const Patients: React.FC = () => {
 
   useEffect(() => {
     fetchPatients();
-  }, [doctorId, currentPage, searchTerm]);
+  }, [doctorId, currentPage, searchTerm, statusFilter]);
 
   const fetchPatients = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        `/api/doctor-admin/patients/${doctorId}`,
-        {
-          params: {
-            page: currentPage,
-            limit: 10,
-            search: searchTerm,
-          },
+      const response = await crudRequest<{
+        success: boolean;
+        data: {
+          patients: Patient[];
+          totalPages: number;
+          currentPage: number;
+          totalPatients: number;
+        };
+        message?: string;
+      }>('GET', `/doctor-admin/patients/${doctorId}`, {
+        params: {
+          page: currentPage,
+          limit: 10,
+          search: searchTerm,
+          status: statusFilter
         }
-      );
+      });
 
-      setPatients(response.data.data.patients);
-      setTotalPages(response.data.data.totalPages);
+      if (response.success) {
+        setPatients(response.data.patients);
+        setTotalPages(response.data.totalPages);
+      } else {
+        throw new Error(response.message || 'Failed to fetch patients');
+      }
     } catch (error) {
       console.error("Error fetching patients:", error);
       toast({
@@ -165,11 +218,18 @@ const Patients: React.FC = () => {
   const viewPatientDetails = async (patientId: string) => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        `/api/doctor-admin/patients/${doctorId}/${patientId}`
-      );
-      setSelectedPatient(response.data.data);
-      setIsPatientDialogOpen(true);
+      const response = await crudRequest<{
+        success: boolean;
+        data: PatientDetails;
+        message?: string;
+      }>('GET', `/doctor-admin/patients/${doctorId}/${patientId}`);
+      
+      if (response.success) {
+        setSelectedPatient(response.data);
+        setIsPatientDialogOpen(true);
+      } else {
+        throw new Error(response.message || 'Failed to fetch patient details');
+      }
     } catch (error) {
       console.error("Error fetching patient details:", error);
       toast({
@@ -180,6 +240,71 @@ const Patients: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+  
+  // Get the last treatment date for a patient
+  const getLastTreatmentDate = (patient: Patient): Date | null => {
+    let lastDate: Date | null = null;
+    
+    if (patient.medicalDetails && patient.medicalDetails.length > 0) {
+      patient.medicalDetails.forEach(medicalDetail => {
+        if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
+          medicalDetail.treatmentPlanning.forEach(treatment => {
+            if (treatment.selectedTeethDetails && treatment.selectedTeethDetails.length > 0) {
+              treatment.selectedTeethDetails.forEach(tooth => {
+                if (tooth.dailyTreatments && tooth.dailyTreatments.length > 0) {
+                  tooth.dailyTreatments.forEach(dt => {
+                    if (dt.date) {
+                      const treatmentDate = new Date(dt.date);
+                      if (!lastDate || treatmentDate > lastDate) {
+                        lastDate = treatmentDate;
+                      }
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+    
+    return lastDate;
+  };
+  
+  // Format date to a readable string
+  const formatDate = (date: Date): string => {
+    return format(date, 'MMM dd, yyyy');
+  };
+  
+  // Get days ago string
+  const getDaysAgo = (date: Date): string => {
+    return formatDistance(date, new Date(), { addSuffix: true });
+  };
+  
+  // Count total treatments for a patient
+  const countTreatments = (patient: Patient): { total: number; completed: number } => {
+    let total = 0;
+    let completed = 0;
+    
+    if (patient.medicalDetails && patient.medicalDetails.length > 0) {
+      patient.medicalDetails.forEach(medicalDetail => {
+        if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
+          medicalDetail.treatmentPlanning.forEach(treatment => {
+            if (treatment.selectedTeethDetails && treatment.selectedTeethDetails.length > 0) {
+              treatment.selectedTeethDetails.forEach(tooth => {
+                if (tooth.dailyTreatments && tooth.dailyTreatments.length > 0) {
+                  total += tooth.dailyTreatments.length;
+                  completed += tooth.dailyTreatments.filter(dt => dt.isCompleted).length;
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+    
+    return { total, completed };
   };
 
   return (
@@ -194,14 +319,28 @@ const Patients: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="relative mb-4">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search patients by name..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex flex-col md:flex-row gap-4 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search patients by name..."
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <select
+                className="p-2 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="all">All Treatments</option>
+                <option value="completed">Completed Treatments</option>
+                <option value="ongoing">Ongoing Treatments</option>
+              </select>
+            </div>
           </div>
 
           {loading && !selectedPatient ? (
@@ -216,35 +355,79 @@ const Patients: React.FC = () => {
                     <TableRow>
                       <TableHead>Patient Name</TableHead>
                       <TableHead>Contact</TableHead>
-                      <TableHead>Gender</TableHead>
-                      <TableHead>Age</TableHead>
+                      <TableHead>Treatment Status</TableHead>
+                      <TableHead>Last Treatment</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {patients.length > 0 ? (
-                      patients.map((patient) => (
-                        <TableRow key={patient._id}>
-                          <TableCell className="font-medium">
-                            {patient.personalDetails.name}
-                          </TableCell>
-                          <TableCell>
-                            {patient.personalDetails.contactNumber}
-                          </TableCell>
-                          <TableCell>
-                            {patient.personalDetails.gender}
-                          </TableCell>
-                          <TableCell>{patient.personalDetails.age}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="outline"
-                              onClick={() => viewPatientDetails(patient._id)}
-                            >
-                              View Details
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                      patients.map((patient) => {
+                        const treatmentStats = countTreatments(patient);
+                        const lastTreatmentDate = getLastTreatmentDate(patient);
+                        
+                        return (
+                          <TableRow key={patient._id}>
+                            <TableCell className="font-medium">
+                              <div className="flex flex-col">
+                                <span>{patient.personalDetails.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {patient.personalDetails.gender}, {patient.personalDetails.age} yrs
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span>{patient.personalDetails.contactNumber}</span>
+                                {patient.personalDetails.emailAddress && (
+                                  <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                    {patient.personalDetails.emailAddress}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-1">
+                                  {treatmentStats.completed === treatmentStats.total && treatmentStats.total > 0 ? (
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <Clock className="h-4 w-4 text-amber-500" />
+                                  )}
+                                  <span>
+                                    {treatmentStats.completed === treatmentStats.total && treatmentStats.total > 0
+                                      ? "Completed"
+                                      : "In Progress"}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {treatmentStats.completed}/{treatmentStats.total} treatments
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {lastTreatmentDate ? (
+                                <div className="flex flex-col">
+                                  <span>{formatDate(lastTreatmentDate)}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {getDaysAgo(lastTreatmentDate)}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">No treatments</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="outline"
+                                onClick={() => viewPatientDetails(patient._id)}
+                              >
+                                View Details
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     ) : (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-8">

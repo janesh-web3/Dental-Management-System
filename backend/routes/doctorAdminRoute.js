@@ -17,7 +17,8 @@ const {
   getDoctorAnalytics,
   updateDoctorProfile,
   updateDoctorAvailability,
-  getDoctorNotifications
+  getDoctorNotifications,
+  updateDoctorPatients
 } = require("../controller/doctorAdminCtrl.js");
 const { upload } = require("../middleware/multer.js");
 const { protectDoctorRoute } = require("../middleware/doctorAuthMiddleware.js");
@@ -54,11 +55,15 @@ router.get("/invoices/:doctorId", getDoctorInvoices);
 router.get("/analytics/:doctorId", getDoctorAnalytics);
 
 // Doctor Profile and Availability
-router.put("/profile/:doctorId", upload.single('image'), updateDoctorProfile);
+router.put("/profile/:doctorId", upload.single('profileImage'), updateDoctorProfile);
 router.put("/availability/:doctorId", updateDoctorAvailability);
 
 // Notifications & Reminders
 router.get("/notifications/:doctorId", getDoctorNotifications);
+
+// Doctor Patient Count Management
+// Use 'all' as doctorId to update all doctors
+router.post("/update-patient-counts/:doctorId", updateDoctorPatients);
 
 // Add route validation middleware to ensure the doctor can only access their own data
 router.param('doctorId', (req, res, next, doctorId) => {

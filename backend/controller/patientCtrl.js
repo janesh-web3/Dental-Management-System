@@ -301,6 +301,75 @@ const updatePatient = async (req, res) => {
       });
     }
 
+    // Track doctors who have treated this patient and update their totalPatients field
+    try {
+      // Extract all doctor IDs from daily treatments
+      const doctorIds = new Set();
+      
+      // Check if medicalDetails and treatmentPlanning exist
+      if (patient.medicalDetails && patient.medicalDetails.length > 0) {
+        const medicalDetail = patient.medicalDetails[0];
+        
+        if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
+          // Loop through each treatment plan
+          medicalDetail.treatmentPlanning.forEach(treatment => {
+            // Check if treatment has selectedTeethDetails
+            if (treatment.selectedTeethDetails && treatment.selectedTeethDetails.length > 0) {
+              // Loop through each tooth
+              treatment.selectedTeethDetails.forEach(tooth => {
+                // Check if tooth has dailyTreatments
+                if (tooth.dailyTreatments && tooth.dailyTreatments.length > 0) {
+                  // Loop through each daily treatment
+                  tooth.dailyTreatments.forEach(dailyTreatment => {
+                    // If a doctor performed this treatment and it's completed
+                    if (dailyTreatment.treatedByDoctor && dailyTreatment.isCompleted) {
+                      // Add doctor ID to the set
+                      doctorIds.add(dailyTreatment.treatedByDoctor.toString());
+                    }
+                  });
+                }
+              });
+            }
+            
+            // Also check if the overall treatment has a doctor assigned
+            if (treatment.treatedByDoctor) {
+              doctorIds.add(treatment.treatedByDoctor.toString());
+            }
+          });
+        }
+      }
+      
+      // Update each doctor's totalPatients field
+      for (const doctorId of doctorIds) {
+        // Find the doctor
+        const doctor = await Doctor.findById(doctorId);
+        
+        if (doctor) {
+          // Check if patient is already in the doctor's totalPatients list
+          const patientExists = doctor.totalPatients.some(pid => 
+            pid.toString() === patient._id.toString()
+          );
+          
+          if (!patientExists) {
+            // Add patient to doctor's totalPatients list
+            await Doctor.findByIdAndUpdate(
+              doctorId,
+              { 
+                $addToSet: { totalPatients: patient._id },
+                $inc: { totalPatientChecked: 1 }
+              },
+              { new: true }
+            );
+            
+            console.log(`Added patient ${patient._id} to doctor ${doctorId}'s patient list`);
+          }
+        }
+      }
+    } catch (doctorUpdateError) {
+      console.error('Error updating doctor patient lists:', doctorUpdateError);
+      // Continue with the response even if doctor update fails
+    }
+
     // Try to populate the doctor information if needed
     try {
       // Get the updated patient with populated doctor information
@@ -508,7 +577,7 @@ const uploadPatientFiles = async (req, res) => {
 
 const updateTreatmentStatus = async (req, res) => {
   const { patientId, medicalDetailId, treatmentId } = req.params;
-  const { isCompleted } = req.body;
+  const { isCompleted, doctorId } = req.body;
 
   try {
     // Use findOneAndUpdate to ensure atomic operation
@@ -541,6 +610,40 @@ const updateTreatmentStatus = async (req, res) => {
         success: false,
         message: "Patient or treatment not found",
       });
+    }
+
+    // If treatment is completed and doctorId is provided, update the doctor's patient list
+    if (isCompleted && doctorId) {
+      // Find the doctor
+      const doctor = await Doctor.findById(doctorId);
+      
+      if (doctor) {
+        // Check if patient is already in the doctor's totalPatients list
+        const patientExists = doctor.totalPatients.includes(patientId);
+        
+        if (!patientExists) {
+          // Add patient to doctor's totalPatients list
+          await Doctor.findByIdAndUpdate(
+            doctorId,
+            { 
+              $addToSet: { totalPatients: patientId },
+              $inc: { totalPatientChecked: 1 }
+            },
+            { new: true }
+          );
+          
+          console.log(`Added patient ${patientId} to doctor ${doctorId}'s patient list`);
+        } else {
+          // Just increment the checked count if patient already exists in the list
+          await Doctor.findByIdAndUpdate(
+            doctorId,
+            { $inc: { totalPatientChecked: 1 } },
+            { new: true }
+          );
+          
+          console.log(`Incremented check count for patient ${patientId} by doctor ${doctorId}`);
+        }
+      }
     }
 
     // Try to populate the doctor information if needed

@@ -10,34 +10,52 @@ const mongoose = require("mongoose");
 const getDashboardOverview = async (req, res) => {
   try {
     const { doctorId } = req.params;
+    
+    // Validate doctorId
+    if (!mongoose.Types.ObjectId.isValid(doctorId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid doctor ID format"
+      });
+    }
+
+    // Get doctor details
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found"
+      });
+    }
+
+    // Set up date ranges
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    
+    const todayDateStr = today.toISOString().split('T')[0];
+    const tomorrowDateStr = tomorrow.toISOString().split('T')[0];
+    const nextWeekDateStr = nextWeek.toISOString().split('T')[0];
 
     // Today's appointments
     const todayAppointments = await Appointment.find({
       doctor: doctorId,
-      appointmentDate: {
-        $gte: today.toISOString().split('T')[0],
-        $lt: tomorrow.toISOString().split('T')[0]
-      }
-    }).populate('doctor');
+      appointmentDate: todayDateStr
+    }).sort({ appointmentTime: 1 });
 
-    // Upcoming appointments (next 7 days)
-    const nextWeek = new Date(today);
-    nextWeek.setDate(nextWeek.getDate() + 7);
-    
+    // Upcoming appointments (next 7 days, excluding today)
     const upcomingAppointments = await Appointment.find({
       doctor: doctorId,
       appointmentDate: {
-        $gt: tomorrow.toISOString().split('T')[0],
-        $lte: nextWeek.toISOString().split('T')[0]
+        $gt: todayDateStr,
+        $lte: nextWeekDateStr
       }
-    }).populate('doctor');
+    }).sort({ appointmentDate: 1, appointmentTime: 1 });
 
     // Get patient summary
-    const doctor = await Doctor.findById(doctorId);
     const patientCount = doctor.totalPatients ? doctor.totalPatients.length : 0;
     
     // Treatments in progress
@@ -56,21 +74,46 @@ const getDashboardOverview = async (req, res) => {
       doctor: doctorId
     }).countDocuments();
 
+    // Format the appointment data to match frontend expectations
+    const formattedTodayAppointments = todayAppointments.map(appointment => ({
+      _id: appointment._id,
+      firstName: appointment.firstName,
+      lastName: appointment.lastName,
+      appointmentDate: appointment.appointmentDate,
+      appointmentTime: appointment.appointmentTime,
+      subject: appointment.subject,
+      status: appointment.status
+    }));
+
+    const formattedUpcomingAppointments = upcomingAppointments.map(appointment => ({
+      _id: appointment._id,
+      firstName: appointment.firstName,
+      lastName: appointment.lastName,
+      appointmentDate: appointment.appointmentDate,
+      appointmentTime: appointment.appointmentTime,
+      subject: appointment.subject,
+      status: appointment.status
+    }));
+    
+    // Use actual data from the database
+    const totalPatients = patientCount || 0;
+    const checkedPatients = doctor.totalPatientChecked || 0;
+
     res.status(200).json({
       success: true,
       data: {
-        todayAppointments,
-        upcomingAppointments,
+        todayAppointments: formattedTodayAppointments,
+        upcomingAppointments: formattedUpcomingAppointments,
         patientSummary: {
-          totalPatients: patientCount,
-          checkedPatients: doctor.totalPatientChecked || 0
+          totalPatients: totalPatients,
+          checkedPatients: checkedPatients
         },
-        treatmentsInProgress,
+        treatmentsInProgress: treatmentsInProgress,
         statistics: {
-          totalAppointments,
-          completedTreatments,
-          appointmentsToday: todayAppointments.length,
-          upcomingAppointmentsCount: upcomingAppointments.length
+          totalAppointments: totalAppointments,
+          completedTreatments: completedTreatments,
+          appointmentsToday: formattedTodayAppointments.length,
+          upcomingAppointmentsCount: formattedUpcomingAppointments.length
         }
       }
     });
@@ -252,7 +295,7 @@ const cancelDoctorAppointment = async (req, res) => {
 const getDoctorPatients = async (req, res) => {
   try {
     const { doctorId } = req.params;
-    const { page = 1, limit = 10, search = "" } = req.query;
+    const { page = 1, limit = 10, search = "", status = "all" } = req.query;
     
     // Get doctor to access their patients
     const doctor = await Doctor.findById(doctorId);
@@ -263,41 +306,97 @@ const getDoctorPatients = async (req, res) => {
       });
     }
     
-    // Get patients assigned to this doctor
+    // Base query
     let query = {};
     
+    // Add name search if provided
     if (search) {
-      query = {
-        "personalDetails.name": { $regex: search, $options: "i" }
-      };
+      query["personalDetails.name"] = { $regex: search, $options: "i" };
     }
     
-    // Find patients that have appointments with this doctor
-    const patientsWithAppointments = await Appointment.find({ doctor: doctorId })
-      .distinct('patientId');
+    // Find patients that have been treated by this doctor
+    // This looks for patients where this doctor is listed in any dailyTreatment
+    const patientsQuery = {
+      'medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor': new mongoose.Types.ObjectId(doctorId)
+    };
     
-    // Add patientId filter if there are any
-    if (patientsWithAppointments.length > 0) {
-      const validPatientIds = patientsWithAppointments.filter(id => id); // Filter out null/undefined
-      if (validPatientIds.length > 0) {
-        query._id = { $in: validPatientIds };
-      }
+    // If we're filtering by treatment status
+    if (status !== 'all') {
+      const isCompleted = status === 'completed';
+      patientsQuery['medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.isCompleted'] = isCompleted;
     }
     
+    // Get all patients treated by this doctor
+    const patientsWithTreatments = await Patient.find(patientsQuery).distinct('_id');
+    
+    // Also include patients from appointments
+    const patientsWithAppointments = await Appointment.find({ doctor: doctorId }).distinct('patientId');
+    
+    // Combine both lists of patient IDs
+    const allPatientIds = [...new Set([...patientsWithTreatments, ...patientsWithAppointments])];
+    const validPatientIds = allPatientIds.filter(id => id); // Filter out null/undefined
+    
+    // Add patient IDs to the query
+    if (validPatientIds.length > 0) {
+      query._id = { $in: validPatientIds };
+    } else {
+      // If no patients found, return empty result
+      return res.status(200).json({
+        success: true,
+        data: {
+          patients: [],
+          totalPages: 0,
+          currentPage: parseInt(page),
+          totalPatients: 0
+        }
+      });
+    }
+    
+    // Get paginated patients
     const patients = await Patient.find(query)
-      .skip((page - 1) * limit)
+      .skip((parseInt(page) - 1) * parseInt(limit))
       .limit(parseInt(limit))
       .sort({ "personalDetails.name": 1 });
     
+    // Process patients to include only treatments by this doctor
+    const processedPatients = patients.map(patient => {
+      const patientObj = patient.toObject();
+      
+      // Filter medical details to only include treatments by this doctor
+      if (patientObj.medicalDetails && patientObj.medicalDetails.length > 0) {
+        patientObj.medicalDetails = patientObj.medicalDetails.map(medicalDetail => {
+          if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
+            medicalDetail.treatmentPlanning = medicalDetail.treatmentPlanning.map(treatment => {
+              if (treatment.selectedTeethDetails && treatment.selectedTeethDetails.length > 0) {
+                treatment.selectedTeethDetails = treatment.selectedTeethDetails.map(tooth => {
+                  if (tooth.dailyTreatments && tooth.dailyTreatments.length > 0) {
+                    // Only include daily treatments performed by this doctor
+                    tooth.dailyTreatments = tooth.dailyTreatments.filter(dt => 
+                      dt.treatedByDoctor && dt.treatedByDoctor.toString() === doctorId.toString()
+                    );
+                  }
+                  return tooth;
+                });
+              }
+              return treatment;
+            });
+          }
+          return medicalDetail;
+        });
+      }
+      
+      return patientObj;
+    });
+    
     const totalPatients = await Patient.countDocuments(query);
-    const totalPages = Math.ceil(totalPatients / limit);
+    const totalPages = Math.ceil(totalPatients / parseInt(limit));
     
     res.status(200).json({
       success: true,
       data: {
-        patients,
+        patients: processedPatients,
         totalPages,
-        currentPage: page,
+        currentPage: parseInt(page),
         totalPatients
       }
     });
@@ -314,19 +413,6 @@ const getDoctorPatients = async (req, res) => {
 const getPatientDetails = async (req, res) => {
   try {
     const { patientId, doctorId } = req.params;
-    
-    // Verify this doctor has access to this patient
-    const hasAccess = await Appointment.exists({
-      doctor: doctorId,
-      patientId: patientId
-    });
-    
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to access this patient's information"
-      });
-    }
     
     const patient = await Patient.findById(patientId);
     if (!patient) {
@@ -893,6 +979,38 @@ const getDoctorNotifications = async (req, res) => {
   }
 };
 
+// Import doctor utilities
+const { updateDoctorPatientCounts } = require('../utils/doctorUtils');
+
+/**
+ * Manually trigger an update of doctor patient counts
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const updateDoctorPatients = async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+    
+    // If doctorId is provided, update only that doctor
+    // Otherwise, update all doctors
+    await updateDoctorPatientCounts(doctorId !== 'all' ? doctorId : null);
+    
+    res.status(200).json({
+      success: true,
+      message: doctorId !== 'all' 
+        ? `Patient counts updated for doctor ${doctorId}` 
+        : 'Patient counts updated for all doctors'
+    });
+  } catch (error) {
+    console.error('Error in manual doctor patient count update:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update doctor patient counts',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getDashboardOverview,
   getDoctorAppointments,
@@ -910,5 +1028,6 @@ module.exports = {
   getDoctorAnalytics,
   updateDoctorProfile,
   updateDoctorAvailability,
-  getDoctorNotifications
+  getDoctorNotifications,
+  updateDoctorPatients
 };

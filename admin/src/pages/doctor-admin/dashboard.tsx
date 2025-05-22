@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Calendar, Users, Activity, Clock, TrendingUp, CheckCircle } from "lucide-react";
+import { useDoctorAuthContext } from '@/contexts/doctorAuthContext';
 
 interface DashboardProps {
   doctorId: string;
@@ -36,7 +37,11 @@ interface DashboardData {
   };
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ doctorId }) => {
+const Dashboard: React.FC = () => {
+   const { doctorDetails } = useDoctorAuthContext();
+    
+    // Get the doctor ID from the auth context
+    const doctorId = doctorDetails?._id || "";
   const [loading, setLoading] = useState<boolean>(true);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const { toast } = useToast();

@@ -31,6 +31,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useDoctorAuthContext } from '@/contexts/doctorAuthContext';
 
 interface TreatmentsProps {
   doctorId: string;
@@ -98,7 +99,20 @@ const treatmentStepSchema = z.object({
 
 type TreatmentStepFormValues = z.infer<typeof treatmentStepSchema>;
 
-const Treatments: React.FC<TreatmentsProps> = ({ doctorId }) => {
+const Treatments: React.FC = () => {
+  const { doctorDetails, isLoading } = useDoctorAuthContext();
+  
+    // Get the doctor ID from the auth context
+    const doctorId = doctorDetails?._id || "";
+  
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading doctor panel...</span>
+        </div>
+      );
+    }
   const [loading, setLoading] = useState<boolean>(true);
   const [treatments, setTreatments] = useState<TreatmentPlan[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);

@@ -27,6 +27,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useDoctorAuthContext } from '@/contexts/doctorAuthContext';
 
 interface PrescriptionsProps {
   doctorId: string;
@@ -146,18 +147,32 @@ const prescriptionTemplates = [
   },
 ];
 
-const Prescriptions: React.FC<PrescriptionsProps> = ({ doctorId }) => {
+const Prescriptions: React.FC = () => {
+  const { doctorDetails, isLoading } = useDoctorAuthContext();
+  
+    // Get the doctor ID from the auth context
+    const doctorId = doctorDetails?._id || "";
+  
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading doctor panel...</span>
+        </div>
+      );
+    }
+
   const [loading, setLoading] = useState<boolean>(true);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [patientFilter, setPatientFilter] = useState<string>("");
+  const [patientFilter, setPatientFilter] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState<boolean>(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState<boolean>(false);
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("none");
   const { toast } = useToast();
 
   const form = useForm<PrescriptionFormValues>({
@@ -184,7 +199,7 @@ const Prescriptions: React.FC<PrescriptionsProps> = ({ doctorId }) => {
 
   useEffect(() => {
     // Apply template when selected
-    if (selectedTemplate) {
+    if (selectedTemplate && selectedTemplate !== 'none') {
       const template = prescriptionTemplates.find(t => t.name === selectedTemplate);
       if (template) {
         form.setValue("medications", template.medications);
@@ -297,7 +312,7 @@ const Prescriptions: React.FC<PrescriptionsProps> = ({ doctorId }) => {
       
       setIsCreateDialogOpen(false);
       form.reset();
-      setSelectedTemplate("");
+      setSelectedTemplate("none");
       fetchPrescriptions();
     } catch (error) {
       console.error('Error creating prescription:', error);
@@ -375,28 +390,27 @@ const Prescriptions: React.FC<PrescriptionsProps> = ({ doctorId }) => {
                   </DialogDescription>
                 </DialogHeader>
                 
-                <div className="mb-4">
-                  <FormLabel>Use Template (Optional)</FormLabel>
-                  <Select 
-                    value={selectedTemplate} 
-                    onValueChange={setSelectedTemplate}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a template" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">None</SelectItem>
-                      {prescriptionTemplates.map((template) => (
-                        <SelectItem key={template.name} value={template.name}>
-                          {template.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(handleCreatePrescription)} className="space-y-4">
+                    <div className="mb-4">
+                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Use Template (Optional)</label>
+                      <Select 
+                        value={selectedTemplate} 
+                        onValueChange={setSelectedTemplate}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {prescriptionTemplates.map((template) => (
+                            <SelectItem key={template.name} value={template.name}>
+                              {template.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <FormField
                       control={form.control}
                       name="patient"
@@ -595,7 +609,7 @@ const Prescriptions: React.FC<PrescriptionsProps> = ({ doctorId }) => {
                 <SelectValue placeholder="Filter by patient" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Patients</SelectItem>
+                <SelectItem value="all">All Patients</SelectItem>
                 {patients.map((patient) => (
                   <SelectItem key={patient._id} value={patient._id}>
                     {patient.personalDetails.name}

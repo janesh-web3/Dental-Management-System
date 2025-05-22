@@ -1,7 +1,6 @@
 const Patient = require("../model/Patient.js");
 const cloudinary = require("../config/cloudinary");
 const { deleteFile } = require("../middleware/multer");
-const validator = require("validator");
 const User = require("../model/User.js");
 const Appointment = require("../model/Appointment.js");
 const Doctor = require("../model/Doctor.js");

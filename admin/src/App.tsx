@@ -1,16 +1,15 @@
 import AdminProvider from "./contexts/adminContext";
 import { DoctorProvider } from "./contexts/DoctorContext";
 import DoctorAuthProvider from "./contexts/doctorAuthContext";
-import { PatientAuthProvider } from "./contexts/patientAuthContext";
 import AppProvider from "./providers";
 import AppRouter from "./routes";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
 export default function App() {
   return (
     <AppProvider>
       <DoctorAuthProvider>
-        <PatientAuthProvider>
           <DoctorProvider>
             <AdminProvider>
               <ToastContainer
@@ -28,7 +27,6 @@ export default function App() {
               <AppRouter />
             </AdminProvider>
           </DoctorProvider>
-        </PatientAuthProvider>
       </DoctorAuthProvider>
     </AppProvider>
   );

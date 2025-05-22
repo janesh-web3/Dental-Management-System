@@ -9,7 +9,7 @@ export const navItems: NavItem[] = [
   },
   {
     title: "Patient",
-    href: "/patient",
+    href: "/patients",
     icon: "user",
     label: "Patient",
   },

@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { 
   Loader2, Bell, Calendar, AlertCircle, CheckCircle, Clock, User
 } from "lucide-react";
+import { useDoctorAuthContext } from '@/contexts/doctorAuthContext';
 
 interface NotificationsProps {
   doctorId: string;
@@ -24,7 +25,20 @@ interface Notification {
   patientName?: string;
 }
 
-const Notifications: React.FC<NotificationsProps> = ({ doctorId }) => {
+const Notifications: React.FC = () => {
+  const { doctorDetails, isLoading } = useDoctorAuthContext();
+  
+    // Get the doctor ID from the auth context
+    const doctorId = doctorDetails?._id || "";
+  
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading doctor panel...</span>
+        </div>
+      );
+    }
   const [loading, setLoading] = useState<boolean>(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const { toast } = useToast();

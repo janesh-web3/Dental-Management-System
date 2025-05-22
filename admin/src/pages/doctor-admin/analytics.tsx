@@ -24,6 +24,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line, Bar, Pie } from 'react-chartjs-2';
+import { useDoctorAuthContext } from '@/contexts/doctorAuthContext';
 
 // Register ChartJS components
 ChartJS.register(
@@ -63,7 +64,20 @@ interface AnalyticsData {
   }>;
 }
 
-const Analytics: React.FC<AnalyticsProps> = ({ doctorId }) => {
+const Analytics: React.FC = () => {
+  const { doctorDetails, isLoading } = useDoctorAuthContext();
+  
+    // Get the doctor ID from the auth context
+    const doctorId = doctorDetails?._id || "";
+  
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading doctor panel...</span>
+        </div>
+      );
+    }
   const [loading, setLoading] = useState<boolean>(true);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [dateRange, setDateRange] = useState<string>("last30days");

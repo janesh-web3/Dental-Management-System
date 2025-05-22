@@ -1,68 +1,69 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { format } from 'date-fns';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { format } from "date-fns";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
-import { 
-  Form, 
-  FormControl, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/use-toast";
-import { 
-  CalendarIcon, 
-  Loader2, 
-  Plus, 
-  Search, 
-  Edit2, 
-  X, 
-  Filter 
+import {
+  CalendarIcon,
+  Loader2,
+  Plus,
+  Search,
+  Edit2,
+  X,
+  Filter,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useDoctorAuthContext } from "@/contexts/doctorAuthContext";
 
 interface AppointmentsProps {
   doctorId: string;
@@ -105,7 +106,21 @@ const appointmentFormSchema = z.object({
 
 type AppointmentFormValues = z.infer<typeof appointmentFormSchema>;
 
-const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
+const Appointments: React.FC = () => {
+  const { doctorDetails, isLoading } = useDoctorAuthContext();
+
+  // Get the doctor ID from the auth context
+  const doctorId = doctorDetails?._id || "";
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading doctor panel...</span>
+      </div>
+    );
+  }
+
   const [loading, setLoading] = useState<boolean>(true);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [totalPages, setTotalPages] = useState<number>(1);
@@ -114,7 +129,8 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState<boolean>(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState<boolean>(false);
-  const [currentAppointment, setCurrentAppointment] = useState<Appointment | null>(null);
+  const [currentAppointment, setCurrentAppointment] =
+    useState<Appointment | null>(null);
   const { toast } = useToast();
 
   const form = useForm<AppointmentFormValues>({
@@ -158,19 +174,22 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/doctor-admin/appointments/${doctorId}`, {
-        params: {
-          page: currentPage,
-          limit: 10,
-          search: searchTerm,
-          status: statusFilter,
-        },
-      });
-      
+      const response = await axios.get(
+        `/api/doctor-admin/appointments/${doctorId}`,
+        {
+          params: {
+            page: currentPage,
+            limit: 10,
+            search: searchTerm,
+            status: statusFilter,
+          },
+        }
+      );
+
       setAppointments(response.data.data.appointments);
       setTotalPages(response.data.data.totalPages);
     } catch (error) {
-      console.error('Error fetching appointments:', error);
+      console.error("Error fetching appointments:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -186,21 +205,24 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
       setLoading(true);
       const formattedValues = {
         ...values,
-        appointmentDate: format(values.appointmentDate, 'yyyy-MM-dd'),
+        appointmentDate: format(values.appointmentDate, "yyyy-MM-dd"),
       };
 
-      await axios.post(`/api/doctor-admin/appointments/${doctorId}`, formattedValues);
-      
+      await axios.post(
+        `/api/doctor-admin/appointments/${doctorId}`,
+        formattedValues
+      );
+
       toast({
         title: "Success",
         description: "Appointment created successfully",
       });
-      
+
       setIsCreateDialogOpen(false);
       form.reset();
       fetchAppointments();
     } catch (error) {
-      console.error('Error creating appointment:', error);
+      console.error("Error creating appointment:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -213,29 +235,29 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
 
   const handleEditAppointment = async (values: AppointmentFormValues) => {
     if (!currentAppointment) return;
-    
+
     try {
       setLoading(true);
       const formattedValues = {
         ...values,
-        appointmentDate: format(values.appointmentDate, 'yyyy-MM-dd'),
+        appointmentDate: format(values.appointmentDate, "yyyy-MM-dd"),
       };
 
       await axios.put(
-        `/api/doctor-admin/appointments/${doctorId}/${currentAppointment._id}`, 
+        `/api/doctor-admin/appointments/${doctorId}/${currentAppointment._id}`,
         formattedValues
       );
-      
+
       toast({
         title: "Success",
         description: "Appointment updated successfully",
       });
-      
+
       setIsEditDialogOpen(false);
       editForm.reset();
       fetchAppointments();
     } catch (error) {
-      console.error('Error updating appointment:', error);
+      console.error("Error updating appointment:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -249,16 +271,18 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
   const handleCancelAppointment = async (appointmentId: string) => {
     try {
       setLoading(true);
-      await axios.put(`/api/doctor-admin/appointments/${doctorId}/${appointmentId}/cancel`);
-      
+      await axios.put(
+        `/api/doctor-admin/appointments/${doctorId}/${appointmentId}/cancel`
+      );
+
       toast({
         title: "Success",
         description: "Appointment cancelled successfully",
       });
-      
+
       fetchAppointments();
     } catch (error) {
-      console.error('Error cancelling appointment:', error);
+      console.error("Error cancelling appointment:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -271,10 +295,10 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
 
   const openEditDialog = (appointment: Appointment) => {
     setCurrentAppointment(appointment);
-    
+
     // Parse the date string to a Date object
     const appointmentDate = new Date(appointment.appointmentDate);
-    
+
     editForm.reset({
       firstName: appointment.firstName,
       lastName: appointment.lastName,
@@ -289,7 +313,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
       comments: appointment.comments || "",
       patientId: appointment.patientId,
     });
-    
+
     setIsEditDialogOpen(true);
   };
 
@@ -304,7 +328,10 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                 Manage your patient appointments
               </CardDescription>
             </div>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <Dialog
+              open={isCreateDialogOpen}
+              onOpenChange={setIsCreateDialogOpen}
+            >
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
@@ -318,9 +345,12 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                     Fill in the details to schedule a new appointment
                   </DialogDescription>
                 </DialogHeader>
-                
+
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleCreateAppointment)} className="space-y-4">
+                  <form
+                    onSubmit={form.handleSubmit(handleCreateAppointment)}
+                    className="space-y-4"
+                  >
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -335,7 +365,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="lastName"
@@ -350,7 +380,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                         )}
                       />
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -365,15 +395,15 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="gender"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Gender</FormLabel>
-                            <Select 
-                              onValueChange={field.onChange} 
+                            <Select
+                              onValueChange={field.onChange}
                               defaultValue={field.value}
                             >
                               <FormControl>
@@ -392,7 +422,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                         )}
                       />
                     </div>
-                    
+
                     <FormField
                       control={form.control}
                       name="phoneNumber"
@@ -406,7 +436,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="address"
@@ -420,7 +450,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -446,7 +476,10 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
+                              <PopoverContent
+                                className="w-auto p-0"
+                                align="start"
+                              >
                                 <Calendar
                                   mode="single"
                                   selected={field.value}
@@ -460,7 +493,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="appointmentTime"
@@ -475,7 +508,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                         )}
                       />
                     </div>
-                    
+
                     <FormField
                       control={form.control}
                       name="subject"
@@ -489,7 +522,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="reason"
@@ -497,17 +530,17 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                         <FormItem>
                           <FormLabel>Reason</FormLabel>
                           <FormControl>
-                            <Textarea 
-                              placeholder="Reason for appointment" 
-                              className="resize-none" 
-                              {...field} 
+                            <Textarea
+                              placeholder="Reason for appointment"
+                              className="resize-none"
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="comments"
@@ -515,20 +548,22 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                         <FormItem>
                           <FormLabel>Comments (Optional)</FormLabel>
                           <FormControl>
-                            <Textarea 
-                              placeholder="Additional comments" 
-                              className="resize-none" 
-                              {...field} 
+                            <Textarea
+                              placeholder="Additional comments"
+                              className="resize-none"
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <DialogFooter>
                       <Button type="submit" disabled={loading}>
-                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {loading && (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        )}
                         Create Appointment
                       </Button>
                     </DialogFooter>
@@ -549,10 +584,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Select
-              value={statusFilter}
-              onValueChange={setStatusFilter}
-            >
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Filter by status" />
@@ -565,7 +597,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
               </SelectContent>
             </Select>
           </div>
-          
+
           {loading ? (
             <div className="flex justify-center items-center h-64">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -600,13 +632,15 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                           </TableCell>
                           <TableCell>{appointment.subject}</TableCell>
                           <TableCell>
-                            <Badge variant={
-                              appointment.status === "Accepted" 
-                                ? "default" 
-                                : appointment.status === "Rejected" 
-                                  ? "destructive" 
-                                  : "outline"
-                            }>
+                            <Badge
+                              variant={
+                                appointment.status === "Accepted"
+                                  ? "default"
+                                  : appointment.status === "Rejected"
+                                    ? "destructive"
+                                    : "outline"
+                              }
+                            >
                               {appointment.status}
                             </Badge>
                           </TableCell>
@@ -622,7 +656,9 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                               <Button
                                 variant="outline"
                                 size="icon"
-                                onClick={() => handleCancelAppointment(appointment._id)}
+                                onClick={() =>
+                                  handleCancelAppointment(appointment._id)
+                                }
                                 disabled={appointment.status === "Rejected"}
                               >
                                 <X className="h-4 w-4" />
@@ -641,14 +677,16 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                   </TableBody>
                 </Table>
               </div>
-              
+
               {totalPages > 1 && (
                 <div className="flex justify-center mt-4">
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
                       disabled={currentPage === 1}
                     >
                       Previous
@@ -659,7 +697,9 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                      }
                       disabled={currentPage === totalPages}
                     >
                       Next
@@ -671,7 +711,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
           )}
         </CardContent>
       </Card>
-      
+
       {/* Edit Appointment Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
@@ -681,9 +721,12 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
               Update the appointment details
             </DialogDescription>
           </DialogHeader>
-          
+
           <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(handleEditAppointment)} className="space-y-4">
+            <form
+              onSubmit={editForm.handleSubmit(handleEditAppointment)}
+              className="space-y-4"
+            >
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={editForm.control}
@@ -698,7 +741,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={editForm.control}
                   name="lastName"
@@ -713,7 +756,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                   )}
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={editForm.control}
@@ -728,15 +771,15 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={editForm.control}
                   name="gender"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Gender</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -755,7 +798,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                   )}
                 />
               </div>
-              
+
               <FormField
                 control={editForm.control}
                 name="phoneNumber"
@@ -769,7 +812,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={editForm.control}
                 name="address"
@@ -783,7 +826,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                   </FormItem>
                 )}
               />
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={editForm.control}
@@ -822,7 +865,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={editForm.control}
                   name="appointmentTime"
@@ -837,7 +880,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                   )}
                 />
               </div>
-              
+
               <FormField
                 control={editForm.control}
                 name="subject"
@@ -851,7 +894,7 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={editForm.control}
                 name="reason"
@@ -859,17 +902,17 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                   <FormItem>
                     <FormLabel>Reason</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Reason for appointment" 
-                        className="resize-none" 
-                        {...field} 
+                      <Textarea
+                        placeholder="Reason for appointment"
+                        className="resize-none"
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={editForm.control}
                 name="comments"
@@ -877,17 +920,17 @@ const Appointments: React.FC<AppointmentsProps> = ({ doctorId }) => {
                   <FormItem>
                     <FormLabel>Comments (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Additional comments" 
-                        className="resize-none" 
-                        {...field} 
+                      <Textarea
+                        placeholder="Additional comments"
+                        className="resize-none"
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <DialogFooter>
                 <Button type="submit" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

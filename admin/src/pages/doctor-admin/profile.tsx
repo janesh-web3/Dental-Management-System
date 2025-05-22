@@ -21,6 +21,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useDoctorAuthContext } from '@/contexts/doctorAuthContext';
 
 interface ProfileProps {
   doctorId: string;
@@ -75,7 +76,20 @@ const availabilityFormSchema = z.object({
 
 type AvailabilityFormValues = z.infer<typeof availabilityFormSchema>;
 
-const Profile: React.FC<ProfileProps> = ({ doctorId }) => {
+const Profile: React.FC = () => {
+  const { doctorDetails, isLoading } = useDoctorAuthContext();
+  
+    // Get the doctor ID from the auth context
+    const doctorId = doctorDetails?._id || "";
+  
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading doctor panel...</span>
+        </div>
+      );
+    }
   const [loading, setLoading] = useState<boolean>(true);
   const [imageLoading, setImageLoading] = useState<boolean>(false);
   const [doctor, setDoctor] = useState<Doctor | null>(null);

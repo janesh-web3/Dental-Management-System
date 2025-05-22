@@ -1,7 +1,6 @@
 import React, { Suspense, lazy } from "react";
 import { Navigate, Outlet, useRoutes } from "react-router-dom";
 import PrivateRoute from "./PrivateRoute";
-import DoctorProtectedRoute from "./DoctorProtectedRoute";
 import PatientProtectedRoute from "./PatientProtectedRoute.tsx";
 import AdminOrDoctorRoute from "./AdminOrDoctorRoute";
 
@@ -14,7 +13,6 @@ import Setting from "@/pages/setting";
 import Dashboard from "@/pages/dashboard";
 import Testimonials from "@/pages/testimonials";
 import Contacts from "@/pages/contact";
-import DoctorAdmin from "@/pages/doctor-admin";
 
 // Lazy-loaded components
 const DashboardLayout = lazy(
@@ -45,7 +43,7 @@ const AppRouter: React.FC = () => {
       ),
       children: [
         { path: "/", element: <Dashboard />, index: true },
-        { path: "/patient", element: <Patient /> },
+        { path: "/patients", element: <Patient /> },
         { path: "/doctors", element: <Doctor /> },
         { path: "/appointment", element: <Appointment /> },
         { path: "/user", element: <User /> },
@@ -58,9 +56,16 @@ const AppRouter: React.FC = () => {
   ];
 
   // Import doctor pages and layout components
-  const DoctorDashboard = lazy(() => import("@/pages/doctor/dashboard"));
-  const DoctorPatients = lazy(() => import("@/pages/doctor/patients"));
+  const DoctorDashboard = lazy(() => import("@/pages/doctor-admin/dashboard.tsx"));
+  const AppointmentDashboard = lazy(() => import("@/pages/doctor-admin/appointments.tsx"));
+  const PatientsDashboard = lazy(() => import("@/pages/doctor-admin/patients.tsx"));
+  const TreatmentsDashboard = lazy(() => import("@/pages/doctor-admin/treatments.tsx"));
+  const PrescriptionsDashboard = lazy(() => import("@/pages/doctor-admin/prescriptions.tsx"));
+  const BillingDashboard = lazy(() => import("@/pages/doctor-admin/billing.tsx"));
+  const AnalyticsDashboard = lazy(() => import("@/pages/doctor-admin/analytics.tsx"));
+  const NotificationsDashboard = lazy(() => import("@/pages/doctor-admin/notifications.tsx"));
   const DoctorLayout = lazy(() => import("@/components/layout/doctor-layout"));
+  const ProfileDashboard = lazy(() => import("@/pages/doctor-admin/profile.tsx"));
 
   // Import patient pages and layout components
   const PatientDashboard = lazy(() => import("@/pages/patient-admin/dashboard"));
@@ -92,23 +97,35 @@ const AppRouter: React.FC = () => {
         },
         { 
           path: "patients", 
-          element: <DoctorPatients /> 
+          element: <PatientsDashboard />
         },
         { 
           path: "appointments", 
-          element: <h1 className="p-6 text-2xl">Appointments Page (Coming Soon)</h1> 
+          element: <AppointmentDashboard />
         },
         { 
           path: "treatments", 
-          element: <h1 className="p-6 text-2xl">Treatments Page (Coming Soon)</h1> 
+          element: <TreatmentsDashboard />
         },
         { 
           path: "prescriptions", 
-          element: <h1 className="p-6 text-2xl">Prescriptions Page (Coming Soon)</h1> 
+          element: <PrescriptionsDashboard />
+        },
+        { 
+          path: "billing", 
+          element: <BillingDashboard />
+        },
+        { 
+          path: "analytics", 
+          element: <AnalyticsDashboard />
+        },
+        { 
+          path: "notifications", 
+          element: <NotificationsDashboard />
         },
         { 
           path: "profile", 
-          element: <h1 className="p-6 text-2xl">Doctor Profile Page (Coming Soon)</h1> 
+          element: <ProfileDashboard /> 
         },
       ],
     },

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { usePatientAuthContext } from "@/contexts";
-import { getPatientAppointments, getPatientBills, getPatientMessages } from "@/utils/patientAuth.ts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Receipt, FileText, Bell, Clock, User, Phone, Mail, MapPin } from "lucide-react";
@@ -10,12 +9,53 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import PageTitle from "@/components/shared/page-title.tsx";
+import { crudRequest } from "@/utils/api";
+
+// Define types for the data
+interface Appointment {
+  _id: string;
+  appointmentDate: string;
+  status: string;
+  doctorId?: {
+    _id: string;
+    name: string;
+    specialization?: string;
+  };
+  treatmentType?: string;
+  notes?: string;
+}
+
+interface Bill {
+  _id: string;
+  date: string;
+  amount: number;
+  status: string;
+  description?: string;
+  treatmentId?: string;
+  totalAmount?: number;
+  paidAmount?: number;
+  remainingAmount?: number;
+  isCompleted?: boolean;
+}
+
+interface Message {
+  _id: string;
+  id?: string; // Some responses might use id instead of _id
+  date: string;
+  subject: string;
+  content: string;
+  isRead: boolean;
+  sender: string;
+  title?: string; // Some responses might include a title
+  doctorName?: string; // Doctor who sent the message
+  doctorSpecialization?: string; // Doctor's specialization
+}
 
 const PatientDashboard: React.FC = () => {
   const { patientDetails } = usePatientAuthContext();
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [bills, setBills] = useState<any[]>([]);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [bills, setBills] = useState<Bill[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState({
     appointments: true,
     bills: true,
@@ -26,24 +66,36 @@ const PatientDashboard: React.FC = () => {
     const fetchData = async () => {
       if (patientDetails._id) {
         try {
-          // Fetch appointments
-          const appointmentsResponse = await getPatientAppointments(patientDetails._id);
-          if (appointmentsResponse.success && appointmentsResponse.appointments) {
-            setAppointments(appointmentsResponse.appointments);
+          // Fetch appointments using crudRequest
+          const appointmentsResponse = await crudRequest<{success: boolean; appointments: Appointment[]}>(
+            'GET',
+            `/patient/${patientDetails._id}/appointments`
+          );
+          
+          if (appointmentsResponse.success && appointmentsResponse.data?.appointments) {
+            setAppointments(appointmentsResponse.data.appointments);
           }
           setLoading(prev => ({ ...prev, appointments: false }));
 
-          // Fetch bills
-          const billsResponse = await getPatientBills(patientDetails._id);
-          if (billsResponse.success && billsResponse.bills) {
-            setBills(billsResponse.bills);
+          // Fetch bills using crudRequest
+          const billsResponse = await crudRequest<{success: boolean; bills: Bill[]}>(
+            'GET',
+            `/patient/${patientDetails._id}/bills`
+          );
+          
+          if (billsResponse.success && billsResponse.data?.bills) {
+            setBills(billsResponse.data.bills);
           }
           setLoading(prev => ({ ...prev, bills: false }));
 
-          // Fetch messages
-          const messagesResponse = await getPatientMessages(patientDetails._id);
-          if (messagesResponse.success && messagesResponse.messages) {
-            setMessages(messagesResponse.messages);
+          // Fetch messages using crudRequest
+          const messagesResponse = await crudRequest<{success: boolean; messages: Message[]}>(
+            'GET',
+            `/patient/${patientDetails._id}/messages`
+          );
+          
+          if (messagesResponse.success && messagesResponse.data?.messages) {
+            setMessages(messagesResponse.data.messages);
           }
           setLoading(prev => ({ ...prev, messages: false }));
         } catch (error) {
@@ -225,16 +277,16 @@ const PatientDashboard: React.FC = () => {
                         </div>
                         <div className="text-sm mt-1">
                           <span className="text-muted-foreground">Total: </span>
-                          <span className="font-medium">₹{bill.totalAmount.toFixed(2)}</span>
+                          <span className="font-medium">₹{(bill.totalAmount || bill.amount || 0).toFixed(2)}</span>
                         </div>
                         <div className="text-sm">
                           <span className="text-muted-foreground">Paid: </span>
-                          <span className="font-medium">₹{bill.paidAmount.toFixed(2)}</span>
+                          <span className="font-medium">₹{(bill.paidAmount || 0).toFixed(2)}</span>
                         </div>
                       </div>
                       <div>
                         <Badge variant={bill.isCompleted ? "default" : "outline"}>
-                          {bill.isCompleted ? "Paid" : `₹${bill.remainingAmount.toFixed(2)} Due`}
+                          {bill.isCompleted ? "Paid" : `₹${(bill.remainingAmount || bill.amount || 0).toFixed(2)} Due`}
                         </Badge>
                       </div>
                     </div>

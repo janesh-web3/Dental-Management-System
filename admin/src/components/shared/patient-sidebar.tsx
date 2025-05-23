@@ -1,11 +1,11 @@
 "use client";
 import DashboardNav from "@/components/shared/dashboard-nav";
-import { patientNavItems } from "@/constants/patientNavData";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
 import { ChevronsLeft, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePatientAuthContext } from "@/contexts/patientAuthContext";
+import { patientNavItems } from "@/constants/patientNavData";
 
 type PatientSidebarProps = {
   className?: string;

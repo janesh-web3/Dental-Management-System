@@ -1,9 +1,9 @@
 import DashboardNav from '@/components/shared/dashboard-nav';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { patientNavItems } from '@/constants/patientNavData';
 import { Dispatch, SetStateAction, useState, useEffect } from 'react';
 import { usePatientAuthContext } from '@/contexts/patientAuthContext';
 import { User } from 'lucide-react';
+import { patientNavItems } from '@/constants/patientNavData';
 
 type PatientMobileSidebarProps = {
   className?: string;

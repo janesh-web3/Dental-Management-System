@@ -10,7 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { usePathname } from "@/routes/hooks";
+import { useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
 
 interface DashboardNavProps {
@@ -24,14 +24,13 @@ export default function DashboardNav({
   setOpen,
   isMobileNav = false,
 }: DashboardNavProps) {
-  const path = usePathname();
+  const location = useLocation();
+  const path = location.pathname;
   const { isMinimized } = useSidebar();
 
   if (!items?.length) {
     return null;
   }
-
-  console.log("isActive", isMobileNav, isMinimized);
 
   return (
     <nav className="grid items-start gap-2">

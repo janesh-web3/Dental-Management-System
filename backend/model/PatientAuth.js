@@ -61,8 +61,8 @@ patientAuthSchema.methods.comparePassword = async function (candidatePassword) {
 // Method to generate JWT token
 patientAuthSchema.methods.generateAuthToken = function () {
   return jwt.sign(
-    { id: this._id, patientId: this.patientId },
-    process.env.JWT_SECRET || "your-secret-key",
+    { id: this._id },
+    process.env.JWT_SECRET,
     { expiresIn: "7d" }
   );
 };

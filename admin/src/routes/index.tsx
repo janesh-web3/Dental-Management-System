@@ -64,18 +64,17 @@ const AppRouter: React.FC = () => {
   const BillingDashboard = lazy(() => import("@/pages/doctor-admin/billing.tsx"));
   const AnalyticsDashboard = lazy(() => import("@/pages/doctor-admin/analytics.tsx"));
   const NotificationsDashboard = lazy(() => import("@/pages/doctor-admin/notifications.tsx"));
-  const DoctorLayout = lazy(() => import("@/components/layout/doctor-layout"));
+  const DoctorLayout = lazy(() => import("@/components/layout/doctor-layout.tsx"));
   const ProfileDashboard = lazy(() => import("@/pages/doctor-admin/profile.tsx"));
 
   // Import patient pages and layout components
-  const PatientDashboard = lazy(() => import("@/pages/patient-admin/dashboard"));
-  const PatientAppointments = lazy(() => import("@/pages/patient-admin/appointments"));
-  const PatientTreatments = lazy(() => import("@/pages/patient-admin/treatments"));
-  const PatientBills = lazy(() => import("@/pages/patient-admin/bills"));
-  const PatientProfile = lazy(() => import("@/pages/patient-admin/profile"));
-  const PatientMessages = lazy(() => import("@/pages/patient-admin/messages"));
-  const PatientLoginPage = lazy(() => import("@/pages/patient-admin/login"));
-  const PatientLayout = lazy(() => import("@/components/layout/patient-layout"));
+  const PatientDashboard = lazy(() => import("@/pages/patient-admin/dashboard.tsx"));
+  const PatientAppointments = lazy(() => import("@/pages/patient-admin/appointments.tsx"));
+  const PatientTreatments = lazy(() => import("@/pages/patient-admin/treatments.tsx"));
+  const PatientBills = lazy(() => import("@/pages/patient-admin/bills.tsx"));
+  const PatientProfile = lazy(() => import("@/pages/patient-admin/profile.tsx"));
+  const PatientMessages = lazy(() => import("@/pages/patient-admin/messages.tsx"));
+  const PatientLayout = lazy(() => import("@/components/layout/patient-layout.tsx"));
 
   const doctorRoutes = [
     {
@@ -178,8 +177,6 @@ const AppRouter: React.FC = () => {
 
   const publicRoutes = [
     { path: "/login", element: <SignInPage />, index: true },
-    { path: "/doctor/login", element: <SignInPage /> },
-    { path: "/patient/login", element: <PatientLoginPage /> },
     { path: "/404", element: <NotFound /> },
     { path: "*", element: <Navigate to="/404" replace /> },
   ];

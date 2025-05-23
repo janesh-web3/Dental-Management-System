@@ -1,8 +1,9 @@
 import DashboardNav from '@/components/shared/dashboard-nav';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { patientNavItems } from '@/constants/patientNavData';
-import { Dispatch, SetStateAction } from 'react';
+import { Dispatch, SetStateAction, useState, useEffect } from 'react';
 import { usePatientAuthContext } from '@/contexts/patientAuthContext';
+import { User } from 'lucide-react';
 
 type PatientMobileSidebarProps = {
   className?: string;
@@ -14,8 +15,13 @@ export default function PatientMobileSidebar({
   setSidebarOpen,
   sidebarOpen
 }: PatientMobileSidebarProps) {
-  const { patientDetails } = usePatientAuthContext();
-
+  const { patientDetails, isAuthenticated } = usePatientAuthContext();
+  const [mounted, setMounted] = useState(false);
+  
+  // Use useEffect to handle client-side rendering
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   return (
     <>
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -28,19 +34,21 @@ export default function PatientMobileSidebar({
               </div>
               
               {/* Patient info section */}
-              <div className="mb-6 p-3 border rounded-md">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="font-bold text-primary">
-                      {patientDetails?.name?.charAt(0) || "P"}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{patientDetails?.name}</p>
-                    <p className="text-xs text-muted-foreground">{patientDetails?.email}</p>
+              {mounted && isAuthenticated && (
+                <div className="mb-6 p-3 border rounded-md">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="font-bold text-primary">
+                        {patientDetails?.name?.charAt(0) || <User className="h-5 w-5" />}
+                      </span>
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="font-medium text-sm truncate">{patientDetails?.name || "Patient"}</p>
+                      <p className="text-xs text-muted-foreground truncate">{patientDetails?.email || "Loading..."}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
               
               <div className="space-y-1 px-2">
                 <DashboardNav items={patientNavItems} setOpen={setSidebarOpen} />

@@ -3,8 +3,8 @@ import DashboardNav from "@/components/shared/dashboard-nav";
 import { patientNavItems } from "@/constants/patientNavData";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
-import { ChevronsLeft } from "lucide-react";
-import { useState } from "react";
+import { ChevronsLeft, User } from "lucide-react";
+import { useState, useEffect } from "react";
 import { usePatientAuthContext } from "@/contexts/patientAuthContext";
 
 type PatientSidebarProps = {
@@ -14,7 +14,13 @@ type PatientSidebarProps = {
 export default function PatientSidebar({ className }: PatientSidebarProps) {
   const { isMinimized, toggle } = useSidebar();
   const [status, setStatus] = useState(false);
-  const { patientDetails } = usePatientAuthContext();
+  const { patientDetails, isAuthenticated } = usePatientAuthContext();
+  const [mounted, setMounted] = useState(false);
+
+  // Use useEffect to handle client-side rendering
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleToggle = () => {
     setStatus(true);
@@ -53,17 +59,17 @@ export default function PatientSidebar({ className }: PatientSidebarProps) {
       </div>
       
       {/* Patient info section */}
-      {!isMinimized && (
+      {!isMinimized && mounted && isAuthenticated && (
         <div className="mb-4 p-3 border rounded-md bg-background">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
               <span className="font-bold text-primary">
-                {patientDetails?.name?.charAt(0) || "P"}
+                {patientDetails?.name?.charAt(0) || <User className="h-5 w-5" />}
               </span>
             </div>
-            <div>
-              <p className="font-medium text-sm">{patientDetails?.name}</p>
-              <p className="text-xs text-muted-foreground">{patientDetails?.email}</p>
+            <div className="overflow-hidden">
+              <p className="font-medium text-sm truncate">{patientDetails?.name || "Patient"}</p>
+              <p className="text-xs text-muted-foreground truncate">{patientDetails?.email || "Loading..."}</p>
             </div>
           </div>
         </div>

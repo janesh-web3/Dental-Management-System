@@ -51,7 +51,6 @@ export default function DoctorAuthProvider({ children }: DoctorAuthProviderProps
         return;
       }
 
-      // Use real API call to get doctor details
       const response = await getCurrentDoctor(token);
       
       if (response.success && response.doctor) {

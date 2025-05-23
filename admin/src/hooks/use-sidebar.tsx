@@ -1,19 +1,39 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
-const SidebarContext = createContext<{
+interface SidebarContextType {
   isMinimized: boolean;
   toggle: () => void;
-}>({
+}
+
+const SidebarContext = createContext<SidebarContextType>({
   isMinimized: false,
   toggle: () => {}
 });
 
 export const useSidebar = () => useContext(SidebarContext);
 
-export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
-  children
+interface SidebarProviderProps {
+  children: React.ReactNode;
+  userType?: 'patient' | 'doctor' | 'admin';
+}
+
+export const SidebarProvider: React.FC<SidebarProviderProps> = ({
+  children,
+  userType = 'default'
 }) => {
-  const [isMinimized, setIsMinimized] = useState(false);
+  // Use localStorage to persist sidebar state for different user types
+  const storageKey = `sidebar_minimized_${userType}`;
+  
+  // Initialize state from localStorage or default to false (expanded)
+  const [isMinimized, setIsMinimized] = useState(() => {
+    const saved = localStorage.getItem(storageKey);
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Save state changes to localStorage
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(isMinimized));
+  }, [isMinimized, storageKey]);
 
   const toggle = () => {
     setIsMinimized(!isMinimized);

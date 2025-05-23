@@ -11,7 +11,7 @@ const DoctorProtectedRoute: React.FC<React.PropsWithChildren<{}>> = ({ children 
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/doctor/login" replace />;
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
 export default DoctorProtectedRoute;

@@ -16,7 +16,7 @@ const api = axios.create({
 // Add axios interceptor to include auth token in requests
 api.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem('patientToken');
+    const token = localStorage.getItem('patientToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -37,7 +37,7 @@ export const patientLogin = async (email: string, password: string): Promise<{ s
         token: data.token,
         patient: {
           ...data.patient,
-          role: 'patient', // Ensure role is set for frontend compatibility
+          role: 'patient', 
         }
       };
     } else {
@@ -92,15 +92,23 @@ export const getCurrentPatient = async (token: string): Promise<{ success: boole
     console.error('Get current patient error:', error);
     
     if (error.response) {
-      // Check if token is invalid or expired
-      if (error.response.status === 401) {
+      // Only return session expired message for specific 401 errors related to token
+      if (error.response.status === 401 && 
+          (error.response.data?.message?.includes('token') || 
+           error.response.data?.message?.includes('Token') || 
+           error.response.data?.message?.includes('authentication') || 
+           error.response.data?.message?.includes('Authentication'))) {
         return { success: false, message: 'Session expired. Please login again.' };
       }
+      
+      // For other errors, return the error message but don't indicate session expiry
       const message = error.response.data?.message || 'Failed to get patient details';
       return { success: false, message };
     } else if (error.request) {
+      // Network error - server didn't respond
       return { success: false, message: 'No response from server. Please check your connection.' };
     } else {
+      // Something happened in setting up the request
       return { success: false, message: 'Error setting up request' };
     }
   }

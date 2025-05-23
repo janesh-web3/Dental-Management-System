@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { usePatientAuthContext } from "@/contexts/patientAuthContext";
+import { usePatientAuthContext } from "@/contexts";
 import { getPatientBills } from "@/utils/patientAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

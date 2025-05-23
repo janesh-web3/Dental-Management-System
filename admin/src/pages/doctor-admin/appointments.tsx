@@ -46,14 +46,7 @@ import {
 } from "@/components/ui/select";
 
 import { useToast } from "@/components/ui/use-toast";
-import {
-  Loader2,
-  Plus,
-  Search,
-  Edit2,
-  X,
-  Filter,
-} from "lucide-react";
+import { Loader2, Plus, Search, Edit2, X, Filter } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -118,7 +111,9 @@ const Appointments: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   // We'll only use groupedAppointments for display, but we keep the appointments array for other operations
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [groupedAppointments, setGroupedAppointments] = useState<{[key: string]: Appointment[]}>({});
+  const [groupedAppointments, setGroupedAppointments] = useState<{
+    [key: string]: Appointment[];
+  }>({});
   const [totalPages, setTotalPages] = useState<number>(1);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -203,14 +198,14 @@ const Appointments: React.FC = () => {
     if (!dateString) {
       return "Unknown Date";
     }
-    
+
     try {
       const date = parseISO(dateString);
-      
+
       if (isNaN(date.getTime())) {
         return "Invalid Date";
       }
-      
+
       if (isToday(date)) {
         return "Today";
       } else if (isTomorrow(date)) {
@@ -218,7 +213,7 @@ const Appointments: React.FC = () => {
       } else if (isYesterday(date)) {
         return "Yesterday";
       }
-      
+
       return format(date, "EEEE, MMMM d, yyyy");
     } catch (error) {
       console.error("Error parsing date:", error);
@@ -230,12 +225,12 @@ const Appointments: React.FC = () => {
     try {
       setLoading(true);
       const response = await crudRequest<AppointmentResponse>(
-        'GET',
+        "GET",
         `/doctor-admin/appointments/${doctorId}`,
         {
           params: {
             search: searchTerm,
-            status: statusFilter !== 'all' ? statusFilter : undefined,
+            status: statusFilter !== "all" ? statusFilter : undefined,
           },
         }
       );
@@ -247,13 +242,15 @@ const Appointments: React.FC = () => {
           // Get the appointments directly from the response
           const appointments = response.data.appointments || [];
           setAppointments(appointments);
-          
+
           // Group appointments by date for display
-          const grouped: {[key: string]: Appointment[]} = {};
+          const grouped: { [key: string]: Appointment[] } = {};
           if (Array.isArray(appointments)) {
-            appointments.forEach(appointment => {
+            appointments.forEach((appointment) => {
               if (appointment && appointment.appointmentDate) {
-                const formattedDate = formatAppointmentDate(appointment.appointmentDate);
+                const formattedDate = formatAppointmentDate(
+                  appointment.appointmentDate
+                );
                 if (!grouped[formattedDate]) {
                   grouped[formattedDate] = [];
                 }
@@ -262,7 +259,7 @@ const Appointments: React.FC = () => {
             });
           }
           setGroupedAppointments(grouped);
-          
+
           // Get total pages directly from the response
           setTotalPages(response.data.totalPages || 1);
         } catch (err) {
@@ -272,7 +269,7 @@ const Appointments: React.FC = () => {
           setTotalPages(1);
         }
       } else {
-        throw new Error(response.message || 'Failed to fetch appointments');
+        throw new Error(response.message || "Failed to fetch appointments");
       }
     } catch (error) {
       console.error("Error fetching appointments:", error);
@@ -294,11 +291,12 @@ const Appointments: React.FC = () => {
         appointmentDate: format(values.appointmentDate, "yyyy-MM-dd"),
       };
 
-      const response = await crudRequest<{ success: boolean; message?: string }>(
-        'POST',
-        `/doctor-admin/appointments/${doctorId}`,
-        { data: formattedValues }
-      );
+      const response = await crudRequest<{
+        success: boolean;
+        message?: string;
+      }>("POST", `/doctor-admin/appointments/${doctorId}`, {
+        data: formattedValues,
+      });
 
       if (response.success) {
         toast({
@@ -310,7 +308,7 @@ const Appointments: React.FC = () => {
         form.reset();
         fetchAppointments();
       } else {
-        throw new Error(response.message || 'Failed to create appointment');
+        throw new Error(response.message || "Failed to create appointment");
       }
     } catch (error) {
       console.error("Error creating appointment:", error);
@@ -334,8 +332,11 @@ const Appointments: React.FC = () => {
         appointmentDate: format(values.appointmentDate, "yyyy-MM-dd"),
       };
 
-      const response = await crudRequest<{ success: boolean; message?: string }>(
-        'PUT',
+      const response = await crudRequest<{
+        success: boolean;
+        message?: string;
+      }>(
+        "PUT",
         `/doctor-admin/appointments/${doctorId}/${currentAppointment._id}`,
         { data: formattedValues }
       );
@@ -350,7 +351,7 @@ const Appointments: React.FC = () => {
         editForm.reset();
         fetchAppointments();
       } else {
-        throw new Error(response.message || 'Failed to update appointment');
+        throw new Error(response.message || "Failed to update appointment");
       }
     } catch (error) {
       console.error("Error updating appointment:", error);
@@ -367,8 +368,11 @@ const Appointments: React.FC = () => {
   const handleCancelAppointment = async (appointmentId: string) => {
     try {
       setLoading(true);
-      const response = await crudRequest<{ success: boolean; message?: string }>(
-        'PUT',
+      const response = await crudRequest<{
+        success: boolean;
+        message?: string;
+      }>(
+        "PUT",
         `/doctor-admin/appointments/${doctorId}/${appointmentId}/cancel`
       );
 
@@ -380,7 +384,7 @@ const Appointments: React.FC = () => {
 
         fetchAppointments();
       } else {
-        throw new Error(response.message || 'Failed to cancel appointment');
+        throw new Error(response.message || "Failed to cancel appointment");
       }
     } catch (error) {
       console.error("Error cancelling appointment:", error);
@@ -578,12 +582,18 @@ const Appointments: React.FC = () => {
                           <FormItem>
                             <FormLabel>Appointment Date</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="date" 
-                                {...field} 
-                                value={field.value ? format(field.value, "yyyy-MM-dd") : ""}
+                              <Input
+                                type="date"
+                                {...field}
+                                value={
+                                  field.value
+                                    ? format(field.value, "yyyy-MM-dd")
+                                    : ""
+                                }
                                 onChange={(e) => {
-                                  const date = e.target.value ? new Date(e.target.value) : null;
+                                  const date = e.target.value
+                                    ? new Date(e.target.value)
+                                    : null;
                                   field.onChange(date);
                                 }}
                                 min={format(new Date(), "yyyy-MM-dd")}
@@ -704,75 +714,90 @@ const Appointments: React.FC = () => {
             </div>
           ) : (
             <>
-              {appointments.length > 0 && Object.keys(groupedAppointments).length > 0 ? (
+              {appointments.length > 0 &&
+              Object.keys(groupedAppointments).length > 0 ? (
                 <div className="space-y-6">
-                  {Object.entries(groupedAppointments).map(([date, dateAppointments]) => (
-                    <div key={date} className="space-y-2">
-                      <h3 className="text-lg font-semibold">{date}</h3>
-                      <div className="rounded-md border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Patient Name</TableHead>
-                              <TableHead>Time</TableHead>
-                              <TableHead>Subject</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {dateAppointments.map((appointment) => (
-                              <TableRow key={appointment._id}>
-                                <TableCell className="font-medium">
-                                  {appointment.firstName} {appointment.lastName}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="text-sm">
-                                    {appointment.appointmentTime}
-                                  </div>
-                                </TableCell>
-                                <TableCell>{appointment.subject}</TableCell>
-                                <TableCell>
-                                  <Badge
-                                    variant={
-                                      appointment.status.toLowerCase() === "accepted"
-                                        ? "default"
-                                        : appointment.status.toLowerCase() === "rejected"
-                                          ? "destructive"
-                                          : "outline"
-                                    }
-                                  >
-                                    {appointment.status}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <div className="flex justify-end gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="icon"
-                                      onClick={() => openEditDialog(appointment)}
-                                    >
-                                      <Edit2 className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="icon"
-                                      onClick={() =>
-                                        handleCancelAppointment(appointment._id)
-                                      }
-                                      disabled={appointment.status.toLowerCase() === "rejected"}
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
+                  {Object.entries(groupedAppointments).map(
+                    ([date, dateAppointments]) => (
+                      <div key={date} className="space-y-2">
+                        <h3 className="text-lg font-semibold">{date}</h3>
+                        <div className="rounded-md border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Patient Name</TableHead>
+                                <TableHead>Time</TableHead>
+                                <TableHead>Subject</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">
+                                  Actions
+                                </TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {dateAppointments.map((appointment) => (
+                                <TableRow key={appointment._id}>
+                                  <TableCell className="font-medium">
+                                    {appointment.firstName}{" "}
+                                    {appointment.lastName}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="text-sm">
+                                      {appointment.appointmentTime}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>{appointment.subject}</TableCell>
+                                  <TableCell>
+                                    <Badge
+                                      variant={
+                                        appointment.status.toLowerCase() ===
+                                        "accepted"
+                                          ? "default"
+                                          : appointment.status.toLowerCase() ===
+                                              "rejected"
+                                            ? "destructive"
+                                            : "outline"
+                                      }
+                                    >
+                                      {appointment.status}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex justify-end gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() =>
+                                          openEditDialog(appointment)
+                                        }
+                                      >
+                                        <Edit2 className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() =>
+                                          handleCancelAppointment(
+                                            appointment._id
+                                          )
+                                        }
+                                        disabled={
+                                          appointment.status.toLowerCase() ===
+                                          "rejected"
+                                        }
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  )}
                 </div>
               ) : (
                 <div className="rounded-md border">
@@ -832,8 +857,8 @@ const Appointments: React.FC = () => {
       </Card>
 
       {/* Edit Appointment Dialog */}
-      <Dialog 
-        open={isEditDialogOpen} 
+      <Dialog
+        open={isEditDialogOpen}
         onOpenChange={(open) => {
           setIsEditDialogOpen(open);
           if (!open) {
@@ -964,12 +989,16 @@ const Appointments: React.FC = () => {
                     <FormItem>
                       <FormLabel>Appointment Date</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="date" 
-                          {...field} 
-                          value={field.value ? format(field.value, "yyyy-MM-dd") : ""}
+                        <Input
+                          type="date"
+                          {...field}
+                          value={
+                            field.value ? format(field.value, "yyyy-MM-dd") : ""
+                          }
                           onChange={(e) => {
-                            const date = e.target.value ? new Date(e.target.value) : null;
+                            const date = e.target.value
+                              ? new Date(e.target.value)
+                              : null;
                             field.onChange(date);
                           }}
                           min={format(new Date(), "yyyy-MM-dd")}

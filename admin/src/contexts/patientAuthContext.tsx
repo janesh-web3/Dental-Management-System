@@ -42,7 +42,7 @@ type PatientAuthProviderProps = {
 };
 
 // Provider to fetch and store patient details
-export default function PatientAuthProvider({ children }: PatientAuthProviderProps) {
+function PatientAuthProvider({ children }: PatientAuthProviderProps) {
   const [patientDetails, setPatientDetails] = useState<PatientDetails>(initialState);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -138,3 +138,6 @@ export const usePatientAuthContext = () => {
   }
   return context;
 };
+
+// Export the PatientAuthProvider component
+export default PatientAuthProvider;

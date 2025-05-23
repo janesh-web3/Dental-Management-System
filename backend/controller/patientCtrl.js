@@ -1,9 +1,11 @@
 const Patient = require("../model/Patient.js");
+const PatientAuth = require("../model/PatientAuth");
 const cloudinary = require("../config/cloudinary");
 const { deleteFile } = require("../middleware/multer");
 const User = require("../model/User.js");
 const Appointment = require("../model/Appointment.js");
 const Doctor = require("../model/Doctor.js");
+const { generateStrongPassword, sendPatientCredentials } = require("../utils/emailService");
 
 const addPatient = async (req, res) => {
   try {
@@ -62,8 +64,46 @@ const addPatient = async (req, res) => {
       };
     }
 
+    // Generate a strong password for the patient
+    const generatedPassword = generateStrongPassword(12);
+    
+    // Add password to the patient data
+    if (!req.body.password) {
+      req.body.password = generatedPassword;
+    }
+    
     // Create patient
     const patient = await Patient.create(req.body);
+    
+    // Create patient auth record if email is provided
+    const email = req.body.personalDetails?.emailAddress;
+    if (email) {
+      // Create patient auth record
+      const patientAuth = new PatientAuth({
+        email: email,
+        password: generatedPassword, // Will be hashed by the pre-save hook
+        patientId: patient._id
+      });
+      
+      await patientAuth.save();
+      
+      // Send email with credentials
+      try {
+        const emailResult = await sendPatientCredentials(
+          email,
+          patient.personalDetails.name,
+          patient._id,
+          generatedPassword
+        );
+        
+        if (!emailResult.success) {
+          console.error('Failed to send email:', emailResult.error);
+        }
+      } catch (emailError) {
+        console.error('Error in email sending process:', emailError);
+      }
+    }
+    
     res.status(201).json({
       success: true,
       data: patient,

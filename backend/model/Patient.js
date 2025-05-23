@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const validator = require("validator");
+const bcrypt = require("bcrypt");
 
 // First, create a schema for daily treatments
 const dailyTreatmentSchema = new mongoose.Schema({
@@ -176,22 +177,91 @@ const personalDetailsSchema = new mongoose.Schema({
   sn: { type: String },
   address: { type: String },
   age: { type: String },
-  emailAddress: { type: String },
+  emailAddress: { 
+    type: String,
+    trim: true,
+    lowercase: true,
+    validate: {
+      validator: function(v) {
+        return v === '' || validator.isEmail(v);
+      },
+      message: props => `${props.value} is not a valid email address!`
+    }
+  },
   referredBy: { type: String },
   checkUpDate: { type: Date },
   createdAt: { type: Date },
   updatedAt: { type: Date },
-});
+})
 
 // Main Patient Schema
 const patientSchema = new mongoose.Schema(
   {
     personalDetails: { type: personalDetailsSchema, },
     medicalDetails: [medicalDetailsSchema],
+    email: { 
+      type: String,
+      unique: true,
+      trim: true,
+      lowercase: true,
+      validate: {
+        validator: function(v) {
+          return validator.isEmail(v);
+        },
+        message: props => `${props.value} is not a valid email address!`
+      }
+    },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      minlength: [6, "Password must be at least 6 characters long"]
+    },
+    appointments: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Appointment"
+    }],
+    isActive: {
+      type: Boolean,
+      default: true
+    },
+    lastLogin: {
+      type: Date
+    }
   },
   {
     timestamps: true,
   }
 );
+
+// Hash password before saving
+patientSchema.pre('save', async function(next) {
+  // Only hash the password if it's modified (or new)
+  if (!this.isModified('password')) return next();
+  
+  try {
+    // Generate a salt
+    const salt = await bcrypt.genSalt(10);
+    // Hash the password along with the new salt
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Method to compare passwords
+patientSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// Create a virtual for patient's full name
+patientSchema.virtual('fullName').get(function() {
+  return this.personalDetails?.name || '';
+});
+
+// Create a virtual for patient's contact info
+patientSchema.virtual('contact').get(function() {
+  return this.personalDetails?.contactNumber || '';
+});
 
 module.exports = mongoose.model("Patient", patientSchema);

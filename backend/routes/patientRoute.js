@@ -21,7 +21,6 @@ const Patient = require("../model/Patient");
 const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 
-
 router.post("/add-patient", addPatient);
 router.put("/update-patient/:id", updatePatient); // Update route
 router.delete("/delete-patient/:id", deletePatient); // Update route

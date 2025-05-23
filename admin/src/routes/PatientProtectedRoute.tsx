@@ -1,6 +1,6 @@
 import React, { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
-import { usePatientAuthContext } from "@/contexts/patientAuthContext";
+import { usePatientAuthContext } from "@/contexts";
 
 // Type definition for component props
 interface PatientProtectedRouteProps {

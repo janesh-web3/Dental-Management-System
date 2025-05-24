@@ -518,8 +518,20 @@ export function ViewPatientDrawer({
                   </CardContent>
                 </Card>
 
-                {/* Medical History */}
-                <Card className="border-none shadow-sm bg-card">
+                {/* Treatment Progress */}
+                <TreatmentProgress 
+                  totalAmount={totalAmount} 
+                  paidAmount={paidAmount} 
+                  remainingAmount={remainingAmount}
+                  treatments={allTreatments}
+                />
+
+               
+              </TabsContent>
+
+              <TabsContent value="medical" className="pb-6">
+                 {/* Medical History */}
+                 <Card className="border-none shadow-sm bg-card">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Stethoscope className="h-5 w-5 text-primary" />
@@ -550,16 +562,8 @@ export function ViewPatientDrawer({
                     )}
                   </CardContent>
                 </Card>
-
-                {/* Treatment Progress */}
-                <TreatmentProgress
-                  treatments={allTreatments}
-                  totalAmount={totalAmount}
-                  paidAmount={paidAmount}
-                />
-              </TabsContent>
-
-              <TabsContent value="medical" className="space-y-6 pb-6">
+                
+                {/* Medical Records Section */}
                 {localPatient.medicalDetails.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-center bg-muted/30 rounded-lg">
                     <Stethoscope className="h-12 w-12 text-muted-foreground mb-3" />

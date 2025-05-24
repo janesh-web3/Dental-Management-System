@@ -5,16 +5,18 @@ import { TreatmentPlanning } from "@/types/patient";
 import { Separator } from "@/components/ui/separator";
 
 interface TreatmentProgressProps {
-  treatments: Array<TreatmentPlanning>;
+  treatments?: Array<TreatmentPlanning>;
   totalAmount: number;
   paidAmount: number;
+  remainingAmount?: number;
   compact?: boolean;
 }
 
 export function TreatmentProgress({ 
-  treatments, 
+  treatments = [], 
   totalAmount, 
   paidAmount, 
+  remainingAmount, 
   compact = false 
 }: TreatmentProgressProps) {
   const completedTreatments = treatments.filter(t => t.isCompleted).length;
@@ -83,14 +85,22 @@ export function TreatmentProgress({
               <Wallet className="w-5 h-5 text-green-500" />
               <div>
                 <p className="text-xs text-muted-foreground">Paid Amount</p>
-                <p className="font-medium text-green-700">₹{paidAmount}</p>
+                <p className="font-medium text-green-700">{new Intl.NumberFormat('en-IN', {
+                  style: 'currency',
+                  currency: 'NPR',
+                  minimumFractionDigits: 0
+                }).format(paidAmount)}</p>
               </div>
             </div>
             <div className="bg-card rounded-md p-3 flex items-center gap-2">
               <Wallet className="w-5 h-5 text-orange-500" />
               <div>
                 <p className="text-xs text-muted-foreground">Balance Amount</p>
-                <p className="font-medium text-orange-700">₹{totalAmount - paidAmount}</p>
+                <p className="font-medium text-orange-700">{new Intl.NumberFormat('en-IN', {
+                  style: 'currency',
+                  currency: 'NPR',
+                  minimumFractionDigits: 0
+                }).format(remainingAmount !== undefined ? remainingAmount : totalAmount - paidAmount)}</p>
               </div>
             </div>
           </div>
@@ -99,7 +109,11 @@ export function TreatmentProgress({
         <div className="pt-3 border-t">
           <div className="flex justify-between font-medium bg-primary/5 p-3 rounded-md">
             <span className="text-primary">Total Treatment Cost</span>
-            <span className="font-semibold text-lg">₹{totalAmount}</span>
+            <span className="font-semibold text-lg">{new Intl.NumberFormat('en-IN', {
+              style: 'currency',
+              currency: 'NPR',
+              minimumFractionDigits: 0
+            }).format(totalAmount)}</span>
           </div>
         </div>
       </CardContent>

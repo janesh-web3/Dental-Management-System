@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Drawer,
   DrawerContent,
@@ -19,18 +19,25 @@ import {
   Clock,
   CalendarDays,
   Download,
+  FileText,
+  Pill,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TreatmentProgress } from "./TreatmentProgress";
 import { MedicalTimeline } from "./MedicalTimeline";
 import { DocumentComparison } from "./DocumentComparison";
-import { Patient } from "@/types/patient";
+import { Patient, DailyTreatment } from "@/types/patient";
 import { Badge } from "../ui/badge";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import autoTable from 'jspdf-autotable';
 import { formatSafeDate } from "@/lib/utils";
+import { crudRequest } from "@/lib/api";
+import { format } from "date-fns";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { toast } from "react-toastify";
+// Accordion import removed as it's not being used
 
 interface ViewPatientDrawerProps {
   patient: Patient;
@@ -48,19 +55,50 @@ export function ViewPatientDrawer({
   const [_selectedMedicalRecordId, setSelectedMedicalRecordId] = useState<
     string | null
   >(null);
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [loadingPrescriptions, setLoadingPrescriptions] = useState<boolean>(false);
+  const [expandedPrescription, setExpandedPrescription] = useState<string | null>(null);
 
-  // Calculate totals for treatment progress
+  // Get all treatments and their teeth details for calculations
   const allTreatments = localPatient.medicalDetails.flatMap(
     (record) => record.treatmentPlanning
   );
-  const totalAmount = allTreatments.reduce(
-    (sum, t) => sum + Number(t.treatmentAmount),
-    0
+  
+  // Get all daily treatments from all teeth across all treatment plans
+  const allDailyTreatments = allTreatments.flatMap(treatment => 
+    treatment.selectedTeethDetails ? treatment.selectedTeethDetails.flatMap(tooth => 
+      (tooth.dailyTreatments || []) as DailyTreatment[]
+    ) : []
   );
-  const paidAmount = allTreatments.reduce(
-    (sum, t) => sum + Number(t.advancedAmount || 0),
-    0
-  );
+  
+  // Calculate totals based on daily treatments data
+  const totalAmount = allDailyTreatments.reduce((sum, dailyTreatment: DailyTreatment) => {
+    // Handle null, undefined, or non-numeric values
+    const amount = dailyTreatment.treatmentAmount;
+    if (amount === undefined || amount === null) return sum;
+    
+    // Ensure we're working with a number
+    return sum + Number(amount);
+  }, 0);
+  
+  const paidAmount = allDailyTreatments.reduce((sum, dailyTreatment: DailyTreatment) => {
+    // Handle null, undefined, or non-numeric values
+    const amount = dailyTreatment.paidAmount;
+    if (amount === undefined || amount === null) return sum;
+    
+    // Ensure we're working with a number
+    return sum + Number(amount);
+  }, 0);
+  
+  // Calculate remaining amount
+  const remainingAmount = totalAmount - paidAmount;
+  
+  console.log('Treatment totals from daily treatments:', { 
+    totalAmount, 
+    paidAmount, 
+    remainingAmount,
+    dailyTreatmentsCount: allDailyTreatments.length 
+  });
 
   // Get all documents for comparison
   const allDocuments = localPatient.medicalDetails.flatMap((record) =>
@@ -68,6 +106,36 @@ export function ViewPatientDrawer({
       (treatment) => treatment.treatmentDocuments
     )
   );
+  
+  // Fetch patient prescriptions
+  useEffect(() => {
+    if (isOpen && patient._id) {
+      fetchPatientPrescriptions(patient._id);
+    }
+  }, [isOpen, patient._id]);
+  
+  const fetchPatientPrescriptions = async (patientId: string) => {
+    try {
+      setLoadingPrescriptions(true);
+      const response = await crudRequest<{ success: boolean; data?: any[]; count?: number; message?: string }>(
+        'GET',
+        `/prescription/patient/${patientId}`
+      );
+      
+      if (response.success && response.data) {
+        setPrescriptions(response.data || []);
+      } else {
+        setPrescriptions([]);
+        toast.error(response.message || "Failed to load prescriptions");
+      }
+    } catch (error) {
+      console.error('Error fetching patient prescriptions:', error);
+      setPrescriptions([]);
+      toast.error("Failed to load prescriptions");
+    } finally {
+      setLoadingPrescriptions(false);
+    }
+  };
 
   // Get patient initials for avatar
   const getInitials = (name: string) => {
@@ -368,11 +436,12 @@ export function ViewPatientDrawer({
           <div className="flex-1 overflow-y-auto px-4">
             <Tabs defaultValue="overview" className="space-y-4">
               <div className="sticky top-0 z-10 bg-background pt-1 pb-3">
-                <TabsList className="grid w-full grid-cols-4 bg-muted/50 p-1">
+                <TabsList className="grid w-full grid-cols-5 bg-muted/50 p-1">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="medical">Medical Records</TabsTrigger>
                   <TabsTrigger value="timeline">Timeline</TabsTrigger>
                   <TabsTrigger value="documents">Documents</TabsTrigger>
+                  <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
                 </TabsList>
               </div>
 
@@ -861,6 +930,125 @@ export function ViewPatientDrawer({
                       </div>
                     ) : (
                       <DocumentComparison documents={allDocuments} />
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="prescriptions" className="pb-6">
+                <Card className="border-none shadow-sm bg-card">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Pill className="h-5 w-5 text-primary" />
+                      Prescriptions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingPrescriptions ? (
+                      <div className="flex justify-center items-center py-10">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      </div>
+                    ) : prescriptions.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-center bg-muted/30 rounded-lg">
+                        <FileText className="h-12 w-12 text-muted-foreground mb-3" />
+                        <h3 className="text-lg font-medium">No Prescriptions</h3>
+                        <p className="text-sm text-muted-foreground max-w-md mt-1">
+                          This patient doesn't have any prescriptions yet.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Doctor</TableHead>
+                              <TableHead>Diagnosis</TableHead>
+                              <TableHead>Medications</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {prescriptions.map((prescription) => (
+                              <React.Fragment key={prescription._id}>
+                                <TableRow>
+                                  <TableCell className="font-medium">
+                                    {format(new Date(prescription.createdAt), 'dd MMM yyyy')}
+                                  </TableCell>
+                                  <TableCell>
+                                    {prescription.doctor?.name || 'Unknown'}
+                                  </TableCell>
+                                  <TableCell>
+                                    {prescription.diagnosis || 'N/A'}
+                                  </TableCell>
+                                  <TableCell>
+                                    {prescription.medications?.length || 0} medications
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setExpandedPrescription(expandedPrescription === prescription._id ? null : prescription._id);
+                                      }}
+                                    >
+                                      <FileText className="h-4 w-4 mr-1" />
+                                      {expandedPrescription === prescription._id ? 'Hide' : 'View'}
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                                {expandedPrescription === prescription._id && (
+                                  <TableRow>
+                                    <TableCell colSpan={5} className="p-0 border-t-0">
+                                      <div className="bg-muted/30 p-4 rounded-md">
+                                        <div className="mb-4">
+                                          <h4 className="text-sm font-semibold mb-2">Diagnosis</h4>
+                                          <p className="text-sm">{prescription.diagnosis || 'No diagnosis provided'}</p>
+                                        </div>
+                                        
+                                        <div className="mb-4">
+                                          <h4 className="text-sm font-semibold mb-2">Medications</h4>
+                                          {prescription.medications && prescription.medications.length > 0 ? (
+                                            <div className="space-y-2">
+                                              {prescription.medications.map((med: any, index: number) => (
+                                                <div key={index} className="bg-background p-3 rounded-md">
+                                                  <div className="flex justify-between">
+                                                    <p className="font-medium">{med.name}</p>
+                                                    <p>{med.dosage}</p>
+                                                  </div>
+                                                  <div className="mt-1 text-sm">
+                                                    <p>Frequency: {med.frequency}</p>
+                                                    <p>Duration: {med.duration}</p>
+                                                    {med.notes && <p>Notes: {med.notes}</p>}
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <p className="text-sm text-muted-foreground">No medications listed</p>
+                                          )}
+                                        </div>
+                                        
+                                        {prescription.instructions && (
+                                          <div className="mb-4">
+                                            <h4 className="text-sm font-semibold mb-2">Instructions</h4>
+                                            <p className="text-sm">{prescription.instructions}</p>
+                                          </div>
+                                        )}
+                                        
+                                        <div className="flex justify-between text-xs text-muted-foreground">
+                                          <p>Doctor: {prescription.doctor?.name || 'Unknown'}</p>
+                                          <p>Created: {format(new Date(prescription.createdAt), 'dd MMM yyyy, HH:mm')}</p>
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     )}
                   </CardContent>
                 </Card>

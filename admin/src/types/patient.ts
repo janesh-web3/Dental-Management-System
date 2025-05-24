@@ -1,9 +1,22 @@
 import { Doctor } from "./doctor";
 
+// Define DailyTreatment first to avoid circular references
+export interface DailyTreatment {
+  _id?: string;
+  date: string;
+  treatmentAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  treatedByDoctor: string | null;
+  procedure?: string;
+  notes?: string;
+  isCompleted?: boolean;
+}
+
 export type selectedToothSchema = {
   totalRemainingAmount: number;
   totalPaidAmount: number;
-  dailyTreatments: never[];
+  dailyTreatments: DailyTreatment[];
   totalTreatmentAmount: number;
   number: string;
   details: string;
@@ -136,17 +149,7 @@ export type FormData = {
   }>;
 };
 
-export interface DailyTreatment {
-  _id?: string;
-  date: string;
-  treatmentAmount: number;
-  paidAmount: number;
-  remainingAmount: number;
-  treatedByDoctor: string | null;
-  procedure?: string;
-  notes?: string;
-  isCompleted?: boolean;
-}
+// DailyTreatment interface moved to the top of the file
 
 export interface ToothData {
   number: string;

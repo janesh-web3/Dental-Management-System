@@ -28,10 +28,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useDoctorAuthContext } from '@/contexts/doctorAuthContext';
+import { crudRequest } from '@/utils/api';
 
-interface PrescriptionsProps {
-  doctorId: string;
-}
+// No props needed as we'll get doctor info from context
 
 interface Patient {
   _id: string;
@@ -83,96 +82,34 @@ const prescriptionSchema = z.object({
 
 type PrescriptionFormValues = z.infer<typeof prescriptionSchema>;
 
-// Predefined prescription templates
-const prescriptionTemplates = [
-  {
-    name: "Dental Pain Relief",
-    medications: [
-      {
-        name: "Ibuprofen",
-        dosage: "400mg",
-        frequency: "Every 6 hours as needed",
-        duration: "5 days",
-        notes: "Take with food",
-      },
-      {
-        name: "Acetaminophen",
-        dosage: "500mg",
-        frequency: "Every 6 hours as needed (alternate with Ibuprofen)",
-        duration: "5 days",
-        notes: "Do not exceed 4000mg per day",
-      },
-    ],
-    instructions: "Apply cold compress to affected area for 15 minutes at a time. Avoid hard foods and chewing on the affected side.",
-  },
-  {
-    name: "Post-Extraction Care",
-    medications: [
-      {
-        name: "Amoxicillin",
-        dosage: "500mg",
-        frequency: "Every 8 hours",
-        duration: "7 days",
-        notes: "Complete the full course",
-      },
-      {
-        name: "Ibuprofen",
-        dosage: "600mg",
-        frequency: "Every 6 hours as needed",
-        duration: "3 days",
-        notes: "Take with food",
-      },
-    ],
-    instructions: "Bite down on gauze for 30 minutes. No rinsing, spitting, or using straws for 24 hours. Soft foods only for 2 days.",
-  },
-  {
-    name: "Gum Infection",
-    medications: [
-      {
-        name: "Metronidazole",
-        dosage: "400mg",
-        frequency: "Every 8 hours",
-        duration: "7 days",
-        notes: "Complete the full course",
-      },
-      {
-        name: "Chlorhexidine Mouthwash",
-        dosage: "15ml",
-        frequency: "Twice daily",
-        duration: "14 days",
-        notes: "Rinse for 30 seconds and spit. Do not eat or drink for 30 minutes after use.",
-      },
-    ],
-    instructions: "Brush gently with a soft toothbrush. Floss daily. Avoid alcohol and smoking during treatment.",
-  },
-];
+// No prescription templates needed
 
 const Prescriptions: React.FC = () => {
+  // Get the doctor details from the auth context
   const { doctorDetails, isLoading } = useDoctorAuthContext();
-  
-    // Get the doctor ID from the auth context
-    const doctorId = doctorDetails?._id || "";
-  
-    if (isLoading) {
-      return (
-        <div className="flex items-center justify-center h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2">Loading doctor panel...</span>
-        </div>
-      );
-    }
 
-  const [loading, setLoading] = useState<boolean>(true);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading doctor panel...</span>
+      </div>
+    );
+  }
+
+  // No need for a separate doctorId variable as we use doctorDetails._id directly
+
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [patientFilter, setPatientFilter] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [totalPages, setTotalPages] = useState<number>(1);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [patientFilter, setPatientFilter] = useState<string>("all");
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState<boolean>(false);
+  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState<boolean>(false);
+  const [submitting, setSubmitting] = useState<boolean>(false); // Used during form submission
+  const [loading, setLoading] = useState<boolean>(true);
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("none");
   const { toast } = useToast();
 
   const form = useForm<PrescriptionFormValues>({
@@ -193,65 +130,52 @@ const Prescriptions: React.FC = () => {
   });
 
   useEffect(() => {
-    fetchPrescriptions();
-    fetchPatients();
-  }, [doctorId, currentPage, searchTerm, patientFilter]);
-
-  useEffect(() => {
-    // Apply template when selected
-    if (selectedTemplate && selectedTemplate !== 'none') {
-      const template = prescriptionTemplates.find(t => t.name === selectedTemplate);
-      if (template) {
-        form.setValue("medications", template.medications);
-        form.setValue("instructions", template.instructions || "");
-      }
+    if (doctorDetails._id) {
+      fetchPrescriptions();
+      fetchPatients();
     }
-  }, [selectedTemplate, form]);
+  }, [doctorDetails._id, currentPage, searchTerm, patientFilter]);
+
+  // No template functionality needed
 
   const fetchPrescriptions = async () => {
     try {
       setLoading(true);
-      // This would be replaced with an actual API call in a real implementation
-      // For now, we'll simulate the data
-      setTimeout(() => {
-        setPrescriptions([
-          {
-            _id: "1",
-            patient: {
-              _id: "101",
-              personalDetails: {
-                name: "John Doe",
-              },
-            },
-            doctor: {
-              _id: doctorId,
-              name: "Dr. Smith",
-            },
-            medications: [
-              {
-                name: "Amoxicillin",
-                dosage: "500mg",
-                frequency: "Every 8 hours",
-                duration: "7 days",
-                notes: "Take with food",
-              },
-              {
-                name: "Ibuprofen",
-                dosage: "400mg",
-                frequency: "Every 6 hours as needed",
-                duration: "5 days",
-              },
-            ],
-            diagnosis: "Dental abscess",
-            instructions: "Rinse with warm salt water three times daily",
-            createdAt: "2025-05-15T10:30:00Z",
-            updatedAt: "2025-05-15T10:30:00Z",
-            isActive: true,
-          },
-        ]);
-        setTotalPages(1);
-        setLoading(false);
-      }, 1000);
+      
+      // Calculate pagination parameters
+      const limit = 10; // Items per page
+      const skip = (currentPage - 1) * limit;
+      
+      // Build query parameters
+      let queryParams = `limit=${limit}&skip=${skip}`;
+      if (searchTerm) queryParams += `&search=${encodeURIComponent(searchTerm)}`;
+      if (patientFilter) queryParams += `&patient=${encodeURIComponent(patientFilter)}`;
+      
+      // Use the crudRequest function to fetch prescriptions for the current doctor
+      const response = await crudRequest<{
+        count: number;
+        prescriptions: Prescription[];
+        total: number;
+      }>(
+        'GET',
+        `/prescription/doctor/${doctorDetails._id}?${queryParams}`
+      );
+      
+      if (response.success && response.data) {
+        setPrescriptions(response.data.prescriptions || []);
+        const total = response.data.count || 0;
+        setTotalPages(Math.ceil(total / limit));
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: response.message || "Failed to load prescriptions",
+        });
+        setPrescriptions([]);
+        setTotalPages(0);
+      }
+      
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching prescriptions:', error);
       toast({
@@ -259,30 +183,31 @@ const Prescriptions: React.FC = () => {
         title: "Error",
         description: "Failed to load prescriptions",
       });
+      setPrescriptions([]);
+      setTotalPages(0);
       setLoading(false);
     }
   };
 
   const fetchPatients = async () => {
     try {
-      // This would be replaced with an actual API call in a real implementation
-      // For now, we'll simulate the data
-      setTimeout(() => {
-        setPatients([
-          {
-            _id: "101",
-            personalDetails: {
-              name: "John Doe",
-            },
-          },
-          {
-            _id: "102",
-            personalDetails: {
-              name: "Jane Smith",
-            },
-          },
-        ]);
-      }, 500);
+      // Fetch patients from the API
+      const response = await crudRequest<{ data: Patient[] }>(
+        'GET',
+        '/patient/get-patient'
+      );
+      
+      
+      if (response.success && response.data) {
+        setPatients(response.data.data || []);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: response.message || "Failed to load patients",
+        });
+        setPatients([]);
+      }
     } catch (error) {
       console.error('Error fetching patients:', error);
       toast({
@@ -290,30 +215,50 @@ const Prescriptions: React.FC = () => {
         title: "Error",
         description: "Failed to load patients",
       });
+      setPatients([]);
     }
   };
 
+  // No prescription templates functionality needed
+
   const handleCreatePrescription = async (values: PrescriptionFormValues) => {
     try {
-      setLoading(true);
-      // Format the data for the API
-      const formattedValues = {
-        ...values,
-        doctor: doctorId,
+      setSubmitting(true);
+      
+      // Create the prescription data object
+      const prescriptionData = {
+        patient: values.patient,
+        doctor: doctorDetails._id,
+        medications: values.medications,
+        diagnosis: values.diagnosis,
+        instructions: values.instructions
       };
-
-      // In a real implementation, this would be an API call
-      console.log('Creating prescription:', formattedValues);
       
-      toast({
-        title: "Success",
-        description: "Prescription created successfully",
-      });
+      // Send the prescription data to the API
+      const response = await crudRequest<Prescription>(
+        'POST',
+        '/prescription/create',
+        prescriptionData
+      );
       
-      setIsCreateDialogOpen(false);
-      form.reset();
-      setSelectedTemplate("none");
-      fetchPrescriptions();
+      if (response.success && response.data) {
+        // Refresh the prescriptions list
+        fetchPrescriptions();
+        setIsDialogOpen(false);
+        form.reset();
+        toast({
+          title: "Success",
+          description: "Prescription created successfully",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: response.message || "Failed to create prescription",
+        });
+      }
+      
+      setSubmitting(false);
     } catch (error) {
       console.error('Error creating prescription:', error);
       toast({
@@ -321,8 +266,7 @@ const Prescriptions: React.FC = () => {
         title: "Error",
         description: "Failed to create prescription",
       });
-    } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -331,13 +275,45 @@ const Prescriptions: React.FC = () => {
     setIsViewDialogOpen(true);
   };
 
-  const downloadPrescription = (prescription: Prescription) => {
-    // In a real implementation, this would generate a PDF or call an API endpoint
-    // For now, we'll just show a toast
-    toast({
-      title: "Download Started",
-      description: `Downloading prescription for ${prescription.patient.personalDetails.name}`,
-    });
+  const downloadPrescription = async (prescription: Prescription) => {
+    try {
+      // Request the prescription PDF from the API
+      const response = await crudRequest<{ fileUrl: string }>(
+        'GET',
+        `/prescription/${prescription._id}/download`,
+        undefined,
+        { responseType: 'blob' }
+      );
+      
+      if (response.success && response.data) {
+        // Create a download link for the PDF
+        const url = window.URL.createObjectURL(new Blob([response.data as any]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `prescription-${prescription._id}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        
+        toast({
+          title: "Download Started",
+          description: `Downloading prescription for ${prescription.patient.personalDetails.name}`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: response.message || "Failed to download prescription",
+        });
+      }
+    } catch (error) {
+      console.error('Error downloading prescription:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to download prescription",
+      });
+    }
   };
 
   const addMedication = () => {
@@ -375,7 +351,7 @@ const Prescriptions: React.FC = () => {
                 Create and manage patient prescriptions
               </CardDescription>
             </div>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
@@ -392,25 +368,7 @@ const Prescriptions: React.FC = () => {
                 
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(handleCreatePrescription)} className="space-y-4">
-                    <div className="mb-4">
-                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Use Template (Optional)</label>
-                      <Select 
-                        value={selectedTemplate} 
-                        onValueChange={setSelectedTemplate}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a template" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          {prescriptionTemplates.map((template) => (
-                            <SelectItem key={template.name} value={template.name}>
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {/* Template selection removed */}
                     <FormField
                       control={form.control}
                       name="patient"

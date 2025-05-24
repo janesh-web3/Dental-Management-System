@@ -154,10 +154,6 @@ const getPatient = async (req, res) => {
     const patients = await Patient.find()
       .populate("appointments")
       .populate({
-        path: "medicalDetails.treatmentPlanning.treatedByDoctor",
-        model: "Doctor",
-      })
-      .populate({
         path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
         model: "Doctor",
       });

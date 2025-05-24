@@ -148,13 +148,13 @@ exports.getDoctorPrescriptions = async (req, res) => {
     }
 
     const prescriptions = await Prescription.find({ doctor: doctorId, isActive: true })
-      .populate("patient", "firstName lastName email phone")
+      .populate("patient", "personalDetails.name")
       .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
       count: prescriptions.length,
-      data: prescriptions,
+      prescriptions: prescriptions,
     });
   } catch (error) {
     console.error("Error fetching doctor prescriptions:", error);

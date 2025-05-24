@@ -123,23 +123,15 @@ export default function PatientAuthProvider({
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      console.log("Attempting patient login with email:", email);
       setIsLoading(true);
 
       const response = await patientLogin(email, password);
-      console.log("Login response received:", {
-        success: response.success,
-        hasToken: !!response.token,
-      });
 
       if (response.success && response.token && response.patient) {
         if (!response.token.trim()) {
-          console.error("Received empty token from server");
           setIsLoading(false);
           return false;
         }
-
-        console.log("Login successful, storing token");
         localStorage.removeItem("patientToken");
         localStorage.setItem("patientToken", response.token);
         setPatientDetails(response.patient as PatientDetails);

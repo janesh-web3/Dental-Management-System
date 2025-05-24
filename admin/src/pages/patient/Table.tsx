@@ -7,6 +7,7 @@ import {
   Trash,
   MessageSquare,
   View,
+  FilePlus,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -72,6 +73,7 @@ import { useAdminContext } from "@/contexts/adminContext";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { FileSpreadsheet } from "lucide-react";
+import { AddPrescriptionButton } from "@/components/prescription";
 import { toast } from "react-toastify";
 import {
   Dialog,
@@ -86,8 +88,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2 } from "lucide-react";
 
 export function PatientTable() {
-  const [student, setStudent] = useState<Patient[]>([]);
-  const [filteredStudents, setFilteredStudents] = useState<Patient[]>([]);
+  const [patient, setPatient] = useState<Patient[]>([]);
+  const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<string>("all");
@@ -340,7 +342,7 @@ export function PatientTable() {
   };
 
   useEffect(() => {
-    fetchStudent(currentPage, itemsPerPage);
+    fetchPatient(currentPage, itemsPerPage);
   }, [currentPage, itemsPerPage]);
 
   //search functionality
@@ -350,7 +352,7 @@ export function PatientTable() {
     setSearchQuery(e.target.value);
   };
 
-  const fetchStudent = async (
+  const fetchPatient = async (
     page: number = 1,
     limit: number = itemsPerPage,
     search: string = ""
@@ -365,8 +367,8 @@ export function PatientTable() {
           `/patient/get-pagination-patient?page=${page}&limit=${limit}&search=${search}`
         );
       if (response && Array.isArray(response.patients)) {
-        setStudent(response.patients);
-        setFilteredStudents(response.patients);
+        setPatient(response.patients);
+        setFilteredPatients(response.patients);
         setTotalPages(response.totalPages);
       } else {
         setError("Unexpected response format");
@@ -380,11 +382,11 @@ export function PatientTable() {
   };
 
   useEffect(() => {
-    fetchStudent(currentPage, itemsPerPage, searchQuery);
+    fetchPatient(currentPage, itemsPerPage, searchQuery);
   }, [currentPage, itemsPerPage, searchQuery]);
 
   useEffect(() => {
-    let filtered = student;
+    let filtered = patient;
 
     // Filter by gender
     if (selectedTab !== "all") {
@@ -394,12 +396,12 @@ export function PatientTable() {
       );
     }
 
-    setFilteredStudents(filtered);
-  }, [selectedTab, student]);
+    setFilteredPatients(filtered);
+  }, [selectedTab, patient]);
 
   useEffect(() => {
-    setFilteredStudents(student);
-  }, [student]);
+    setFilteredPatients(patient);
+  }, [patient]);
 
   // Add this function to export patient data to Excel
   const exportToExcel = () => {
@@ -407,7 +409,7 @@ export function PatientTable() {
     const workbook = XLSX.utils.book_new();
 
     // Format patient data for export
-    const patientData = filteredStudents.map((patient) => ({
+    const patientData = filteredPatients.map((patient) => ({
       "S.No": patient.personalDetails.sn,
       Name: patient.personalDetails.name,
       Contact: patient.personalDetails.contactNumber,
@@ -458,7 +460,7 @@ export function PatientTable() {
     saveAs(data, fileName);
   };
 
-  const renderStudentTable = () => (
+  const renderPatientTable = () => (
     <Card className="py-4 transition-all duration-200 hover:shadow-lg border-2 border-foreground/10">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold tracking-tight">
@@ -486,7 +488,7 @@ export function PatientTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredStudents.length === 0 ? (
+              {filteredPatients.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={9}
@@ -496,31 +498,88 @@ export function PatientTable() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredStudents.map((patient, index) => (
+                filteredPatients.map((patient, index) => (
                   <TableRow
                     key={index}
                     className="hover:bg-muted/50 transition-colors cursor-pointer"
-                    onClick={() => {
-                      setSelectedPatient(patient);
-                      setIsUpdateModalOpen(true);
-                    }}
                   >
-                    <TableCell className="font-medium">
+                    <TableCell
+                      className="font-medium"
+                      onClick={() => {
+                        setSelectedPatient(patient);
+                        setIsUpdateModalOpen(true);
+                      }}
+                    >
                       {patient.personalDetails.sn}
                     </TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell
+                      className="font-medium"
+                      onClick={() => {
+                        setSelectedPatient(patient);
+                        setIsUpdateModalOpen(true);
+                      }}
+                    >
                       {patient.personalDetails.name}
                     </TableCell>
-                    <TableCell>
+                    <TableCell
+                      onClick={() => {
+                        setSelectedPatient(patient);
+                        setIsUpdateModalOpen(true);
+                      }}
+                    >
                       {patient.personalDetails.contactNumber}
                     </TableCell>
-                    <TableCell>
+                    <TableCell
+                      onClick={() => {
+                        setSelectedPatient(patient);
+                        setIsUpdateModalOpen(true);
+                      }}
+                    >
                       {patient.personalDetails.emailAddress}
                     </TableCell>
-                    <TableCell>{patient.personalDetails.age}</TableCell>
-                    <TableCell>{patient.personalDetails.gender}</TableCell>
-                    <TableCell>{patient.personalDetails.address}</TableCell>
+                    <TableCell
+                      onClick={() => {
+                        setSelectedPatient(patient);
+                        setIsUpdateModalOpen(true);
+                      }}
+                    >
+                      {patient.personalDetails.age}
+                    </TableCell>
+                    <TableCell
+                      onClick={() => {
+                        setSelectedPatient(patient);
+                        setIsUpdateModalOpen(true);
+                      }}
+                    >
+                      {patient.personalDetails.gender}
+                    </TableCell>
+                    <TableCell
+                      onClick={() => {
+                        setSelectedPatient(patient);
+                        setIsUpdateModalOpen(true);
+                      }}
+                    >
+                      {patient.personalDetails.address}
+                    </TableCell>
                     <TableCell className="text-right">
+                      {/* Hidden AddPrescriptionButton that will be triggered by the dropdown menu */}
+                      <div className="hidden">
+                        <AddPrescriptionButton
+                          id={`prescription-btn-${patient._id}`}
+                          patientId={patient._id}
+                          patientName={patient.personalDetails.name}
+                          patientData={{
+                            contactNumber: patient.personalDetails.contactNumber,
+                            emailAddress: patient.personalDetails.emailAddress,
+                            age: patient.personalDetails.age,
+                            gender: patient.personalDetails.gender,
+                            address: patient.personalDetails.address
+                          }}
+                          isAdmin={true}
+                          variant="outline"
+                          size="sm"
+                        />
+                      </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -568,6 +627,22 @@ export function PatientTable() {
                             <Mail className="h-4 w-4" /> Send Email
                           </DropdownMenuItem>
 
+                          {/* Add Prescription Menu Item */}
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // We'll use a modal approach for prescriptions
+                              document
+                                .getElementById(
+                                  `prescription-btn-${patient._id}`
+                                )
+                                ?.click();
+                            }}
+                            className="gap-2"
+                          >
+                            <FilePlus className="h-4 w-4" /> Add Prescription
+                          </DropdownMenuItem>
+
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
@@ -595,7 +670,11 @@ export function PatientTable() {
                             className="gap-2"
                             disabled={!patient.personalDetails.contactNumber}
                           >
-                            <MessageSquare className="h-4 w-4 text-green-500" fill="green"/> WhatsApp
+                            <MessageSquare
+                              className="h-4 w-4 text-green-500"
+                              fill="green"
+                            />{" "}
+                            WhatsApp
                           </DropdownMenuItem>
 
                           {adminDetails.role === "admin" && (
@@ -754,10 +833,10 @@ export function PatientTable() {
               </div>
             ) : (
               <div className="w-full overflow-x-auto max-h-[500px] py-2">
-                <TabsContent value="all">{renderStudentTable()}</TabsContent>
-                <TabsContent value="male">{renderStudentTable()}</TabsContent>
-                <TabsContent value="female">{renderStudentTable()}</TabsContent>
-                <TabsContent value="other">{renderStudentTable()}</TabsContent>
+                <TabsContent value="all">{renderPatientTable()}</TabsContent>
+                <TabsContent value="male">{renderPatientTable()}</TabsContent>
+                <TabsContent value="female">{renderPatientTable()}</TabsContent>
+                <TabsContent value="other">{renderPatientTable()}</TabsContent>
               </div>
             )}
           </Tabs>
@@ -793,7 +872,7 @@ export function PatientTable() {
           patientId={patientToDelete._id}
           patientName={`${patientToDelete.personalDetails.name}`}
           onDeleteSuccess={() => {
-            fetchStudent(currentPage, itemsPerPage, searchQuery);
+            fetchPatient(currentPage, itemsPerPage, searchQuery);
           }}
         />
       )}
@@ -859,7 +938,7 @@ export function PatientTable() {
                   <div className="border rounded-md shadow overflow-hidden bg-white">
                     <div className="bg-blue-600 text-white p-4 text-center">
                       <h2 className="text-xl font-semibold">
-                        Shree Nagar Dental Clinic
+                        Crown Dental Clinic
                       </h2>
                     </div>
                     <div className="p-4">

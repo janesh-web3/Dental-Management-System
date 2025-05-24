@@ -78,6 +78,7 @@ const AppRouter: React.FC = () => {
   const PatientProfile = lazy(() => import("@/pages/patient-admin/profile.tsx"));
   const PatientMessages = lazy(() => import("@/pages/patient-admin/messages.tsx"));
   const PatientLayout = lazy(() => import("@/components/layout/patient-layout.tsx"));
+  const PatientPrescriptions = lazy(() => import("@/pages/patient-admin/prescriptions.tsx"));
 
   const doctorRoutes = [
     {
@@ -161,6 +162,10 @@ const AppRouter: React.FC = () => {
         { 
           path: "treatments", 
           element: <PatientTreatments /> 
+        },
+        { 
+          path: "prescriptions", 
+          element: <PatientPrescriptions /> 
         },
         { 
           path: "bills", 

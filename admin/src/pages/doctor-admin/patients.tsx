@@ -42,10 +42,7 @@ import {
   Activity,
 } from "lucide-react";
 import { useDoctorAuthContext } from "@/contexts/doctorAuthContext";
-
-interface PatientsProps {
-  doctorId: string;
-}
+import { AddPrescriptionButton } from "@/components/prescription/AddPrescriptionButton";
 
 interface DailyTreatment {
   _id: string;
@@ -137,11 +134,33 @@ interface Patient {
   medicalDetails: MedicalDetail[];
 }
 
+interface Medication {
+  name: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  notes?: string;
+}
+
+interface Prescription {
+  _id: string;
+  patient: string;
+  doctor: string;
+  doctorName?: string;
+  diagnosis: string;
+  medications: Medication[];
+  tests?: string;
+  nextVisitDate?: string;
+  instructions?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface PatientDetails {
   patient: Patient;
   appointments: Array<any>;
   treatmentPlans: Array<any>;
-  prescriptions: Array<any>;
+  prescriptions: Prescription[];
 }
 
 const Patients: React.FC = () => {
@@ -418,12 +437,29 @@ const Patients: React.FC = () => {
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                variant="outline"
-                                onClick={() => viewPatientDetails(patient._id)}
-                              >
-                                View Details
-                              </Button>
+                              <div className="flex justify-end gap-2">
+                                <AddPrescriptionButton
+                                  patientId={patient._id}
+                                  patientName={patient.personalDetails.name}
+                                  patientData={{
+                                    contactNumber: patient.personalDetails.contactNumber,
+                                    emailAddress: patient.personalDetails.emailAddress,
+                                    age: patient.personalDetails.age,
+                                    gender: patient.personalDetails.gender,
+                                    address: patient.personalDetails.address
+                                  }}
+                                  doctorId={doctorId}
+                                  isAdmin={false}
+                                  variant="outline"
+                                  size="sm"
+                                />
+                                <Button
+                                  variant="outline"
+                                  onClick={() => viewPatientDetails(patient._id)}
+                                >
+                                  View Details
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
@@ -485,12 +521,13 @@ const Patients: React.FC = () => {
               </DialogHeader>
 
               <Tabs defaultValue="personal">
-                <TabsList className="grid grid-cols-5 mb-4">
+                <TabsList className="grid grid-cols-6 mb-4">
                   <TabsTrigger value="personal">Personal Info</TabsTrigger>
                   <TabsTrigger value="medical">Medical History</TabsTrigger>
                   <TabsTrigger value="dental">Dental Records</TabsTrigger>
                   <TabsTrigger value="appointments">Appointments</TabsTrigger>
                   <TabsTrigger value="treatments">Treatments</TabsTrigger>
+                  <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="personal" className="space-y-4">
@@ -1137,6 +1174,96 @@ const Patients: React.FC = () => {
                           No treatment plans available
                         </p>
                       )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="prescriptions" className="space-y-4">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                      <div>
+                        <CardTitle className="text-lg">Prescriptions</CardTitle>
+                        <CardDescription>Manage patient prescriptions</CardDescription>
+                      </div>
+                      <AddPrescriptionButton
+                        patientId={selectedPatient.patient._id}
+                        patientName={selectedPatient.patient.personalDetails.name}
+                        patientData={{
+                          contactNumber: selectedPatient.patient.personalDetails.contactNumber,
+                          emailAddress: selectedPatient.patient.personalDetails.emailAddress,
+                          age: selectedPatient.patient.personalDetails.age,
+                          gender: selectedPatient.patient.personalDetails.gender,
+                          address: selectedPatient.patient.personalDetails.address
+                        }}
+                        doctorId={doctorId}
+                        isAdmin={false}
+                        variant="outline"
+                        size="sm"
+                      />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {selectedPatient.prescriptions && selectedPatient.prescriptions.length > 0 ? (
+                          selectedPatient.prescriptions.map((prescription, index) => (
+                            <Card key={index} className="border border-muted">
+                              <CardContent className="p-4">
+                                <div className="flex justify-between items-start mb-3">
+                                  <div>
+                                    <h3 className="font-semibold text-lg">{prescription.diagnosis}</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                      {new Date(prescription.createdAt).toLocaleDateString()} by {prescription.doctorName || 'Unknown Doctor'}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="mt-3">
+                                  <h4 className="font-medium mb-2">Medications:</h4>
+                                  <div className="space-y-2">
+                                    {prescription.medications.map((med: Medication, idx: number) => (
+                                      <div key={idx} className="bg-muted/50 p-2 rounded-md">
+                                        <div className="flex justify-between">
+                                          <span className="font-medium">{med.name}</span>
+                                          <span>{med.dosage}</span>
+                                        </div>
+                                        <div className="text-sm text-muted-foreground">
+                                          {med.frequency}, for {med.duration}
+                                          {med.notes && <span> • {med.notes}</span>}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {prescription.tests && (
+                                  <div className="mt-3">
+                                    <h4 className="font-medium mb-1">Tests:</h4>
+                                    <p>{prescription.tests}</p>
+                                  </div>
+                                )}
+
+                                {prescription.nextVisitDate && (
+                                  <div className="mt-3">
+                                    <h4 className="font-medium mb-1">Next Visit:</h4>
+                                    <p>{new Date(prescription.nextVisitDate).toLocaleDateString()}</p>
+                                  </div>
+                                )}
+
+                                {prescription.instructions && (
+                                  <div className="mt-3">
+                                    <h4 className="font-medium mb-1">Instructions:</h4>
+                                    <p>{prescription.instructions}</p>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          ))
+                        ) : (
+                          <div className="text-center py-6">
+                            <p className="text-muted-foreground">No prescriptions found for this patient</p>
+                            <p className="text-sm mt-2">Click the "Add Prescription" button to create a new prescription</p>
+                          </div>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 </TabsContent>

@@ -23,6 +23,7 @@ import {
   MessageSquareIcon,
   Moon,
   MoreVertical,
+  Pill,
   Pizza,
   Plus,
   Settings,
@@ -68,6 +69,7 @@ export const Icons = {
   chart: BarChart,
   calendar: CalendarIcon,
   message: MessageSquareIcon,
+  pill: Pill,
   // Custom tooth icon for dental treatments
   tooth: ({ ...props }: LucideProps) => (
     <svg

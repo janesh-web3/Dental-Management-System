@@ -23,6 +23,13 @@ export const patientNavItems: NavItem[] = [
     description: "View your treatment history and plans"
   },
   {
+    title: "Prescriptions",
+    href: "/patient/prescriptions",
+    icon: "pill", // Using pill icon for prescriptions
+    label: "Prescriptions",
+    description: "View your medication prescriptions"
+  },
+  {
     title: "Bills",
     href: "/patient/bills",
     icon: "billing", // Using billing icon for bills

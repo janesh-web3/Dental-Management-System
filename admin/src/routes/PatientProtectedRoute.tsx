@@ -24,7 +24,7 @@ const PatientProtectedRoute: React.FC<PatientProtectedRouteProps> = ({
     );
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  return isAuthenticated ? <>{children}</> : <Navigate to="/home" replace />;
 };
 
 export default PatientProtectedRoute;

@@ -5,7 +5,7 @@ import { Navigate } from "react-router-dom";
 const PrivateRoute: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const token = sessionStorage.getItem("token");
 
-  return token ? <>{children}</> : <Navigate to="/login" replace />;
+  return token ? <>{children}</> : <Navigate to="/home" replace />;
 };
 
 export default PrivateRoute;

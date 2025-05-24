@@ -19,7 +19,7 @@ const AdminOrDoctorRoute: React.FC<React.PropsWithChildren<{}>> = ({ children })
   }
   
   // If not authenticated as either, redirect to login
-  return <Navigate to="/login" replace />;
+  return <Navigate to="/home" replace />;
 };
 
 export default AdminOrDoctorRoute;

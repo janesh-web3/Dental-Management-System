@@ -13,12 +13,15 @@ import Setting from "@/pages/setting";
 import Dashboard from "@/pages/dashboard";
 import Testimonials from "@/pages/testimonials";
 import Contacts from "@/pages/contact";
+import LandingPage from "@/pages/landing";
+import TermsOfServicePage from "@/pages/legal/terms";
+import PrivacyPolicyPage from "@/pages/legal/privacy";
 
 // Lazy-loaded components
 const DashboardLayout = lazy(
   () => import("@/components/layout/dashboard-layout")
 );
-const SignInPage = lazy(() => import("@/pages/auth/signin"));
+const SignInPage = lazy(() => import("@/pages/auth/signin/modern-signin"));
 
 const NotFound = lazy(() => import("@/pages/not-found"));
 
@@ -176,7 +179,10 @@ const AppRouter: React.FC = () => {
   ];
 
   const publicRoutes = [
-    { path: "/login", element: <SignInPage />, index: true },
+    { path: "/home", element: <LandingPage />, index: true },
+    { path: "/login", element: <SignInPage /> },
+    { path: "/terms", element: <TermsOfServicePage /> },
+    { path: "/privacy", element: <PrivacyPolicyPage /> },
     { path: "/404", element: <NotFound /> },
     { path: "*", element: <Navigate to="/404" replace /> },
   ];

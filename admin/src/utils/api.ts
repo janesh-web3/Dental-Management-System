@@ -18,7 +18,7 @@ api.interceptors.request.use(
   (config) => {
     // Check for patient token first, then doctor token
     const patientToken = localStorage.getItem('patientToken');
-    const doctorToken = localStorage.getItem('doctorToken');
+    const doctorToken = sessionStorage.getItem('doctorToken');
     const token = patientToken || doctorToken;
     
     if (token) {

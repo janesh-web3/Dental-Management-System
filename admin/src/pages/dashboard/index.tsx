@@ -490,18 +490,18 @@ const Dashboard = () => {
           >
             {t("Overview")}
           </TabsTrigger>
-          <TabsTrigger
+          {/* <TabsTrigger
             value="analytics"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950"
           >
             {t("Analytics")}
-          </TabsTrigger>
-          <TabsTrigger
+          </TabsTrigger> */}
+          {/* <TabsTrigger
             value="appointments"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950"
           >
             {t("Appointments")}
-          </TabsTrigger>
+          </TabsTrigger> */}
           <TabsTrigger
             value="doctors"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950"
@@ -514,12 +514,12 @@ const Dashboard = () => {
           >
             {t("Transactions")}
           </TabsTrigger>
-          <TabsTrigger
+          {/* <TabsTrigger
             value="reports"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950"
           >
             {t("Reports")}
-          </TabsTrigger>
+          </TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">

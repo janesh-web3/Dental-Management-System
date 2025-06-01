@@ -215,6 +215,7 @@ const Appointments: React.FC = () => {
     try {
       setLoading(true);
       
+      console.log(doctorId);
       // Check if doctorId is available
       if (!doctorId) {
         console.error("Doctor ID is not available. User may not be logged in.");
@@ -227,7 +228,7 @@ const Appointments: React.FC = () => {
         return;
       }
       
-      // Get token from localStorage to ensure we're authenticated
+      // Get token from sessionStorage to ensure we're authenticated
       const token = sessionStorage.getItem("doctorToken");
       if (!token) {
         console.error("No authentication token found");
@@ -253,19 +254,21 @@ const Appointments: React.FC = () => {
           }
         }
       );
-      console.log(response)
+      console.log(response);
 
       if (response.success && response.data) {
         try {
-          // Safely access data with type checking
+          // Handle the nested response structure
           const responseData = response.data as any;
-          const appointments = Array.isArray(responseData.result) ? responseData.result : [];
-          setAppointments(appointments);
+          
+          // The appointments are nested in data.data.appointments
+          const appointmentsData = responseData.data?.appointments || [];
+          setAppointments(appointmentsData);
 
           // Group appointments by date for display
           const grouped: { [key: string]: Appointment[] } = {};
-          if (Array.isArray(appointments)) {
-            appointments.forEach((appointment) => {
+          if (Array.isArray(appointmentsData)) {
+            appointmentsData.forEach((appointment) => {
               if (appointment && appointment.appointmentDate) {
                 const formattedDate = formatAppointmentDate(
                   appointment.appointmentDate
@@ -279,8 +282,8 @@ const Appointments: React.FC = () => {
           }
           setGroupedAppointments(grouped);
 
-          // Get total pages directly from the response
-          const totalPages = typeof responseData.totalPages === 'number' ? responseData.totalPages : 1;
+          // Get total pages from the nested response
+          const totalPages = responseData.data?.totalPages || 1;
           setTotalPages(totalPages);
         } catch (error: any) {
           console.error("Error processing appointment data:", error);

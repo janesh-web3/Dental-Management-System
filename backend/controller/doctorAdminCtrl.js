@@ -130,6 +130,7 @@ const getDashboardOverview = async (req, res) => {
 // Appointments Module
 const getDoctorAppointments = async (req, res) => {
   try {
+    console.log(req.params)
     const { doctorId } = req.params;
     const { page = 1, limit = 10, search = "", status = "All", startDate, endDate } = req.query;
     

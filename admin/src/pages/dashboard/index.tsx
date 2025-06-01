@@ -346,15 +346,8 @@ const Dashboard = () => {
           "GET",
           `${server}/patient/dashboard-metrics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&viewMode=${viewMode}`
         )) as { data: DashboardData };
-
-        console.log("Dashboard data received:", response);
-        console.log("Total doctors:", response.data?.totalDoctors);
-        console.log(
-          "Doctor performance data:",
-          response.data?.doctorPerformance
-        );
-
         setDashboardData(response.data);
+        console.log("Dashboard data set:", response.data);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {

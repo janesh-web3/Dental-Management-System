@@ -1592,14 +1592,6 @@ const getDashboardMetrics = async (req, res) => {
     // Yearly revenue estimation based on monthly
     const yearlyRevenue = monthlyRevenue * 12;
 
-    // Log financial data for debugging
-    console.log(`Financial overview:`);
-    console.log(`- Today's revenue: ${dailyRevenue}`);
-    console.log(`- This week's revenue: ${weeklyRevenue}`);
-    console.log(`- This month's revenue: ${monthlyRevenue}`);
-    console.log(`- Yearly revenue (estimate): ${yearlyRevenue}`);
-    console.log(`- Total revenue (all time): ${totalRevenue}`);
-    console.log(`- Revenue trend data points: ${revenueTrend.length}`);
 
     // Get recent treatments
     const recentTreatments = await Patient.aggregate([
@@ -1673,13 +1665,6 @@ const getDashboardMetrics = async (req, res) => {
       }
     ]);
     
-    // Log the first document for debugging
-    if (recentTreatments.length > 0) {
-      console.log("First recent treatment document count:", recentTreatments[0].documentCount);
-      console.log("First recent treatment documents:", JSON.stringify(recentTreatments[0].documents));
-    } else {
-      console.log("No recent treatments found");
-    }
 
     // Get appointment analytics (by day and time)
     let appointmentsByDay = [];
@@ -1819,19 +1804,16 @@ const getDashboardMetrics = async (req, res) => {
           recentTreatments: recentTreatments.map(t => ({
             id: t._id.toString(),
             patientName: t.patientName,
-            procedure: t.treatment,
+            treatment: t.treatment,
             date: t.date,
-            amount: t.amount
+            amount: t.amount,
+            status : t.status,
+            documents : t.documents
           }))
         }
       }
     };
 
-    // Remove any testing/hardcoded data
-    console.log("Returning real demographic data to frontend:", {
-      ageDistribution,
-      genderDistribution
-    });
 
     res.status(200).json(responseData);
   } catch (error) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { format, parseISO, isToday, isTomorrow, isYesterday } from "date-fns";
-import { crudRequest } from "@/lib/api";
+import { crudRequest } from "@/utils/api";
 import {
   Card,
   CardContent,
@@ -46,15 +46,14 @@ import {
 } from "@/components/ui/select";
 
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Plus, Search, Edit2, X, Filter } from "lucide-react";
+import { Loader2, Plus, Search, Edit2, X, Filter, Eye } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useDoctorAuthContext } from "@/contexts/doctorAuthContext";
+import AppointmentDetailsDialog from "./components/AppointmentDetailsDialog";
 
-interface AppointmentsProps {
-  doctorId: string;
-}
+// Removed unused interface
 
 interface Appointment {
   _id: string;
@@ -120,6 +119,7 @@ const Appointments: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState<boolean>(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState<boolean>(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState<boolean>(false);
   const [currentAppointment, setCurrentAppointment] =
     useState<Appointment | null>(null);
   const { toast } = useToast();
@@ -181,17 +181,7 @@ const Appointments: React.FC = () => {
     }
   }, [isCreateDialogOpen, form]);
 
-  // Define the response type for appointments
-  interface AppointmentResponse {
-    success: boolean;
-    data: {
-      appointments: Appointment[];
-      totalPages: number;
-      currentPage: number;
-      totalAppointments: number;
-    };
-    message?: string;
-  }
+  // Response type is inferred from crudRequest
 
   // Function to format date for display
   const formatAppointmentDate = (dateString: string | undefined) => {
@@ -224,7 +214,33 @@ const Appointments: React.FC = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const response = await crudRequest<AppointmentResponse>(
+      
+      // Check if doctorId is available
+      if (!doctorId) {
+        console.error("Doctor ID is not available. User may not be logged in.");
+        toast({
+          variant: "destructive",
+          title: "Authentication Error",
+          description: "Please log in to view appointments"
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // Get token from localStorage to ensure we're authenticated
+      const token = sessionStorage.getItem("doctorToken");
+      if (!token) {
+        console.error("No authentication token found");
+        toast({
+          variant: "destructive",
+          title: "Authentication Error",
+          description: "Authentication required. Please log in again."
+        });
+        setLoading(false);
+        return;
+      }
+      
+      const response = await crudRequest(
         "GET",
         `/doctor-admin/appointments/${doctorId}`,
         {
@@ -232,15 +248,18 @@ const Appointments: React.FC = () => {
             search: searchTerm,
             status: statusFilter !== "all" ? statusFilter : undefined,
           },
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
       );
-
-      console.log(response);
+      console.log(response)
 
       if (response.success && response.data) {
         try {
-          // Get the appointments directly from the response
-          const appointments = response.data.appointments || [];
+          // Safely access data with type checking
+          const responseData = response.data as any;
+          const appointments = Array.isArray(responseData.result) ? responseData.result : [];
           setAppointments(appointments);
 
           // Group appointments by date for display
@@ -261,9 +280,10 @@ const Appointments: React.FC = () => {
           setGroupedAppointments(grouped);
 
           // Get total pages directly from the response
-          setTotalPages(response.data.totalPages || 1);
-        } catch (err) {
-          console.error("Error processing appointment data:", err);
+          const totalPages = typeof responseData.totalPages === 'number' ? responseData.totalPages : 1;
+          setTotalPages(totalPages);
+        } catch (error: any) {
+          console.error("Error processing appointment data:", error);
           setAppointments([]);
           setGroupedAppointments({});
           setTotalPages(1);
@@ -271,13 +291,27 @@ const Appointments: React.FC = () => {
       } else {
         throw new Error(response.message || "Failed to fetch appointments");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching appointments:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load appointments",
-      });
+      setAppointments([]);
+      setGroupedAppointments({});
+      
+      // Improved error handling with user feedback
+      if (error?.response?.status === 401 || error?.message?.includes("token")) {
+        toast({
+          variant: "destructive",
+          title: "Authentication Error",
+          description: "Please log in again to view appointments"
+        });
+        // Optional: Redirect to login page
+        // navigate("/doctor-login");
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error?.message || "Failed to load appointments"
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -420,6 +454,11 @@ const Appointments: React.FC = () => {
     });
 
     setIsEditDialogOpen(true);
+  };
+
+  const openDetailsDialog = (appointment: Appointment) => {
+    setCurrentAppointment(appointment);
+    setIsDetailsDialogOpen(true);
   };
 
   return (
@@ -681,6 +720,7 @@ const Appointments: React.FC = () => {
                 </Form>
               </DialogContent>
             </Dialog>
+
           </div>
         </CardHeader>
         <CardContent>
@@ -787,6 +827,16 @@ const Appointments: React.FC = () => {
                                         }
                                       >
                                         <X className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() =>
+                                          openDetailsDialog(appointment)
+                                        }
+                                        title="View Details"
+                                      >
+                                        <Eye className="h-4 w-4" />
                                       </Button>
                                     </div>
                                   </TableCell>
@@ -1084,6 +1134,15 @@ const Appointments: React.FC = () => {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Appointment Details Dialog */}
+      <AppointmentDetailsDialog
+        appointment={currentAppointment}
+        isOpen={isDetailsDialogOpen}
+        onClose={() => setIsDetailsDialogOpen(false)}
+        doctorId={doctorId}
+        onStatusChange={fetchAppointments}
+      />
     </div>
   );
 };

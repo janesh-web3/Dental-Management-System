@@ -8,6 +8,7 @@ import {
   MessageSquare,
   View,
   FilePlus,
+  ClipboardList,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -74,6 +75,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { FileSpreadsheet } from "lucide-react";
 import { AddPrescriptionButton } from "@/components/prescription";
+import { AddTreatmentPlanButton } from "@/components/patient/AddTreatmentPlanButton";
 import { toast } from "react-toastify";
 import {
   Dialog,
@@ -98,6 +100,7 @@ export function PatientTable() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const [doctors, setDoctors] = useState<any[]>([]);
 
   // Add near your other states
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
@@ -343,6 +346,7 @@ export function PatientTable() {
 
   useEffect(() => {
     fetchPatient(currentPage, itemsPerPage);
+    fetchDoctors();
   }, [currentPage, itemsPerPage]);
 
   //search functionality
@@ -350,6 +354,17 @@ export function PatientTable() {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
+  };
+
+  const fetchDoctors = async () => {
+    try {
+      const response = await crudRequest("GET", "/doctor/all");
+      if (response && Array.isArray(response)) {
+        setDoctors(response);
+      }
+    } catch (error) {
+      console.error("Error fetching doctors:", error);
+    }
   };
 
   const fetchPatient = async (
@@ -579,6 +594,15 @@ export function PatientTable() {
                           variant="outline"
                           size="sm"
                         />
+                        
+                        {/* Hidden Treatment Plan Button for dropdown menu to click */}
+                        <div id={`treatment-plan-btn-${patient._id}`}>
+                          <AddTreatmentPlanButton
+                            patient={patient}
+                            doctors={doctors}
+                            onSuccess={() => fetchPatient(currentPage, itemsPerPage, searchQuery)}
+                          />
+                        </div>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -641,6 +665,21 @@ export function PatientTable() {
                             className="gap-2"
                           >
                             <FilePlus className="h-4 w-4" /> Add Prescription
+                          </DropdownMenuItem>
+
+                          {/* Add Treatment Plan Menu Item */}
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              document
+                                .getElementById(
+                                  `treatment-plan-btn-${patient._id}`
+                                )
+                                ?.click();
+                            }}
+                            className="gap-2"
+                          >
+                            <ClipboardList className="h-4 w-4" /> Add Treatment Plan
                           </DropdownMenuItem>
 
                           <DropdownMenuItem

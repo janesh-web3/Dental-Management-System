@@ -119,7 +119,6 @@ export const getPatientAppointments = async (patientId: string): Promise<{ succe
   try {
     const response = await api.get(`/patient/${patientId}/appointments`);
     const data = response.data;
-    
     if (data.success && data.appointments) {
       return {
         success: true,

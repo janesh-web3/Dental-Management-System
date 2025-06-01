@@ -39,7 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Reports } from "./Reports";
+import { Analytics } from "./Analytics";
 
 interface DoctorAnalysis {
   _id: string;
@@ -514,12 +514,12 @@ const Dashboard = () => {
           >
             {t("Transactions")}
           </TabsTrigger>
-          {/* <TabsTrigger
-            value="reports"
+          <TabsTrigger
+            value="analytics"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950"
           >
-            {t("Reports")}
-          </TabsTrigger> */}
+            {t("Analytics")}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -694,88 +694,6 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-4">
-          <Card className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 shadow-sm hover:shadow-md transition-all">
-            <CardHeader>
-              <CardTitle className="text-amber-800 dark:text-amber-300">
-                {t("Doctor Performance")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!dashboardData?.doctorPerformance ||
-              dashboardData.doctorPerformance.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-lg text-amber-700 dark:text-amber-400">
-                    No doctor data available
-                  </p>
-                  <p className="text-sm text-amber-600 dark:text-amber-500 mt-2">
-                    Create doctors in the system to view performance analytics
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {dashboardData.doctorPerformance.map((doctor) => (
-                    <Card
-                      key={doctor._id}
-                      className="bg-white dark:bg-amber-900 border-amber-100 dark:border-amber-700"
-                    >
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="text-lg text-amber-900 dark:text-amber-100">
-                              {doctor.doctorName}
-                            </CardTitle>
-                            <p className="text-sm text-amber-700 dark:text-amber-300">
-                              {doctor.specialization}
-                            </p>
-                          </div>
-                          <Avatar className="bg-amber-100 dark:bg-amber-800">
-                            <User className="h-6 w-6 text-amber-600 dark:text-amber-300" />
-                          </Avatar>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div>
-                            <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                              {t("Completed Appointments")}
-                            </p>
-                            <p className="text-2xl font-bold text-amber-900 dark:text-amber-50">
-                              {doctor.completedAppointments}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                              {t("Patients Treated")}
-                            </p>
-                            <p className="text-2xl font-bold text-amber-900 dark:text-amber-50">
-                              {doctor.patientsCount}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                              {t("Performance Rate")}
-                            </p>
-                            <div className="flex items-center gap-2">
-                              <Progress
-                                value={doctor.performanceRate}
-                                className="h-2 bg-amber-200 dark:bg-amber-800"
-                              />
-                              <span className="text-sm font-medium text-amber-900 dark:text-amber-50">
-                                {doctor.performanceRate}%
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="appointments" className="space-y-4">
@@ -1022,11 +940,11 @@ const Dashboard = () => {
         </TabsContent>
 
         <TabsContent
-          value="reports"
+          value="analytics"
           className="space-y-4 transition-all duration-200"
         >
-          <div className="bg-violet-50 dark:bg-violet-950 border-violet-200 dark:border-violet-800 shadow-sm hover:shadow-md transition-all rounded-lg p-0.5">
-            <Reports />
+          <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-md transition-all rounded-lg p-0.5">
+            <Analytics />
           </div>
         </TabsContent>
       </Tabs>

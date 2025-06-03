@@ -18,20 +18,19 @@ const protectAdminRoute = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Not authorized, no token"
+        message: "Not authorized, no token",
       });
     }
 
     try {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-const user = await User.findById(decoded.userId).select("-password");
-console.log(user.role)
+      const user = await User.findById(decoded.userId).select("-password");
       // Check if the token is for an admin
       if (user.role !== "admin") {
         return res.status(403).json({
           success: false,
-          message: "Not authorized as an admin"
+          message: "Not authorized as an admin",
         });
       }
 
@@ -40,7 +39,7 @@ console.log(user.role)
       if (!admin) {
         return res.status(404).json({
           success: false,
-          message: "Admin not found"
+          message: "Admin not found",
         });
       }
 
@@ -49,7 +48,7 @@ console.log(user.role)
         id: admin._id,
         role: "admin",
         name: admin.name,
-        email: admin.email
+        email: admin.email,
       };
 
       next();
@@ -58,7 +57,7 @@ console.log(user.role)
       return res.status(401).json({
         success: false,
         message: "Not authorized, token failed",
-        error: error.message
+        error: error.message,
       });
     }
   } catch (error) {
@@ -66,7 +65,7 @@ console.log(user.role)
     res.status(500).json({
       success: false,
       message: "Server error in auth middleware",
-      error: error.message
+      error: error.message,
     });
   }
 };

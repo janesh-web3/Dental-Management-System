@@ -116,7 +116,7 @@ router.get("/patient/:id/appointments", patientAuthMiddleware, async (req, res) 
 
     // Find appointments for this patient
     const appointments = await Appointment.find({ patientId })
-      .populate("doctorId", "name specialization")
+      .populate("doctor", "name specialization")
       .sort({ appointmentDate: 1 });
 
     return res.status(200).json({

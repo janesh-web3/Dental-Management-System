@@ -100,9 +100,86 @@ const updateAppointmentStatus = async (req, res) => {
     });
   }
 };
+const updateAppointment = async (req, res) => {
+  try {
+    const appointmentId = req.params.id;
+    const updateData = req.body;
+    
+    // Find the appointment
+    const appointment = await Appointment.findById(appointmentId);
+    
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found"
+      });
+    }
+    
+    // If patient is authenticated, check if they own this appointment
+    if (req.patient && appointment.patientId.toString() !== req.patient._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to update this appointment"
+      });
+    }
+    
+    // Check if appointment status allows editing (pending or approved)
+    if (!['pending', 'approved'].includes(appointment.status.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: "Only pending or approved appointments can be updated"
+      });
+    }
+    
+    // If doctor is changing, update the old and new doctor's appointment lists
+    if (updateData.doctorId && updateData.doctorId !== appointment.doctor.toString()) {
+      // Remove appointment from old doctor's list
+      const oldDoctor = await Doctor.findById(appointment.doctor);
+      if (oldDoctor) {
+        oldDoctor.appointments = oldDoctor.appointments.filter(
+          appt => appt.toString() !== appointmentId
+        );
+        await oldDoctor.save();
+      }
+      
+      // Add appointment to new doctor's list
+      const newDoctor = await Doctor.findById(updateData.doctorId);
+      if (newDoctor) {
+        newDoctor.appointments.push(appointmentId);
+        await newDoctor.save();
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: "New doctor not found"
+        });
+      }
+    }
+    
+    // Update the appointment
+    const updatedAppointment = await Appointment.findByIdAndUpdate(
+      appointmentId,
+      updateData,
+      { new: true, runValidators: true }
+    ).populate('doctor', 'name specialization');
+    
+    res.status(200).json({
+      success: true,
+      message: "Appointment updated successfully",
+      appointment: updatedAppointment
+    });
+  } catch (error) {
+    console.error("Error updating appointment:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update appointment",
+      error: error.message
+    });
+  }
+};
 
 module.exports = {
   addAppointment,
   getAllAppointment,
   updateAppointmentStatus,
+  updateAppointment
 };

@@ -75,6 +75,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { FileSpreadsheet } from "lucide-react";
 import { AddPrescriptionButton } from "@/components/prescription";
+import { AddTreatmentPlanButton } from "@/components/treatment/AddTreatmentPlanButton";
 import { toast } from "react-toastify";
 import {
   Dialog,
@@ -594,6 +595,15 @@ export function PatientTable() {
                           size="sm"
                         />
                         
+                        {/* Hidden AddTreatmentPlanButton that will be triggered by the dropdown menu */}
+                        <AddTreatmentPlanButton
+                          id={`treatment-plan-btn-${patient._id}`}
+                          patientId={patient._id}
+                          patientName={patient.personalDetails.name}
+                          isAdmin={true}
+                          variant="outline"
+                          size="sm"
+                        />
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -605,24 +615,28 @@ export function PatientTable() {
                             <span className="sr-only">Open menu</span>
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[160px]">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
 
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedPatient(patient);
-                              setIsViewDrawerOpen(true);
-                            }}
-                            className="gap-2"
-                          >
-                            <View className="h-4 w-4" /> View
-                          </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPatient(patient);
+                            setIsViewDrawerOpen(true);
+                          }}
+                          className="gap-2"
+                        >
+                          <View className="h-4 w-4" /> View
+                        </DropdownMenuItem>
 
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPatient(patient);
+                            setIsUpdateModalOpen(true);
+                          }}
+                          className="gap-2"
+                        >
+                          <Edit className="h-4 w-4" /> Edit
+                        </DropdownMenuItem>
                               setSelectedPatient(patient);
                               setIsUpdateModalOpen(true);
                             }}
@@ -662,15 +676,17 @@ export function PatientTable() {
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
-                              document
-                                .getElementById(
-                                  `treatment-plan-btn-${patient._id}`
-                                )
-                                ?.click();
+                              // Trigger the hidden AddTreatmentPlanButton click event
+                              const button = document.getElementById(`treatment-plan-btn-${patient._id}`);
+                              if (button) {
+                                button.click();
+                              } else {
+                                toast.error("Treatment plan button not found");
+                              }
                             }}
-                            className="gap-2"
                           >
-                            <ClipboardList className="h-4 w-4" /> Add Treatment Plan
+                            <ClipboardList className="mr-2 h-4 w-4" />
+                            <span>Add Treatment Plan</span>
                           </DropdownMenuItem>
 
                           <DropdownMenuItem

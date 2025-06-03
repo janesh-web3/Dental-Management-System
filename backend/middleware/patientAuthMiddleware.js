@@ -15,15 +15,12 @@ const patientAuthMiddleware = async (req, res, next) => {
     }
 
     const token = authHeader.split(" ")[1];
-    console.log("Received token for verification:", token.substring(0, 10) + "...");
     
     // Verify token
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log("Token decoded successfully:", decoded);
     } catch (tokenError) {
-      console.error("Token verification failed:", tokenError.message);
       return res.status(401).json({
         success: false,
         message: `Token verification failed: ${tokenError.message}`,
@@ -32,7 +29,6 @@ const patientAuthMiddleware = async (req, res, next) => {
     
     // Check if we have an ID in the token
     if (!decoded.id) {
-      console.error("Token missing ID field");
       return res.status(401).json({
         success: false,
         message: "Invalid token format. Missing ID.",
@@ -40,17 +36,15 @@ const patientAuthMiddleware = async (req, res, next) => {
     }
     
     // Find patient auth by id
-    console.log("Looking for PatientAuth with ID:", decoded.id);
     const patientAuth = await PatientAuth.findById(decoded.id);
     if (!patientAuth) {
-      console.error("PatientAuth not found for ID:", decoded.id);
       return res.status(401).json({
         success: false,
         message: "Invalid token. Authentication failed.",
       });
     }
     
-    console.log("PatientAuth found:", patientAuth._id);
+    
     
     // Find patient details
     const patient = await Patient.findById(patientAuth.patientId);
@@ -81,7 +75,6 @@ const patientAuthMiddleware = async (req, res, next) => {
       });
     }
     
-    console.error("Patient auth middleware error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error.",

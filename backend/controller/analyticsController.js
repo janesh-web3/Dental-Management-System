@@ -158,28 +158,32 @@ const getRevenueAnalytics = async (req, res) => {
     const end = endDate ? endOfDay(new Date(endDate)) : endOfDay(new Date());
     const start = startDate ? startOfDay(new Date(startDate)) : startOfDay(subMonths(end, 12));
     
-    // Aggregate revenue data from patient treatments
+    // Aggregate revenue data from patient treatments using dailyTreatmentSchema
     const revenueData = await Patient.aggregate([
       // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
       // Unwind the treatmentPlanning array
       { $unwind: { path: "$medicalDetails.treatmentPlanning", preserveNullAndEmptyArrays: false } },
+      // Unwind the selectedTeethDetails array
+      { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails", preserveNullAndEmptyArrays: false } },
+      // Unwind the dailyTreatments array
+      { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments", preserveNullAndEmptyArrays: false } },
       // Filter by date range
       { $match: {
-          "medicalDetails.treatmentPlanning.treatmentDate": { $gte: start, $lte: end }
+          "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": { $gte: start, $lte: end }
         }
       },
-      // Group by time period
+      // Group by time period based on dailyTreatments.date
       { $group: {
           _id: period === 'monthly' 
-            ? { year: { $year: "$medicalDetails.treatmentPlanning.treatmentDate" }, month: { $month: "$medicalDetails.treatmentPlanning.treatmentDate" } }
+            ? { year: { $year: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date" }, month: { $month: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date" } }
             : period === 'weekly'
-              ? { year: { $year: "$medicalDetails.treatmentPlanning.treatmentDate" }, week: { $week: "$medicalDetails.treatmentPlanning.treatmentDate" } }
-              : { year: { $year: "$medicalDetails.treatmentPlanning.treatmentDate" }, month: { $month: "$medicalDetails.treatmentPlanning.treatmentDate" }, day: { $dayOfMonth: "$medicalDetails.treatmentPlanning.treatmentDate" } },
-          totalAmount: { $sum: "$medicalDetails.treatmentPlanning.totalPlanAmount" },
-          paidAmount: { $sum: "$medicalDetails.treatmentPlanning.totalPaidAmount" },
-          remainingAmount: { $sum: "$medicalDetails.treatmentPlanning.totalRemainingAmount" },
-          date: { $first: "$medicalDetails.treatmentPlanning.treatmentDate" }
+              ? { year: { $year: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date" }, week: { $week: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date" } }
+              : { year: { $year: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date" }, month: { $month: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date" }, day: { $dayOfMonth: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date" } },
+          totalAmount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount" },
+          paidAmount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount" },
+          remainingAmount: { $sum: { $subtract: ["$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount", "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount"] } },
+          date: { $first: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date" }
         }
       },
       // Sort by date
@@ -249,23 +253,27 @@ const getRevenueAnalytics = async (req, res) => {
       }
     ]);
     
-    // Get top paying patients
+    // Get top paying patients based on dailyTreatments
     const topPayingPatients = await Patient.aggregate([
       // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
       // Unwind the treatmentPlanning array
       { $unwind: { path: "$medicalDetails.treatmentPlanning", preserveNullAndEmptyArrays: false } },
+      // Unwind the selectedTeethDetails array
+      { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails", preserveNullAndEmptyArrays: false } },
+      // Unwind the dailyTreatments array
+      { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments", preserveNullAndEmptyArrays: false } },
       // Filter by date range
       { $match: {
-          "medicalDetails.treatmentPlanning.treatmentDate": { $gte: start, $lte: end }
+          "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": { $gte: start, $lte: end }
         }
       },
       // Group by patient
       { $group: {
           _id: "$_id",
           patientName: { $first: "$personalDetails.name" },
-          totalPaid: { $sum: "$medicalDetails.treatmentPlanning.totalPaidAmount" },
-          totalAmount: { $sum: "$medicalDetails.treatmentPlanning.totalPlanAmount" }
+          totalPaid: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount" },
+          totalAmount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount" }
         }
       },
       // Sort by total paid amount
@@ -284,16 +292,29 @@ const getRevenueAnalytics = async (req, res) => {
       }
     ]);
     
-    // Get outstanding amounts summary
+    // Get outstanding amounts summary based on dailyTreatments
     const outstandingAmounts = await Patient.aggregate([
       // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
       // Unwind the treatmentPlanning array
       { $unwind: { path: "$medicalDetails.treatmentPlanning", preserveNullAndEmptyArrays: false } },
-      // Filter by date range and only include treatments with remaining amounts
+      // Unwind the selectedTeethDetails array
+      { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails", preserveNullAndEmptyArrays: false } },
+      // Unwind the dailyTreatments array
+      { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments", preserveNullAndEmptyArrays: false } },
+      // Filter by date range and calculate remaining amount
       { $match: {
-          "medicalDetails.treatmentPlanning.treatmentDate": { $gte: start, $lte: end },
-          "medicalDetails.treatmentPlanning.totalRemainingAmount": { $gt: 0 }
+          "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": { $gte: start, $lte: end }
+        }
+      },
+      // Add a field for remaining amount
+      { $addFields: {
+          remainingAmount: { $subtract: ["$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount", "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount"] }
+        }
+      },
+      // Filter to only include treatments with remaining amounts
+      { $match: {
+          remainingAmount: { $gt: 0 }
         }
       },
       // Group by patient
@@ -301,7 +322,7 @@ const getRevenueAnalytics = async (req, res) => {
           _id: "$_id",
           patientName: { $first: "$personalDetails.name" },
           contactNumber: { $first: "$personalDetails.contactNumber" },
-          totalRemaining: { $sum: "$medicalDetails.treatmentPlanning.totalRemainingAmount" }
+          totalRemaining: { $sum: "$remainingAmount" }
         }
       },
       // Sort by total remaining amount
@@ -317,23 +338,27 @@ const getRevenueAnalytics = async (req, res) => {
       }
     ]);
     
-    // Calculate overall revenue metrics
+    // Calculate overall revenue metrics based on dailyTreatments
     const overallRevenue = await Patient.aggregate([
       // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
       // Unwind the treatmentPlanning array
       { $unwind: { path: "$medicalDetails.treatmentPlanning", preserveNullAndEmptyArrays: false } },
+      // Unwind the selectedTeethDetails array
+      { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails", preserveNullAndEmptyArrays: false } },
+      // Unwind the dailyTreatments array
+      { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments", preserveNullAndEmptyArrays: false } },
       // Filter by date range
       { $match: {
-          "medicalDetails.treatmentPlanning.treatmentDate": { $gte: start, $lte: end }
+          "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": { $gte: start, $lte: end }
         }
       },
       // Group all data
       { $group: {
           _id: null,
-          totalAmount: { $sum: "$medicalDetails.treatmentPlanning.totalPlanAmount" },
-          paidAmount: { $sum: "$medicalDetails.treatmentPlanning.totalPaidAmount" },
-          remainingAmount: { $sum: "$medicalDetails.treatmentPlanning.totalRemainingAmount" }
+          totalAmount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount" },
+          paidAmount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount" },
+          remainingAmount: { $sum: { $subtract: ["$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount", "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount"] } }
         }
       }
     ]);

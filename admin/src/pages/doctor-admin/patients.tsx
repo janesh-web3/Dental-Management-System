@@ -42,7 +42,6 @@ import {
 } from "lucide-react";
 import { useDoctorAuthContext } from "@/contexts/doctorAuthContext";
 import { AddPrescriptionButton } from "@/components/prescription/AddPrescriptionButton";
-import { AddTreatmentPlanButton } from "@/components/patient/AddTreatmentPlanButton";
 
 interface DailyTreatment {
   _id: string;
@@ -452,29 +451,6 @@ const Patients: React.FC = () => {
                                   isAdmin={false}
                                   variant="outline"
                                   size="sm"
-                                />
-                                <AddTreatmentPlanButton
-                                  patient={patient}
-                                  doctors={[{
-                                    _id: doctorId,
-                                    name: doctorDetails?.name || '',
-                                    specialization: doctorDetails?.specialization || '',
-                                    email: '',
-                                    image: { url: '' },
-                                    isActive: true,
-                                    appointments: [],
-                                    age: '',
-                                    nmcNumber: '',
-                                    contactNumber: '',
-                                    address: '',
-                                    qualifications: [],
-                                    experienceYears: '',
-                                    availability: []
-                                  }]}
-                                  doctorId={doctorId}
-                                  variant="outline"
-                                  size="sm"
-                                  onSuccess={() => fetchPatients()}
                                 />
                                 <Button
                                   variant="outline"

@@ -63,6 +63,7 @@ export default function PatientInsights({ dateRange, period }: PatientInsightsPr
         "GET",
         `/analytics/patients?startDate=${from}&endDate=${to}&period=${period}`
       );
+      console.log(response)
       
       if (response.success && response.data) {
         setData(response.data);

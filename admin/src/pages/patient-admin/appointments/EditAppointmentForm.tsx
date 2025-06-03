@@ -7,6 +7,7 @@ import { CalendarIcon } from "lucide-react";
 import { usePatientAuthContext } from "@/contexts/patientAuthContext";
 import { crudRequest } from "@/utils/api";
 import { cn } from "@/lib/utils";
+import { toast } from "react-toastify";
 
 // UI Components
 import { Button } from "@/components/ui/button";
@@ -41,18 +42,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
-import { toast } from "react-toastify";
 
 // Define appointment form schema with validation
 const appointmentFormSchema = z.object({
-  firstName: z.string().min(3, "First name must be at least 3 characters"),
-  lastName: z.string().min(3, "Last name must be at least 3 characters"),
-  age: z.string().min(1, "Age is required"),
-  address: z.string().min(1, "Address is required"),
-  phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
-  gender: z.enum(["Male", "Female", "Other"], {
-    required_error: "Please select a gender",
-  }),
   appointmentDate: z.date({
     required_error: "Appointment date is required",
   }),
@@ -75,40 +67,64 @@ interface Doctor {
   specialization?: string;
 }
 
-interface AddAppointmentFormProps {
+interface Appointment {
+  _id: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  doctor: Doctor;
+  doctorId: Doctor;
+  subject: string;
+  reason: string;
+  status: string;
+  notes?: string;
+  comments?: string;
+  patientId?: string;
+}
+
+interface EditAppointmentFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  appointment: Appointment | null;
 }
 
-const AddAppointmentForm: React.FC<AddAppointmentFormProps> = ({
+const EditAppointmentForm: React.FC<EditAppointmentFormProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  appointment,
 }) => {
   const { patientDetails } = usePatientAuthContext();
   const [doctors, setDoctors] = React.useState<Doctor[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Initialize form with default values
+  // Initialize form with default values from the appointment
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentFormSchema),
     defaultValues: {
-      firstName: patientDetails.name?.split(" ")[0] || "",
-      lastName: patientDetails.name?.split(" ")[1] || "",
-      age: patientDetails.age || "",
-      address: patientDetails.address || "",
-      phoneNumber: patientDetails.contactNumber || "",
-      gender: (patientDetails.gender as "Male" | "Female" | "Other") || "Male",
-      appointmentDate: new Date(),
-      appointmentTime: "10:00",
-      doctor: "",
-      subject: "",
-      reason: "",
-      comments: "",
+      appointmentDate: appointment ? new Date(appointment.appointmentDate) : new Date(),
+      appointmentTime: appointment?.appointmentTime || "10:00",
+      doctor: appointment?.doctor?._id || appointment?.doctorId?._id || "",
+      subject: appointment?.subject || "",
+      reason: appointment?.reason || "",
+      comments: appointment?.comments || "",
     },
   });
+  
+  // Reset form values when appointment changes
+  React.useEffect(() => {
+    if (appointment && isOpen) {
+      form.reset({
+        appointmentDate: new Date(appointment.appointmentDate),
+        appointmentTime: appointment.appointmentTime,
+        doctor: appointment.doctor?._id || appointment.doctorId?._id || "",
+        subject: appointment.subject,
+        reason: appointment.reason,
+        comments: appointment.comments || "",
+      });
+    }
+  }, [appointment, form, isOpen]);
 
   // Fetch doctors when component mounts
   React.useEffect(() => {
@@ -134,35 +150,40 @@ const AddAppointmentForm: React.FC<AddAppointmentFormProps> = ({
 
   // Handle form submission
   const onSubmit = async (data: AppointmentFormValues) => {
+    if (!appointment?._id) {
+      toast.error("Appointment ID is missing");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Format date and time for API
       const formattedDate = format(data.appointmentDate, "yyyy-MM-dd");
       
+      // Prepare appointment data
       const appointmentData = {
-        ...data,
         appointmentDate: formattedDate,
+        appointmentTime: data.appointmentTime,
+        doctorId: data.doctor,
+        subject: data.subject,
+        reason: data.reason,
+        comments: data.comments || "",
         patientId: patientDetails._id,
-        status: "Pending",
       };
 
-      const response = await crudRequest(
-        "POST",
-        "/appointment/add-appointment",
-        appointmentData
-      );
-
+      // Make API call to update appointment
+      const response = await crudRequest("PUT", `/appointment/${appointment._id}`, appointmentData);
+      
       if (response.success) {
-       toast.success("Appointment scheduled successfully!");
-        form.reset();
+        toast.success("Appointment updated successfully!");
         onSuccess();
         onClose();
       } else {
-       toast.error(response.message || "Failed to schedule appointment");
+        toast.error(response.message || "Failed to update appointment");
       }
     } catch (error) {
-      console.error("Error scheduling appointment:", error);
-      toast.error("An unexpected error occurred. Please try again.");
+      console.error("Error updating appointment:", error);
+      toast.error("An error occurred while updating the appointment");
     } finally {
       setIsSubmitting(false);
     }
@@ -170,135 +191,31 @@ const AddAppointmentForm: React.FC<AddAppointmentFormProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">
-            Schedule New Appointment
-          </DialogTitle>
+          <DialogTitle>Edit Appointment</DialogTitle>
           <DialogDescription>
-            Fill in the details below to schedule your dental appointment
+            Make changes to your appointment details below.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* First Name */}
-              <FormField
-                control={form.control}
-                name="firstName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>First Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="First name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Last Name */}
-              <FormField
-                control={form.control}
-                name="lastName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Last Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Last name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Age */}
-              <FormField
-                control={form.control}
-                name="age"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Age</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Age" type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Gender */}
-              <FormField
-                control={form.control}
-                name="gender"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Gender</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select gender" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Male">Male</SelectItem>
-                        <SelectItem value="Female">Female</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Phone Number */}
-              <FormField
-                control={form.control}
-                name="phoneNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Phone number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Address */}
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Address" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               {/* Appointment Date */}
               <FormField
                 control={form.control}
                 name="appointmentDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Appointment Date</FormLabel>
+                    <FormLabel>Date</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
                             variant={"outline"}
                             className={cn(
-                              "pl-3 text-left font-normal",
+                              "w-full pl-3 text-left font-normal",
                               !field.value && "text-muted-foreground"
                             )}
                           >
@@ -316,9 +233,7 @@ const AddAppointmentForm: React.FC<AddAppointmentFormProps> = ({
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) =>
-                            date < new Date(new Date().setHours(0, 0, 0, 0))
-                          }
+                          disabled={(date) => date < new Date()}
                           initialFocus
                         />
                       </PopoverContent>
@@ -334,7 +249,7 @@ const AddAppointmentForm: React.FC<AddAppointmentFormProps> = ({
                 name="appointmentTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Appointment Time</FormLabel>
+                    <FormLabel>Time</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
@@ -345,15 +260,18 @@ const AddAppointmentForm: React.FC<AddAppointmentFormProps> = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="09:00">9:00 AM</SelectItem>
-                        <SelectItem value="10:00">10:00 AM</SelectItem>
-                        <SelectItem value="11:00">11:00 AM</SelectItem>
-                        <SelectItem value="12:00">12:00 PM</SelectItem>
-                        <SelectItem value="13:00">1:00 PM</SelectItem>
-                        <SelectItem value="14:00">2:00 PM</SelectItem>
-                        <SelectItem value="15:00">3:00 PM</SelectItem>
-                        <SelectItem value="16:00">4:00 PM</SelectItem>
-                        <SelectItem value="17:00">5:00 PM</SelectItem>
+                        {Array.from({ length: 12 }, (_, i) => i + 8).map(
+                          (hour) => (
+                            <React.Fragment key={hour}>
+                              <SelectItem value={`${hour}:00`}>
+                                {hour}:00 {hour < 12 ? "AM" : "PM"}
+                              </SelectItem>
+                              <SelectItem value={`${hour}:30`}>
+                                {hour}:30 {hour < 12 ? "AM" : "PM"}
+                              </SelectItem>
+                            </React.Fragment>
+                          )
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -371,6 +289,7 @@ const AddAppointmentForm: React.FC<AddAppointmentFormProps> = ({
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -464,7 +383,7 @@ const AddAppointmentForm: React.FC<AddAppointmentFormProps> = ({
                 {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Schedule Appointment
+                Update Appointment
               </Button>
             </div>
           </form>
@@ -474,4 +393,4 @@ const AddAppointmentForm: React.FC<AddAppointmentFormProps> = ({
   );
 };
 
-export default AddAppointmentForm;
+export default EditAppointmentForm;

@@ -77,7 +77,6 @@ export default function RevenueAnalytics({ dateRange, period }: RevenueAnalytics
           "GET",
           `/analytics/revenue?startDate=${from}&endDate=${to}&period=${period}`
         );
-
         if (response.success && response.data) {
           setData(response.data);
         } else {
@@ -104,9 +103,9 @@ export default function RevenueAnalytics({ dateRange, period }: RevenueAnalytics
   
   // Format currency
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-NP', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'NPR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -142,7 +141,7 @@ export default function RevenueAnalytics({ dateRange, period }: RevenueAnalytics
             {loading ? (
               <Skeleton className="h-8 w-[100px]" />
             ) : (
-              <div className="text-2xl font-bold">{formatCurrency(data?.overallRevenue?.totalAmount || 0)}</div>
+              <div className="text-2xl font-bold text-green-500">{formatCurrency(data?.overallRevenue?.totalAmount || 0)}</div>
             )}
           </CardContent>
         </Card>
@@ -156,7 +155,7 @@ export default function RevenueAnalytics({ dateRange, period }: RevenueAnalytics
             {loading ? (
               <Skeleton className="h-8 w-[100px]" />
             ) : (
-              <div className="text-2xl font-bold">{formatCurrency(data?.overallRevenue?.paidAmount || 0)}</div>
+              <div className="text-2xl font-bold text-green-500">{formatCurrency(data?.overallRevenue?.paidAmount || 0)}</div>
             )}
           </CardContent>
         </Card>
@@ -170,7 +169,7 @@ export default function RevenueAnalytics({ dateRange, period }: RevenueAnalytics
             {loading ? (
               <Skeleton className="h-8 w-[100px]" />
             ) : (
-              <div className="text-2xl font-bold">{formatCurrency(data?.overallRevenue?.remainingAmount || 0)}</div>
+              <div className="text-2xl font-bold text-red-500">{formatCurrency(data?.overallRevenue?.remainingAmount || 0)}</div>
             )}
           </CardContent>
         </Card>
@@ -184,7 +183,7 @@ export default function RevenueAnalytics({ dateRange, period }: RevenueAnalytics
             {loading ? (
               <Skeleton className="h-8 w-[100px]" />
             ) : (
-              <div className="text-2xl font-bold">
+              <div className="text-2xl font-bold text-green-500">
                 {data?.overallRevenue?.totalAmount
                   ? ((data.overallRevenue.paidAmount / data.overallRevenue.totalAmount) * 100).toFixed(1)
                   : "0"}%

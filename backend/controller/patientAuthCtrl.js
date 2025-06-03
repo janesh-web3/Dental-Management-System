@@ -2,16 +2,17 @@ const Patient = require("../model/Patient");
 const PatientAuth = require("../model/PatientAuth");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const Appointment = require("../model/Appointment");
 
 // Patient login controller
 const patientLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
     console.log(`Patient login attempt for email: ${email}`);
-    
+
     // Validate input
     if (!email || !password) {
-      console.log('Login failed: Email and password are required');
+      console.log("Login failed: Email and password are required");
       return res.status(400).json({
         success: false,
         message: "Email and password are required",
@@ -20,9 +21,9 @@ const patientLogin = async (req, res) => {
 
     // Check if patient exists with this email
     const patient = await Patient.findOne({
-      "personalDetails.emailAddress": email
+      "personalDetails.emailAddress": email,
     });
-    
+
     if (!patient) {
       console.log(`Login failed: No patient found with email ${email}`);
       return res.status(401).json({
@@ -37,15 +38,15 @@ const patientLogin = async (req, res) => {
     // This handles patients created with the updated addPatient function
     if (patient.password) {
       const isPasswordValid = await bcrypt.compare(password, patient.password);
-      
+
       if (isPasswordValid) {
-        console.log('Password validation successful using Patient model');
-        
+        console.log("Password validation successful using Patient model");
+
         // Look for existing PatientAuth record or create one
         let patientAuth = await PatientAuth.findOne({ patientId: patient._id });
-        
+
         if (!patientAuth) {
-          console.log('Creating new PatientAuth record for patient');
+          console.log("Creating new PatientAuth record for patient");
           patientAuth = new PatientAuth({
             email: patient.personalDetails.emailAddress,
             password: patient.password, // Already hashed
@@ -56,14 +57,14 @@ const patientLogin = async (req, res) => {
         } else {
           console.log(`Found existing PatientAuth with ID: ${patientAuth._id}`);
         }
-        
+
         // Generate JWT token using PatientAuth ID for consistency
         const token = jwt.sign(
           { id: patientAuth._id },
           process.env.JWT_SECRET,
           { expiresIn: "30d" }
         );
-        
+
         console.log(`Generated token for PatientAuth ID: ${patientAuth._id}`);
 
         // Return success with token and patient details
@@ -82,24 +83,24 @@ const patientLogin = async (req, res) => {
           },
         });
       } else {
-        console.log('Password validation failed using Patient model');
+        console.log("Password validation failed using Patient model");
       }
     } else {
-      console.log('No password field in Patient model, trying PatientAuth');
+      console.log("No password field in Patient model, trying PatientAuth");
     }
-    
+
     // Check if patient auth exists as a fallback
-    console.log('Checking for PatientAuth record as fallback');
+    console.log("Checking for PatientAuth record as fallback");
     let patientAuth = await PatientAuth.findOne({ patientId: patient._id });
 
     // If no auth record exists yet, create one
     if (!patientAuth) {
-      console.log('No PatientAuth record found, creating one');
+      console.log("No PatientAuth record found, creating one");
       // Helper function to generate a temporary password if needed
       const generateTempPassword = () => {
         return Math.random().toString(36).slice(-8);
       };
-      
+
       // Create a new patient auth record
       patientAuth = new PatientAuth({
         email: patient.personalDetails.emailAddress,
@@ -113,30 +114,28 @@ const patientLogin = async (req, res) => {
     }
 
     // Verify password with PatientAuth model
-    console.log('Verifying password with PatientAuth model');
+    console.log("Verifying password with PatientAuth model");
     const isPasswordValid = await patientAuth.comparePassword(password);
     if (!isPasswordValid) {
-      console.log('Password validation failed with PatientAuth model');
+      console.log("Password validation failed with PatientAuth model");
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
       });
     }
 
-    console.log('Password validation successful with PatientAuth model');
-    
+    console.log("Password validation successful with PatientAuth model");
+
     // Update last login time
     patientAuth.lastLogin = new Date();
     await patientAuth.save();
-    console.log('Updated last login time');
+    console.log("Updated last login time");
 
     // Generate JWT token directly instead of using the model method
     // to ensure consistency with the middleware verification
-    const token = jwt.sign(
-      { id: patientAuth._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "30d" }
-    );
+    const token = jwt.sign({ id: patientAuth._id }, process.env.JWT_SECRET, {
+      expiresIn: "30d",
+    });
     console.log(`Generated token for PatientAuth ID: ${patientAuth._id}`);
 
     // Return success with token and patient details
@@ -154,7 +153,7 @@ const patientLogin = async (req, res) => {
         role: "patient",
       },
     });
-    console.log('Login successful, response sent');
+    console.log("Login successful, response sent");
   } catch (error) {
     console.error("Patient login error:", error);
     res.status(500).json({
@@ -255,25 +254,13 @@ const getPatientAppointments = async (req, res) => {
       });
     }
 
-    // Find patient with populated appointments
-    const patient = await Patient.findById(patientId).populate({
-      path: "appointments",
-      populate: {
-        path: "doctorId",
-        select: "name specialization",
-      },
-    });
-
-    if (!patient) {
-      return res.status(404).json({
-        success: false,
-        message: "Patient not found",
-      });
-    }
+    const patient = await Appointment.find({ patientId })
+      .populate("doctor", "name specialization")
+      .sort({ appointmentDate: 1 });
 
     res.status(200).json({
       success: true,
-      appointments: patient.appointments || [],
+      appointments: patient || [],
     });
   } catch (error) {
     console.error("Get patient appointments error:", error);

@@ -24,11 +24,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, Search, Eye, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatientAuthContext } from "@/contexts/patientAuthContext";
 import { getPatientAppointments } from "@/utils/patientAuth";
 import { Skeleton } from "@/components/ui/skeleton";
+import AppointmentDetailsModal from "./AppointmentDetailsModal";
+import EditAppointmentForm from "./EditAppointmentForm";
 
 interface Doctor {
   _id: string;
@@ -60,6 +62,11 @@ const AppointmentsTable: React.FC<AppointmentsTableProps> = ({
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  // State for appointment details and edit modals
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isEditFormOpen, setIsEditFormOpen] = useState(false);
 
   // Filtering and sorting states
   const [doctorFilter, setDoctorFilter] = useState<string>("all");
@@ -76,26 +83,29 @@ const AppointmentsTable: React.FC<AppointmentsTableProps> = ({
   const [itemsPerPage] = useState(5);
 
   // Fetch appointments
-  useEffect(() => {
-    const fetchAppointments = async () => {
-      if (patientDetails._id) {
-        try {
-          setLoading(true);
-          const response = await getPatientAppointments(patientDetails._id);
-          if (response.success && response.appointments) {
-            setAppointments(response.appointments);
-          } else {
-            setError(response.message || "Failed to fetch appointments");
-          }
-        } catch (error) {
-          console.error("Error fetching appointments:", error);
-          setError("An error occurred while fetching appointments");
-        } finally {
-          setLoading(false);
+  // Function to fetch appointments
+  const fetchAppointments = async () => {
+    if (patientDetails._id) {
+      try {
+        setLoading(true);
+        const response = await getPatientAppointments(patientDetails._id);
+        console.log(response);
+        if (response.success && response.appointments) {
+          setAppointments(response.appointments);
+        } else {
+          setError(response.message || "Failed to fetch appointments");
         }
+      } catch (error) {
+        console.error("Error fetching appointments:", error);
+        setError("An error occurred while fetching appointments");
+      } finally {
+        setLoading(false);
       }
-    };
+    }
+  };
 
+  // Fetch appointments when component mounts or when patientDetails changes
+  useEffect(() => {
     fetchAppointments();
   }, [patientDetails._id]);
 
@@ -228,18 +238,38 @@ const AppointmentsTable: React.FC<AppointmentsTableProps> = ({
   }, [doctorFilter, treatmentFilter, dateFilter, searchQuery]);
 
   // Status badge variant
-  const getStatusVariant = (status: string) => {
+  const getStatusVariant = (status: string): "default" | "secondary" | "outline" | "destructive" => {
     switch (status.toLowerCase()) {
-      case "accepted":
-      case "confirmed":
-        return "default";
+      case "completed":
+        return "success" as "secondary"; // Type casting for compatibility
+      case "approved":
+        return "secondary";
       case "pending":
-        return "outline";
-      case "rejected":
+        return "default";
       case "cancelled":
         return "destructive";
       default:
-        return "secondary";
+        return "outline";
+    }
+  };
+  
+  // Handle opening appointment details modal
+  const handleViewDetails = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setIsDetailsModalOpen(true);
+  };
+  
+  // Handle opening edit form
+  const handleEditAppointment = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setIsEditFormOpen(true);
+  };
+  
+  // Handle edit success
+  const handleEditSuccess = () => {
+    // Refresh appointments after successful edit
+    if (patientDetails._id) {
+      fetchAppointments();
     }
   };
 
@@ -443,6 +473,7 @@ const AppointmentsTable: React.FC<AppointmentsTableProps> = ({
                     )}
                   </TableHead>
                   <TableHead>Notes</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -487,6 +518,28 @@ const AppointmentsTable: React.FC<AppointmentsTableProps> = ({
                         {appointment.notes || appointment.comments || "-"}
                       </div>
                     </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleViewDetails(appointment)}
+                          title="View Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {["pending", "approved"].includes(appointment.status.toLowerCase()) && (
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleEditAppointment(appointment)}
+                            title="Edit Appointment"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -528,6 +581,25 @@ const AppointmentsTable: React.FC<AppointmentsTableProps> = ({
           )}
         </>
       )}
+      
+      {/* Appointment Details Modal */}
+      <AppointmentDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        appointment={selectedAppointment}
+        onEdit={() => {
+          setIsDetailsModalOpen(false);
+          setIsEditFormOpen(true);
+        }}
+      />
+      
+      {/* Edit Appointment Form */}
+      <EditAppointmentForm
+        isOpen={isEditFormOpen}
+        onClose={() => setIsEditFormOpen(false)}
+        onSuccess={handleEditSuccess}
+        appointment={selectedAppointment}
+      />
     </div>
   );
 };

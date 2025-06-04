@@ -25,34 +25,34 @@ export const doctorNavItems: NavItem[] = [
     icon: "post", // Using post icon for prescriptions
     label: "Prescriptions",
   },
-  {
-    title: "Treatments",
-    href: "/doctor/treatments",
-    icon: "media", // Using media icon for treatments
-    label: "Treatments",
-  },
-  {
-    title: "Analytics",
-    href: "/doctor/analytics",
-    icon: "arrowRight", // Temporarily using arrowRight icon for analytics until chart is properly configured
-    label: "Analytics",
-  },
-  {
-    title: "Notifications",
-    href: "/doctor/notifications",
-    icon: "bell", // Using bell icon for notifications
-    label: "Notifications",
-  },
-  {
-    title: "Billing",
-    href: "/doctor/billing",
-    icon: "billing", // Using billing icon for billing
-    label: "Billing",
-  },
-  {
-    title: "Profile",
-    href: "/doctor/profile",
-    icon: "profile",
-    label: "Profile",
-  },
+  // {
+  //   title: "Treatments",
+  //   href: "/doctor/treatments",
+  //   icon: "media", 
+  //   label: "Treatments",
+  // },
+  // {
+  //   title: "Analytics",
+  //   href: "/doctor/analytics",
+  //   icon: "arrowRight", 
+  //   label: "Analytics",
+  // },
+  // {
+  //   title: "Notifications",
+  //   href: "/doctor/notifications",
+  //   icon: "bell", 
+  //   label: "Notifications",
+  // },
+  // {
+  //   title: "Billing",
+  //   href: "/doctor/billing",
+  //   icon: "billing", 
+  //   label: "Billing",
+  // },
+  // {
+  //   title: "Profile",
+  //   href: "/doctor/profile",
+  //   icon: "profile",
+  //   label: "Profile",
+  // },
 ];

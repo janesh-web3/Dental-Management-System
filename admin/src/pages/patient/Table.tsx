@@ -659,7 +659,7 @@ export function PatientTable() {
                           </DropdownMenuItem>
 
                           {/* Add Treatment Plan Menu Item */}
-                          <DropdownMenuItem
+                          {/* <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
                               document
@@ -671,7 +671,7 @@ export function PatientTable() {
                             className="gap-2"
                           >
                             <ClipboardList className="h-4 w-4" /> Add Treatment Plan
-                          </DropdownMenuItem>
+                          </DropdownMenuItem> */}
 
                           <DropdownMenuItem
                             onClick={(e) => {

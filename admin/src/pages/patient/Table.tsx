@@ -9,6 +9,8 @@ import {
   View,
   FilePlus,
   ClipboardList,
+  Filter,
+  X,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -87,7 +89,22 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2 } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
+// Add a type definition for the procedure response
+interface ProcedureResponse {
+  success: boolean;
+  procedures: string[];
+}
+
+// Main component for patient table
 export function PatientTable() {
   const [patient, setPatient] = useState<Patient[]>([]);
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
@@ -100,6 +117,12 @@ export function PatientTable() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [doctors, setDoctors] = useState<any[]>([]);
+  
+  // New state variables for filtering
+  const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
+  const [availableProcedures, setAvailableProcedures] = useState<string[]>([]);
+  const [selectedProcedures, setSelectedProcedures] = useState<string[]>([]);
+  const [isFilteringEnabled, setIsFilteringEnabled] = useState<boolean>(false);
 
   // Add near your other states
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
@@ -346,6 +369,7 @@ export function PatientTable() {
   useEffect(() => {
     fetchPatient(currentPage, itemsPerPage);
     fetchDoctors();
+    fetchProcedures();
   }, [currentPage, itemsPerPage]);
 
   //search functionality
@@ -357,12 +381,23 @@ export function PatientTable() {
 
   const fetchDoctors = async () => {
     try {
-      const response = await crudRequest("GET", "/doctor/all");
+      const response = await crudRequest("GET", "/doctor/get-doctor");
       if (response && Array.isArray(response)) {
         setDoctors(response);
       }
     } catch (error) {
       console.error("Error fetching doctors:", error);
+    }
+  };
+
+  const fetchProcedures = async () => {
+    try {
+      const response = await crudRequest<ProcedureResponse>("GET", "/patient/get-procedure-types");
+      if (response && response.success && Array.isArray(response.procedures)) {
+        setAvailableProcedures(response.procedures);
+      }
+    } catch (error) {
+      console.error("Error fetching procedures:", error);
     }
   };
 
@@ -375,10 +410,27 @@ export function PatientTable() {
     setError(null);
 
     try {
+      let endpoint = "/patient/get-pagination-patient";
+      let queryParams = `?page=${page}&limit=${limit}&search=${search}`;
+      
+      // Use filtered endpoint if filtering is enabled
+      if (isFilteringEnabled && (selectedDoctor !== "all" || selectedProcedures.length > 0)) {
+        endpoint = "/patient/get-filtered-patients";
+        queryParams = `?page=${page}&limit=${limit}&search=${search}`;
+        
+        if (selectedDoctor !== "all") {
+          queryParams += `&doctorId=${selectedDoctor}`;
+        }
+        
+        if (selectedProcedures.length > 0) {
+          queryParams += `&procedures=${selectedProcedures.join(',')}`;
+        }
+      }
+
       const response: { patients: Patient[]; totalPages: number } =
         await crudRequest(
           "GET",
-          `/patient/get-pagination-patient?page=${page}&limit=${limit}&search=${search}`
+          `${endpoint}${queryParams}`
         );
       if (response && Array.isArray(response.patients)) {
         setPatient(response.patients);
@@ -388,8 +440,8 @@ export function PatientTable() {
         setError("Unexpected response format");
       }
     } catch (error) {
-      setError("Error fetching student data");
-      console.error("Error fetching student data:", error);
+      setError("Error fetching patient data");
+      console.error("Error fetching patient data:", error);
     } finally {
       setLoading(false);
     }
@@ -397,7 +449,7 @@ export function PatientTable() {
 
   useEffect(() => {
     fetchPatient(currentPage, itemsPerPage, searchQuery);
-  }, [currentPage, itemsPerPage, searchQuery]);
+  }, [currentPage, itemsPerPage, searchQuery, isFilteringEnabled, selectedDoctor, selectedProcedures]);
 
   useEffect(() => {
     let filtered = patient;
@@ -416,6 +468,28 @@ export function PatientTable() {
   useEffect(() => {
     setFilteredPatients(patient);
   }, [patient]);
+
+  const handleDoctorChange = (value: string) => {
+    setSelectedDoctor(value);
+    setIsFilteringEnabled(true);
+  };
+
+  const handleProcedureToggle = (procedure: string) => {
+    setSelectedProcedures(prev => {
+      if (prev.includes(procedure)) {
+        return prev.filter(p => p !== procedure);
+      } else {
+        return [...prev, procedure];
+      }
+    });
+    setIsFilteringEnabled(true);
+  };
+
+  const clearFilters = () => {
+    setSelectedDoctor("all");
+    setSelectedProcedures([]);
+    setIsFilteringEnabled(false);
+  };
 
   // Add this function to export patient data to Excel
   const exportToExcel = () => {
@@ -658,21 +732,6 @@ export function PatientTable() {
                             <FilePlus className="h-4 w-4" /> Add Prescription
                           </DropdownMenuItem>
 
-                          {/* Add Treatment Plan Menu Item */}
-                          {/* <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              document
-                                .getElementById(
-                                  `treatment-plan-btn-${patient._id}`
-                                )
-                                ?.click();
-                            }}
-                            className="gap-2"
-                          >
-                            <ClipboardList className="h-4 w-4" /> Add Treatment Plan
-                          </DropdownMenuItem> */}
-
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
@@ -830,6 +889,101 @@ export function PatientTable() {
             Export Excel
           </Button>
         </header>
+        
+        {/* Filter Controls */}
+        <div className="px-6 py-2 flex flex-wrap gap-2 items-center">
+          <div className="flex items-center gap-2 mr-4">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Filter by:</span>
+          </div>
+          
+          {/* Doctor Filter */}
+          <Select
+            value={selectedDoctor}
+            onValueChange={handleDoctorChange}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select Doctor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Doctors</SelectItem>
+              {doctors.map((doctor) => (
+                <SelectItem key={doctor._id} value={doctor._id}>
+                  {doctor.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          {/* Procedure Filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <span>Procedures</span>
+                {selectedProcedures.length > 0 && (
+                  <Badge className="ml-1">{selectedProcedures.length}</Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[300px] p-0" align="start">
+              <ScrollArea className="h-[300px] p-4">
+                <div className="space-y-2">
+                  {availableProcedures.map((procedure) => (
+                    <div key={procedure} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`procedure-${procedure}`}
+                        checked={selectedProcedures.includes(procedure)}
+                        onCheckedChange={() => handleProcedureToggle(procedure)}
+                      />
+                      <label
+                        htmlFor={`procedure-${procedure}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {procedure}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
+          
+          {/* Clear Filters Button */}
+          {isFilteringEnabled && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={clearFilters}
+              className="flex items-center gap-1"
+            >
+              <X className="h-4 w-4" />
+              Clear Filters
+            </Button>
+          )}
+          
+          {/* Active Filters Display */}
+          <div className="flex flex-wrap gap-1 ml-2">
+            {selectedDoctor !== "all" && doctors.find(d => d._id === selectedDoctor) && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                Doctor: {doctors.find(d => d._id === selectedDoctor)?.name}
+                <X 
+                  className="h-3 w-3 cursor-pointer" 
+                  onClick={() => setSelectedDoctor("all")}
+                />
+              </Badge>
+            )}
+            {selectedProcedures.map(proc => (
+              <Badge key={proc} variant="secondary" className="flex items-center gap-1">
+                {proc}
+                <X 
+                  className="h-3 w-3 cursor-pointer" 
+                  onClick={() => handleProcedureToggle(proc)}
+                />
+              </Badge>
+            ))}
+          </div>
+        </div>
+        
         <main className="grid items-start flex-1 gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
           <Tabs
             defaultValue="all"

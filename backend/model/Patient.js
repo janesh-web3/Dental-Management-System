@@ -6,7 +6,7 @@ const bcrypt = require("bcrypt");
 const dailyTreatmentSchema = new mongoose.Schema({
   date: { type: Date, required: true },
   treatmentAmount: { type: Number, default: 0 },
-  paidAmount: { type: Number, default: 0 },
+  paidAmount: { type: Number, default: 0 },           
   remainingAmount: { type: Number, default: 0 },
   procedure: { type: String }, // Add this new field
   notes: { type: String },
@@ -161,7 +161,6 @@ const personalDetailsSchema = new mongoose.Schema({
   },
   contactNumber: {
     type: String,
-    required: [true, "Contact number is required!"],
     validate: {
       validator: function (v) {
         return /\d{10}/.test(v);

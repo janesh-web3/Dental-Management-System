@@ -15,6 +15,8 @@ const {
   getFinancialInsights,
   getDashboardMetrics,
   getPatientDemographics,
+  getFilteredPatients,
+  getProcedureTypes,
 } = require("../controller/patientCtrl.js");
 const cloudinary = require("../config/cloudinary");
 const Patient = require("../model/Patient");
@@ -26,6 +28,8 @@ router.put("/update-patient/:id", updatePatient); // Update route
 router.delete("/delete-patient/:id", deletePatient); // Update route
 router.get("/get-patient", getPatient);
 router.get("/get-pagination-patient", getPaginatedPatient);
+router.get("/get-filtered-patients", getFilteredPatients);
+router.get("/get-procedure-types", getProcedureTypes);
 router.get("/get-patient/:id", getSinglePatient);
 router.post(
   "/upload-files/:id",

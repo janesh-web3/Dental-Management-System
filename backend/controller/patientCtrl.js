@@ -6,6 +6,7 @@ const User = require("../model/User.js");
 const Appointment = require("../model/Appointment.js");
 const Doctor = require("../model/Doctor.js");
 const { generateStrongPassword, sendPatientCredentials } = require("../utils/emailService");
+const mongoose = require("mongoose");
 
 const addPatient = async (req, res) => {
   try {
@@ -541,6 +542,165 @@ const getPaginatedPatient = async (req, res) => {
       success: false,
       message: "Error fetching patients",
       error: error.message,
+    });
+  }
+};
+
+const getFilteredPatients = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+    const doctorId = req.query.doctorId || "";
+    const procedures = req.query.procedures ? req.query.procedures.split(',') : [];
+
+    // Base query
+    let query = {};
+
+    // Add name search if provided
+    if (search) {
+      query["personalDetails.name"] = { $regex: search, $options: "i" };
+    }
+
+    // Add doctor filter if provided
+    if (doctorId && doctorId !== "all") {
+      try {
+        query["medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor"] = 
+          new mongoose.Types.ObjectId(doctorId);
+      } catch (err) {
+        console.error("Invalid doctor ID format:", err);
+        return res.status(400).json({
+          success: false,
+          message: "Invalid doctor ID format",
+          error: err.message
+        });
+      }
+    }
+
+    // Add procedure filter if provided
+    if (procedures.length > 0) {
+      query["medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.procedure"] = 
+        { $in: procedures };
+    }
+
+    // Get patients sorted by createdAt in descending order
+    const patients = await Patient.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate({
+        path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
+        model: "Doctor",
+      });
+
+    // Sort medical details and treatment planning for each patient
+    const sortedPatients = patients.map((patient) => {
+      const patientObj = patient.toObject();
+
+      // Sort medical details by checkUpDate in descending order (newest first)
+      if (patientObj.medicalDetails?.length > 0) {
+        patientObj.medicalDetails.sort((a, b) => {
+          const dateA = a.checkUpDate ? new Date(a.checkUpDate) : new Date(0);
+          const dateB = b.checkUpDate ? new Date(b.checkUpDate) : new Date(0);
+          return dateB - dateA;
+        });
+
+        // Sort treatment planning within each medical detail by treatmentDate
+        patientObj.medicalDetails.forEach((medical) => {
+          if (medical.treatmentPlanning?.length > 0) {
+            medical.treatmentPlanning.sort((a, b) => {
+              const dateA = a.treatmentDate
+                ? new Date(a.treatmentDate)
+                : new Date(0);
+              const dateB = b.treatmentDate
+                ? new Date(b.treatmentDate)
+                : new Date(0);
+              return dateB - dateA;
+            });
+          }
+        });
+      }
+
+      return patientObj;
+    });
+
+    const totalPatients = await Patient.countDocuments(query);
+    const totalPages = Math.ceil(totalPatients / limit);
+
+    res.status(200).json({
+      success: true,
+      patients: sortedPatients,
+      totalPages,
+      patientsOnPage: sortedPatients.length,
+      totalPatients,
+    });
+  } catch (error) {
+    console.error("Error fetching filtered patients:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching filtered patients",
+      error: error.message,
+    });
+  }
+};
+
+const getProcedureTypes = async (req, res) => {
+  try {
+    // Define the list of known procedure types
+    const knownProcedureTypes = [
+      'RVG X-Ray',
+      'Scaling',
+      'GIC',
+      'Light Cure',
+      'Extraction',
+      'DCM',
+      'RCT',
+      'RPD',
+      'Complete Denture',
+      'Crown Bridge(Metal)',
+      'Crown Bridge(Ceramic)',
+      'Crown Bridge(Zirconia)',
+      'Full Mouth Bridge',
+      'Implant',
+      'Orthodontics',
+      'IMF'
+    ];
+
+    // Get unique procedures from the database
+    const uniqueProcedures = await Patient.aggregate([
+      { $unwind: "$medicalDetails" },
+      { $unwind: "$medicalDetails.treatmentPlanning" },
+      { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
+      { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments" },
+      {
+        $match: {
+          "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.procedure": { $exists: true, $ne: "" }
+        }
+      },
+      {
+        $group: {
+          _id: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.procedure"
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Extract procedure names from aggregation result
+    const dbProcedures = uniqueProcedures.map(item => item._id);
+    
+    // Combine known procedures with any additional ones found in the database
+    const allProcedures = [...new Set([...knownProcedureTypes, ...dbProcedures])].filter(Boolean).sort();
+
+    res.status(200).json({
+      success: true,
+      procedures: allProcedures
+    });
+  } catch (error) {
+    console.error("Error fetching procedure types:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching procedure types",
+      error: error.message
     });
   }
 };
@@ -1982,6 +2142,8 @@ module.exports = {
   deletePatient,
   getSinglePatient,
   getPaginatedPatient,
+  getFilteredPatients,
+  getProcedureTypes,
   uploadPatientFiles,
   updateTreatmentStatus,
   getRecentTransactions,

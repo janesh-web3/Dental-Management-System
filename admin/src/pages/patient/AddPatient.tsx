@@ -690,7 +690,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="contactNumber">Contact Number *</Label>
+                <Label htmlFor="contactNumber">Contact Number</Label>
                 <Input
                   id="contactNumber"
                   value={formData.personalDetails.contactNumber}
@@ -1322,14 +1322,14 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
               {/* Diagnosis - Moved to the end */}
               <div className="mt-6">
                 <div className="space-y-2">
-                  <Label htmlFor="diagnosis">Final Diagnosis</Label>
+                  <Label htmlFor="diagnosis">Final Advice</Label>
                   <Textarea
                     id="diagnosis"
                     value={formData.medicalDetails.diagnosis}
                     onChange={(e) =>
                       handleMedicalChange("diagnosis", e.target.value)
                     }
-                    placeholder="Enter final diagnosis based on all examinations and investigations"
+                    placeholder="Enter final advice based on all examinations and investigations"
                     className="min-h-[150px]"
                   />
                 </div>

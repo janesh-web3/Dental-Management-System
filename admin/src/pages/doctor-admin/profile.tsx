@@ -1,31 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { 
-  Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter 
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
-import { 
-  Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage 
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/use-toast";
-import { 
-  Loader2, Upload, Save, Clock, Plus, Trash
-} from "lucide-react";
+import { Loader2, Upload, Save, Clock, Plus, Trash } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useDoctorAuthContext } from '@/contexts/doctorAuthContext';
-
-interface ProfileProps {
-  doctorId: string;
-}
+import { useDoctorAuthContext } from "@/contexts/doctorAuthContext";
 
 interface Doctor {
   _id: string;
@@ -41,7 +47,14 @@ interface Doctor {
   image: string;
   description: string;
   availability: Array<{
-    day: "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
+    day:
+      | "Monday"
+      | "Tuesday"
+      | "Wednesday"
+      | "Thursday"
+      | "Friday"
+      | "Saturday"
+      | "Sunday";
     startTime: string;
     endTime: string;
   }>;
@@ -52,7 +65,9 @@ const profileFormSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
   email: z.string().email("Invalid email address"),
   age: z.string().min(1, "Age is required"),
-  contactNumber: z.string().min(10, "Contact number must be at least 10 digits"),
+  contactNumber: z
+    .string()
+    .min(10, "Contact number must be at least 10 digits"),
   nmcNumber: z.string().optional(),
   address: z.string().min(1, "Address is required"),
   specialization: z.string().min(1, "Specialization is required"),
@@ -65,7 +80,15 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 // Form schema for availability
 const availabilityItemSchema = z.object({
-  day: z.enum(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]),
+  day: z.enum([
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ]),
   startTime: z.string().min(1, "Start time is required"),
   endTime: z.string().min(1, "End time is required"),
 });
@@ -78,20 +101,19 @@ type AvailabilityFormValues = z.infer<typeof availabilityFormSchema>;
 
 const Profile: React.FC = () => {
   const { doctorDetails, isLoading } = useDoctorAuthContext();
-  
-    // Get the doctor ID from the auth context
-    const doctorId = doctorDetails?._id || "";
-  
-    if (isLoading) {
-      return (
-        <div className="flex items-center justify-center h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2">Loading doctor panel...</span>
-        </div>
-      );
-    }
+
+  // Get the doctor ID from the auth context
+  const doctorId = doctorDetails?._id || "";
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading doctor panel...</span>
+      </div>
+    );
+  }
   const [loading, setLoading] = useState<boolean>(true);
-  const [imageLoading, setImageLoading] = useState<boolean>(false);
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -176,7 +198,8 @@ const Profile: React.FC = () => {
           qualifications: ["BDS", "MDS in Orthodontics"],
           experienceYears: "15",
           image: "https://randomuser.me/api/portraits/men/32.jpg",
-          description: "Experienced orthodontist specializing in braces and Invisalign treatments.",
+          description:
+            "Experienced orthodontist specializing in braces and Invisalign treatments.",
           availability: [
             {
               day: "Monday",
@@ -198,7 +221,7 @@ const Profile: React.FC = () => {
         setLoading(false);
       }, 1000);
     } catch (error) {
-      console.error('Error fetching doctor profile:', error);
+      console.error("Error fetching doctor profile:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -211,31 +234,31 @@ const Profile: React.FC = () => {
   const handleProfileSubmit = async (values: ProfileFormValues) => {
     try {
       setLoading(true);
-      
+
       // Format the data for the API
       const formattedValues = {
         ...values,
-        qualifications: values.qualifications.split(",").map(q => q.trim()),
+        qualifications: values.qualifications.split(",").map((q) => q.trim()),
       };
 
       // In a real implementation, this would be an API call
-      console.log('Updating doctor profile:', formattedValues);
-      
+      console.log("Updating doctor profile:", formattedValues);
+
       // If there's an image file to upload
       if (imageFile) {
         // In a real implementation, this would be an API call to upload the image
-        console.log('Uploading image file:', imageFile);
+        console.log("Uploading image file:", imageFile);
       }
-      
+
       toast({
         title: "Success",
         description: "Profile updated successfully",
       });
-      
+
       // Refresh the doctor data
       fetchDoctorProfile();
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error("Error updating profile:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -249,19 +272,19 @@ const Profile: React.FC = () => {
   const handleAvailabilitySubmit = async (values: AvailabilityFormValues) => {
     try {
       setLoading(true);
-      
+
       // In a real implementation, this would be an API call
-      console.log('Updating doctor availability:', values);
-      
+      console.log("Updating doctor availability:", values);
+
       toast({
         title: "Success",
         description: "Availability updated successfully",
       });
-      
+
       // Refresh the doctor data
       fetchDoctorProfile();
     } catch (error) {
-      console.error('Error updating availability:', error);
+      console.error("Error updating availability:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -276,7 +299,7 @@ const Profile: React.FC = () => {
     const file = event.target.files?.[0];
     if (file) {
       setImageFile(file);
-      
+
       // Create a preview URL
       const reader = new FileReader();
       reader.onload = () => {
@@ -332,7 +355,9 @@ const Profile: React.FC = () => {
             <div className="flex flex-col items-center space-y-4">
               <Avatar className="h-32 w-32">
                 <AvatarImage src={profileImage || ""} alt="Profile" />
-                <AvatarFallback>{doctor?.name?.charAt(0) || "D"}</AvatarFallback>
+                <AvatarFallback>
+                  {doctor?.name?.charAt(0) || "D"}
+                </AvatarFallback>
               </Avatar>
               <div className="flex flex-col items-center">
                 <label htmlFor="profile-image" className="cursor-pointer">
@@ -353,11 +378,14 @@ const Profile: React.FC = () => {
                 </p>
               </div>
             </div>
-            
+
             {/* Profile Form */}
             <div className="flex-1">
               <Form {...profileForm}>
-                <form onSubmit={profileForm.handleSubmit(handleProfileSubmit)} className="space-y-4">
+                <form
+                  onSubmit={profileForm.handleSubmit(handleProfileSubmit)}
+                  className="space-y-4"
+                >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={profileForm.control}
@@ -372,7 +400,7 @@ const Profile: React.FC = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={profileForm.control}
                       name="email"
@@ -380,14 +408,17 @@ const Profile: React.FC = () => {
                         <FormItem>
                           <FormLabel>Email</FormLabel>
                           <FormControl>
-                            <Input placeholder="doctor@example.com" {...field} />
+                            <Input
+                              placeholder="doctor@example.com"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={profileForm.control}
@@ -402,7 +433,7 @@ const Profile: React.FC = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={profileForm.control}
                       name="age"
@@ -417,7 +448,7 @@ const Profile: React.FC = () => {
                       )}
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={profileForm.control}
@@ -426,13 +457,16 @@ const Profile: React.FC = () => {
                         <FormItem>
                           <FormLabel>Specialization</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., Orthodontist" {...field} />
+                            <Input
+                              placeholder="e.g., Orthodontist"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={profileForm.control}
                       name="experienceYears"
@@ -447,7 +481,7 @@ const Profile: React.FC = () => {
                       )}
                     />
                   </div>
-                  
+
                   <FormField
                     control={profileForm.control}
                     name="qualifications"
@@ -455,7 +489,10 @@ const Profile: React.FC = () => {
                       <FormItem>
                         <FormLabel>Qualifications</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., BDS, MDS in Orthodontics" {...field} />
+                          <Input
+                            placeholder="e.g., BDS, MDS in Orthodontics"
+                            {...field}
+                          />
                         </FormControl>
                         <FormDescription>
                           Separate multiple qualifications with commas
@@ -464,7 +501,7 @@ const Profile: React.FC = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={profileForm.control}
                     name="address"
@@ -478,7 +515,7 @@ const Profile: React.FC = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={profileForm.control}
                     name="nmcNumber"
@@ -492,7 +529,7 @@ const Profile: React.FC = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={profileForm.control}
                     name="description"
@@ -500,19 +537,21 @@ const Profile: React.FC = () => {
                       <FormItem>
                         <FormLabel>Professional Description</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Brief description of your professional background and expertise" 
-                            className="resize-none h-24" 
-                            {...field} 
+                          <Textarea
+                            placeholder="Brief description of your professional background and expertise"
+                            className="resize-none h-24"
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+
                   <Button type="submit" disabled={loading}>
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {loading && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
                     <Save className="mr-2 h-4 w-4" />
                     Save Profile
                   </Button>
@@ -522,7 +561,7 @@ const Profile: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Availability Settings */}
       <Card>
         <CardHeader>
@@ -533,18 +572,24 @@ const Profile: React.FC = () => {
         </CardHeader>
         <CardContent>
           <Form {...availabilityForm}>
-            <form onSubmit={availabilityForm.handleSubmit(handleAvailabilitySubmit)} className="space-y-4">
+            <form
+              onSubmit={availabilityForm.handleSubmit(handleAvailabilitySubmit)}
+              className="space-y-4"
+            >
               <div className="space-y-4">
                 {availabilityForm.watch("availability").map((_, index) => (
-                  <div key={index} className="flex items-center gap-4 border rounded-md p-4">
+                  <div
+                    key={index}
+                    className="flex items-center gap-4 border rounded-md p-4"
+                  >
                     <FormField
                       control={availabilityForm.control}
                       name={`availability.${index}.day`}
                       render={({ field }) => (
                         <FormItem className="flex-1">
                           <FormLabel>Day</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
+                          <Select
+                            onValueChange={field.onChange}
                             defaultValue={field.value}
                           >
                             <FormControl>
@@ -555,7 +600,9 @@ const Profile: React.FC = () => {
                             <SelectContent>
                               <SelectItem value="Monday">Monday</SelectItem>
                               <SelectItem value="Tuesday">Tuesday</SelectItem>
-                              <SelectItem value="Wednesday">Wednesday</SelectItem>
+                              <SelectItem value="Wednesday">
+                                Wednesday
+                              </SelectItem>
                               <SelectItem value="Thursday">Thursday</SelectItem>
                               <SelectItem value="Friday">Friday</SelectItem>
                               <SelectItem value="Saturday">Saturday</SelectItem>
@@ -566,7 +613,7 @@ const Profile: React.FC = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={availabilityForm.control}
                       name={`availability.${index}.startTime`}
@@ -580,7 +627,7 @@ const Profile: React.FC = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={availabilityForm.control}
                       name={`availability.${index}.endTime`}
@@ -594,7 +641,7 @@ const Profile: React.FC = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     {availabilityForm.watch("availability").length > 1 && (
                       <Button
                         type="button"
@@ -608,7 +655,7 @@ const Profile: React.FC = () => {
                     )}
                   </div>
                 ))}
-                
+
                 <Button
                   type="button"
                   variant="outline"
@@ -619,7 +666,7 @@ const Profile: React.FC = () => {
                   Add Availability Slot
                 </Button>
               </div>
-              
+
               <Button type="submit" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <Clock className="mr-2 h-4 w-4" />

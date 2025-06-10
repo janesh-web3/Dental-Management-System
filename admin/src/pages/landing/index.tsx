@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,20 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "react-toastify";
 
 // Icons
 import {
@@ -31,11 +17,9 @@ import {
   Calendar,
   ClipboardList,
   Users,
-  MessageSquare,
   Settings,
   FileText,
   CreditCard,
-  HelpCircle,
 } from "lucide-react";
 import ContactDialog from "@/components/shared/contact-dialog";
 

@@ -645,7 +645,7 @@ export function Reports() {
                               `${name}: ${(percent * 100).toFixed(0)}%`
                             }
                           >
-                            {ageData.map((entry: DataPoint, index: number) => (
+                            {ageData.map((_entry: DataPoint, index: number) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
@@ -741,7 +741,7 @@ export function Reports() {
                               `${name}: ${(percent * 100).toFixed(0)}%`
                             }
                           >
-                            {genderData.map((entry: DataPoint, index: number) => (
+                            {genderData.map((_entry: DataPoint, index: number) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>

@@ -33,6 +33,7 @@ app.use(
       "http://localhost:5173",
       "http://localhost:5174",
       "https://dms.crownagi.com",
+      "https://admin.om-shreenagar-dental-clinic.com"
     ],
   })
 );

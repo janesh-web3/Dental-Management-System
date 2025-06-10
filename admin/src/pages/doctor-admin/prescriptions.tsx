@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { format } from 'date-fns';
 import { 
   Card, CardContent, CardDescription, CardHeader, CardTitle 
 } from "@/components/ui/card";
@@ -16,13 +14,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { 
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { 
-  Loader2, Plus, Search, Download, FileText, Trash
+  Loader2, Plus, Search, Download, Trash
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -107,7 +104,7 @@ const Prescriptions: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState<boolean>(false);
-  const [submitting, setSubmitting] = useState<boolean>(false); // Used during form submission
+  const [_submitting, setSubmitting] = useState<boolean>(false); // Used during form submission
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
   const { toast } = useToast();

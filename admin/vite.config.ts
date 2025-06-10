@@ -8,9 +8,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3MB
+      },
       manifest: {
-        name: "Shreenagar Dental",
-        short_name: "Clinic",
+        name: "Crown Dental Clinic",
+        short_name: "Crown Dental Clinic",
         start_url: ".",
         display: "standalone",
         background_color: "#ffffff",

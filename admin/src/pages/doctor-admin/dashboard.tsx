@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { crudRequest } from '@/lib/api';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription,  CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Calendar, Users, Activity, Clock, TrendingUp, CheckCircle } from "lucide-react";
+import { Loader2, Calendar, Users, Activity, Clock } from "lucide-react";
 import { useDoctorAuthContext } from '@/contexts/doctorAuthContext';
-
-interface DashboardProps {
-  doctorId: string;
-}
 
 interface Appointment {
   _id: string;

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { 
   Card, CardContent, CardDescription, CardHeader, CardTitle 
 } from "@/components/ui/card";
@@ -38,10 +37,6 @@ ChartJS.register(
   Tooltip,
   Legend
 );
-
-interface AnalyticsProps {
-  doctorId: string;
-}
 
 interface AnalyticsData {
   patientCountByMonth: Array<{

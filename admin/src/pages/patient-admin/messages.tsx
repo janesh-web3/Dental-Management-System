@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { usePatientAuthContext } from "@/contexts";
 import { getPatientMessages } from "@/utils/patientAuth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, AlertCircle, Calendar, User } from "lucide-react";
 import { format } from "date-fns";

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { 
   Card, CardContent, CardDescription, CardHeader, CardTitle 
 } from "@/components/ui/card";
@@ -10,10 +9,6 @@ import {
   Loader2, Bell, Calendar, AlertCircle, CheckCircle, Clock, User
 } from "lucide-react";
 import { useDoctorAuthContext } from '@/contexts/doctorAuthContext';
-
-interface NotificationsProps {
-  doctorId: string;
-}
 
 interface Notification {
   type: "appointment" | "treatment" | "followup" | "patient";

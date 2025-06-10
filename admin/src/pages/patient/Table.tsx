@@ -8,7 +8,6 @@ import {
   MessageSquare,
   View,
   FilePlus,
-  ClipboardList,
   Filter,
   X,
 } from "lucide-react";

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import {
   Card,
   CardContent,
@@ -23,7 +22,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -35,18 +33,13 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import {
   Loader2,
-  Search,
   Download,
-  FileText,
-  DollarSign,
   Calendar,
   User,
 } from "lucide-react";
 import { useDoctorAuthContext } from "@/contexts/doctorAuthContext";
 
-interface BillingProps {
-  doctorId: string;
-}
+
 
 interface Patient {
   _id: string;

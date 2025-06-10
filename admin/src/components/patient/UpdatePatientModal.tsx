@@ -203,15 +203,29 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
             asthma: false,
             allergies: "",
             otherConditions: "",
-            noMedicalIssues: false, // Initialize from patient data
+            noMedicalIssues: patient.medicalDetails[0]?.medicalHistory?.noMedicalIssues || false,
           },
           treatmentPlanning:
-            patient.medicalDetails[0]?.treatmentPlanning.map((plan) => ({
+            patient.medicalDetails[0]?.treatmentPlanning?.map((plan) => ({
               ...plan,
               treatmentAmount: plan.treatmentAmount?.toString() || "0",
               advancedAmount: plan.advancedAmount?.toString() || "0",
               balanceAmount: plan.balanceAmount?.toString() || "0",
-              treatedByDoctor: plan.treatedByDoctor?._id || "", // Assuming treatedByDoctor is a Doctor object
+              treatedByDoctor: plan.treatedByDoctor?._id || "", // Assuming treatedByDoctor is a Doctor object,
+              selectedTeethDetails: plan.selectedTeethDetails?.map(tooth => ({
+                ...tooth,
+                dailyTreatments: tooth.dailyTreatments?.map(dt => ({
+                  _id: dt._id || "",
+                  date: dt.date ? format(new Date(dt.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+                  treatmentAmount: Number(dt.treatmentAmount) || 0,
+                  paidAmount: Number(dt.paidAmount) || 0,
+                  remainingAmount: Number(dt.remainingAmount) || 0,
+                  treatedByDoctor: dt.treatedByDoctor || null,
+                  procedure: dt.procedure || "",
+                  notes: dt.notes || "", // Ensure notes is always a string
+                  isCompleted: dt.isCompleted || false,
+                })) || []
+              })) || []
             })) || [],
         },
       });
@@ -390,7 +404,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                       treatedByDoctor: treatment.treatedByDoctor || null,
                       notes: treatment.notes || "",
                       procedure: treatment.procedure || "",
-                      isCompleted: treatment.isCompleted,
+                      isCompleted: treatment.isCompleted || false,
                     })) || [];
 
                   return {

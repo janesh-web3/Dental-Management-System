@@ -1,11 +1,9 @@
-import React, { useState } from "react";
-import { usePatientAuthContext } from "@/contexts/patientAuthContext";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import AddAppointmentForm from "./AddAppointmentForm";
 import AppointmentsTable from "./AppointmentsTable";
 
 const PatientAppointments = () => {
-  const { patientDetails } = usePatientAuthContext();
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
 
   const handleAddAppointment = () => {

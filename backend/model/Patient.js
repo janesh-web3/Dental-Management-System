@@ -226,7 +226,17 @@ const patientSchema = new mongoose.Schema(
     },
     lastLogin: {
       type: Date
-    }
+    },
+    // Add documents field for general patient documents
+    documents: [
+      {
+        fileName: String,
+        fileUrl: String,
+        uploadDate: String,
+        publicId: String,
+        description: String,
+      },
+    ],
   },
   {
     timestamps: true,

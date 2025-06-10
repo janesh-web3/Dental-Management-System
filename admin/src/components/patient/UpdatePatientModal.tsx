@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { toast } from "react-toastify";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, User, Activity, Wallet } from "lucide-react";
+import { Plus, User, Activity, Wallet, FileDigit, File, Download, Stethoscope } from "lucide-react";
 import { crudRequest } from "@/lib/api";
 import { useDoctorContext } from "@/contexts/DoctorContext";
 import { getToothPosition, getToothSide } from "@/helper/PatientHelper";
@@ -24,6 +24,8 @@ import { Patient, ToothData, DailyTreatment } from "@/types/patient";
 import { EnhancedTreatmentPlanCard } from "./EnhancedTreatmentPlanCard";
 import { TreatmentSummary } from "./TreatmentSummary";
 import { PaymentHistoryDialog } from "./PaymentHistoryDialog";
+import { DocumentComparison } from "./DocumentComparison";
+import { PatientDocumentUploadButton } from "./PatientDocumentUploadButton";
 
 interface UpdatePatientModalProps {
   isOpen: boolean;
@@ -130,7 +132,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
   const [activeTab, setActiveTab] = useState("personal");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { doctors } = useDoctorContext();
-  const [focusedTab, setFocusedTab] = useState<"personal" | "medical">(
+  const [focusedTab, setFocusedTab] = useState<"personal" | "medical" | "financial" | "documents">(
     "personal"
   );
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
@@ -845,6 +847,16 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
     });
   };
 
+  // Get all treatment documents
+  const allTreatmentDocuments = patient.medicalDetails.flatMap((record) =>
+    record.treatmentPlanning.flatMap(
+      (treatment) => treatment.treatmentDocuments || []
+    )
+  );
+  
+  // Get general patient documents
+  const patientDocuments = patient.documents || [];
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-screen h-[100dvh] max-w-none m-0 p-0 rounded-none border-none bg-background/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-hidden">
@@ -854,7 +866,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
           className="flex flex-col h-[calc(100vh-5rem)]"
         >
           <TabsList
-            className="grid w-full grid-cols-2 gap-2 px-2 py-1 text-center bg-muted/40 sticky z-40"
+            className="grid w-full grid-cols-3 gap-2 px-2 py-1 text-center bg-muted/40 sticky z-40"
             onKeyDown={handleKeyPress}
           >
             <TabsTrigger
@@ -873,6 +885,13 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
             >
               <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>Treatment Details</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="documents"
+              className="flex items-center justify-center gap-1 text-sm sm:text-base sm:gap-2 transition-all duration-200 hover:bg-accent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <FileDigit className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>Documents</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1214,7 +1233,10 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
               </Card>
             </TabsContent>
 
-            <TabsContent value="medical">
+            <TabsContent
+              value="medical"
+              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
+            >
               <div className="space-y-4">
                 <Card>
                   <CardContent className="p-4 space-y-6">
@@ -1420,6 +1442,45 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                 />
               </div>
             </TabsContent>
+
+            <TabsContent
+              value="documents"
+              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
+            >
+              <Card className="border-none shadow-none">
+                <CardHeader className="px-4 py-2">
+                  <CardTitle className="text-lg">Patient Documents</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  {patientDocuments.length === 0 && allTreatmentDocuments.length === 0 ? (
+                    <div className="text-center p-4 border rounded-md bg-muted/20">
+                      <p className="text-muted-foreground">No documents uploaded for this patient.</p>
+                    </div>
+                  ) : (
+                    <DocumentComparison 
+                      documents={allTreatmentDocuments} 
+                      patientDocuments={patientDocuments} 
+                    />
+                  )}
+                  
+                  {/* Button to upload new documents */}
+                  <div className="flex justify-end mt-4">
+                    <PatientDocumentUploadButton
+                      patientId={patient._id}
+                      medicalDetailId={patient.medicalDetails[0]?._id}
+                      onSuccess={(updatedPatient) => {
+                        // Refresh patient data if needed
+                        toast.success("Documents uploaded successfully");
+                        onClose();
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Upload New Documents
+                    </PatientDocumentUploadButton>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
           </div>
         </Tabs>
         <div className="fixed bottom-0 left-0 right-0 p-2 bg-background/95 border-t flex justify-between sm:justify-end gap-2 sm:gap-4 z-50">
@@ -1446,7 +1507,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
               Previous
             </Button>
           )}
-          <Button
+          <Button 
             onClick={handleFormSubmit}
             disabled={isSubmitting}
             className="min-w-[80px] sm:min-w-[100px] text-xs sm:text-sm"

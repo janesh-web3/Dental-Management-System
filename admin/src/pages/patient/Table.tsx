@@ -12,6 +12,8 @@ import {
   X,
   ClipboardList,
   CreditCard,
+  XCircle,
+  FileUp,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -99,6 +101,9 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PaymentHistoryDialog } from "@/components/patient/PaymentHistoryDialog";
+import AddXRayPlanModal from "@/components/patient/AddXRayPlanModal";
+import { TreatmentFileUpload } from "@/components/patient/TreatmentFileUpload";
+import { PatientDocumentUploadButton } from "@/components/patient/PatientDocumentUploadButton";
 
 // Add a type definition for the procedure response
 interface ProcedureResponse {
@@ -119,7 +124,7 @@ export function PatientTable() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [doctors, setDoctors] = useState<any[]>([]);
-  
+
   // New state variables for filtering
   const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
   const [availableProcedures, setAvailableProcedures] = useState<string[]>([]);
@@ -134,14 +139,14 @@ export function PatientTable() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentPatient, setPaymentPatient] = useState<Patient | null>(null);
+  const [isXRayPlanModalOpen, setIsXRayPlanModalOpen] = useState(false);
+  const [xRayPlanPatient, setXRayPlanPatient] = useState<Patient | null>(null);
 
   //pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10); // Customize this based on your requirement
   const { adminDetails } = useAdminContext();
-
-  // Add after your existing functions but before the return statement
 
   // Add this function to fetch patient details for email
   const fetchPatientDetailsForEmail = async (patientId: string) => {
@@ -402,7 +407,10 @@ export function PatientTable() {
 
   const fetchProcedures = async () => {
     try {
-      const response = await crudRequest<ProcedureResponse>("GET", "/patient/get-procedure-types");
+      const response = await crudRequest<ProcedureResponse>(
+        "GET",
+        "/patient/get-procedure-types"
+      );
       if (response && response.success && Array.isArray(response.procedures)) {
         setAvailableProcedures(response.procedures);
       }
@@ -422,26 +430,26 @@ export function PatientTable() {
     try {
       let endpoint = "/patient/get-pagination-patient";
       let queryParams = `?page=${page}&limit=${limit}&search=${search}`;
-      
+
       // Use filtered endpoint if filtering is enabled
-      if (isFilteringEnabled && (selectedDoctor !== "all" || selectedProcedures.length > 0)) {
+      if (
+        isFilteringEnabled &&
+        (selectedDoctor !== "all" || selectedProcedures.length > 0)
+      ) {
         endpoint = "/patient/get-filtered-patients";
         queryParams = `?page=${page}&limit=${limit}&search=${search}`;
-        
+
         if (selectedDoctor !== "all") {
           queryParams += `&doctorId=${selectedDoctor}`;
         }
-        
+
         if (selectedProcedures.length > 0) {
-          queryParams += `&procedures=${selectedProcedures.join(',')}`;
+          queryParams += `&procedures=${selectedProcedures.join(",")}`;
         }
       }
 
       const response: { patients: Patient[]; totalPages: number } =
-        await crudRequest(
-          "GET",
-          `${endpoint}${queryParams}`
-        );
+        await crudRequest("GET", `${endpoint}${queryParams}`);
       if (response && Array.isArray(response.patients)) {
         setPatient(response.patients);
         setFilteredPatients(response.patients);
@@ -459,7 +467,14 @@ export function PatientTable() {
 
   useEffect(() => {
     fetchPatient(currentPage, itemsPerPage, searchQuery);
-  }, [currentPage, itemsPerPage, searchQuery, isFilteringEnabled, selectedDoctor, selectedProcedures]);
+  }, [
+    currentPage,
+    itemsPerPage,
+    searchQuery,
+    isFilteringEnabled,
+    selectedDoctor,
+    selectedProcedures,
+  ]);
 
   useEffect(() => {
     let filtered = patient;
@@ -485,9 +500,9 @@ export function PatientTable() {
   };
 
   const handleProcedureToggle = (procedure: string) => {
-    setSelectedProcedures(prev => {
+    setSelectedProcedures((prev) => {
       if (prev.includes(procedure)) {
-        return prev.filter(p => p !== procedure);
+        return prev.filter((p) => p !== procedure);
       } else {
         return [...prev, procedure];
       }
@@ -556,6 +571,12 @@ export function PatientTable() {
     // Generate filename with current date
     const fileName = `patient_data_${new Date().toISOString().slice(0, 10)}.xlsx`;
     saveAs(data, fileName);
+  };
+
+  // Add this function to handle opening the X-Ray Plan modal
+  const handleAddXRayPlan = (patient: Patient) => {
+    setXRayPlanPatient(patient);
+    setIsXRayPlanModalOpen(true);
   };
 
   const renderPatientTable = () => (
@@ -667,17 +688,27 @@ export function PatientTable() {
                           patientId={patient._id}
                           patientName={patient.personalDetails.name}
                           patientData={{
-                            contactNumber: patient.personalDetails.contactNumber,
+                            contactNumber:
+                              patient.personalDetails.contactNumber,
                             emailAddress: patient.personalDetails.emailAddress,
                             age: patient.personalDetails.age,
                             gender: patient.personalDetails.gender,
-                            address: patient.personalDetails.address
+                            address: patient.personalDetails.address,
                           }}
                           isAdmin={true}
                           variant="outline"
                           size="sm"
                         />
-                        
+                        {/* Hidden PatientDocumentUploadButton */}
+                        <PatientDocumentUploadButton
+                          id={`upload-docs-btn-${patient._id}`}
+                          patientId={patient._id}
+                          medicalDetailId={patient.medicalDetails?.[0]?._id || ""}
+                          onSuccess={() => {
+                            // Refresh patient data if needed
+                            fetchPatient(currentPage, itemsPerPage, searchQuery);
+                          }}
+                        />
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -742,6 +773,17 @@ export function PatientTable() {
                             <FilePlus className="h-4 w-4" /> Add Prescription
                           </DropdownMenuItem>
 
+                          {/* Add X-Ray Plan Menu Item */}
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddXRayPlan(patient);
+                            }}
+                            className="gap-2"
+                          >
+                            <XCircle className="h-4 w-4" /> Add X-Ray Plan
+                          </DropdownMenuItem>
+
                           {/* Add Payment History Menu Item */}
                           <DropdownMenuItem
                             onClick={(e) => {
@@ -751,6 +793,17 @@ export function PatientTable() {
                             className="gap-2"
                           >
                             <CreditCard className="h-4 w-4" /> Edit Payment
+                          </DropdownMenuItem>
+
+                          {/* Add Document Upload Menu Item */}
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              document.getElementById(`upload-docs-btn-${patient._id}`)?.click();
+                            }}
+                            className="gap-2"
+                          >
+                            <FileUp className="h-4 w-4" /> Upload Documents
                           </DropdownMenuItem>
 
                           <DropdownMenuItem
@@ -910,101 +963,9 @@ export function PatientTable() {
             Export Excel
           </Button>
         </header>
-        
+
         {/* Filter Controls */}
-        <div className="px-6 py-2 flex flex-wrap gap-2 items-center">
-          <div className="flex items-center gap-2 mr-4">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Filter by:</span>
-          </div>
-          
-          {/* Doctor Filter */}
-          <Select
-            value={selectedDoctor}
-            onValueChange={handleDoctorChange}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Select Doctor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Doctors</SelectItem>
-              {doctors.map((doctor) => (
-                <SelectItem key={doctor._id} value={doctor._id}>
-                  {doctor.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          {/* Procedure Filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2">
-                <span>Procedures</span>
-                {selectedProcedures.length > 0 && (
-                  <Badge className="ml-1">{selectedProcedures.length}</Badge>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[300px] p-0" align="start">
-              <ScrollArea className="h-[300px] p-4">
-                <div className="space-y-2">
-                  {availableProcedures.map((procedure) => (
-                    <div key={procedure} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`procedure-${procedure}`}
-                        checked={selectedProcedures.includes(procedure)}
-                        onCheckedChange={() => handleProcedureToggle(procedure)}
-                      />
-                      <label
-                        htmlFor={`procedure-${procedure}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {procedure}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </PopoverContent>
-          </Popover>
-          
-          {/* Clear Filters Button */}
-          {isFilteringEnabled && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={clearFilters}
-              className="flex items-center gap-1"
-            >
-              <X className="h-4 w-4" />
-              Clear Filters
-            </Button>
-          )}
-          
-          {/* Active Filters Display */}
-          <div className="flex flex-wrap gap-1 ml-2">
-            {selectedDoctor !== "all" && doctors.find(d => d._id === selectedDoctor) && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                Doctor: {doctors.find(d => d._id === selectedDoctor)?.name}
-                <X 
-                  className="h-3 w-3 cursor-pointer" 
-                  onClick={() => setSelectedDoctor("all")}
-                />
-              </Badge>
-            )}
-            {selectedProcedures.map(proc => (
-              <Badge key={proc} variant="secondary" className="flex items-center gap-1">
-                {proc}
-                <X 
-                  className="h-3 w-3 cursor-pointer" 
-                  onClick={() => handleProcedureToggle(proc)}
-                />
-              </Badge>
-            ))}
-          </div>
-        </div>
-        
+
         <main className="grid items-start flex-1 gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
           <Tabs
             defaultValue="all"
@@ -1019,6 +980,119 @@ export function PatientTable() {
                 <TabsTrigger value="female">Female</TabsTrigger>
                 <TabsTrigger value="other">Other</TabsTrigger>
               </TabsList>
+
+              <div className="px-6 py-2 flex flex-wrap gap-2 items-center">
+                <div className="flex items-center gap-2 mr-4">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Filter by:</span>
+                </div>
+
+                {/* Doctor Filter */}
+                <Select
+                  value={selectedDoctor}
+                  onValueChange={handleDoctorChange}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Select Doctor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Doctors</SelectItem>
+                    {doctors.map((doctor) => (
+                      <SelectItem key={doctor._id} value={doctor._id}>
+                        {doctor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Procedure Filter */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <span>Procedures</span>
+                      {selectedProcedures.length > 0 && (
+                        <Badge className="ml-1">
+                          {selectedProcedures.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0" align="start">
+                    <ScrollArea className="h-[300px] p-4">
+                      <div className="space-y-2">
+                        {availableProcedures.map((procedure) => (
+                          <div
+                            key={procedure}
+                            className="flex items-center space-x-2"
+                          >
+                            <Checkbox
+                              id={`procedure-${procedure}`}
+                              checked={selectedProcedures.includes(procedure)}
+                              onCheckedChange={() =>
+                                handleProcedureToggle(procedure)
+                              }
+                            />
+                            <label
+                              htmlFor={`procedure-${procedure}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              {procedure}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Clear Filters Button */}
+                {isFilteringEnabled && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="flex items-center gap-1"
+                  >
+                    <X className="h-4 w-4" />
+                    Clear Filters
+                  </Button>
+                )}
+
+                {/* Active Filters Display */}
+                <div className="flex flex-wrap gap-1 ml-2">
+                  {selectedDoctor !== "all" &&
+                    doctors.find((d) => d._id === selectedDoctor) && (
+                      <Badge
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                      >
+                        Doctor:{" "}
+                        {doctors.find((d) => d._id === selectedDoctor)?.name}
+                        <X
+                          className="h-3 w-3 cursor-pointer"
+                          onClick={() => setSelectedDoctor("all")}
+                        />
+                      </Badge>
+                    )}
+                  {selectedProcedures.map((proc) => (
+                    <Badge
+                      key={proc}
+                      variant="secondary"
+                      className="flex items-center gap-1"
+                    >
+                      {proc}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => handleProcedureToggle(proc)}
+                      />
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
               <div className="flex items-center ml-auto">
                 <PopupModal
                   text="Add Patient"
@@ -1242,60 +1316,93 @@ export function PatientTable() {
       </Dialog>
 
       {/* Payment History Dialog */}
-      {paymentPatient && paymentPatient.medicalDetails && paymentPatient.medicalDetails.length > 0 && (
-        <PaymentHistoryDialog
-          isOpen={isPaymentDialogOpen}
-          onClose={() => {
-            setIsPaymentDialogOpen(false);
-            setPaymentPatient(null);
-          }}
-          selectedTeethMaps={
-            // Create a map of all teeth with treatments from the patient's medical details
-            paymentPatient.medicalDetails.reduce((acc, medicalDetail, medicalDetailIndex) => {
-              medicalDetail.treatmentPlanning.forEach((plan, planIndex) => {
-                const mapKey = `${medicalDetailIndex}-${planIndex}`;
-                acc[mapKey] = {};
-                
-                if (plan.selectedTeethDetails) {
-                  plan.selectedTeethDetails.forEach(tooth => {
-                    acc[mapKey][tooth.number] = tooth;
+      {paymentPatient &&
+        paymentPatient.medicalDetails &&
+        paymentPatient.medicalDetails.length > 0 && (
+          <PaymentHistoryDialog
+            isOpen={isPaymentDialogOpen}
+            onClose={() => {
+              setIsPaymentDialogOpen(false);
+              setPaymentPatient(null);
+            }}
+            selectedTeethMaps={
+              // Create a map of all teeth with treatments from the patient's medical details
+              paymentPatient.medicalDetails.reduce(
+                (acc, medicalDetail, medicalDetailIndex) => {
+                  medicalDetail.treatmentPlanning.forEach((plan, planIndex) => {
+                    const mapKey = `${medicalDetailIndex}-${planIndex}`;
+                    acc[mapKey] = {};
+
+                    if (plan.selectedTeethDetails) {
+                      plan.selectedTeethDetails.forEach((tooth) => {
+                        acc[mapKey][tooth.number] = tooth;
+                      });
+                    }
                   });
+                  return acc;
+                },
+                {} as Record<string, Record<string, any>>
+              )
+            }
+            onPaymentUpdate={(
+              mapKey,
+              toothNumber,
+              treatmentIndex,
+              newPaidAmount
+            ) => {
+              // Update the local state to reflect the payment change
+              setPaymentPatient((prevPatient) => {
+                if (!prevPatient) return null;
+
+                const updatedPatient = { ...prevPatient };
+                const [medicalDetailIndex, planIndex] = mapKey
+                  .split("-")
+                  .map(Number);
+
+                if (
+                  updatedPatient.medicalDetails[medicalDetailIndex]
+                    ?.treatmentPlanning[planIndex]?.selectedTeethDetails
+                ) {
+                  const toothToUpdate = updatedPatient.medicalDetails[
+                    medicalDetailIndex
+                  ].treatmentPlanning[planIndex].selectedTeethDetails.find(
+                    (tooth) => tooth.number === toothNumber
+                  );
+
+                  if (
+                    toothToUpdate &&
+                    toothToUpdate.dailyTreatments &&
+                    toothToUpdate.dailyTreatments[treatmentIndex]
+                  ) {
+                    const treatment =
+                      toothToUpdate.dailyTreatments[treatmentIndex];
+                    treatment.paidAmount = newPaidAmount;
+                    treatment.remainingAmount =
+                      treatment.treatmentAmount - newPaidAmount;
+                  }
                 }
+
+                return updatedPatient;
               });
-              return acc;
-            }, {} as Record<string, Record<string, any>>)
-          }
-          onPaymentUpdate={(mapKey, toothNumber, treatmentIndex, newPaidAmount) => {
-            // Update the local state to reflect the payment change
-            setPaymentPatient(prevPatient => {
-              if (!prevPatient) return null;
-              
-              const updatedPatient = { ...prevPatient };
-              const [medicalDetailIndex, planIndex] = mapKey.split('-').map(Number);
-              
-              if (
-                updatedPatient.medicalDetails[medicalDetailIndex]?.treatmentPlanning[planIndex]?.selectedTeethDetails
-              ) {
-                const toothToUpdate = updatedPatient.medicalDetails[medicalDetailIndex].treatmentPlanning[planIndex].selectedTeethDetails.find(
-                  tooth => tooth.number === toothNumber
-                );
-                
-                if (toothToUpdate && toothToUpdate.dailyTreatments && toothToUpdate.dailyTreatments[treatmentIndex]) {
-                  const treatment = toothToUpdate.dailyTreatments[treatmentIndex];
-                  treatment.paidAmount = newPaidAmount;
-                  treatment.remainingAmount = treatment.treatmentAmount - newPaidAmount;
-                }
-              }
-              
-              return updatedPatient;
-            });
-            
-            // Refresh the patient list to reflect the updated payment
-            fetchPatient(currentPage, itemsPerPage, searchQuery);
+
+              // Refresh the patient list to reflect the updated payment
+              fetchPatient(currentPage, itemsPerPage, searchQuery);
+            }}
+            patientId={paymentPatient._id}
+            medicalDetailId={paymentPatient.medicalDetails[0]?._id || ""}
+            patient={paymentPatient}
+          />
+        )}
+
+      {/* Add this new modal at the end of the component, near other modals */}
+      {xRayPlanPatient && (
+        <AddXRayPlanModal
+          isOpen={isXRayPlanModalOpen}
+          onClose={() => {
+            setIsXRayPlanModalOpen(false);
+            setXRayPlanPatient(null);
           }}
-          patientId={paymentPatient._id}
-          medicalDetailId={paymentPatient.medicalDetails[0]?._id || ""}
-          patient={paymentPatient}
+          patient={xRayPlanPatient}
         />
       )}
     </div>

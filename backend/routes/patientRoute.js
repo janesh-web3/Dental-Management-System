@@ -750,4 +750,94 @@ router.get("/dashboard-metrics", getDashboardMetrics);
 // Test route for demographics
 router.get("/demographics-test", getPatientDemographics);
 
+// Add new route for general patient document uploads
+router.post(
+  "/documents/:patientId",
+  upload.array("files", 10),
+  async (req, res) => {
+    try {
+      const { patientId } = req.params;
+      const files = req.files;
+      
+      // Handle descriptions properly when submitted from FormData
+      let descriptions = req.body.descriptions;
+      if (!Array.isArray(descriptions) && descriptions) {
+        descriptions = [descriptions];
+      } else if (!descriptions) {
+        descriptions = [];
+      }
+
+      // Validate files
+      if (!files || files.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "No files uploaded",
+        });
+      }
+
+      const patient = await Patient.findById(patientId);
+      if (!patient) {
+        return res.status(404).json({
+          success: false,
+          message: "Patient not found",
+        });
+      }
+
+      // Upload files to cloudinary and get results
+      const uploadPromises = files.map(async (file, index) => {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "patient-documents",
+          resource_type: "auto",
+        });
+
+        // Clean up local file
+        deleteFile(file.path);
+
+        return {
+          fileName: file.originalname,
+          fileUrl: result.secure_url,
+          description: descriptions[index] || "",
+          uploadDate: new Date().toISOString(),
+          publicId: result.public_id,
+        };
+      });
+
+      const uploadedFiles = await Promise.all(uploadPromises);
+
+      // Add the files directly to the patient documents array
+      const updatedPatient = await Patient.findByIdAndUpdate(
+        patientId,
+        {
+          $push: {
+            "documents": {
+              $each: uploadedFiles,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      if (!updatedPatient) {
+        return res.status(404).json({
+          success: false,
+          message: "Patient not found",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: updatedPatient,
+        message: "Files uploaded successfully",
+      });
+    } catch (error) {
+      console.error("Error uploading patient documents:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to upload documents",
+        details: error.message,
+      });
+    }
+  }
+);
+
 module.exports = router;

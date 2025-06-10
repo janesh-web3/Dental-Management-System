@@ -28,6 +28,9 @@ export function TreatmentFileUpload({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   
+  // Determine if this is a general patient document upload or treatment-specific
+  const isGeneralUpload = treatmentId === "general";
+  
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
@@ -68,13 +71,18 @@ export function TreatmentFileUpload({
         setUploadProgress(prev => Math.min(prev + 5, 90));
       }, 200);
       
+      // Use the appropriate endpoint based on whether this is a general upload or treatment-specific
+      const endpoint = isGeneralUpload 
+        ? `/patient/documents/${patientId}`
+        : `/patient/treatment-files/${patientId}/${medicalDetailId}/${treatmentId}`;
+      
       // Add headers for multipart form data
       const response = await crudRequest(
         'POST',
-        `/patient/treatment-files/${patientId}/${medicalDetailId}/${treatmentId}`,
+        endpoint,
         formData,
         {
-          headers: {
+          headers: {  
             'Content-Type': undefined // Let the browser set it automatically
           }
         }
@@ -99,9 +107,13 @@ export function TreatmentFileUpload({
   return (
     <div className="space-y-4">
       <DialogHeader>
-        <DialogTitle>Upload Treatment Files</DialogTitle>
+        <DialogTitle>
+          {isGeneralUpload ? "Upload Patient Documents" : "Upload Treatment Files"}
+        </DialogTitle>
         <DialogDescription>
-          Add documentation, X-rays or other files related to this treatment.
+          {isGeneralUpload 
+            ? "Add X-rays, reports, or other documents related to this patient."
+            : "Add documentation, X-rays or other files related to this treatment."}
         </DialogDescription>
       </DialogHeader>
       

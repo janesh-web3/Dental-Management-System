@@ -21,6 +21,7 @@ import {
   Download,
   FileText,
   Pill,
+  File,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TreatmentProgress } from "./TreatmentProgress";
@@ -37,6 +38,7 @@ import { crudRequest } from "@/lib/api";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "react-toastify";
+import { PatientDocumentUploadButton } from "./PatientDocumentUploadButton";
 // Accordion import removed as it's not being used
 
 interface ViewPatientDrawerProps {
@@ -101,11 +103,26 @@ export function ViewPatientDrawer({
   });
 
   // Get all documents for comparison
-  const allDocuments = localPatient.medicalDetails.flatMap((record) =>
+  const allTreatmentDocuments = localPatient.medicalDetails.flatMap((record) =>
     record.treatmentPlanning.flatMap(
-      (treatment) => treatment.treatmentDocuments
+      (treatment) => treatment.treatmentDocuments || []
     )
   );
+  
+  // Get general patient documents
+  const patientDocuments = localPatient.documents || [];
+  
+  // Combine all documents
+  const allDocuments = [
+    ...patientDocuments.map(doc => ({
+      ...doc,
+      source: 'patient' // Add a source field to identify patient documents
+    })),
+    ...allTreatmentDocuments.map(doc => ({
+      ...doc,
+      source: 'treatment' // Add a source field to identify treatment documents
+    }))
+  ];
   
   // Fetch patient prescriptions
   useEffect(() => {
@@ -924,7 +941,7 @@ export function ViewPatientDrawer({
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {allDocuments.length === 0 ? (
+                    {allDocuments.length === 0 && patientDocuments.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-10 text-center bg-muted/30 rounded-lg">
                         <FileDigit className="h-12 w-12 text-muted-foreground mb-3" />
                         <h3 className="text-lg font-medium">No Documents</h3>
@@ -933,8 +950,25 @@ export function ViewPatientDrawer({
                         </p>
                       </div>
                     ) : (
-                      <DocumentComparison documents={allDocuments} />
+                      <div className="space-y-4">
+                        <DocumentComparison 
+                          documents={allTreatmentDocuments} 
+                          patientDocuments={patientDocuments} 
+                        />
+                      </div>
                     )}
+                    
+                    {/* Add upload button */}
+                    <div className="flex justify-end mt-4">
+                      <PatientDocumentUploadButton
+                        patientId={localPatient._id}
+                        medicalDetailId={localPatient.medicalDetails[0]?._id}
+                        onSuccess={() => {
+                          // We could refresh the patient data here if needed
+                          toast.success("Documents uploaded successfully");
+                        }}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>

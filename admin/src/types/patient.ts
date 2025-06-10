@@ -92,6 +92,13 @@ export type Patient = {
   medicalDetails: MedicalDetails[];
   createdAt: string;
   updatedAt: string;
+  documents?: {
+    fileName: string;
+    fileUrl: string;
+    uploadDate: string;
+    description: string;
+    publicId: string;
+  }[];
 };
 
 export type FormData = {

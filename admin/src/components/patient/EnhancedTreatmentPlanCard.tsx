@@ -122,8 +122,8 @@ export function EnhancedTreatmentPlanCard({
                   value={plan.treatmentDate}
                   onChange={(e) =>
                     onTreatmentChange("treatmentDate", e.target.value)
-                  }
-                  className="text-sm"
+                  }  
+                  className="text-sm"  
                 />
               </div>
 

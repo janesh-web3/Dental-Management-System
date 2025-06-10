@@ -87,7 +87,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, FileX } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -96,6 +96,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import AddXRayPlanModal from "@/components/patient/AddXRayPlanModal";
 
 // Add a type definition for the procedure response
 interface ProcedureResponse {
@@ -129,6 +130,10 @@ export function PatientTable() {
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  
+  // Add state for X-ray plan modal
+  const [isXRayPlanModalOpen, setIsXRayPlanModalOpen] = useState(false);
+  const [xRayPlanPatient, setXRayPlanPatient] = useState<Patient | null>(null);
 
   //pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -325,6 +330,12 @@ export function PatientTable() {
 
     // Fetch patient details to populate the email body
     fetchPatientDetailsForEmail(patient._id);
+  };
+
+  // Add function to handle opening X-ray plan modal
+  const handleAddXRayPlan = (patient: Patient) => {
+    setXRayPlanPatient(patient);
+    setIsXRayPlanModalOpen(true);
   };
 
   const sendEmail = async () => {
@@ -730,6 +741,16 @@ export function PatientTable() {
                           >
                             <FilePlus className="h-4 w-4" /> Add Prescription
                           </DropdownMenuItem>
+                          
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddXRayPlan(patient);
+                            }}
+                            className="gap-2"
+                          >
+                            <FileX className="h-4 w-4" /> Add X-Ray Plan
+                          </DropdownMenuItem>
 
                           <DropdownMenuItem
                             onClick={(e) => {
@@ -1055,6 +1076,21 @@ export function PatientTable() {
           patientId={patientToDelete._id}
           patientName={`${patientToDelete.personalDetails.name}`}
           onDeleteSuccess={() => {
+            fetchPatient(currentPage, itemsPerPage, searchQuery);
+          }}
+        />
+      )}
+
+      {/* X-Ray Plan Modal */}
+      {xRayPlanPatient && (
+        <AddXRayPlanModal
+          isOpen={isXRayPlanModalOpen}
+          onClose={() => {
+            setIsXRayPlanModalOpen(false);
+            setXRayPlanPatient(null);
+          }}
+          patient={xRayPlanPatient}
+          onSuccess={() => {
             fetchPatient(currentPage, itemsPerPage, searchQuery);
           }}
         />

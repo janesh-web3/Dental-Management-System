@@ -39,7 +39,7 @@ app.use(
 );
 
 mongoose
-  .connect(process.env.DB_URL)
+  .connect("mongodb+srv://omclinic:wB6GdJwQkw4bGpkE@cluster0.isk2v.mongodb.net/")
   .then(() => console.log("MongoDB connected successfully"))
   .catch((err) => console.error("MongoDB connection error:", err));
 

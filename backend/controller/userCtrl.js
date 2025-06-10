@@ -375,18 +375,43 @@ const deleteUser = async (req, res) => {
 
 const getRole = async (req, res) => {
   try {
+    // If no user ID in request, return a graceful error rather than 500
     if (!req.user || !req.user._id) {
-      return res.status(401).json({ message: "User not authenticated" });
+      return res.status(401).json({ 
+        success: false,
+        message: "User not authenticated" 
+      });
     }
+    
+    // Find the user
     const getUser = await User.findById(req.user._id);
+    
     if (getUser) {
-      return res.json(getUser);
+      return res.status(200).json({
+        success: true,
+        user: {
+          _id: getUser._id,
+          name: getUser.name,
+          email: getUser.email,
+          role: getUser.role,
+          contact: getUser.contact
+        }
+      });
     }
 
-    return res.status(404).json({ message: "User not found" });
+    // User not found - return 404
+    return res.status(404).json({ 
+      success: false,
+      message: "User not found" 
+    });
   } catch (error) {
-    console.error("Auth middleware error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Get role error:", error);
+    // Return a more graceful error response
+    return res.status(400).json({ 
+      success: false,
+      message: "Failed to get user role",
+      error: error.message
+    });
   }
 };
 

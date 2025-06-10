@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,11 +15,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { crudRequest } from "@/lib/api";
-import { useDoctorContext } from "@/contexts/DoctorContext";
 import { getToothPosition, getToothSide } from "@/helper/PatientHelper";
-import { Patient, ToothData, DailyTreatment } from "@/types/patient";
+import { Patient, ToothData, DailyTreatment, TreatmentPlan as PatientTreatmentPlan } from "@/types/patient";
+import DentalChart from "../DentalChart";
+import ChildDentalChart from "../ChildDentalChart";
+import { DailyTreatmentManager } from "./DailyTreatmentManager";
 import { EnhancedTreatmentPlanCard } from "./EnhancedTreatmentPlanCard";
+import { Loader2, Plus, FileText, PlusCircle, RefreshCw, Edit, XCircle, Save } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Separator } from "@/components/ui/separator";
+import { TreatmentFileUpload } from "./TreatmentFileUpload";
 
 interface AddXRayPlanModalProps {
   isOpen: boolean;
@@ -27,6 +35,7 @@ interface AddXRayPlanModalProps {
   patient: Patient;
 }
 
+// Define TreatmentPlan type for cleaner code
 type TreatmentPlan = {
   _id?: string;
   treatmentDate: string;
@@ -48,23 +57,22 @@ type TreatmentPlan = {
     publicId: string;
     description: string;
   }>;
-  selectedTeethDetails?: Array<{
-    number: string;
-    details: string;
-    procedure: string;
-    dailyTreatments: Array<{
-      date: string;
-      treatmentAmount: number;
-      paidAmount: number;
-      remainingAmount: number;
-      treatedByDoctor: string | null;
-      notes: string;
-      procedure: string;
-    }>;
-    totalTreatmentAmount: number;
-    totalPaidAmount: number;
-    totalRemainingAmount: number;
-  }>;
+  selectedTeethDetails?: Array<ToothData>;
+};
+
+// Add a type interface for the API response
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+  count?: number;
+}
+
+// Define doctor type
+type Doctor = {
+  _id: string;
+  name: string;
+  specialization: string;
 };
 
 const formatSafeDate = (dateString: string | undefined | null) => {
@@ -86,13 +94,18 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
   patient,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { doctors } = useDoctorContext();
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState("existing");
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [existingTreatmentPlans, setExistingTreatmentPlans] = useState<TreatmentPlan[]>([]);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+  const [selectedExistingPlan, setSelectedExistingPlan] = useState<TreatmentPlan | null>(null);
+  const [showFileUpload, setShowFileUpload] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Initialize with a single empty treatment plan
-  const [treatmentPlan, setTreatmentPlan] = useState<TreatmentPlan>({
+  // Initialize with a single empty treatment plan for new plans
+  const [newTreatmentPlan, setNewTreatmentPlan] = useState<TreatmentPlan>({
     treatmentDate: formatSafeDate(new Date().toISOString()),
-    treatmentDetails: "",
+    treatmentDetails: "X-Ray Plan",
     treatmentFindings: "",
     treatedByDoctor: "",
     treatmentAmount: "0",
@@ -106,22 +119,85 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
     isCompleted: false,
   });
 
+  // Selected teeth maps for both existing and new plans
   const [selectedTeethMap, setSelectedTeethMap] = useState<Record<string, ToothData>>({});
+  const [existingTeethMap, setExistingTeethMap] = useState<Record<string, ToothData>>({});
 
+  // Fetch doctors and existing plans when component mounts
+  useEffect(() => {
+    if (isOpen) {
+      fetchDoctors();
+      fetchExistingTreatmentPlans();
+    }
+  }, [isOpen, patient._id, refreshTrigger]);
+
+  const fetchDoctors = async () => {
+    try {
+      const response = await crudRequest("GET", "/doctor/get-doctor");
+      if (response && Array.isArray(response)) {
+        setDoctors(response);
+      }
+    } catch (error) {
+      console.error("Error fetching doctors:", error);
+      toast.error("Failed to load doctors");
+    }
+  };
+
+  const fetchExistingTreatmentPlans = async () => {
+    if (!patient._id || !patient.medicalDetails?.[0]?._id) {
+      console.log("Cannot fetch treatment plans: Missing patient ID or medical detail ID");
+      return;
+    }
+    
+    setIsLoadingPlans(true);
+    try {
+      // Use the type interface for the API response
+      const response = await crudRequest<ApiResponse<TreatmentPlan[]>>(
+        "GET", 
+        `/patient/get-treatment-plans/${patient._id}/${patient.medicalDetails[0]._id}`
+      );
+      
+      // Handle the response
+      if (response && response.success && Array.isArray(response.data)) {
+        setExistingTreatmentPlans(response.data);
+        console.log(`Fetched ${response.data.length} treatment plans successfully`);
+      } else {
+        console.error("Error fetching treatment plans: Unexpected response format", response);
+        setExistingTreatmentPlans([]);
+      }
+    } catch (error) {
+      console.error("Error fetching treatment plans:", error);
+      toast.error(typeof error === 'object' && error !== null && 'message' in error 
+        ? (error as {message: string}).message 
+        : "Failed to load existing treatment plans");
+      setExistingTreatmentPlans([]);
+    } finally {
+      setIsLoadingPlans(false);
+    }
+  };
+
+  // Select an existing plan for viewing/editing
+  const handleSelectExistingPlan = (plan: TreatmentPlan) => {
+    setSelectedExistingPlan(plan);
+    
+    // Create teeth map from the selected plan
+    const teethMap: Record<string, ToothData> = {};
+    if (plan.selectedTeethDetails && plan.selectedTeethDetails.length > 0) {
+      plan.selectedTeethDetails.forEach(tooth => {
+        teethMap[tooth.number] = tooth;
+      });
+    }
+    setExistingTeethMap(teethMap);
+  };
+
+  // Functions for new plan tab
   const handleTreatmentChange = (field: string, value: any) => {
-    setTreatmentPlan((prev) => {
+    setNewTreatmentPlan((prev) => {
       let updatedPlan = { ...prev };
 
       if (field === "treatmentAmount" || field === "advancedAmount") {
-        const treatmentAmount =
-          field === "treatmentAmount"
-            ? parseFloat(value) || 0
-            : parseFloat(prev.treatmentAmount.toString()) || 0;
-
-        let advancedAmount =
-          field === "advancedAmount"
-            ? parseFloat(value) || 0
-            : parseFloat(prev.advancedAmount.toString()) || 0;
+        const treatmentAmount = field === "treatmentAmount" ? parseFloat(value) || 0 : parseFloat(prev.treatmentAmount) || 0;
+        let advancedAmount = field === "advancedAmount" ? parseFloat(value) || 0 : parseFloat(prev.advancedAmount) || 0;
 
         if (field === "advancedAmount" && advancedAmount > treatmentAmount) {
           advancedAmount = treatmentAmount;
@@ -144,25 +220,25 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
     });
   };
 
-  const handleToothSelect = (toothNumber: string) => {
-    setSelectedTeethMap((prev) => {
+  const handleToothSelect = (toothNumber: string, forExisting: boolean = false) => {
+    const setTeethMap = forExisting ? setExistingTeethMap : setSelectedTeethMap;
+    
+    setTeethMap((prev) => {
       const currentTeeth = { ...prev };
 
       if (currentTeeth[toothNumber]) {
-        // Create a new object without this tooth
         const { [toothNumber]: _, ...rest } = currentTeeth;
         return rest;
       } else {
-        // Add a default daily treatment with a small amount when adding a new tooth
         const today = format(new Date(), "yyyy-MM-dd");
         const defaultTreatment: DailyTreatment = {
           date: today,
-          treatmentAmount: 100, // Default amount
+          treatmentAmount: 100, 
           paidAmount: 0,
           remainingAmount: 100,
-          treatedByDoctor: "", // You might want to set a default doctor
+          treatedByDoctor: "", 
           procedure: "",
-          notes: "Initial treatment",
+          notes: "Initial X-Ray assessment",
         };
 
         return {
@@ -170,11 +246,11 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
           [toothNumber]: {
             number: toothNumber,
             details: "",
-            procedure: "",
+            procedure: "RVG X-Ray",
             position: getToothPosition(toothNumber),
             side: getToothSide(toothNumber),
-            dailyTreatments: [defaultTreatment], // Add the default treatment
-            totalTreatmentAmount: 100, // Default treatment amount
+            dailyTreatments: [defaultTreatment],
+            totalTreatmentAmount: 100,
             totalPaidAmount: 0,
             totalRemainingAmount: 100,
           },
@@ -184,198 +260,216 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
 
     // Update treatment plan with selected teeth
     setTimeout(() => {
-      const selectedTeethArray = Object.entries(selectedTeethMap).map(([number, data]) => ({
-        number,
-        details: data.details || "",
-        procedure: data.procedure || "",
-        position: getToothPosition(number),
-        side: getToothSide(number),
-        dailyTreatments: data.dailyTreatments.map((dt) => ({
-          date: dt.date,
-          treatmentAmount: dt.treatmentAmount,
-          paidAmount: dt.paidAmount,
-          remainingAmount: dt.remainingAmount,
-          treatedByDoctor: dt.treatedByDoctor,
-          procedure: dt.procedure || "",
-          notes: dt.notes || "",
-        })),
-        totalTreatmentAmount: data.totalTreatmentAmount,
-        totalPaidAmount: data.totalPaidAmount,
-        totalRemainingAmount: data.totalRemainingAmount,
-      }));
-
-      setTreatmentPlan(prev => ({
-        ...prev,
-        teethNumber: selectedTeethArray.map(t => t.number).join(", "),
-        selectedTeethDetails: selectedTeethArray,
-      }));
+      if (forExisting) {
+        updateExistingTeethInPlan();
+      } else {
+        updateSelectedTeethInPlan();
+      }
     }, 0);
   };
 
-  const handleToothDetailsChange = (toothNumber: string, details: string) => {
-    setSelectedTeethMap((prev) => ({
+  const updateSelectedTeethInPlan = () => {
+    const selectedTeethArray = Object.entries(selectedTeethMap).map(([number, data]) => ({
+      number,
+      details: data.details || "",
+      procedure: data.procedure || "RVG X-Ray",
+      position: getToothPosition(number),
+      side: getToothSide(number),
+      dailyTreatments: data.dailyTreatments || [],
+      totalTreatmentAmount: data.totalTreatmentAmount || 0,
+      totalPaidAmount: data.totalPaidAmount || 0,
+      totalRemainingAmount: data.totalRemainingAmount || 0,
+    }));
+
+    setNewTreatmentPlan(prev => ({
       ...prev,
-      [toothNumber]: {
-        ...(prev[toothNumber] || {}),
-        details,
-      },
+      teethNumber: selectedTeethArray.map(t => t.number).join(", "),
+      selectedTeethDetails: selectedTeethArray,
     }));
   };
 
-  const handleToothProcedureChange = (toothNumber: string, procedure: string) => {
-    setSelectedTeethMap((prev) => ({
-      ...prev,
-      [toothNumber]: {
-        ...(prev[toothNumber] || {}),
-        procedure,
-      },
+  const updateExistingTeethInPlan = () => {
+    if (!selectedExistingPlan) return;
+
+    const teethArray = Object.entries(existingTeethMap).map(([number, data]) => ({
+      number,
+      details: data.details || "",
+      procedure: data.procedure || "RVG X-Ray",
+      position: getToothPosition(number),
+      side: getToothSide(number),
+      dailyTreatments: data.dailyTreatments || [],
+      totalTreatmentAmount: data.totalTreatmentAmount || 0,
+      totalPaidAmount: data.totalPaidAmount || 0,
+      totalRemainingAmount: data.totalRemainingAmount || 0,
     }));
+
+    setSelectedExistingPlan(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        teethNumber: teethArray.map(t => t.number).join(", "),
+        selectedTeethDetails: teethArray,
+      };
+    });
   };
 
-  const handleDailyTreatmentAdd = (toothNumber: string, treatment: DailyTreatment) => {
-    setSelectedTeethMap((prev) => {
-      // Create deep copies to avoid reference issues
+  const handleDailyTreatmentAdd = (toothNumber: string, treatment: DailyTreatment, forExisting: boolean = false) => {
+    const setTeethMap = forExisting ? setExistingTeethMap : setSelectedTeethMap;
+    
+    setTeethMap((prev) => {
       const prevMapCopy = JSON.parse(JSON.stringify(prev)) as Record<string, ToothData>;
 
-      // Ensure the tooth exists
       if (!prevMapCopy[toothNumber]) {
-        // Initialize with default values if tooth doesn't exist
         prevMapCopy[toothNumber] = {
           number: toothNumber,
           details: "",
-          procedure: "",
+          procedure: "RVG X-Ray",
           dailyTreatments: [],
           totalTreatmentAmount: 0,
           totalPaidAmount: 0,
           totalRemainingAmount: 0,
-          isCompleted: false,
         };
       }
 
-      const currentTooth = prevMapCopy[toothNumber];
-
-      // Find if there's an existing treatment with the same date to update it
-      const existingIndex = currentTooth.dailyTreatments.findIndex(
-        (t) => t.date === treatment.date && t._id === treatment._id
-      );
-
-      if (existingIndex >= 0) {
-        // Update existing treatment
-        currentTooth.dailyTreatments[existingIndex] = treatment;
+      // Add new treatment to the tooth's dailyTreatments array
+      const updatedDailyTreatments = [...prevMapCopy[toothNumber].dailyTreatments];
+      if (treatment._id) {
+        // If treatment has an ID, it's an update to an existing treatment
+        const index = updatedDailyTreatments.findIndex(t => t._id === treatment._id);
+        if (index !== -1) {
+          updatedDailyTreatments[index] = treatment;
+        } else {
+          updatedDailyTreatments.push(treatment);
+        }
       } else {
-        // Add new treatment
-        currentTooth.dailyTreatments.push(treatment);
+        // New treatment
+        updatedDailyTreatments.push(treatment);
       }
 
-      // Always recalculate totals after any change
-      currentTooth.totalTreatmentAmount = currentTooth.dailyTreatments.reduce(
-        (sum, t) => sum + (Number(t.treatmentAmount) || 0),
+      // Recalculate totals
+      const totalTreatmentAmount = updatedDailyTreatments.reduce(
+        (sum, t) => sum + (typeof t.treatmentAmount === 'number' ? t.treatmentAmount : 0), 
         0
       );
-      currentTooth.totalPaidAmount = currentTooth.dailyTreatments.reduce(
-        (sum, t) => sum + (Number(t.paidAmount) || 0),
+      
+      const totalPaidAmount = updatedDailyTreatments.reduce(
+        (sum, t) => sum + (typeof t.paidAmount === 'number' ? t.paidAmount : 0), 
         0
       );
-      currentTooth.totalRemainingAmount = Math.max(
-        0,
-        currentTooth.totalTreatmentAmount - currentTooth.totalPaidAmount
-      );
+
+      // Update the tooth with new treatment and recalculated totals
+      prevMapCopy[toothNumber] = {
+        ...prevMapCopy[toothNumber],
+        dailyTreatments: updatedDailyTreatments,
+        totalTreatmentAmount,
+        totalPaidAmount,
+        totalRemainingAmount: totalTreatmentAmount - totalPaidAmount,
+      };
 
       return prevMapCopy;
     });
+
+    // Update treatment plan with updated teeth
+    setTimeout(() => {
+      if (forExisting) {
+        updateExistingTeethInPlan();
+      } else {
+        updateSelectedTeethInPlan();
+      }
+    }, 0);
   };
 
-  const formatDataForBackend = () => {
-    // Get the current medical details array or initialize it if empty
-    const currentMedicalDetails = patient.medicalDetails && patient.medicalDetails.length > 0 
-      ? JSON.parse(JSON.stringify(patient.medicalDetails)) 
-      : [{
-          chiefComplaint: "",
-          diagnosis: "",
-          investigation: { blood: "", xray: "" },
-          patientType: "Adult",
-          medicalHistory: {
-            bloodPressure: "",
-            diabetes: false,
-            thyroid: false,
-            bleedingDisorder: false,
-            pregnancy: false,
-            asthma: false,
-            allergies: "",
-            otherConditions: "",
-            noMedicalIssues: false
-          },
-          treatmentPlanning: []
-        }];
-    
-    // Format the new treatment plan
-    const formattedTreatmentPlan = {
-      ...treatmentPlan,
-      treatmentDate: formatSafeDate(treatmentPlan.treatmentDate),
-      treatmentAmount: Number(treatmentPlan.treatmentAmount) || 0,
-      advancedAmount: Number(treatmentPlan.advancedAmount) || 0,
-      balanceAmount: Number(treatmentPlan.balanceAmount) || 0,
-      followUpDate: treatmentPlan.followUpDate ? formatSafeDate(treatmentPlan.followUpDate) : undefined,
-      selectedTeethDetails: Object.entries(selectedTeethMap).map(([number, toothData]) => {
-        // Format dailyTreatments for each tooth
-        const formattedDailyTreatments = toothData.dailyTreatments?.map((treatment) => ({
-          date: formatSafeDate(treatment.date),
-          treatmentAmount: Number(treatment.treatmentAmount) || 0,
-          paidAmount: Number(treatment.paidAmount) || 0,
-          remainingAmount: Number(treatment.remainingAmount) || 0,
-          treatedByDoctor: treatment.treatedByDoctor || null,
-          notes: treatment.notes || "",
-          procedure: treatment.procedure || "",
-          isCompleted: treatment.isCompleted || false,
-        })) || [];
-
-        return {
-          number,
-          details: toothData.details || "",
-          position: getToothPosition(number),
-          side: getToothSide(number),
-          procedure: toothData.procedure || "",
-          dailyTreatments: formattedDailyTreatments,
-          totalTreatmentAmount: toothData.totalTreatmentAmount || 0,
-          totalPaidAmount: toothData.totalPaidAmount || 0,
-          totalRemainingAmount: toothData.totalRemainingAmount || 0,
-        };
-      }),
-    };
-
-    // Add the new treatment plan to the existing medical details
-    // Use a type assertion to avoid TypeScript errors
-    if (currentMedicalDetails[0].treatmentPlanning) {
-      (currentMedicalDetails[0].treatmentPlanning as any[]).push(formattedTreatmentPlan);
-    } else {
-      currentMedicalDetails[0].treatmentPlanning = [formattedTreatmentPlan];
+  // Function to update an existing plan
+  const handleUpdateExistingPlan = async () => {
+    if (!selectedExistingPlan || !selectedExistingPlan._id) {
+      toast.error("No plan selected for update");
+      return;
     }
 
-    return {
-      medicalDetails: currentMedicalDetails
-    };
-  };
+    setIsSubmitting(true);
 
-  const handleSubmit = async () => {
     try {
-      setIsSubmitting(true);
+      const medicalDetailId = patient.medicalDetails[0]?._id;
+      if (!medicalDetailId) {
+        toast.error("Medical detail ID is missing");
+        setIsSubmitting(false);
+        return;
+      }
 
-      const formattedData = formatDataForBackend();
+      // Create payload for the update
+      const payload = {
+        ...selectedExistingPlan,
+        patientType: patient.medicalDetails[0]?.patientType || "Adult",
+      };
 
-      // Send the API request to update the patient with the new treatment plan
-      await crudRequest(
+      // Update the plan
+      const response = await crudRequest<ApiResponse<any>>(
         "PUT",
-        `/patient/update-patient/${patient._id}`,
-        formattedData
+        `/patient/update-treatment-plan/${patient._id}/${medicalDetailId}/${selectedExistingPlan._id}`,
+        payload
       );
 
-      // Handle success
-      toast.success("X-Ray plan added successfully!");
-      onClose();
-      window.location.reload(); // Reload the page to reflect changes
+      if (response && response.success) {
+        toast.success("X-Ray Plan updated successfully");
+        setRefreshTrigger(prev => prev + 1);
+        setSelectedExistingPlan(null);
+      } else {
+        toast.error(response?.message || "Failed to update X-Ray Plan");
+      }
     } catch (error) {
-      toast.error("Failed to add X-Ray plan");
-      console.error("Error adding X-Ray plan:", error);
+      console.error("Error updating X-Ray Plan:", error);
+      toast.error(typeof error === 'object' && error !== null && 'message' in error 
+        ? (error as {message: string}).message 
+        : "Failed to update X-Ray Plan");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Function to save a new treatment plan
+  const handleSubmitNewPlan = async () => {
+    if (Object.keys(selectedTeethMap).length === 0) {
+      toast.error("Please select at least one tooth for the X-Ray plan");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Prepare data for submission
+      const medicalDetailId = patient.medicalDetails[0]?._id;
+
+      if (!medicalDetailId) {
+        toast.error("Medical detail ID is missing");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Create payload with updated treatment plan
+      const payload = {
+        ...newTreatmentPlan,
+        patientType: patient.medicalDetails[0]?.patientType || "Adult",
+      };
+
+      // Use the type interface for the API response
+      const response = await crudRequest<ApiResponse<any>>(
+        "POST",
+        `/patient/add-treatment-plan/${patient._id}/${medicalDetailId}`,
+        payload
+      );
+
+      if (response && response.success) {
+        toast.success("X-Ray Plan added successfully");
+        setRefreshTrigger(prev => prev + 1);
+        setActiveTab("existing");
+      } else {
+        toast.error(response?.message || "Failed to add X-Ray Plan");
+      }
+    } catch (error) {
+      console.error("Error adding X-Ray Plan:", error);
+      toast.error(typeof error === 'object' && error !== null && 'message' in error 
+        ? (error as {message: string}).message 
+        : "Failed to add X-Ray Plan");
     } finally {
       setIsSubmitting(false);
     }
@@ -383,189 +477,603 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-screen h-[100dvh] max-w-none m-0 p-0 rounded-none border-none bg-background/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-hidden">
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="flex flex-col h-[calc(100vh-5rem)]"
-        >
-          <TabsList className="grid w-full grid-cols-2 gap-2 px-2 py-1 text-center bg-muted/40 sticky z-40">
-            <TabsTrigger
-              value="details"
-              className="flex items-center justify-center gap-1 text-sm sm:text-base sm:gap-2 transition-all duration-200 hover:bg-accent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              X-Ray Plan Details
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl">X-Ray Plans for {patient.personalDetails.name}</DialogTitle>
+        </DialogHeader>
+
+        <Tabs defaultValue="existing" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid grid-cols-2 mb-4">
+            <TabsTrigger value="existing" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Existing X-Ray Plans
+              {isLoadingPlans && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
             </TabsTrigger>
-            <TabsTrigger
-              value="teeth"
-              className="flex items-center justify-center gap-1 text-sm sm:text-base sm:gap-2 transition-all duration-200 hover:bg-accent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Teeth Selection
+            <TabsTrigger value="new" className="flex items-center gap-2">
+              <PlusCircle className="h-4 w-4" />
+              Create New X-Ray Plan
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex-1 overflow-y-auto px-2 py-2">
-            <TabsContent
-              value="details"
-              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
-            >
-              <Card className="border-none shadow-none">
-                <CardContent className="p-4 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs sm:text-sm">Treatment Date</Label>
-                      <Input
-                        type="date"
-                        value={treatmentPlan.treatmentDate}
-                        onChange={(e) =>
-                          handleTreatmentChange("treatmentDate", e.target.value)
-                        }
-                        className="text-sm"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-xs sm:text-sm">Clinical Findings</Label>
-                      <Select
-                        value={treatmentPlan.clinicalFindings[0] || ""}
-                        onValueChange={(value) =>
-                          handleTreatmentChange(
-                            "clinicalFindings",
-                            treatmentPlan.clinicalFindings.includes(value)
-                              ? treatmentPlan.clinicalFindings.filter((v) => v !== value)
-                              : [...treatmentPlan.clinicalFindings, value]
-                          )
-                        }
-                      >
-                        <SelectTrigger className="text-sm">
-                          <SelectValue placeholder="Select findings" />
-                        </SelectTrigger>
-                        <SelectContent className="text-sm">
-                          {[
-                            "Caries",
-                            "Decayed",
-                            "Missing",
-                            "Crowding",
-                            "Swelling",
-                            "Enlargement",
-                            "Bleeding",
-                            "Bad Breathing",
-                            "Impaction",
-                            "Pericoronitis",
-                            "Food Lodgment",
-                            "Attrition",
-                            "Abrasion",
-                          ].map((finding) => (
-                            <SelectItem key={finding} value={finding}>
-                              {finding}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-xs sm:text-sm">
-                        Treatment Procedure
-                      </Label>
-                      <Textarea
-                        value={treatmentPlan.treatmentFindings}
-                        onChange={(e) =>
-                          handleTreatmentChange("treatmentFindings", e.target.value)
-                        }
-                        className="min-h-[80px] sm:min-h-[100px] text-sm resize-y"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-xs sm:text-sm">Other Findings</Label>
-                      <Textarea
-                        value={treatmentPlan.otherFindings}
-                        onChange={(e) =>
-                          handleTreatmentChange("otherFindings", e.target.value)
-                        }
-                        className="min-h-[80px] sm:min-h-[100px] text-sm resize-y"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-xs sm:text-sm">Follow-up Date</Label>
-                      <Input
-                        type="date"
-                        value={treatmentPlan.followUpDate}
-                        onChange={(e) =>
-                          handleTreatmentChange("followUpDate", e.target.value)
-                        }
-                        className="text-sm"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-xs sm:text-sm">Treated By Doctor</Label>
-                      <Select
-                        value={treatmentPlan.treatedByDoctor}
-                        onValueChange={(value) =>
-                          handleTreatmentChange("treatedByDoctor", value)
-                        }
-                      >
-                        <SelectTrigger className="text-sm">
-                          <SelectValue placeholder="Select doctor" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {doctors.map((doctor) => (
-                            <SelectItem key={doctor._id} value={doctor._id}>
-                              {doctor.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+          {/* Existing Plans Tab */}
+          <TabsContent value="existing" className="space-y-4">
+            {isLoadingPlans ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              </div>
+            ) : existingTreatmentPlans.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center py-8 border border-dashed rounded-lg">
+                    <FileText className="h-8 w-8 mx-auto text-muted-foreground" />
+                    <p className="mt-2 text-muted-foreground">
+                      No existing X-Ray plans found for this patient.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => setActiveTab("new")}
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Create New X-Ray Plan
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
-
-            <TabsContent value="teeth">
-              <div className="space-y-4">
+            ) : (
+              <>
+                {/* Plan Selection Section */}
                 <Card>
-                  <CardContent className="p-4 space-y-6">
-                    <EnhancedTreatmentPlanCard
-                      treatmentIndex={0}
-                      plan={treatmentPlan}
-                      selectedTeethMap={selectedTeethMap}
-                      patientId={patient._id}
-                      medicalDetailId={patient.medicalDetails[0]?._id || ""}
-                      patientType={patient.medicalDetails[0]?.patientType || "Adult"}
-                      doctors={doctors}
-                      onRemove={() => {}}  // We don't need remove functionality here
-                      onTreatmentChange={handleTreatmentChange}
-                      onToothSelect={handleToothSelect}
-                      onToothDetailsChange={handleToothDetailsChange}
-                      onToothProcedureChange={handleToothProcedureChange}
-                      onDailyTreatmentAdd={handleDailyTreatmentAdd}
-                    />
+                  <CardHeader>
+                    <CardTitle className="text-lg">Select an X-Ray Plan</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <ScrollArea className="h-[200px]">
+                      <div className="px-4 pb-4">
+                        {existingTreatmentPlans.map((plan, index) => (
+                          <div 
+                            key={plan._id} 
+                            className={`border rounded-lg p-3 mb-3 cursor-pointer transition-colors
+                              ${selectedExistingPlan?._id === plan._id 
+                                ? 'border-primary bg-primary/5' 
+                                : 'hover:border-primary/50 hover:bg-muted/50'}`}
+                            onClick={() => handleSelectExistingPlan(plan)}
+                          >
+                            <div className="flex justify-between items-center">
+                              <h4 className="text-base font-medium flex items-center gap-2">
+                                <span className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs">
+                                  {index + 1}
+                                </span>
+                                {plan.treatmentDetails || `X-Ray Plan ${index + 1}`}
+                              </h4>
+                              <Badge variant={plan.isCompleted ? "default" : "outline"}>
+                                {plan.isCompleted ? "Completed" : "In Progress"}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm mt-2">
+                              <div>
+                                <span className="text-muted-foreground">Date: </span>
+                                {formatSafeDate(plan.treatmentDate)}
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Teeth: </span>
+                                {plan.teethNumber || "None"}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
                   </CardContent>
                 </Card>
-              </div>
-            </TabsContent>
-          </div>
+
+                {/* Selected Plan Details */}
+                {selectedExistingPlan ? (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="text-lg">Plan Details: {selectedExistingPlan.treatmentDetails}</CardTitle>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setShowFileUpload(true)}
+                          >
+                            <FileText className="h-4 w-4 mr-1" />
+                            Upload Files
+                          </Button>
+                          <Button 
+                            size="sm"
+                            onClick={handleUpdateExistingPlan}
+                            disabled={isSubmitting}
+                          >
+                            {isSubmitting ? (
+                              <>
+                                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                                Updating...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="mr-1 h-4 w-4" />
+                                Save Changes
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <Tabs defaultValue="chart">
+                        <TabsList className="mb-4">
+                          <TabsTrigger value="chart">Dental Chart</TabsTrigger>
+                          <TabsTrigger value="details">Plan Information</TabsTrigger>
+                          <TabsTrigger value="files">
+                            Files ({selectedExistingPlan.treatmentDocuments?.length || 0})
+                          </TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="chart">
+                          <div className="space-y-4">
+                            <div className="border rounded-lg p-4 overflow-x-auto">
+                              <div className="min-width-full w-full max-w-[800px] mx-auto">
+                                {patient.medicalDetails[0]?.patientType === "Child" ? (
+                                  <ChildDentalChart
+                                    selectedTeeth={existingTeethMap}
+                                    onToothSelect={(tooth) => handleToothSelect(tooth, true)}
+                                    readOnly={false}
+                                  />
+                                ) : (
+                                  <DentalChart
+                                    selectedTeeth={existingTeethMap}
+                                    onToothSelect={(tooth) => handleToothSelect(tooth, true)}
+                                    readOnly={false}
+                                  />
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="mb-3">
+                              <h3 className="text-lg font-medium flex items-center gap-2">
+                                Selected Teeth 
+                                <Badge variant="outline" className="ml-2">
+                                  {Object.keys(existingTeethMap).length} teeth
+                                </Badge>
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Click on teeth in the chart to add or remove them
+                              </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                              {Object.entries(existingTeethMap).map(([number, toothData]) => (
+                                <DailyTreatmentManager
+                                  key={number}
+                                  toothNumber={number}
+                                  toothData={{
+                                    ...toothData,
+                                    _id: toothData._id || number
+                                  }}
+                                  doctors={doctors}
+                                  onAddTreatment={(toothNumber, treatment) => 
+                                    handleDailyTreatmentAdd(toothNumber, treatment, true)
+                                  }
+                                  patientId={patient._id}
+                                  medicalDetailId={patient.medicalDetails[0]?._id || ""}
+                                />
+                              ))}
+                            </div>
+
+                            {Object.keys(existingTeethMap).length === 0 && (
+                              <div className="text-center py-8 border border-dashed rounded-lg">
+                                <FileText className="h-8 w-8 mx-auto text-muted-foreground" />
+                                <p className="mt-2 text-muted-foreground">
+                                  No teeth selected. Click on teeth in the dental chart above.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </TabsContent>
+
+                        <TabsContent value="details">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Treatment Date</Label>
+                              <Input
+                                type="date"
+                                value={selectedExistingPlan.treatmentDate}
+                                onChange={(e) => 
+                                  setSelectedExistingPlan(prev => 
+                                    prev ? {...prev, treatmentDate: e.target.value} : null
+                                  )
+                                }
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>Doctor</Label>
+                              <Select
+                                value={selectedExistingPlan.treatedByDoctor}
+                                onValueChange={(value) => 
+                                  setSelectedExistingPlan(prev => 
+                                    prev ? {...prev, treatedByDoctor: value} : null
+                                  )
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select doctor" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {doctors.map((doctor) => (
+                                    <SelectItem key={doctor._id} value={doctor._id}>
+                                      {doctor.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>X-Ray Type/Details</Label>
+                              <Input
+                                value={selectedExistingPlan.treatmentDetails}
+                                onChange={(e) => 
+                                  setSelectedExistingPlan(prev => 
+                                    prev ? {...prev, treatmentDetails: e.target.value} : null
+                                  )
+                                }
+                                placeholder="X-Ray Plan"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>Clinical Findings</Label>
+                              <Select
+                                value={selectedExistingPlan.clinicalFindings[0] || ""}
+                                onValueChange={(value) =>
+                                  setSelectedExistingPlan(prev => {
+                                    if (!prev) return null;
+                                    const findings = prev.clinicalFindings.includes(value)
+                                      ? prev.clinicalFindings.filter((v) => v !== value)
+                                      : [...prev.clinicalFindings, value];
+                                    return {...prev, clinicalFindings: findings};
+                                  })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select findings" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {[
+                                    "Caries",
+                                    "Decayed",
+                                    "Missing",
+                                    "Crowding",
+                                    "Impaction",
+                                    "Pericoronitis",
+                                    "Food Lodgment",
+                                  ].map((finding) => (
+                                    <SelectItem key={finding} value={finding}>
+                                      {finding}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2 col-span-2">
+                              <Label>Treatment Findings</Label>
+                              <Textarea
+                                value={selectedExistingPlan.treatmentFindings}
+                                onChange={(e) => 
+                                  setSelectedExistingPlan(prev => 
+                                    prev ? {...prev, treatmentFindings: e.target.value} : null
+                                  )
+                                }
+                                placeholder="Enter X-Ray findings here"
+                                className="min-h-[100px]"
+                              />
+                            </div>
+
+                            <div className="space-y-2 col-span-2">
+                              <Label>Other Notes</Label>
+                              <Textarea
+                                value={selectedExistingPlan.otherFindings}
+                                onChange={(e) => 
+                                  setSelectedExistingPlan(prev => 
+                                    prev ? {...prev, otherFindings: e.target.value} : null
+                                  )
+                                }
+                                placeholder="Any additional notes"
+                                className="min-h-[100px]"
+                              />
+                            </div>
+                          </div>
+                        </TabsContent>
+
+                        <TabsContent value="files">
+                          <div className="space-y-4">
+                            {(!selectedExistingPlan.treatmentDocuments ||
+                              selectedExistingPlan.treatmentDocuments.length === 0) ? (
+                              <div className="text-center py-8 border border-dashed rounded-lg">
+                                <FileText className="h-8 w-8 mx-auto text-muted-foreground" />
+                                <p className="mt-2 text-muted-foreground">No documents yet</p>
+                                <Button
+                                  variant="outline"
+                                  className="mt-4"
+                                  onClick={() => setShowFileUpload(true)}
+                                >
+                                  <FileText className="h-4 w-4 mr-2" /> Upload Files
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="grid gap-2">
+                                {selectedExistingPlan.treatmentDocuments.map((doc, idx) => (
+                                  <a
+                                    key={idx}
+                                    href={doc.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 p-3 border rounded hover:bg-accent/20"
+                                  >
+                                    <FileText className="h-5 w-5 text-blue-500" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium truncate">
+                                        {doc.fileName}
+                                      </p>
+                                      {doc.description && (
+                                        <p className="text-xs text-muted-foreground truncate">
+                                          {doc.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground whitespace-nowrap">
+                                      {format(new Date(doc.uploadDate), "dd MMM yyyy")}
+                                    </p>
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </TabsContent>
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-6 text-center bg-muted/20 rounded-lg border">
+                    <FileText className="h-12 w-12 text-muted-foreground mb-3" />
+                    <h3 className="text-lg font-medium">No Plan Selected</h3>
+                    <p className="text-sm text-muted-foreground max-w-md mt-1">
+                      Select an X-Ray plan from above to view and edit its details
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
+
+          {/* New Plan Tab */}
+          <TabsContent value="new" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Create New X-Ray Plan</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="teeth">
+                  <TabsList className="mb-4">
+                    <TabsTrigger value="teeth">Select Teeth</TabsTrigger>
+                    <TabsTrigger value="details">Plan Details</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="teeth">
+                    <div className="space-y-4">
+                      <div className="border rounded-lg p-4 overflow-x-auto">
+                        <div className="min-width-full w-full max-w-[800px] mx-auto">
+                          {patient.medicalDetails[0]?.patientType === "Child" ? (
+                            <ChildDentalChart
+                              selectedTeeth={selectedTeethMap}
+                              onToothSelect={handleToothSelect}
+                              readOnly={false}
+                            />
+                          ) : (
+                            <DentalChart
+                              selectedTeeth={selectedTeethMap}
+                              onToothSelect={handleToothSelect}
+                              readOnly={false}
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mb-3">
+                        <h3 className="text-lg font-medium flex items-center gap-2">
+                          Selected Teeth 
+                          <Badge variant="outline" className="ml-2">
+                            {Object.keys(selectedTeethMap).length} selected
+                          </Badge>
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Click on teeth in the chart to select them for X-Ray
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Object.entries(selectedTeethMap).map(([number, toothData]) => (
+                          <DailyTreatmentManager
+                            key={number}
+                            toothNumber={number}
+                            toothData={{
+                              ...toothData,
+                              _id: toothData._id || number
+                            }}
+                            doctors={doctors}
+                            onAddTreatment={handleDailyTreatmentAdd}
+                            patientId={patient._id}
+                            medicalDetailId={patient.medicalDetails[0]?._id || ""}
+                          />
+                        ))}
+                      </div>
+
+                      {Object.keys(selectedTeethMap).length === 0 && (
+                        <div className="text-center py-8 border border-dashed rounded-lg">
+                          <FileText className="h-8 w-8 mx-auto text-muted-foreground" />
+                          <p className="mt-2 text-muted-foreground">
+                            No teeth selected. Click on teeth in the dental chart above.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="details">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Treatment Date</Label>
+                        <Input
+                          type="date"
+                          value={newTreatmentPlan.treatmentDate}
+                          onChange={(e) => handleTreatmentChange("treatmentDate", e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Doctor</Label>
+                        <Select
+                          value={newTreatmentPlan.treatedByDoctor}
+                          onValueChange={(value) => handleTreatmentChange("treatedByDoctor", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select doctor" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {doctors.map((doctor) => (
+                              <SelectItem key={doctor._id} value={doctor._id}>
+                                {doctor.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>X-Ray Type/Details</Label>
+                        <Input
+                          value={newTreatmentPlan.treatmentDetails}
+                          onChange={(e) => handleTreatmentChange("treatmentDetails", e.target.value)}
+                          placeholder="X-Ray Plan"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Clinical Findings</Label>
+                        <Select
+                          value={newTreatmentPlan.clinicalFindings[0] || ""}
+                          onValueChange={(value) =>
+                            handleTreatmentChange(
+                              "clinicalFindings",
+                              newTreatmentPlan.clinicalFindings.includes(value)
+                                ? newTreatmentPlan.clinicalFindings.filter((v) => v !== value)
+                                : [...newTreatmentPlan.clinicalFindings, value]
+                            )
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select findings" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[
+                              "Caries",
+                              "Decayed",
+                              "Missing",
+                              "Crowding",
+                              "Impaction",
+                              "Pericoronitis",
+                              "Food Lodgment",
+                            ].map((finding) => (
+                              <SelectItem key={finding} value={finding}>
+                                {finding}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2 col-span-2">
+                        <Label>Treatment Findings</Label>
+                        <Textarea
+                          value={newTreatmentPlan.treatmentFindings}
+                          onChange={(e) => handleTreatmentChange("treatmentFindings", e.target.value)}
+                          placeholder="Enter X-Ray findings here"
+                          className="min-h-[100px]"
+                        />
+                      </div>
+
+                      <div className="space-y-2 col-span-2">
+                        <Label>Other Notes</Label>
+                        <Textarea
+                          value={newTreatmentPlan.otherFindings}
+                          onChange={(e) => handleTreatmentChange("otherFindings", e.target.value)}
+                          placeholder="Any additional notes"
+                          className="min-h-[100px]"
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
-        <div className="fixed bottom-0 left-0 right-0 p-2 bg-background/95 border-t flex justify-between sm:justify-end gap-2 sm:gap-4 z-50">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="min-w-[80px] sm:min-w-[100px] text-xs sm:text-sm"
-          >
+
+        {/* Document Upload Dialog */}
+        <Dialog open={showFileUpload} onOpenChange={setShowFileUpload}>
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+            <TreatmentFileUpload
+              patientId={patient._id}
+              medicalDetailId={patient.medicalDetails[0]?._id || ""}
+              treatmentId={selectedExistingPlan?._id || ""}
+              onClose={() => setShowFileUpload(false)}
+              onSuccess={() => {
+                setShowFileUpload(false);
+                setRefreshTrigger(prev => prev + 1);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="min-w-[80px] sm:min-w-[100px] text-xs sm:text-sm"
-          >
-            {isSubmitting ? "Adding..." : "Add X-Ray Plan"}
-          </Button>
-        </div>
+          {activeTab === "new" ? (
+            <Button onClick={handleSubmitNewPlan} disabled={isSubmitting || Object.keys(selectedTeethMap).length === 0}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Save X-Ray Plan
+                </>
+              )}
+            </Button>
+          ) : selectedExistingPlan ? (
+            <Button onClick={handleUpdateExistingPlan} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          ) : null}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

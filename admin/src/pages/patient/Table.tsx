@@ -573,7 +573,7 @@ export function PatientTable() {
     saveAs(data, fileName);
   };
 
-  // Add this function to handle opening the X-Ray Plan modal
+  // Update the handleAddXRayPlan function to make it simpler
   const handleAddXRayPlan = (patient: Patient) => {
     setXRayPlanPatient(patient);
     setIsXRayPlanModalOpen(true);

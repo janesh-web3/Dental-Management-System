@@ -2136,15 +2136,176 @@ const getPatientDemographics = async (req, res) => {
   }
 };
 
+// Add the getTreatmentPlans controller function at the end of the file
+
+const getTreatmentPlans = async (req, res) => {
+  try {
+    const { patientId, medicalDetailId } = req.params;
+
+    // Validate parameters
+    if (!patientId || !medicalDetailId) {
+      return res.status(400).json({
+        success: false,
+        message: "Patient ID and Medical Detail ID are required"
+      });
+    }
+
+    // Log the incoming request parameters
+    console.log("Fetching treatment plans for:", {
+      patientId,
+      medicalDetailId
+    });
+
+    // Find the patient by ID
+    const patient = await Patient.findById(patientId);
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found"
+      });
+    }
+
+    // Log the patient data to debug
+    console.log("Patient found:", {
+      id: patient._id,
+      name: patient.personalDetails?.name,
+      medicalDetailsCount: patient.medicalDetails?.length
+    });
+
+    // Find the medical detail by ID, use toString() for comparing ObjectIds
+    const medicalDetail = patient.medicalDetails.find(
+      detail => detail._id.toString() === medicalDetailId
+    );
+
+    if (!medicalDetail) {
+      // Log all medical detail IDs to help debugging
+      const availableMedicalDetailIds = patient.medicalDetails.map(detail => 
+        ({ id: detail._id.toString(), patientType: detail.patientType })
+      );
+      
+      console.log("Available medical detail IDs:", availableMedicalDetailIds);
+      
+      return res.status(404).json({
+        success: false,
+        message: "Medical detail not found",
+        availableMedicalDetailIds
+      });
+    }
+
+    // Log the medical detail found
+    console.log("Medical detail found:", {
+      id: medicalDetail._id,
+      patientType: medicalDetail.patientType,
+      treatmentPlanningCount: medicalDetail.treatmentPlanning?.length
+    });
+
+    // Return treatment plans
+    const treatmentPlans = medicalDetail.treatmentPlanning || [];
+    
+    res.status(200).json({
+      success: true,
+      data: treatmentPlans,
+      count: treatmentPlans.length
+    });
+  } catch (error) {
+    console.error("Error fetching treatment plans:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch treatment plans",
+      error: error.message
+    });
+  }
+};
+
+// Add a new controller function for adding treatment plans
+const addTreatmentPlan = async (req, res) => {
+  try {
+    const { patientId, medicalDetailId } = req.params;
+    const treatmentPlanData = req.body;
+
+    console.log("Adding treatment plan:", {
+      patientId,
+      medicalDetailId,
+      treatmentPlan: treatmentPlanData
+    });
+
+    // Validate parameters
+    if (!patientId || !medicalDetailId) {
+      return res.status(400).json({
+        success: false,
+        message: "Patient ID and Medical Detail ID are required"
+      });
+    }
+
+    // Find the patient by ID
+    const patient = await Patient.findById(patientId);
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found"
+      });
+    }
+
+    // Add treatment plan to the patient's medical details
+    const updatedPatient = await Patient.findOneAndUpdate(
+      {
+        _id: patientId,
+        "medicalDetails._id": medicalDetailId
+      },
+      {
+        $push: {
+          "medicalDetails.$.treatmentPlanning": treatmentPlanData
+        }
+      },
+      { new: true }
+    );
+
+    if (!updatedPatient) {
+      return res.status(404).json({
+        success: false,
+        message: "Failed to add treatment plan"
+      });
+    }
+
+    // Get the newly added treatment plan (last one in the array)
+    const medicalDetail = updatedPatient.medicalDetails.find(
+      detail => detail._id.toString() === medicalDetailId
+    );
+
+    if (!medicalDetail) {
+      return res.status(500).json({
+        success: false,
+        message: "Medical detail not found after update"
+      });
+    }
+
+    const addedTreatmentPlan = medicalDetail.treatmentPlanning[
+      medicalDetail.treatmentPlanning.length - 1
+    ];
+
+    res.status(201).json({
+      success: true,
+      message: "Treatment plan added successfully",
+      data: addedTreatmentPlan
+    });
+  } catch (error) {
+    console.error("Error adding treatment plan:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to add treatment plan",
+      error: error.message
+    });
+  }
+};
+
+// Export the new controller function
 module.exports = {
   addPatient,
+  deletePatient,
   getPatient,
   updatePatient,
-  deletePatient,
   getSinglePatient,
   getPaginatedPatient,
-  getFilteredPatients,
-  getProcedureTypes,
   uploadPatientFiles,
   updateTreatmentStatus,
   getRecentTransactions,
@@ -2152,4 +2313,8 @@ module.exports = {
   getFinancialInsights,
   getDashboardMetrics,
   getPatientDemographics,
+  getFilteredPatients,
+  getProcedureTypes,
+  getTreatmentPlans,
+  addTreatmentPlan,
 };

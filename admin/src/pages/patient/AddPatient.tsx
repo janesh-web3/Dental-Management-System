@@ -386,9 +386,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     const errors: string[] = [];
 
     // Personal details validation
-    const { name, contactNumber, gender } = formData.personalDetails;
+    const { name, gender } = formData.personalDetails;
     if (!name) errors.push("Patient name is required");
-    if (!contactNumber) errors.push("Contact number is required");
     if (!gender) errors.push("Gender is required");
 
     // If medical history issues isn't checked, validate some fields

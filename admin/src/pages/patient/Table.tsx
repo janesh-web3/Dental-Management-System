@@ -10,6 +10,8 @@ import {
   FilePlus,
   Filter,
   X,
+  ClipboardList,
+  CreditCard,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -96,6 +98,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { PaymentHistoryDialog } from "@/components/patient/PaymentHistoryDialog";
 
 // Add a type definition for the procedure response
 interface ProcedureResponse {
@@ -129,6 +132,8 @@ export function PatientTable() {
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [paymentPatient, setPaymentPatient] = useState<Patient | null>(null);
 
   //pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -359,6 +364,12 @@ export function PatientTable() {
     } finally {
       setIsSendingEmail(false);
     }
+  };
+
+  // Add this function to handle payment dialog
+  const handleEditPayment = (patient: Patient) => {
+    setPaymentPatient(patient);
+    setIsPaymentDialogOpen(true);
   };
 
   const handlePageChange = (page: number) => {
@@ -729,6 +740,17 @@ export function PatientTable() {
                             className="gap-2"
                           >
                             <FilePlus className="h-4 w-4" /> Add Prescription
+                          </DropdownMenuItem>
+
+                          {/* Add Payment History Menu Item */}
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditPayment(patient);
+                            }}
+                            className="gap-2"
+                          >
+                            <CreditCard className="h-4 w-4" /> Edit Payment
                           </DropdownMenuItem>
 
                           <DropdownMenuItem
@@ -1218,6 +1240,64 @@ export function PatientTable() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Payment History Dialog */}
+      {paymentPatient && paymentPatient.medicalDetails && paymentPatient.medicalDetails.length > 0 && (
+        <PaymentHistoryDialog
+          isOpen={isPaymentDialogOpen}
+          onClose={() => {
+            setIsPaymentDialogOpen(false);
+            setPaymentPatient(null);
+          }}
+          selectedTeethMaps={
+            // Create a map of all teeth with treatments from the patient's medical details
+            paymentPatient.medicalDetails.reduce((acc, medicalDetail, medicalDetailIndex) => {
+              medicalDetail.treatmentPlanning.forEach((plan, planIndex) => {
+                const mapKey = `${medicalDetailIndex}-${planIndex}`;
+                acc[mapKey] = {};
+                
+                if (plan.selectedTeethDetails) {
+                  plan.selectedTeethDetails.forEach(tooth => {
+                    acc[mapKey][tooth.number] = tooth;
+                  });
+                }
+              });
+              return acc;
+            }, {} as Record<string, Record<string, any>>)
+          }
+          onPaymentUpdate={(mapKey, toothNumber, treatmentIndex, newPaidAmount) => {
+            // Update the local state to reflect the payment change
+            setPaymentPatient(prevPatient => {
+              if (!prevPatient) return null;
+              
+              const updatedPatient = { ...prevPatient };
+              const [medicalDetailIndex, planIndex] = mapKey.split('-').map(Number);
+              
+              if (
+                updatedPatient.medicalDetails[medicalDetailIndex]?.treatmentPlanning[planIndex]?.selectedTeethDetails
+              ) {
+                const toothToUpdate = updatedPatient.medicalDetails[medicalDetailIndex].treatmentPlanning[planIndex].selectedTeethDetails.find(
+                  tooth => tooth.number === toothNumber
+                );
+                
+                if (toothToUpdate && toothToUpdate.dailyTreatments && toothToUpdate.dailyTreatments[treatmentIndex]) {
+                  const treatment = toothToUpdate.dailyTreatments[treatmentIndex];
+                  treatment.paidAmount = newPaidAmount;
+                  treatment.remainingAmount = treatment.treatmentAmount - newPaidAmount;
+                }
+              }
+              
+              return updatedPatient;
+            });
+            
+            // Refresh the patient list to reflect the updated payment
+            fetchPatient(currentPage, itemsPerPage, searchQuery);
+          }}
+          patientId={paymentPatient._id}
+          medicalDetailId={paymentPatient.medicalDetails[0]?._id || ""}
+          patient={paymentPatient}
+        />
+      )}
     </div>
   );
 }

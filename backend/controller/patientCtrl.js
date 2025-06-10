@@ -19,19 +19,11 @@ const addPatient = async (req, res) => {
       });
     }
 
-    const { name, contactNumber, gender } = personalDetails;
-    if (!name || !contactNumber || !gender) {
+    const { name, gender } = personalDetails;
+    if (!name || !gender) {
       return res.status(400).json({
         success: false,
-        error: "Name, contact number, and gender are required",
-      });
-    }
-
-    // Validate contact number format
-    if (!/^\d{10}$/.test(contactNumber)) {
-      return res.status(400).json({
-        success: false,
-        error: "Contact number must be 10 digits",
+        error: "Name and gender are required",
       });
     }
 
@@ -48,6 +40,15 @@ const addPatient = async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "Invalid gender value",
+      });
+    }
+
+    // Validate contact number format if provided
+    const { contactNumber } = personalDetails;
+    if (contactNumber && !/^\d{10}$/.test(contactNumber)) {
+      return res.status(400).json({
+        success: false,
+        error: "Contact number must be 10 digits",
       });
     }
 
@@ -180,11 +181,11 @@ const updatePatient = async (req, res) => {
     if (
       !personalDetails ||
       !personalDetails.name ||
-      !personalDetails.contactNumber
+      !personalDetails.gender
     ) {
       return res.status(400).json({
         success: false,
-        error: "Required personal details are missing",
+        error: "Required personal details (name and gender) are missing",
       });
     }
 

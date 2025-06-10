@@ -163,7 +163,7 @@ const personalDetailsSchema = new mongoose.Schema({
     type: String,
     validate: {
       validator: function (v) {
-        return /\d{10}/.test(v);
+        return v === '' || v === null || /\d{10}/.test(v);
       },
       message: (props) => `${props.value} is not a valid phone number!`,
     },
@@ -182,7 +182,7 @@ const personalDetailsSchema = new mongoose.Schema({
     lowercase: true,
     validate: {
       validator: function(v) {
-        return v === '' || validator.isEmail(v);
+        return v === '' || v === null || v === undefined || validator.isEmail(v);
       },
       message: props => `${props.value} is not a valid email address!`
     }
@@ -201,11 +201,12 @@ const patientSchema = new mongoose.Schema(
     email: { 
       type: String,
       unique: true,
+      sparse: true,
       trim: true,
       lowercase: true,
       validate: {
         validator: function(v) {
-          return validator.isEmail(v);
+          return v === '' || v === null || v === undefined || validator.isEmail(v);
         },
         message: props => `${props.value} is not a valid email address!`
       }

@@ -580,8 +580,8 @@ export function PatientTable() {
   };
 
   const renderPatientTable = () => (
-    <Card className="py-4 transition-all duration-200 hover:shadow-lg border-2 border-foreground/10">
-      <CardHeader className="space-y-1">
+    <Card className=" transition-all duration-200 hover:shadow-lg border-2 border-foreground/10">
+      <CardHeader>
         <CardTitle className="text-2xl font-bold tracking-tight">
           Patients
         </CardTitle>
@@ -703,10 +703,16 @@ export function PatientTable() {
                         <PatientDocumentUploadButton
                           id={`upload-docs-btn-${patient._id}`}
                           patientId={patient._id}
-                          medicalDetailId={patient.medicalDetails?.[0]?._id || ""}
+                          medicalDetailId={
+                            patient.medicalDetails?.[0]?._id || ""
+                          }
                           onSuccess={() => {
                             // Refresh patient data if needed
-                            fetchPatient(currentPage, itemsPerPage, searchQuery);
+                            fetchPatient(
+                              currentPage,
+                              itemsPerPage,
+                              searchQuery
+                            );
                           }}
                         />
                       </div>
@@ -746,44 +752,6 @@ export function PatientTable() {
                             <Edit className="h-4 w-4" /> Edit
                           </DropdownMenuItem>
 
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSendEmail(patient);
-                            }}
-                            className="gap-2"
-                            disabled={!patient.personalDetails.emailAddress}
-                          >
-                            <Mail className="h-4 w-4" /> Send Email
-                          </DropdownMenuItem>
-
-                          {/* Add Prescription Menu Item */}
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // We'll use a modal approach for prescriptions
-                              document
-                                .getElementById(
-                                  `prescription-btn-${patient._id}`
-                                )
-                                ?.click();
-                            }}
-                            className="gap-2"
-                          >
-                            <FilePlus className="h-4 w-4" /> Add Prescription
-                          </DropdownMenuItem>
-
-                          {/* Add X-Ray Plan Menu Item */}
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAddXRayPlan(patient);
-                            }}
-                            className="gap-2"
-                          >
-                            <XCircle className="h-4 w-4" /> Add X-Ray Plan
-                          </DropdownMenuItem>
-
                           {/* Add Payment History Menu Item */}
                           <DropdownMenuItem
                             onClick={(e) => {
@@ -799,11 +767,39 @@ export function PatientTable() {
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
-                              document.getElementById(`upload-docs-btn-${patient._id}`)?.click();
+                              document
+                                .getElementById(
+                                  `upload-docs-btn-${patient._id}`
+                                )
+                                ?.click();
                             }}
                             className="gap-2"
                           >
                             <FileUp className="h-4 w-4" /> Upload Documents
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSendEmail(patient);
+                            }}
+                            className="gap-2"
+                            disabled={!patient.personalDetails.emailAddress}
+                          >
+                            <Mail className="h-4 w-4" /> Send Email
+                          </DropdownMenuItem>
+
+                       
+
+                          {/* Add X-Ray Plan Menu Item */}
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddXRayPlan(patient);
+                            }}
+                            className="gap-2"
+                          >
+                            <XCircle className="h-4 w-4" /> Add X-Ray Plan
                           </DropdownMenuItem>
 
                           <DropdownMenuItem
@@ -852,6 +848,22 @@ export function PatientTable() {
                               <Trash className="h-4 w-4" /> Delete
                             </DropdownMenuItem>
                           )}
+
+                             {/* Add Prescription Menu Item */}
+                             <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // We'll use a modal approach for prescriptions
+                              document
+                                .getElementById(
+                                  `prescription-btn-${patient._id}`
+                                )
+                                ?.click();
+                            }}
+                            className="gap-2"
+                          >
+                            <FilePlus className="h-4 w-4" /> Add Prescription
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

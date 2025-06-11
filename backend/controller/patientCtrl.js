@@ -2246,6 +2246,81 @@ const addTreatmentPlan = async (req, res) => {
       });
     }
 
+    // Sanitize treatment plan data to ensure correct data types
+    const sanitizedTreatmentPlan = {
+      patientType: treatmentPlanData.patientType || "Adult",
+      isCompleted: Boolean(treatmentPlanData.isCompleted),
+      teethNumber: treatmentPlanData.teethNumber || "",
+      treatmentDate: treatmentPlanData.treatmentDate ? new Date(treatmentPlanData.treatmentDate) : new Date(),
+      treatmentFindings: treatmentPlanData.treatmentFindings || "",
+      clinicalFindings: Array.isArray(treatmentPlanData.clinicalFindings) ? treatmentPlanData.clinicalFindings : [],
+      otherFindings: treatmentPlanData.otherFindings || "",
+      treatmentDetails: treatmentPlanData.treatmentDetails || "",
+      treatedByDoctor: treatmentPlanData.treatedByDoctor || null,
+      treatmentAmount: typeof treatmentPlanData.treatmentAmount === 'number' 
+        ? treatmentPlanData.treatmentAmount 
+        : parseFloat(treatmentPlanData.treatmentAmount) || 0,
+      advancedAmount: typeof treatmentPlanData.advancedAmount === 'number'
+        ? treatmentPlanData.advancedAmount
+        : parseFloat(treatmentPlanData.advancedAmount) || 0,
+      balanceAmount: typeof treatmentPlanData.balanceAmount === 'number'
+        ? treatmentPlanData.balanceAmount
+        : parseFloat(treatmentPlanData.balanceAmount) || 0,
+      followUpDate: treatmentPlanData.followUpDate ? new Date(treatmentPlanData.followUpDate) : null,
+      treatmentDocuments: Array.isArray(treatmentPlanData.treatmentDocuments) 
+        ? treatmentPlanData.treatmentDocuments 
+        : [],
+    };
+
+    // Handle selectedTeethDetails separately with proper sanitization
+    if (Array.isArray(treatmentPlanData.selectedTeethDetails)) {
+      sanitizedTreatmentPlan.selectedTeethDetails = treatmentPlanData.selectedTeethDetails.map(tooth => {
+        const sanitizedTooth = {
+          number: tooth.number || "",
+          details: tooth.details || "",
+          procedure: tooth.procedure || "",
+          position: tooth.position || "",
+          side: tooth.side || "",
+          totalTreatmentAmount: typeof tooth.totalTreatmentAmount === 'number' 
+            ? tooth.totalTreatmentAmount 
+            : parseFloat(tooth.totalTreatmentAmount) || 0,
+          totalPaidAmount: typeof tooth.totalPaidAmount === 'number'
+            ? tooth.totalPaidAmount
+            : parseFloat(tooth.totalPaidAmount) || 0,
+          totalRemainingAmount: typeof tooth.totalRemainingAmount === 'number'
+            ? tooth.totalRemainingAmount
+            : parseFloat(tooth.totalRemainingAmount) || 0,
+          isCompleted: Boolean(tooth.isCompleted),
+        };
+
+        // Handle dailyTreatments with proper data type conversion
+        if (Array.isArray(tooth.dailyTreatments)) {
+          sanitizedTooth.dailyTreatments = tooth.dailyTreatments.map(treatment => ({
+            date: treatment.date ? new Date(treatment.date) : new Date(),
+            treatmentAmount: typeof treatment.treatmentAmount === 'number' 
+              ? treatment.treatmentAmount 
+              : parseFloat(treatment.treatmentAmount) || 0,
+            paidAmount: typeof treatment.paidAmount === 'number'
+              ? treatment.paidAmount
+              : parseFloat(treatment.paidAmount) || 0,
+            remainingAmount: typeof treatment.remainingAmount === 'number'
+              ? treatment.remainingAmount
+              : parseFloat(treatment.remainingAmount) || 0,
+            procedure: treatment.procedure || "",
+            notes: treatment.notes || "",
+            treatedByDoctor: treatment.treatedByDoctor || null,
+            isCompleted: Boolean(treatment.isCompleted),
+          }));
+        } else {
+          sanitizedTooth.dailyTreatments = [];
+        }
+
+        return sanitizedTooth;
+      });
+    } else {
+      sanitizedTreatmentPlan.selectedTeethDetails = [];
+    }
+
     // Add treatment plan to the patient's medical details
     const updatedPatient = await Patient.findOneAndUpdate(
       {
@@ -2254,10 +2329,10 @@ const addTreatmentPlan = async (req, res) => {
       },
       {
         $push: {
-          "medicalDetails.$.treatmentPlanning": treatmentPlanData
+          "medicalDetails.$.treatmentPlanning": sanitizedTreatmentPlan
         }
       },
-      { new: true }
+      { new: true, runValidators: true }
     );
 
     if (!updatedPatient) {
@@ -2298,6 +2373,200 @@ const addTreatmentPlan = async (req, res) => {
   }
 };
 
+// Add a new controller function for updating treatment plans
+const updateTreatmentPlan = async (req, res) => {
+  try {
+    const { patientId, medicalDetailId, treatmentPlanId } = req.params;
+    const treatmentPlanData = req.body;
+
+    console.log("Updating treatment plan:", {
+      patientId,
+      medicalDetailId,
+      treatmentPlanId,
+      treatmentPlan: treatmentPlanData
+    });
+
+    // Validate parameters
+    if (!patientId || !medicalDetailId || !treatmentPlanId) {
+      return res.status(400).json({
+        success: false,
+        message: "Patient ID, Medical Detail ID, and Treatment Plan ID are required"
+      });
+    }
+
+    // Find the patient by ID
+    const patient = await Patient.findById(patientId);
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found"
+      });
+    }
+
+    // Check if the medical detail exists
+    const medicalDetail = patient.medicalDetails.find(
+      detail => detail._id.toString() === medicalDetailId
+    );
+
+    if (!medicalDetail) {
+      return res.status(404).json({
+        success: false,
+        message: "Medical detail not found"
+      });
+    }
+
+    // Check if the treatment plan exists
+    const treatmentPlanExists = medicalDetail.treatmentPlanning.some(
+      plan => plan._id.toString() === treatmentPlanId
+    );
+
+    if (!treatmentPlanExists) {
+      return res.status(404).json({
+        success: false,
+        message: "Treatment plan not found"
+      });
+    }
+
+    // Sanitize treatment plan data to ensure correct data types
+    const sanitizedTreatmentPlan = {
+      patientType: treatmentPlanData.patientType || "Adult",
+      isCompleted: Boolean(treatmentPlanData.isCompleted),
+      teethNumber: treatmentPlanData.teethNumber || "",
+      treatmentDate: treatmentPlanData.treatmentDate ? new Date(treatmentPlanData.treatmentDate) : new Date(),
+      treatmentFindings: treatmentPlanData.treatmentFindings || "",
+      clinicalFindings: Array.isArray(treatmentPlanData.clinicalFindings) ? treatmentPlanData.clinicalFindings : [],
+      otherFindings: treatmentPlanData.otherFindings || "",
+      treatmentDetails: treatmentPlanData.treatmentDetails || "",
+      treatedByDoctor: treatmentPlanData.treatedByDoctor || null,
+      treatmentAmount: typeof treatmentPlanData.treatmentAmount === 'number' 
+        ? treatmentPlanData.treatmentAmount 
+        : parseFloat(treatmentPlanData.treatmentAmount) || 0,
+      advancedAmount: typeof treatmentPlanData.advancedAmount === 'number'
+        ? treatmentPlanData.advancedAmount
+        : parseFloat(treatmentPlanData.advancedAmount) || 0,
+      balanceAmount: typeof treatmentPlanData.balanceAmount === 'number'
+        ? treatmentPlanData.balanceAmount
+        : parseFloat(treatmentPlanData.balanceAmount) || 0,
+      followUpDate: treatmentPlanData.followUpDate ? new Date(treatmentPlanData.followUpDate) : null,
+      treatmentDocuments: Array.isArray(treatmentPlanData.treatmentDocuments) 
+        ? treatmentPlanData.treatmentDocuments 
+        : [],
+    };
+
+    // Handle selectedTeethDetails separately with proper sanitization
+    if (Array.isArray(treatmentPlanData.selectedTeethDetails)) {
+      sanitizedTreatmentPlan.selectedTeethDetails = treatmentPlanData.selectedTeethDetails.map(tooth => {
+        const sanitizedTooth = {
+          number: tooth.number || "",
+          details: tooth.details || "",
+          procedure: tooth.procedure || "",
+          position: tooth.position || "",
+          side: tooth.side || "",
+          totalTreatmentAmount: typeof tooth.totalTreatmentAmount === 'number' 
+            ? tooth.totalTreatmentAmount 
+            : parseFloat(tooth.totalTreatmentAmount) || 0,
+          totalPaidAmount: typeof tooth.totalPaidAmount === 'number'
+            ? tooth.totalPaidAmount
+            : parseFloat(tooth.totalPaidAmount) || 0,
+          totalRemainingAmount: typeof tooth.totalRemainingAmount === 'number'
+            ? tooth.totalRemainingAmount
+            : parseFloat(tooth.totalRemainingAmount) || 0,
+          isCompleted: Boolean(tooth.isCompleted),
+          _id: tooth._id // Keep original ID if it exists
+        };
+
+        // Handle dailyTreatments with proper data type conversion
+        if (Array.isArray(tooth.dailyTreatments)) {
+          sanitizedTooth.dailyTreatments = tooth.dailyTreatments.map(treatment => ({
+            date: treatment.date ? new Date(treatment.date) : new Date(),
+            treatmentAmount: typeof treatment.treatmentAmount === 'number' 
+              ? treatment.treatmentAmount 
+              : parseFloat(treatment.treatmentAmount) || 0,
+            paidAmount: typeof treatment.paidAmount === 'number'
+              ? treatment.paidAmount
+              : parseFloat(treatment.paidAmount) || 0,
+            remainingAmount: typeof treatment.remainingAmount === 'number'
+              ? treatment.remainingAmount
+              : parseFloat(treatment.remainingAmount) || 0,
+            procedure: treatment.procedure || "",
+            notes: treatment.notes || "",
+            treatedByDoctor: treatment.treatedByDoctor || null,
+            isCompleted: Boolean(treatment.isCompleted),
+            _id: treatment._id // Keep original ID if it exists
+          }));
+        } else {
+          sanitizedTooth.dailyTreatments = [];
+        }
+
+        return sanitizedTooth;
+      });
+    } else {
+      sanitizedTreatmentPlan.selectedTeethDetails = [];
+    }
+
+    // Update the treatment plan with sanitized data
+    const updatedPatient = await Patient.findOneAndUpdate(
+      {
+        _id: patientId,
+        "medicalDetails._id": medicalDetailId,
+        "medicalDetails.treatmentPlanning._id": treatmentPlanId
+      },
+      {
+        $set: {
+          "medicalDetails.$[med].treatmentPlanning.$[plan]": {
+            ...sanitizedTreatmentPlan,
+            _id: treatmentPlanId // Preserve the original ID
+          }
+        }
+      },
+      {
+        arrayFilters: [
+          { "med._id": medicalDetailId },
+          { "plan._id": treatmentPlanId }
+        ],
+        new: true,
+        runValidators: true // Ensure mongoose validation runs
+      }
+    );
+
+    if (!updatedPatient) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update treatment plan"
+      });
+    }
+
+    // Get the updated treatment plan
+    const updatedMedicalDetail = updatedPatient.medicalDetails.find(
+      detail => detail._id.toString() === medicalDetailId
+    );
+
+    if (!updatedMedicalDetail) {
+      return res.status(500).json({
+        success: false,
+        message: "Medical detail not found after update"
+      });
+    }
+
+    const updatedTreatmentPlan = updatedMedicalDetail.treatmentPlanning.find(
+      plan => plan._id.toString() === treatmentPlanId
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Treatment plan updated successfully",
+      data: updatedTreatmentPlan
+    });
+  } catch (error) {
+    console.error("Error updating treatment plan:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update treatment plan",
+      error: error.message
+    });
+  }
+};
+
 // Export the new controller function
 module.exports = {
   addPatient,
@@ -2317,4 +2586,5 @@ module.exports = {
   getProcedureTypes,
   getTreatmentPlans,
   addTreatmentPlan,
+  updateTreatmentPlan,
 };

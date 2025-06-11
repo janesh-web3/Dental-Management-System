@@ -22,11 +22,8 @@ import { Patient, ToothData, DailyTreatment, TreatmentPlan as PatientTreatmentPl
 import DentalChart from "../DentalChart";
 import ChildDentalChart from "../ChildDentalChart";
 import { DailyTreatmentManager } from "./DailyTreatmentManager";
-import { EnhancedTreatmentPlanCard } from "./EnhancedTreatmentPlanCard";
-import { Loader2, Plus, FileText, PlusCircle, RefreshCw, Edit, XCircle, Save } from "lucide-react";
+import { Loader2, FileText, PlusCircle, Save } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Separator } from "@/components/ui/separator";
 import { TreatmentFileUpload } from "./TreatmentFileUpload";
 
 interface AddXRayPlanModalProps {
@@ -237,7 +234,7 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
           paidAmount: 0,
           remainingAmount: 100,
           treatedByDoctor: "", 
-          procedure: "",
+          procedure: "RVG X-Ray",
           notes: "Initial X-Ray assessment",
         };
 
@@ -269,17 +266,27 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
   };
 
   const updateSelectedTeethInPlan = () => {
-    const selectedTeethArray = Object.entries(selectedTeethMap).map(([number, data]) => ({
-      number,
-      details: data.details || "",
-      procedure: data.procedure || "RVG X-Ray",
-      position: getToothPosition(number),
-      side: getToothSide(number),
-      dailyTreatments: data.dailyTreatments || [],
-      totalTreatmentAmount: data.totalTreatmentAmount || 0,
-      totalPaidAmount: data.totalPaidAmount || 0,
-      totalRemainingAmount: data.totalRemainingAmount || 0,
-    }));
+    const selectedTeethArray = Object.entries(selectedTeethMap).map(([number, data]) => {
+      // Deep clone the dailyTreatments array to avoid reference issues
+      const dailyTreatmentsCopy = data.dailyTreatments ? 
+        JSON.parse(JSON.stringify(data.dailyTreatments)) : [];
+      
+      // Log the treatments being added to the plan
+      console.log(`Updating plan for tooth ${number} with ${dailyTreatmentsCopy.length} daily treatments:`, 
+        dailyTreatmentsCopy);
+      
+      return {
+        number,
+        details: data.details || "",
+        procedure: data.procedure || "RVG X-Ray",
+        position: getToothPosition(number),
+        side: getToothSide(number),
+        dailyTreatments: dailyTreatmentsCopy,
+        totalTreatmentAmount: data.totalTreatmentAmount || 0,
+        totalPaidAmount: data.totalPaidAmount || 0,
+        totalRemainingAmount: data.totalRemainingAmount || 0,
+      };
+    });
 
     setNewTreatmentPlan(prev => ({
       ...prev,
@@ -291,17 +298,27 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
   const updateExistingTeethInPlan = () => {
     if (!selectedExistingPlan) return;
 
-    const teethArray = Object.entries(existingTeethMap).map(([number, data]) => ({
-      number,
-      details: data.details || "",
-      procedure: data.procedure || "RVG X-Ray",
-      position: getToothPosition(number),
-      side: getToothSide(number),
-      dailyTreatments: data.dailyTreatments || [],
-      totalTreatmentAmount: data.totalTreatmentAmount || 0,
-      totalPaidAmount: data.totalPaidAmount || 0,
-      totalRemainingAmount: data.totalRemainingAmount || 0,
-    }));
+    const teethArray = Object.entries(existingTeethMap).map(([number, data]) => {
+      // Deep clone the dailyTreatments array to avoid reference issues
+      const dailyTreatmentsCopy = data.dailyTreatments ? 
+        JSON.parse(JSON.stringify(data.dailyTreatments)) : [];
+      
+      // Log the treatments being added to the existing plan
+      console.log(`Updating existing plan for tooth ${number} with ${dailyTreatmentsCopy.length} daily treatments:`, 
+        dailyTreatmentsCopy);
+      
+      return {
+        number,
+        details: data.details || "",
+        procedure: data.procedure || "RVG X-Ray",
+        position: getToothPosition(number),
+        side: getToothSide(number),
+        dailyTreatments: dailyTreatmentsCopy,
+        totalTreatmentAmount: data.totalTreatmentAmount || 0,
+        totalPaidAmount: data.totalPaidAmount || 0,
+        totalRemainingAmount: data.totalRemainingAmount || 0,
+      };
+    });
 
     setSelectedExistingPlan(prev => {
       if (!prev) return null;
@@ -313,10 +330,30 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
     });
   };
 
-  const handleDailyTreatmentAdd = (toothNumber: string, treatment: DailyTreatment, forExisting: boolean = false) => {
+  const handleDailyTreatmentAdd = async (toothNumber: string, treatment: DailyTreatment, forExisting: boolean = false) => {
     const setTeethMap = forExisting ? setExistingTeethMap : setSelectedTeethMap;
     
+    // Make sure procedure is not empty
+    if (!treatment.procedure) {
+      treatment.procedure = "RVG X-Ray";
+    }
+    
+    // Generate a temporary ID if one doesn't exist to help with tracking
+    if (!treatment._id) {
+      treatment._id = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
+    console.log("Adding daily treatment:", { 
+      toothNumber, 
+      treatment,
+      forExisting,
+      existingTreatmentsCount: forExisting ? 
+        existingTeethMap[toothNumber]?.dailyTreatments?.length || 0 : 
+        selectedTeethMap[toothNumber]?.dailyTreatments?.length || 0
+    });
+    
     setTeethMap((prev) => {
+      // Make a deep copy of the previous state to avoid reference issues
       const prevMapCopy = JSON.parse(JSON.stringify(prev)) as Record<string, ToothData>;
 
       if (!prevMapCopy[toothNumber]) {
@@ -324,6 +361,8 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
           number: toothNumber,
           details: "",
           procedure: "RVG X-Ray",
+          position: getToothPosition(toothNumber),
+          side: getToothSide(toothNumber),
           dailyTreatments: [],
           totalTreatmentAmount: 0,
           totalPaidAmount: 0,
@@ -332,19 +371,25 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
       }
 
       // Add new treatment to the tooth's dailyTreatments array
-      const updatedDailyTreatments = [...prevMapCopy[toothNumber].dailyTreatments];
+      const updatedDailyTreatments = [...(prevMapCopy[toothNumber].dailyTreatments || [])];
+      
       if (treatment._id) {
         // If treatment has an ID, it's an update to an existing treatment
         const index = updatedDailyTreatments.findIndex(t => t._id === treatment._id);
         if (index !== -1) {
-          updatedDailyTreatments[index] = treatment;
+          console.log(`Updating existing treatment at index ${index}`, treatment);
+          updatedDailyTreatments[index] = { ...treatment };
         } else {
-          updatedDailyTreatments.push(treatment);
+          console.log(`Adding new treatment with ID ${treatment._id}`, treatment);
+          updatedDailyTreatments.push({ ...treatment });
         }
       } else {
         // New treatment
-        updatedDailyTreatments.push(treatment);
+        console.log(`Adding brand new treatment`, treatment);
+        updatedDailyTreatments.push({ ...treatment });
       }
+
+      console.log(`Total treatments for tooth ${toothNumber} after update: ${updatedDailyTreatments.length}`);
 
       // Recalculate totals
       const totalTreatmentAmount = updatedDailyTreatments.reduce(
@@ -370,12 +415,111 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
     });
 
     // Update treatment plan with updated teeth
-    setTimeout(() => {
+    setTimeout(async () => {
       if (forExisting) {
         updateExistingTeethInPlan();
+        
+        // Auto-save existing plan after adding a daily treatment
+        if (selectedExistingPlan && selectedExistingPlan._id) {
+          // Only attempt to save if we're not already submitting and have a valid plan ID
+          if (!isSubmitting) {
+            try {
+              // Set submitting state to prevent double submissions
+              setIsSubmitting(true);
+              
+              // Small delay to ensure state updates are complete
+              await new Promise(resolve => setTimeout(resolve, 100));
+              
+              const medicalDetailId = patient.medicalDetails[0]?._id;
+              if (!medicalDetailId) {
+                toast.error("Medical detail ID is missing");
+                setIsSubmitting(false);
+                return;
+              }
+              
+              // Create a deep copy of the plan to avoid reference issues
+              const updatedPlan = JSON.parse(JSON.stringify(selectedExistingPlan));
+              
+              // Create payload for the update
+              const payload = {
+                ...updatedPlan,
+                patientType: patient.medicalDetails[0]?.patientType || "Adult",
+              };
+              
+              // Ensure each daily treatment has a procedure value
+              if (payload.selectedTeethDetails && payload.selectedTeethDetails.length > 0) {
+                payload.selectedTeethDetails.forEach((tooth: ToothData) => {
+                  if (tooth.dailyTreatments) {
+                    tooth.dailyTreatments = tooth.dailyTreatments.map((t: DailyTreatment) => ({
+                      ...t,
+                      procedure: t.procedure || "RVG X-Ray"
+                    }));
+                  }
+                });
+              }
+              
+              // Log the payload for debugging
+              console.log("Auto-saving X-Ray plan after adding daily treatment - payload:", JSON.stringify(payload, null, 2));
+              
+              // Ensure all daily treatments have needed properties
+                             if (payload.selectedTeethDetails) {
+                payload.selectedTeethDetails = payload.selectedTeethDetails.map((tooth: ToothData) => {
+                  if (tooth.dailyTreatments) {
+                    // Add required properties to each daily treatment
+                    tooth.dailyTreatments = tooth.dailyTreatments.map((treatment: DailyTreatment) => ({
+                      date: treatment.date || format(new Date(), "yyyy-MM-dd"),
+                      treatmentAmount: typeof treatment.treatmentAmount === 'number' ? treatment.treatmentAmount : Number(treatment.treatmentAmount) || 0,
+                      paidAmount: typeof treatment.paidAmount === 'number' ? treatment.paidAmount : Number(treatment.paidAmount) || 0,
+                      remainingAmount: typeof treatment.remainingAmount === 'number' ? treatment.remainingAmount : Number(treatment.remainingAmount) || 0,
+                      procedure: treatment.procedure || "RVG X-Ray",
+                      notes: treatment.notes || "",
+                      treatedByDoctor: treatment.treatedByDoctor || null,
+                      isCompleted: Boolean(treatment.isCompleted),
+                      _id: treatment._id // Keep the ID if it exists
+                    }));
+                  }
+                  return tooth;
+                });
+              }
+              
+              console.log("Final cleaned payload:", JSON.stringify(payload, null, 2));
+              
+              // Update the plan in the database
+              const response = await crudRequest<ApiResponse<any>>(
+                "PUT",
+                `/patient/update-treatment-plan/${patient._id}/${medicalDetailId}/${selectedExistingPlan._id}`,
+                payload
+              );
+              
+              if (response && response.success) {
+                toast.success("Daily treatment saved to database");
+                // No need to refresh or reset - we want to keep editing
+              } else {
+                toast.error(response?.message || "Failed to save daily treatment to database");
+              }
+            } catch (error) {
+              console.error("Error auto-saving X-Ray Plan:", error);
+              toast.error(typeof error === 'object' && error !== null && 'message' in error 
+                ? (error as {message: string}).message 
+                : "Failed to save daily treatment to database");
+            } finally {
+              setIsSubmitting(false);
+            }
+          } else {
+            // We're already submitting, just update the state
+            toast.info("Treatment added locally, will be saved when you click Save Changes");
+          }
+        }
       } else {
         updateSelectedTeethInPlan();
       }
+      
+      // Log the current state after update to verify
+      setTimeout(() => {
+        const currentMap = forExisting ? existingTeethMap : selectedTeethMap;
+        console.log(`Verification after update - Tooth ${toothNumber} has ${currentMap[toothNumber]?.dailyTreatments?.length || 0} daily treatments:`, 
+          currentMap[toothNumber]?.dailyTreatments);
+      }, 0);
     }, 0);
   };
 
@@ -396,11 +540,44 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
         return;
       }
 
+      // Create a deep copy of the plan to avoid reference issues
+      const updatedPlan = JSON.parse(JSON.stringify(selectedExistingPlan));
+      
       // Create payload for the update
       const payload = {
-        ...selectedExistingPlan,
+        ...updatedPlan,
         patientType: patient.medicalDetails[0]?.patientType || "Adult",
       };
+      
+      // Verify daily treatments data
+      if (payload.selectedTeethDetails && payload.selectedTeethDetails.length > 0) {
+        // Log each tooth's daily treatments for debugging
+        payload.selectedTeethDetails.forEach((tooth: ToothData) => {
+          console.log(`Tooth ${tooth.number} has ${tooth.dailyTreatments?.length || 0} daily treatments:`, 
+            tooth.dailyTreatments);
+        });
+        
+        // Ensure all daily treatments have required properties
+        payload.selectedTeethDetails = payload.selectedTeethDetails.map((tooth: ToothData) => {
+          if (tooth.dailyTreatments && tooth.dailyTreatments.length > 0) {
+            // Add required properties to each daily treatment
+            tooth.dailyTreatments = tooth.dailyTreatments.map((treatment: DailyTreatment) => ({
+              date: treatment.date || format(new Date(), "yyyy-MM-dd"),
+              treatmentAmount: typeof treatment.treatmentAmount === 'number' ? treatment.treatmentAmount : Number(treatment.treatmentAmount) || 0,
+              paidAmount: typeof treatment.paidAmount === 'number' ? treatment.paidAmount : Number(treatment.paidAmount) || 0,
+              remainingAmount: typeof treatment.remainingAmount === 'number' ? treatment.remainingAmount : Number(treatment.remainingAmount) || 0,
+              procedure: treatment.procedure || "RVG X-Ray",
+              notes: treatment.notes || "",
+              treatedByDoctor: treatment.treatedByDoctor || null,
+              isCompleted: Boolean(treatment.isCompleted),
+              _id: treatment._id // Keep the ID if it exists
+            }));
+          }
+          return tooth;
+        });
+      }
+
+      console.log("Updating X-Ray plan with payload:", payload);
 
       // Update the plan
       const response = await crudRequest<ApiResponse<any>>(
@@ -450,6 +627,25 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
         ...newTreatmentPlan,
         patientType: patient.medicalDetails[0]?.patientType || "Adult",
       };
+
+      // Verify daily treatments data for new plan
+      if (payload.selectedTeethDetails && payload.selectedTeethDetails.length > 0) {
+        // Log each tooth's daily treatments for debugging
+        payload.selectedTeethDetails.forEach(tooth => {
+          console.log(`New plan - Tooth ${tooth.number} has ${tooth.dailyTreatments?.length || 0} daily treatments:`, 
+            tooth.dailyTreatments);
+          
+          // Ensure each daily treatment has a procedure value
+          if (tooth.dailyTreatments) {
+            tooth.dailyTreatments = tooth.dailyTreatments.map(treatment => ({
+              ...treatment,
+              procedure: treatment.procedure || "RVG X-Ray"
+            }));
+          }
+        });
+      }
+
+      console.log("Adding new X-Ray plan with payload:", payload);
 
       // Use the type interface for the API response
       const response = await crudRequest<ApiResponse<any>>(
@@ -646,20 +842,21 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
 
                             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                               {Object.entries(existingTeethMap).map(([number, toothData]) => (
-                                <DailyTreatmentManager
-                                  key={number}
-                                  toothNumber={number}
-                                  toothData={{
-                                    ...toothData,
-                                    _id: toothData._id || number
-                                  }}
-                                  doctors={doctors}
-                                  onAddTreatment={(toothNumber, treatment) => 
-                                    handleDailyTreatmentAdd(toothNumber, treatment, true)
-                                  }
-                                  patientId={patient._id}
-                                  medicalDetailId={patient.medicalDetails[0]?._id || ""}
-                                />
+                                                          <DailyTreatmentManager
+                            key={number}
+                            toothNumber={number}
+                            toothData={{
+                              ...toothData,
+                              _id: toothData._id || number,
+                              treatmentId: selectedExistingPlan?._id || ''
+                            }}
+                            doctors={doctors}
+                            onAddTreatment={(toothNumber, treatment) => 
+                              handleDailyTreatmentAdd(toothNumber, treatment, true)
+                            }
+                            patientId={patient._id}
+                            medicalDetailId={patient.medicalDetails[0]?._id || ""}
+                          />
                               ))}
                             </div>
 
@@ -903,7 +1100,8 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
                             toothNumber={number}
                             toothData={{
                               ...toothData,
-                              _id: toothData._id || number
+                              _id: toothData._id || number,
+                              treatmentId: newTreatmentPlan._id || 'new_plan'
                             }}
                             doctors={doctors}
                             onAddTreatment={handleDailyTreatmentAdd}

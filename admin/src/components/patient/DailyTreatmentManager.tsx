@@ -61,7 +61,7 @@ export function DailyTreatmentManager({
     paidAmount: 0,
     remainingAmount: 0,
     treatedByDoctor: "",
-    procedure: "",
+    procedure: "RVG X-Ray",
     notes: "",
     isCompleted: false,
   });
@@ -88,7 +88,32 @@ export function DailyTreatmentManager({
   };
 
   const handleAddTreatment = () => {
-    onAddTreatment(toothNumber, newTreatment);
+    // Ensure we have a procedure - set default to RVG X-Ray if not specified
+    if (!newTreatment.procedure) {
+      newTreatment.procedure = "RVG X-Ray";
+    }
+    
+    // Create a deep clone of the treatment to avoid reference issues
+    const treatmentClone = JSON.parse(JSON.stringify(newTreatment));
+    
+    // Ensure numeric fields are actually numbers
+    treatmentClone.treatmentAmount = Number(treatmentClone.treatmentAmount);
+    treatmentClone.paidAmount = Number(treatmentClone.paidAmount);
+    treatmentClone.remainingAmount = Number(treatmentClone.remainingAmount);
+    
+    // Add a temporary ID to help track this treatment
+    if (!treatmentClone._id) {
+      treatmentClone._id = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
+    console.log("Adding treatment in DailyTreatmentManager:", {
+      toothNumber,
+      treatment: treatmentClone,
+      existingTreatments: toothData.dailyTreatments?.length || 0
+    });
+    
+    // Call the parent component's callback with the cloned treatment
+    onAddTreatment(toothNumber, treatmentClone);
 
     // Reset form with today's date but keep the doctor selected
     setNewTreatment({
@@ -97,13 +122,16 @@ export function DailyTreatmentManager({
       paidAmount: 0,
       remainingAmount: 0,
       treatedByDoctor: newTreatment.treatedByDoctor,
-      procedure: "", // Reset the procedure field
+      procedure: "RVG X-Ray", // Default to RVG X-Ray
       notes: "",
       isCompleted: false,
     });
 
     // Add this to provide user feedback
     toast.success("Treatment entry added successfully");
+    
+    // Set the collapsible closed to show the treatment history
+    setIsOpen(false);
   };
 
   const handleTreatmentStatusChange = async (
@@ -117,9 +145,16 @@ export function DailyTreatmentManager({
       const toothNumber = toothData.number;
 
       // Improved validation with better error message
-      if (!treatmentId || !toothNumber || !dailyTreatmentId) {
+      if (!toothNumber || !dailyTreatmentId) {
         console.error("Missing required IDs:", { treatmentId, toothNumber, dailyTreatmentId });
-        toast.error("Cannot update treatment: Missing required data");
+        toast.error("Cannot update treatment: Missing tooth number or treatment ID");
+        return;
+      }
+      
+      // Check if treatmentId is missing or temporary
+      if (!treatmentId || treatmentId === 'new_plan' || treatmentId.startsWith('temp_')) {
+        console.log("Skipping status update - treatment ID is temporary:", treatmentId);
+        toast.info("This treatment must be saved first before status can be updated");
         return;
       }
 
@@ -142,23 +177,32 @@ export function DailyTreatmentManager({
         // Success case handling
         toast.success(response.message || `Treatment ${isCompleted ? "completed" : "marked as pending"} successfully`);
         
-        // Update local state to reflect the change - ensure we're properly updating the array
-        const updatedTreatments = toothData.dailyTreatments.map((t) =>
-          t._id === dailyTreatmentId ? { ...t, isCompleted } : t
-        );
-        
-        // This just updates the local UI state - you might need to update the parent state too
-        toothData.dailyTreatments = updatedTreatments;
-        
-        // NEW CODE: Update the parent state via the onAddTreatment callback
         // Find the specific treatment that was changed
-        const changedTreatment = toothData.dailyTreatments.find(t => t._id === dailyTreatmentId);
-        if (changedTreatment) {
-          // Use the onAddTreatment callback to update the parent state with the updated treatment
-          onAddTreatment(toothNumber, {
-            ...changedTreatment,
-            isCompleted
+        const changedTreatmentIndex = toothData.dailyTreatments.findIndex(t => t._id === dailyTreatmentId);
+        
+        if (changedTreatmentIndex !== -1) {
+          // Create a deep copy of the treatment to avoid reference issues
+          const updatedTreatment = JSON.parse(JSON.stringify(toothData.dailyTreatments[changedTreatmentIndex]));
+          
+          // Update the completed status
+          updatedTreatment.isCompleted = isCompleted;
+          
+          console.log("Found treatment to update:", {
+            index: changedTreatmentIndex,
+            originalTreatment: toothData.dailyTreatments[changedTreatmentIndex],
+            updatedTreatment
           });
+          
+          // Use the onAddTreatment callback to update the parent state with the updated treatment
+          onAddTreatment(toothNumber, updatedTreatment);
+          
+          // Also update the local state for immediate UI feedback
+          const updatedTreatments = [...toothData.dailyTreatments];
+          updatedTreatments[changedTreatmentIndex] = updatedTreatment;
+          toothData.dailyTreatments = updatedTreatments;
+        } else {
+          console.error("Could not find treatment with ID:", dailyTreatmentId);
+          toast.warning("Treatment status updated on server but UI may be out of sync. Please refresh.");
         }
       } else {
         throw new Error(response?.message || "Failed to update treatment status");

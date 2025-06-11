@@ -19,6 +19,7 @@ const {
   getProcedureTypes,
   getTreatmentPlans,
   addTreatmentPlan,
+  updateTreatmentPlan,
 } = require("../controller/patientCtrl.js");
 const cloudinary = require("../config/cloudinary");
 const Patient = require("../model/Patient");
@@ -847,5 +848,8 @@ router.get("/get-treatment-plans/:patientId/:medicalDetailId", getTreatmentPlans
 
 // After the get-treatment-plans route, add this new route for adding treatment plans
 router.post("/add-treatment-plan/:patientId/:medicalDetailId", addTreatmentPlan);
+
+// Add the new route for updating treatment plans
+router.put("/update-treatment-plan/:patientId/:medicalDetailId/:treatmentPlanId", updateTreatmentPlan);
 
 module.exports = router;

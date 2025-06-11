@@ -342,9 +342,10 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
+        // Use the simplified endpoint temporarily for troubleshooting
         const response = (await crudRequest(
           "GET",
-          `${server}/patient/dashboard-metrics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&viewMode=${viewMode}`
+          `${server}/patient/simplified-dashboard-metrics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&viewMode=${viewMode}`
         )) as { data: DashboardData };
         setDashboardData(response.data);
         console.log("Dashboard data set:", response.data);
@@ -598,7 +599,7 @@ const Dashboard = () => {
             <Card className="col-span-3 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all">
               <CardHeader className="pb-2">
                 <CardTitle className="text-gray-800 dark:text-gray-300">
-                  {t("Recent Treatment Documents")}
+                  {t("Recent Documents")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -607,7 +608,11 @@ const Dashboard = () => {
                     (treatment, index) => (
                       <div
                         key={index}
-                        className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm"
+                        className={`mb-4 p-3 rounded-lg shadow-sm ${
+                          treatment.treatment === "General Documents" 
+                            ? "bg-blue-50 dark:bg-blue-900" 
+                            : "bg-white dark:bg-gray-800"
+                        }`}
                       >
                         <div className="flex items-center justify-between">
                           <div>
@@ -617,27 +622,36 @@ const Dashboard = () => {
                             <p className="text-sm text-gray-700 dark:text-gray-400">
                               {treatment.treatment}
                             </p>
+                            {treatment.treatment === "General Documents" && (
+                              <Badge variant="outline" className="mt-1 bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                                General Documents
+                              </Badge>
+                            )}
                           </div>
-                          <Badge
-                            variant={
-                              treatment.status === "Completed"
-                                ? "default"
-                                : "secondary"
-                            }
-                            className={
-                              treatment.status === "Completed"
-                                ? "bg-green-500 hover:bg-green-600"
-                                : ""
-                            }
-                          >
-                            {treatment.status}
-                          </Badge>
+                          {treatment.treatment !== "General Documents" && (
+                            <Badge
+                              variant={
+                                treatment.status === "Completed"
+                                  ? "default"
+                                  : "secondary"
+                              }
+                              className={
+                                treatment.status === "Completed"
+                                  ? "bg-green-500 hover:bg-green-600"
+                                  : ""
+                              }
+                            >
+                              {treatment.status}
+                            </Badge>
+                          )}
                         </div>
                         {treatment.documents &&
                           treatment.documents.length > 0 && (
                             <div className="mt-2 flex flex-col space-y-2">
                               <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                                {t("Treatment Documents")} (
+                                {treatment.treatment === "General Documents" 
+                                  ? t("Patient Documents") 
+                                  : t("Treatment Documents")} (
                                 {treatment.documents.length})
                               </p>
                               <div className="flex flex-wrap gap-2">
@@ -651,7 +665,11 @@ const Dashboard = () => {
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        className="border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                        className={`border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                                          treatment.treatment === "General Documents" 
+                                            ? "border-blue-300 dark:border-blue-600 hover:bg-blue-100 dark:hover:bg-blue-800" 
+                                            : ""
+                                        }`}
                                         onClick={() => handleOpenDocument(doc)}
                                       >
                                         {getDocumentDetails(doc).icon}
@@ -742,7 +760,7 @@ const Dashboard = () => {
             <Card className="shadow-sm hover:shadow-md transition-all bg-dashboard-treatments-light dark:bg-dashboard-treatments-dark border-dashboard-treatments-light/50 dark:border-dashboard-treatments-dark/50">
               <CardHeader>
                 <CardTitle className="text-dashboard-treatments-dark/70 dark:text-dashboard-treatments-light/90">
-                  {t("Recent Treatments")}
+                  {t("Recent Treatments & Documents")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -752,7 +770,10 @@ const Dashboard = () => {
                       <div
                         key={index}
                         className="mb-4 p-3 rounded-lg shadow-sm dark:bg-[hsl(12,50%,10%)]"
-                        style={{ backgroundColor: 'white', color: 'hsl(12, 50%, 30%)' }}
+                        style={{ 
+                          backgroundColor: treatment.treatment === "General Documents" ? '#EBF5FF' : 'white', 
+                          color: 'hsl(12, 50%, 30%)' 
+                        }}
                       >
                         <div className="flex items-center justify-between">
                           <div>
@@ -762,35 +783,50 @@ const Dashboard = () => {
                             <p className="text-sm dark:text-[hsl(12,70%,70%)]" style={{ color: 'hsl(12, 40%, 40%)' }}>
                               {treatment.treatment}
                             </p>
+                            {treatment.treatment === "General Documents" && (
+                              <Badge variant="outline" className="mt-1" style={{ 
+                                backgroundColor: '#DBEAFE', 
+                                color: '#1E40AF',
+                                borderColor: '#93C5FD' 
+                              }}>
+                                General Documents
+                              </Badge>
+                            )}
                             <p className="text-sm dark:text-[hsl(12,70%,70%)]" style={{ color: 'hsl(12, 40%, 40%)' }}>
                               {treatment.date}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-medium dark:text-[hsl(12,80%,80%)]" style={{ color: 'hsl(12, 50%, 25%)' }}>
-                              ₹{treatment.amount}
-                            </p>
-                            <Badge
-                              variant={
-                                treatment.status === "Completed"
-                                  ? "default"
-                                  : "secondary"
-                              }
-                              className={
-                                treatment.status === "Completed"
-                                  ? "bg-green-500 hover:bg-green-600"
-                                  : ""
-                              }
-                            >
-                              {treatment.status}
-                            </Badge>
+                            {treatment.amount > 0 && (
+                              <p className="font-medium dark:text-[hsl(12,80%,80%)]" style={{ color: 'hsl(12, 50%, 25%)' }}>
+                                ₹{treatment.amount}
+                              </p>
+                            )}
+                            {treatment.treatment !== "General Documents" && (
+                              <Badge
+                                variant={
+                                  treatment.status === "Completed"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                                className={
+                                  treatment.status === "Completed"
+                                    ? "bg-green-500 hover:bg-green-600"
+                                    : ""
+                                }
+                              >
+                                {treatment.status}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                         {treatment.documents &&
                           treatment.documents.length > 0 && (
                             <div className="mt-2 flex flex-col space-y-2">
                               <p className="text-xs font-medium dark:text-[hsl(12,70%,70%)]" style={{ color: 'hsl(12, 40%, 40%)' }}>
-                                {t("Treatment Documents")} (
+                                {treatment.treatment === "General Documents" 
+                                  ? t("Patient Documents") 
+                                  : t("Treatment Documents")} (
                                 {treatment.documents.length})
                               </p>
                               <div className="flex flex-wrap gap-2">
@@ -805,7 +841,11 @@ const Dashboard = () => {
                                         variant="outline"
                                         size="sm"
                                         className="hover:bg-amber-100 dark:hover:bg-[hsl(12,40%,15%)] dark:border-[hsl(12,40%,30%)] dark:text-[hsl(12,70%,70%)]"
-                                        style={{ borderColor: 'hsl(12, 30%, 80%)', color: 'hsl(12, 50%, 40%)' }}
+                                        style={{ 
+                                          borderColor: treatment.treatment === "General Documents" ? '#93C5FD' : 'hsl(12, 30%, 80%)', 
+                                          color: treatment.treatment === "General Documents" ? '#1E40AF' : 'hsl(12, 50%, 40%)',
+                                          backgroundColor: treatment.treatment === "General Documents" ? 'rgba(219, 234, 254, 0.3)' : 'transparent'
+                                        }}
                                         onClick={() => handleOpenDocument(doc)}
                                       >
                                         {getDocumentDetails(doc).icon}

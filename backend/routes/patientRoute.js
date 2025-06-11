@@ -20,6 +20,7 @@ const {
   getTreatmentPlans,
   addTreatmentPlan,
   updateTreatmentPlan,
+  getSimplifiedDashboardMetrics,
 } = require("../controller/patientCtrl.js");
 const cloudinary = require("../config/cloudinary");
 const Patient = require("../model/Patient");
@@ -749,6 +750,9 @@ router.post("/send-email", async (req, res) => {
 router.get("/financial-insights", getFinancialInsights);
 
 router.get("/dashboard-metrics", getDashboardMetrics);
+
+// Add simplified dashboard metrics route for troubleshooting
+router.get("/simplified-dashboard-metrics", getSimplifiedDashboardMetrics);
 
 // Test route for demographics
 router.get("/demographics-test", getPatientDemographics);

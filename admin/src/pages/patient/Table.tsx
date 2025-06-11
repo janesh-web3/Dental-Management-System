@@ -791,7 +791,7 @@ export function PatientTable() {
                        
 
                           {/* Add X-Ray Plan Menu Item */}
-                          <DropdownMenuItem
+                          {/* <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
                               handleAddXRayPlan(patient);
@@ -799,7 +799,7 @@ export function PatientTable() {
                             className="gap-2"
                           >
                             <XCircle className="h-4 w-4" /> Add X-Ray Plan
-                          </DropdownMenuItem>
+                          </DropdownMenuItem> */}
 
                           <DropdownMenuItem
                             onClick={(e) => {

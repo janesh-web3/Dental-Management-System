@@ -503,12 +503,12 @@ const Dashboard = () => {
           >
             {t("Appointments")}
           </TabsTrigger> */}
-          <TabsTrigger
+          {/* <TabsTrigger
             value="doctors"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950"
           >
             {t("Doctors")}
-          </TabsTrigger>
+          </TabsTrigger> */}
           <TabsTrigger
             value="transactions"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950"

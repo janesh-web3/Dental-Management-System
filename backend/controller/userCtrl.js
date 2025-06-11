@@ -377,40 +377,37 @@ const getRole = async (req, res) => {
   try {
     // If no user ID in request, return a graceful error rather than 500
     if (!req.user || !req.user._id) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: "User not authenticated" 
+        message: "User not authenticated",
       });
     }
-    
+
     // Find the user
     const getUser = await User.findById(req.user._id);
-    
+
     if (getUser) {
       return res.status(200).json({
-        success: true,
-        user: {
-          _id: getUser._id,
-          name: getUser.name,
-          email: getUser.email,
-          role: getUser.role,
-          contact: getUser.contact
-        }
+        _id: getUser._id,
+        name: getUser.name,
+        email: getUser.email,
+        role: getUser.role,
+        contact: getUser.contact,
       });
     }
 
     // User not found - return 404
-    return res.status(404).json({ 
+    return res.status(404).json({
       success: false,
-      message: "User not found" 
+      message: "User not found",
     });
   } catch (error) {
     console.error("Get role error:", error);
     // Return a more graceful error response
-    return res.status(400).json({ 
+    return res.status(400).json({
       success: false,
       message: "Failed to get user role",
-      error: error.message
+      error: error.message,
     });
   }
 };

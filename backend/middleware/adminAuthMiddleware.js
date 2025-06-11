@@ -27,7 +27,7 @@ const protectAdminRoute = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.userId).select("-password");
       // Check if the token is for an admin
-      if (user.role !== "admin") {
+      if (user.role !== "admin" && user.role !== "superadmin") {
         return res.status(403).json({
           success: false,
           message: "Not authorized as an admin",

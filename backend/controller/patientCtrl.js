@@ -2052,7 +2052,6 @@ const updateTreatmentPlan = async (req, res) => {
 // Add a new simplified dashboard metrics function for troubleshooting
 const getSimplifiedDashboardMetrics = async (req, res) => {
   try {
-    console.log("Starting simplified dashboard metrics");
     
     // Basic counts
     const totalPatients = await Patient.countDocuments();
@@ -2194,7 +2193,6 @@ const getSimplifiedDashboardMetrics = async (req, res) => {
       }
     };
     
-    console.log("Simplified dashboard metrics completed successfully");
     res.status(200).json(responseData);
   } catch (error) {
     console.error("Error in simplified dashboard metrics:", error);

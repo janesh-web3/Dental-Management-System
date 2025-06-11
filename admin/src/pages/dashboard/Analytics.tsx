@@ -45,10 +45,9 @@ export function Analytics() {
   const [isLoading, setIsLoading] = useState(false);
   const [csvData, setCsvData] = useState<any[]>([]);
   const { adminDetails } = useAdminContext();
-
   // Check if user is admin
   useEffect(() => {
-    if (adminDetails?.role !== 'admin') {
+    if (adminDetails?.role !== 'admin' && adminDetails?.role !== 'superadmin') {
       toast({
         variant: "destructive",
         title: "Access Denied",

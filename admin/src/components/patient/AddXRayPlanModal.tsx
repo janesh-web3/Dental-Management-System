@@ -276,15 +276,15 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
         dailyTreatmentsCopy);
       
       return {
-        number,
-        details: data.details || "",
-        procedure: data.procedure || "RVG X-Ray",
-        position: getToothPosition(number),
-        side: getToothSide(number),
+      number,
+      details: data.details || "",
+      procedure: data.procedure || "RVG X-Ray",
+      position: getToothPosition(number),
+      side: getToothSide(number),
         dailyTreatments: dailyTreatmentsCopy,
-        totalTreatmentAmount: data.totalTreatmentAmount || 0,
-        totalPaidAmount: data.totalPaidAmount || 0,
-        totalRemainingAmount: data.totalRemainingAmount || 0,
+      totalTreatmentAmount: data.totalTreatmentAmount || 0,
+      totalPaidAmount: data.totalPaidAmount || 0,
+      totalRemainingAmount: data.totalRemainingAmount || 0,
       };
     });
 
@@ -308,15 +308,15 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
         dailyTreatmentsCopy);
       
       return {
-        number,
-        details: data.details || "",
-        procedure: data.procedure || "RVG X-Ray",
-        position: getToothPosition(number),
-        side: getToothSide(number),
+      number,
+      details: data.details || "",
+      procedure: data.procedure || "RVG X-Ray",
+      position: getToothPosition(number),
+      side: getToothSide(number),
         dailyTreatments: dailyTreatmentsCopy,
-        totalTreatmentAmount: data.totalTreatmentAmount || 0,
-        totalPaidAmount: data.totalPaidAmount || 0,
-        totalRemainingAmount: data.totalRemainingAmount || 0,
+      totalTreatmentAmount: data.totalTreatmentAmount || 0,
+      totalPaidAmount: data.totalPaidAmount || 0,
+      totalRemainingAmount: data.totalRemainingAmount || 0,
       };
     });
 
@@ -542,7 +542,7 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
 
       // Create a deep copy of the plan to avoid reference issues
       const updatedPlan = JSON.parse(JSON.stringify(selectedExistingPlan));
-      
+
       // Create payload for the update
       const payload = {
         ...updatedPlan,
@@ -842,21 +842,21 @@ const AddXRayPlanModal: React.FC<AddXRayPlanModalProps> = ({
 
                             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                               {Object.entries(existingTeethMap).map(([number, toothData]) => (
-                                                          <DailyTreatmentManager
-                            key={number}
-                            toothNumber={number}
-                            toothData={{
-                              ...toothData,
+                                <DailyTreatmentManager
+                                  key={number}
+                                  toothNumber={number}
+                                  toothData={{
+                                    ...toothData,
                               _id: toothData._id || number,
                               treatmentId: selectedExistingPlan?._id || ''
-                            }}
-                            doctors={doctors}
-                            onAddTreatment={(toothNumber, treatment) => 
-                              handleDailyTreatmentAdd(toothNumber, treatment, true)
-                            }
-                            patientId={patient._id}
-                            medicalDetailId={patient.medicalDetails[0]?._id || ""}
-                          />
+                                  }}
+                                  doctors={doctors}
+                                  onAddTreatment={(toothNumber, treatment) => 
+                                    handleDailyTreatmentAdd(toothNumber, treatment, true)
+                                  }
+                                  patientId={patient._id}
+                                  medicalDetailId={patient.medicalDetails[0]?._id || ""}
+                                />
                               ))}
                             </div>
 

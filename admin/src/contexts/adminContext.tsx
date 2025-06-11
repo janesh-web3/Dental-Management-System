@@ -11,7 +11,7 @@ interface AdminDetails {
 
 // Define the initial state for the basic plan
 const initialState: AdminDetails = {
-  role: "admin",
+  role: "superadmin",
   contact: "",
   name: "",
   _id: "",

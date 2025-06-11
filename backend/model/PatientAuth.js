@@ -7,16 +7,7 @@ const patientAuthSchema = new mongoose.Schema(
   {
     email: {
       type: String,
-      required: [true, "Email is required!"],
-      unique: true,
-      trim: true,
-      lowercase: true,
-      validate: {
-        validator: function (v) {
-          return /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(v);
-        },
-        message: (props) => `${props.value} is not a valid email address!`,
-      },
+      // No unique constraint - allow multiple patients with the same email
     },
     password: {
       type: String,
@@ -66,5 +57,8 @@ patientAuthSchema.methods.generateAuthToken = function () {
     { expiresIn: "7d" }
   );
 };
+
+// Ensure index is not unique
+patientAuthSchema.index({ email: 1 }, { unique: false });
 
 module.exports = mongoose.model("PatientAuth", patientAuthSchema);

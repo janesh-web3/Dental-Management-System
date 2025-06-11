@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { FileUp, Plus } from "lucide-react";
+import { FileUp } from "lucide-react";
 import { TreatmentFileUpload } from "./TreatmentFileUpload";
 
 interface PatientDocumentUploadButtonProps {

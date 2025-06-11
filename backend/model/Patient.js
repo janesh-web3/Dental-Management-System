@@ -178,14 +178,6 @@ const personalDetailsSchema = new mongoose.Schema({
   age: { type: String },
   emailAddress: { 
     type: String,
-    trim: true,
-    lowercase: true,
-    validate: {
-      validator: function(v) {
-        return v === '' || v === null || v === undefined || validator.isEmail(v);
-      },
-      message: props => `${props.value} is not a valid email address!`
-    }
   },
   referredBy: { type: String },
   checkUpDate: { type: Date },
@@ -200,20 +192,9 @@ const patientSchema = new mongoose.Schema(
     medicalDetails: [medicalDetailsSchema],
     email: { 
       type: String,
-      unique: true,
-      sparse: true,
-      trim: true,
-      lowercase: true,
-      validate: {
-        validator: function(v) {
-          return v === '' || v === null || v === undefined || validator.isEmail(v);
-        },
-        message: props => `${props.value} is not a valid email address!`
-      }
     },
     password: {
       type: String,
-      required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters long"]
     },
     appointments: [{

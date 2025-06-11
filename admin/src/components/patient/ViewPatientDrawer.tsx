@@ -21,7 +21,6 @@ import {
   Download,
   FileText,
   Pill,
-  File,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TreatmentProgress } from "./TreatmentProgress";
@@ -54,8 +53,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Separator } from "@/components/ui/separator";
-// Accordion import removed as it's not being used
 
 interface ViewPatientDrawerProps {
   patient: Patient;

@@ -357,15 +357,18 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
       }
     );
 
+    // Simply pass the personalDetails with dates formatted correctly
+    const formattedPersonalDetails = {
+      ...data.personalDetails,
+      checkUpDate: format(
+        new Date(data.personalDetails.checkUpDate),
+        "yyyy-MM-dd"
+      ),
+      createdAt: new Date().toISOString(),
+    };
+
     return {
-      personalDetails: {
-        ...data.personalDetails,
-        checkUpDate: format(
-          new Date(data.personalDetails.checkUpDate),
-          "yyyy-MM-dd"
-        ),
-        createdAt: new Date().toISOString(),
-      },
+      personalDetails: formattedPersonalDetails,
       medicalDetails: [
         {
           chiefComplaint: data.medicalDetails.chiefComplaint,
@@ -379,6 +382,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
           treatmentPlanning: treatmentPlansWithTeeth,
         },
       ],
+      // Email is passed along as is - no special handling
     };
   };
 

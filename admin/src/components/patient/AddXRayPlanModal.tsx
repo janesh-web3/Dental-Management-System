@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { crudRequest } from "@/lib/api";
 import { getToothPosition, getToothSide } from "@/helper/PatientHelper";
-import { Patient, ToothData, DailyTreatment, TreatmentPlan as PatientTreatmentPlan } from "@/types/patient";
+import { Patient, ToothData, DailyTreatment } from "@/types/patient";
 import DentalChart from "../DentalChart";
 import ChildDentalChart from "../ChildDentalChart";
 import { DailyTreatmentManager } from "./DailyTreatmentManager";

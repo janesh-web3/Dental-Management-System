@@ -10,9 +10,7 @@ import {
   FilePlus,
   Filter,
   X,
-  ClipboardList,
   CreditCard,
-  XCircle,
   FileUp,
 } from "lucide-react";
 import {
@@ -573,10 +571,10 @@ export function PatientTable() {
   };
 
   // Update the handleAddXRayPlan function to make it simpler
-  const handleAddXRayPlan = (patient: Patient) => {
-    setXRayPlanPatient(patient);
-    setIsXRayPlanModalOpen(true);
-  };
+  // const handleAddXRayPlan = (patient: Patient) => {
+  //   setXRayPlanPatient(patient);
+  //   setIsXRayPlanModalOpen(true);
+  // };
 
   const renderPatientTable = () => (
     <Card className=" transition-all duration-200 hover:shadow-lg border-2 border-foreground/10">

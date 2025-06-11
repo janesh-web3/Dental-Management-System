@@ -19,12 +19,12 @@ const patientLogin = async (req, res) => {
       });
     }
 
-    // Check if patient exists with this email
-    const patient = await Patient.findOne({
+    // Find all patients with this email - since we now allow multiple patients with same email
+    const patients = await Patient.find({
       "personalDetails.emailAddress": email,
     });
 
-    if (!patient) {
+    if (patients.length === 0) {
       console.log(`Login failed: No patient found with email ${email}`);
       return res.status(401).json({
         success: false,
@@ -32,124 +32,96 @@ const patientLogin = async (req, res) => {
       });
     }
 
-    console.log(`Patient found: ${patient._id}`);
-
-    // First try to authenticate with the password in the Patient model
-    // This handles patients created with the updated addPatient function
-    if (patient.password) {
-      const isPasswordValid = await bcrypt.compare(password, patient.password);
-
-      if (isPasswordValid) {
-        console.log("Password validation successful using Patient model");
-
-        // Look for existing PatientAuth record or create one
-        let patientAuth = await PatientAuth.findOne({ patientId: patient._id });
-
-        if (!patientAuth) {
-          console.log("Creating new PatientAuth record for patient");
-          patientAuth = new PatientAuth({
-            email: patient.personalDetails.emailAddress,
-            password: patient.password, // Already hashed
-            patientId: patient._id,
-          });
-          await patientAuth.save();
-          console.log(`Created PatientAuth with ID: ${patientAuth._id}`);
-        } else {
-          console.log(`Found existing PatientAuth with ID: ${patientAuth._id}`);
+    console.log(`Found ${patients.length} patients with email ${email}`);
+    
+    // Try to authenticate with each patient record
+    let authenticatedPatient = null;
+    let authenticatedPatientAuth = null;
+    
+    // First try to authenticate using Patient model passwords
+    for (const patient of patients) {
+      if (patient.password) {
+        const isPasswordValid = await bcrypt.compare(password, patient.password);
+        if (isPasswordValid) {
+          console.log(`Password validation successful for patient ID: ${patient._id}`);
+          authenticatedPatient = patient;
+          
+          // Look for existing PatientAuth record or create one
+          let patientAuth = await PatientAuth.findOne({ patientId: patient._id });
+          
+          if (!patientAuth) {
+            console.log("Creating new PatientAuth record for patient");
+            patientAuth = new PatientAuth({
+              email: patient.personalDetails.emailAddress,
+              password: patient.password, // Already hashed
+              patientId: patient._id,
+            });
+            await patientAuth.save();
+            console.log(`Created PatientAuth with ID: ${patientAuth._id}`);
+          } else {
+            console.log(`Found existing PatientAuth with ID: ${patientAuth._id}`);
+          }
+          
+          authenticatedPatientAuth = patientAuth;
+          break;
         }
-
-        // Generate JWT token using PatientAuth ID for consistency
-        const token = jwt.sign(
-          { id: patientAuth._id },
-          process.env.JWT_SECRET,
-          { expiresIn: "30d" }
-        );
-
-        console.log(`Generated token for PatientAuth ID: ${patientAuth._id}`);
-
-        // Return success with token and patient details
-        return res.status(200).json({
-          success: true,
-          token,
-          patient: {
-            _id: patient._id,
-            name: patient.personalDetails.name,
-            email: patient.personalDetails.emailAddress,
-            contactNumber: patient.personalDetails.contactNumber,
-            gender: patient.personalDetails.gender,
-            address: patient.personalDetails.address,
-            age: patient.personalDetails.age,
-            role: "patient",
-          },
-        });
-      } else {
-        console.log("Password validation failed using Patient model");
       }
-    } else {
-      console.log("No password field in Patient model, trying PatientAuth");
     }
-
-    // Check if patient auth exists as a fallback
-    console.log("Checking for PatientAuth record as fallback");
-    let patientAuth = await PatientAuth.findOne({ patientId: patient._id });
-
-    // If no auth record exists yet, create one
-    if (!patientAuth) {
-      console.log("No PatientAuth record found, creating one");
-      // Helper function to generate a temporary password if needed
-      const generateTempPassword = () => {
-        return Math.random().toString(36).slice(-8);
-      };
-
-      // Create a new patient auth record
-      patientAuth = new PatientAuth({
-        email: patient.personalDetails.emailAddress,
-        password: patient.password || generateTempPassword(), // Use existing password or generate a temp one
-        patientId: patient._id,
-      });
-      await patientAuth.save();
-      console.log(`Created new PatientAuth with ID: ${patientAuth._id}`);
-    } else {
-      console.log(`Found existing PatientAuth with ID: ${patientAuth._id}`);
+    
+    // If no authentication yet, try PatientAuth records
+    if (!authenticatedPatient) {
+      console.log("No password match in Patient models, trying PatientAuth records");
+      
+      // Check all possible PatientAuth records for these patients
+      for (const patient of patients) {
+        const patientAuth = await PatientAuth.findOne({ patientId: patient._id });
+        
+        if (patientAuth) {
+          const isPasswordValid = await patientAuth.comparePassword(password);
+          if (isPasswordValid) {
+            console.log(`Password validation successful with PatientAuth for patient ID: ${patient._id}`);
+            authenticatedPatient = patient;
+            authenticatedPatientAuth = patientAuth;
+            break;
+          }
+        }
+      }
     }
-
-    // Verify password with PatientAuth model
-    console.log("Verifying password with PatientAuth model");
-    const isPasswordValid = await patientAuth.comparePassword(password);
-    if (!isPasswordValid) {
-      console.log("Password validation failed with PatientAuth model");
+    
+    // If still no authentication, return error
+    if (!authenticatedPatient || !authenticatedPatientAuth) {
+      console.log("Password validation failed for all patients with this email");
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
       });
     }
 
-    console.log("Password validation successful with PatientAuth model");
-
     // Update last login time
-    patientAuth.lastLogin = new Date();
-    await patientAuth.save();
+    authenticatedPatientAuth.lastLogin = new Date();
+    await authenticatedPatientAuth.save();
     console.log("Updated last login time");
 
-    // Generate JWT token directly instead of using the model method
-    // to ensure consistency with the middleware verification
-    const token = jwt.sign({ id: patientAuth._id }, process.env.JWT_SECRET, {
-      expiresIn: "30d",
-    });
-    console.log(`Generated token for PatientAuth ID: ${patientAuth._id}`);
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: authenticatedPatientAuth._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+    console.log(`Generated token for PatientAuth ID: ${authenticatedPatientAuth._id}`);
 
     // Return success with token and patient details
     res.status(200).json({
       success: true,
       token,
       patient: {
-        _id: patient._id,
-        name: patient.personalDetails.name,
-        email: patient.personalDetails.emailAddress,
-        contactNumber: patient.personalDetails.contactNumber,
-        gender: patient.personalDetails.gender,
-        address: patient.personalDetails.address,
-        age: patient.personalDetails.age,
+        _id: authenticatedPatient._id,
+        name: authenticatedPatient.personalDetails.name,
+        email: authenticatedPatient.personalDetails.emailAddress,
+        contactNumber: authenticatedPatient.personalDetails.contactNumber,
+        gender: authenticatedPatient.personalDetails.gender,
+        address: authenticatedPatient.personalDetails.address,
+        age: authenticatedPatient.personalDetails.age,
         role: "patient",
       },
     });

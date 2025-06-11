@@ -178,6 +178,9 @@ const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
     null
   );
+  const [revenueData, setRevenueData] = useState<DashboardData | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"daily" | "weekly" | "monthly" | "yearly">(
     "daily"
@@ -348,7 +351,22 @@ const Dashboard = () => {
           `${server}/patient/simplified-dashboard-metrics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&viewMode=${viewMode}`
         )) as { data: DashboardData };
         setDashboardData(response.data);
-        console.log("Dashboard data set:", response.data);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const fetchRevenueData = async () => {
+try {
+        setLoading(true);
+        const response = (await crudRequest(
+          "GET",
+          `${server}/patient/dashboard-metrics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&viewMode=${viewMode}`
+        )) as { data: DashboardData };
+        setRevenueData(response.data);
+        console.log("Fetched revenue data:", response.data);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -357,6 +375,7 @@ const Dashboard = () => {
     };
 
     fetchDashboardData();
+    fetchRevenueData();
   }, [dateRange, viewMode]);
 
   if (loading) {
@@ -474,7 +493,7 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-teal-900 dark:text-teal-50">
-              ₹{dashboardData?.financialAnalysis.total.toLocaleString()}
+              ₹{revenueData?.financialAnalysis?.total.toLocaleString()}
             </div>
             <p className="text-xs text-teal-700 dark:text-teal-400">
               {t("Total revenue in selected period")}
@@ -538,7 +557,7 @@ const Dashboard = () => {
                       {t("Daily Revenue")}
                     </p>
                     <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-50">
-                      ₹{dashboardData?.financialAnalysis.daily.toLocaleString()}
+                      ₹{revenueData?.financialAnalysis.daily.toLocaleString()}
                     </p>
                   </div>
                   <div className="bg-white dark:bg-indigo-900 p-3 rounded-lg shadow-sm">
@@ -547,7 +566,7 @@ const Dashboard = () => {
                     </p>
                     <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-50">
                       ₹
-                      {dashboardData?.financialAnalysis.weekly.toLocaleString()}
+                      {revenueData?.financialAnalysis.weekly.toLocaleString()}
                     </p>
                   </div>
                   <div className="bg-white dark:bg-indigo-900 p-3 rounded-lg shadow-sm">
@@ -556,7 +575,7 @@ const Dashboard = () => {
                     </p>
                     <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-50">
                       ₹
-                      {dashboardData?.financialAnalysis.monthly.toLocaleString()}
+                      {revenueData?.financialAnalysis.monthly.toLocaleString()}
                     </p>
                   </div>
                   <div className="bg-white dark:bg-indigo-900 p-3 rounded-lg shadow-sm">
@@ -564,7 +583,7 @@ const Dashboard = () => {
                       {t("Total Revenue")}
                     </p>
                     <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-50">
-                      ₹{dashboardData?.financialAnalysis.total.toLocaleString()}
+                      ₹{revenueData?.financialAnalysis.total.toLocaleString()}
                     </p>
                   </div>
                 </div>

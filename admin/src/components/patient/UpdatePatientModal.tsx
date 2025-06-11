@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, User, Activity, Wallet, FileDigit, File, Download, Stethoscope } from "lucide-react";
+import { Plus, User, Activity, Wallet, FileDigit } from "lucide-react";
 import { crudRequest } from "@/lib/api";
 import { useDoctorContext } from "@/contexts/DoctorContext";
 import { getToothPosition, getToothSide } from "@/helper/PatientHelper";
@@ -1468,7 +1468,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                     <PatientDocumentUploadButton
                       patientId={patient._id}
                       medicalDetailId={patient.medicalDetails[0]?._id}
-                      onSuccess={(updatedPatient) => {
+                      onSuccess={() => {
                         // Refresh patient data if needed
                         toast.success("Documents uploaded successfully");
                         onClose();

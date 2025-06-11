@@ -102,7 +102,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PaymentHistoryDialog } from "@/components/patient/PaymentHistoryDialog";
 import AddXRayPlanModal from "@/components/patient/AddXRayPlanModal";
-import { TreatmentFileUpload } from "@/components/patient/TreatmentFileUpload";
 import { PatientDocumentUploadButton } from "@/components/patient/PatientDocumentUploadButton";
 
 // Add a type definition for the procedure response
@@ -959,7 +958,7 @@ export function PatientTable() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search..."
+              placeholder="Search by Name or SN..."
               value={searchQuery}
               onChange={handleSearchChange}
               className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"

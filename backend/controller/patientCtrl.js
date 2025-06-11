@@ -483,7 +483,10 @@ const getPaginatedPatient = async (req, res) => {
 
     const query = search
       ? {
-          "personalDetails.name": { $regex: search, $options: "i" },
+          "$or": [
+            { "personalDetails.name": { $regex: search, $options: "i" } },
+            { "personalDetails.sn": { $regex: search, $options: "i" } }
+          ]
         }
       : {};
 
@@ -558,9 +561,12 @@ const getFilteredPatients = async (req, res) => {
     // Base query
     let query = {};
 
-    // Add name search if provided
+    // Add name or SN search if provided
     if (search) {
-      query["personalDetails.name"] = { $regex: search, $options: "i" };
+      query["$or"] = [
+        { "personalDetails.name": { $regex: search, $options: "i" } },
+        { "personalDetails.sn": { $regex: search, $options: "i" } }
+      ];
     }
 
     // Add doctor filter if provided

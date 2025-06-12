@@ -88,6 +88,10 @@ export type Patient = {
     gender: string;
     referredBy: string;
     checkUpDate?: string;
+    profilePhoto?: {
+      url: string;
+      publicId: string;
+    };
   };
   medicalDetails: MedicalDetails[];
   createdAt: string;

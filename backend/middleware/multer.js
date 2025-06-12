@@ -38,10 +38,27 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+// Custom error handling for multer
+const handleMulterError = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        message: 'File size exceeds the limit (15MB)'
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      message: `Upload error: ${err.message}`
+    });
+  }
+  next(err);
+};
+
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 1024 * 1024 * 10, // 10MB limit
+    fileSize: 15 * 1024 * 1024, // 15MB limit
   },
   fileFilter: fileFilter,
 });
@@ -57,4 +74,5 @@ function deleteFile(filePath) {
 module.exports = {
   upload,
   deleteFile,
+  handleMulterError
 };

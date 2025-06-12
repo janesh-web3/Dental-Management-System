@@ -183,6 +183,11 @@ const personalDetailsSchema = new mongoose.Schema({
   checkUpDate: { type: Date },
   createdAt: { type: Date },
   updatedAt: { type: Date },
+  // Add profile photo fields
+  profilePhoto: {
+    url: { type: String },
+    publicId: { type: String }
+  }
 })
 
 // Main Patient Schema

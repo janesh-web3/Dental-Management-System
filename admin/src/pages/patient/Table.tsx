@@ -12,6 +12,7 @@ import {
   X,
   CreditCard,
   FileUp,
+  UserCircle,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -101,6 +102,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { PaymentHistoryDialog } from "@/components/patient/PaymentHistoryDialog";
 import AddXRayPlanModal from "@/components/patient/AddXRayPlanModal";
 import { PatientDocumentUploadButton } from "@/components/patient/PatientDocumentUploadButton";
+import { ProfilePhotoUploadButton } from "@/components/patient/ProfilePhotoUploadButton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // Add a type definition for the procedure response
 interface ProcedureResponse {
@@ -592,6 +595,7 @@ export function PatientTable() {
             <TableHeader className="bg-muted/50 sticky top-0">
               <TableRow>
                 <TableHead className="font-semibold">S.N</TableHead>
+                <TableHead className="font-semibold">Photo</TableHead>
                 <TableHead className="font-semibold">Name</TableHead>
                 <TableHead className="font-semibold">Contact</TableHead>
                 <TableHead className="font-semibold">Email</TableHead>
@@ -607,7 +611,7 @@ export function PatientTable() {
               {filteredPatients.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={9}
+                    colSpan={10}
                     className="text-center py-8 text-muted-foreground"
                   >
                     No patients available
@@ -627,6 +631,26 @@ export function PatientTable() {
                       }}
                     >
                       {patient.personalDetails.sn}
+                    </TableCell>
+                    <TableCell
+                      onClick={() => {
+                        setSelectedPatient(patient);
+                        setIsUpdateModalOpen(true);
+                      }}
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage 
+                          src={patient.personalDetails.profilePhoto?.url} 
+                          alt={patient.personalDetails.name} 
+                        />
+                        <AvatarFallback>
+                          {patient.personalDetails.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                     </TableCell>
                     <TableCell
                       className="font-medium"
@@ -712,6 +736,21 @@ export function PatientTable() {
                             );
                           }}
                         />
+                        {/* Hidden ProfilePhotoUploadButton */}
+                        <ProfilePhotoUploadButton
+                          id={`profile-photo-btn-${patient._id}`}
+                          patientId={patient._id}
+                          patientName={patient.personalDetails.name}
+                          currentPhotoUrl={patient.personalDetails.profilePhoto?.url}
+                          onSuccess={() => {
+                            // Refresh patient data if needed
+                            fetchPatient(
+                              currentPage,
+                              itemsPerPage,
+                              searchQuery
+                            );
+                          }}
+                        />
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -747,6 +786,21 @@ export function PatientTable() {
                             className="gap-2"
                           >
                             <Edit className="h-4 w-4" /> Edit
+                          </DropdownMenuItem>
+
+                          {/* Add Profile Photo Upload Menu Item */}
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              document
+                                .getElementById(
+                                  `profile-photo-btn-${patient._id}`
+                                )
+                                ?.click();
+                            }}
+                            className="gap-2"
+                          >
+                            <UserCircle className="h-4 w-4" /> Upload Photo
                           </DropdownMenuItem>
 
                           {/* Add Payment History Menu Item */}

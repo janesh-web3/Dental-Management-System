@@ -856,4 +856,104 @@ router.post("/add-treatment-plan/:patientId/:medicalDetailId", addTreatmentPlan)
 // Add the new route for updating treatment plans
 router.put("/update-treatment-plan/:patientId/:medicalDetailId/:treatmentPlanId", updateTreatmentPlan);
 
+// Add this new endpoint for uploading profile photos with improved error handling
+router.post(
+  "/upload-profile-photo/:id",
+  upload.single("profilePhoto"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const file = req.file;
+
+      // Validate file
+      if (!file) {
+        return res.status(400).json({
+          success: false,
+          message: "No file uploaded",
+        });
+      }
+
+      // Find the patient
+      const patient = await Patient.findById(id);
+      if (!patient) {
+        // Clean up local file if patient not found
+        deleteFile(file.path);
+        return res.status(404).json({
+          success: false,
+          message: "Patient not found",
+        });
+      }
+
+      // If patient already has a profile photo, delete the old one from Cloudinary
+      if (patient.personalDetails.profilePhoto && patient.personalDetails.profilePhoto.publicId) {
+        try {
+          await cloudinary.uploader.destroy(patient.personalDetails.profilePhoto.publicId);
+        } catch (deleteError) {
+          console.error("Error deleting old profile photo:", deleteError);
+          // Continue with the upload even if deletion fails
+        }
+      }
+
+      // Set timeout for Cloudinary upload to 60 seconds
+      const uploadOptions = {
+        folder: "patient-profile-photos",
+        resource_type: "image",
+        timeout: 60000, // 60 seconds timeout
+        transformation: [
+          { width: 400, height: 400, crop: "fill", gravity: "face" }
+        ]
+      };
+
+      // Upload file to cloudinary with better error handling
+      let result;
+      try {
+        result = await cloudinary.uploader.upload(file.path, uploadOptions);
+      } catch (cloudinaryError) {
+        // Clean up local file
+        deleteFile(file.path);
+        console.error("Cloudinary upload error:", cloudinaryError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload to Cloudinary",
+          details: cloudinaryError.message
+        });
+      }
+
+      // Clean up local file after successful upload
+      deleteFile(file.path);
+
+      // Update patient with new profile photo
+      const updatedPatient = await Patient.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            "personalDetails.profilePhoto": {
+              url: result.secure_url,
+              publicId: result.public_id,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      res.status(200).json({
+        success: true,
+        data: updatedPatient,
+        message: "Profile photo uploaded successfully",
+      });
+    } catch (error) {
+      // Clean up local file if exists
+      if (req.file) {
+        deleteFile(req.file.path);
+      }
+      console.error("Error uploading profile photo:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to upload profile photo",
+        details: error.message,
+      });
+    }
+  }
+);
+
 module.exports = router;

@@ -21,6 +21,9 @@ const analyticsRouter = require("./routes/analyticsRoutes.js");
 // Import utilities
 const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
 
+// Import multer error handling middleware
+const { handleMulterError } = require('./middleware/multer');
+
 const app = express();
 
 app.use(bodyParser.json());
@@ -37,6 +40,9 @@ app.use(
     ],
   })
 );
+
+// Apply multer error handling middleware
+app.use(handleMulterError);
 
 mongoose
   .connect(process.env.DB_URL)

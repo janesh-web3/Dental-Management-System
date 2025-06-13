@@ -17,6 +17,7 @@ const testimonialRouter = require("./routes/testimonials.js");
 const contactRouter = require("./routes/contactRoute.js");
 const prescriptionRouter = require("./routes/prescriptionRoutes.js");
 const analyticsRouter = require("./routes/analyticsRoutes.js");
+const smsRouter = require("./routes/smsRoutes.js");
 
 // Import utilities
 const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
@@ -63,6 +64,7 @@ app.use("/api/testimonials", testimonialRouter);
 app.use("/api/contact", contactRouter);
 app.use("/api/prescription", prescriptionRouter);
 app.use("/api/analytics", analyticsRouter); // Advanced analytics routes
+app.use("/api/sms", smsRouter);
 
 const port = process.env.PORT || 8080;
 

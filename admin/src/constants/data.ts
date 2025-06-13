@@ -37,6 +37,12 @@ export const navItems: NavItem[] = [
     icon: "profile",
     label: "Contacts",
   },
+  {
+    title: "SMS",
+    href: "/sms",
+    icon: "message",
+    label: "SMS",
+  },
 ];
 
 export const users = [

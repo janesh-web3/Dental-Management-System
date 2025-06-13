@@ -16,6 +16,7 @@ import Contacts from "@/pages/contact";
 import LandingPage from "@/pages/landing";
 import TermsOfServicePage from "@/pages/legal/terms";
 import PrivacyPolicyPage from "@/pages/legal/privacy";
+import SMS from "@/pages/SMS";
 
 // Lazy-loaded components
 const DashboardLayout = lazy(
@@ -54,6 +55,7 @@ const AppRouter: React.FC = () => {
         { path: "/revenue", element: <h1>Revenue Details (Working...)</h1> },
         { path: "/testimonials", element: <Testimonials /> },
         { path: "/contacts", element: <Contacts /> },
+        { path: "/sms", element: <SMS /> },
       ],
     },
   ];

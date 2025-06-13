@@ -32,31 +32,15 @@ export const crudRequest = async <T>(
   method: Method,
   url: string,
   data?: any,
-  isFormData?: boolean,
   config?: AxiosRequestConfig
 ): Promise<T> => {
   try {
-    // Configure headers for FormData if needed
-    const requestConfig: AxiosRequestConfig = {
+    const response = await axiosInstance.request<T>({
       method,
       url,
+      data,
       ...config,
-    };
-
-    // If it's FormData, don't set Content-Type, axios will set it automatically with boundary
-    if (isFormData) {
-      requestConfig.headers = {
-        ...requestConfig.headers,
-        'Content-Type': 'multipart/form-data',
-      };
-    }
-
-    // Add data to the request
-    if (data) {
-      requestConfig.data = data;
-    }
-
-    const response = await axiosInstance.request<T>(requestConfig);
+    });
     return response.data;
   } catch (error: any) {
     // Improved error handling

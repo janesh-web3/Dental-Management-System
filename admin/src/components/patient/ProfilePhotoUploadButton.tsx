@@ -79,11 +79,15 @@ export function ProfilePhotoUploadButton({
       }, 300);
 
       try {
-        const response = await crudRequest(
+        const response = await crudRequest<{ success: boolean; message: string }>(
           "POST",
           `/patient/upload-profile-photo/${patientId}`,
           formData,
-          true // Set to true to handle FormData
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
         );
 
         clearInterval(progressInterval);

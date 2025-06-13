@@ -19,6 +19,7 @@ import { Plus, Trash2 } from "lucide-react";
 import DentalChart from "@/components/DentalChart";
 import SelectedTeethList from "@/components/SelectedTeethList";
 import { getToothPosition, getToothSide } from "@/helper/PatientHelper";
+import { convertToNepaliDate, convertToEnglishDate } from "@/lib/utils";
 import {
   FormData,
   ToothData,
@@ -28,6 +29,7 @@ import {
 import ChildDentalChart from "@/components/ChildDentalChart";
 import { useDoctorContext } from "@/contexts/DoctorContext";
 import { Checkbox } from "@/components/ui/checkbox";
+import { NepaliDatePickerComponent } from "@/components/ui/nepali-date-picker";
 
 type AddPatientProps = {
   modalClose: () => void;
@@ -49,6 +51,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
       referredBy: "",
       createdAt: new Date().toISOString(),
       checkUpDate: format(new Date(), "yyyy-MM-dd"),
+      checkUpDateNp: convertToNepaliDate(format(new Date(), "yyyy-MM-dd")),
     },
     medicalDetails: {
       chiefComplaint: "",
@@ -66,7 +69,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
         asthma: false,
         allergies: "",
         otherConditions: "",
-        noMedicalIssues: false, // Add default value
+        noMedicalIssues: false,
       },
       treatmentPlanning: [],
     },
@@ -76,6 +79,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
         advancedAmount: "",
         balanceAmount: "",
         treatmentDate: format(new Date(), "yyyy-MM-dd"),
+        treatmentDateNp: convertToNepaliDate(format(new Date(), "yyyy-MM-dd")),
         treatmentDetails: "",
         treatmentAmount: "",
         treatedByDoctor: "",
@@ -84,6 +88,9 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
         clinicalFindings: [],
         otherFindings: "",
         followUpDate: "",
+        followUpDateNp: "",
+        completionDate: "",
+        completionDateNp: "",
       },
     ],
   });
@@ -125,14 +132,28 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     fetchNextSerialNumber();
   }, []);
 
+  // Update the handlePersonalChange function
   const handlePersonalChange = (field: string, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      personalDetails: {
-        ...prev.personalDetails,
-        [field]: value,
-      },
-    }));
+    setFormData((prev) => {
+      const newData = {
+        ...prev,
+        personalDetails: {
+          ...prev.personalDetails,
+          [field]: value,
+        },
+      };
+
+      // Auto-convert English date to Nepali date
+      if (field === "checkUpDate") {
+        newData.personalDetails.checkUpDateNp = convertToNepaliDate(value);
+      } else if (field === "checkUpDateNp") {
+        // Convert Nepali date to English date
+        const englishDate = convertToEnglishDate(value);
+        newData.personalDetails.checkUpDate = englishDate;
+      }
+
+      return newData;
+    });
   };
 
   const handleMedicalChange = (field: string, value: any) => {
@@ -269,44 +290,36 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     }));
   };
 
-  const handleTreatmentChange = (index: number, field: string, value: any) => {
+  // Update the handleTreatmentPlanChange function
+  const handleTreatmentPlanChange = (index: number, field: string, value: any) => {
     setFormData((prev) => {
-      const currentPlan = prev.treatmentPlans[index];
-      let updatedPlan = { ...currentPlan };
+      const newTreatmentPlans = [...prev.treatmentPlans];
+      newTreatmentPlans[index] = {
+        ...newTreatmentPlans[index],
+        [field]: value,
+      };
 
-      if (field === "treatmentAmount" || field === "advancedAmount") {
-        const treatmentAmount =
-          field === "treatmentAmount"
-            ? parseFloat(value) || 0
-            : parseFloat(currentPlan.treatmentAmount) || 0;
-
-        let advancedAmount =
-          field === "advancedAmount"
-            ? parseFloat(value) || 0
-            : parseFloat(currentPlan.advancedAmount) || 0;
-
-        if (field === "advancedAmount" && advancedAmount > treatmentAmount) {
-          advancedAmount = treatmentAmount;
-          toast.warning("Advanced amount cannot exceed treatment amount");
-        }
-
-        const balanceAmount = treatmentAmount - advancedAmount;
-
-        updatedPlan = {
-          ...currentPlan,
-          treatmentAmount: treatmentAmount.toString(),
-          advancedAmount: advancedAmount.toString(),
-          balanceAmount: balanceAmount.toString(),
-        };
-      } else {
-        updatedPlan = { ...currentPlan, [field]: value };
+      // Auto-convert dates
+      if (field === "treatmentDate") {
+        newTreatmentPlans[index].treatmentDateNp = convertToNepaliDate(value);
+      } else if (field === "treatmentDateNp") {
+        const englishDate = convertToEnglishDate(value);
+        newTreatmentPlans[index].treatmentDate = englishDate;
+      } else if (field === "followUpDate") {
+        newTreatmentPlans[index].followUpDateNp = convertToNepaliDate(value);
+      } else if (field === "followUpDateNp") {
+        const englishDate = convertToEnglishDate(value);
+        newTreatmentPlans[index].followUpDate = englishDate;
+      } else if (field === "completionDate") {
+        newTreatmentPlans[index].completionDateNp = convertToNepaliDate(value);
+      } else if (field === "completionDateNp") {
+        const englishDate = convertToEnglishDate(value);
+        newTreatmentPlans[index].completionDate = englishDate;
       }
 
       return {
         ...prev,
-        treatmentPlans: prev.treatmentPlans.map((plan, i) =>
-          i === index ? updatedPlan : plan
-        ),
+        treatmentPlans: newTreatmentPlans,
       };
     });
   };
@@ -626,6 +639,17 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                   onChange={(e) =>
                     handlePersonalChange("checkUpDate", e.target.value)
                   }
+                />
+              </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="checkUpDateNp" className="text-sm font-medium">
+                  Check-up Date (Nepali)
+                </Label>
+                <NepaliDatePickerComponent
+                  value={formData.personalDetails.checkUpDateNp}
+                  onChange={(date) => handlePersonalChange("checkUpDateNp", date)}
+                  placeholder="Select Nepali date"
                 />
               </div>
 
@@ -1154,12 +1178,23 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                             type="date"
                             value={plan.treatmentDate}
                             onChange={(e) =>
-                              handleTreatmentChange(
+                              handleTreatmentPlanChange(
                                 index,
                                 "treatmentDate",
                                 e.target.value
                               )
                             }
+                          />
+                        </div>
+
+                        <div className="space-y-3">
+                          <Label htmlFor="treatmentDateNp" className="text-sm font-medium">
+                            Treatment Date (Nepali)
+                          </Label>
+                          <NepaliDatePickerComponent
+                            value={plan.treatmentDateNp}
+                            onChange={(date) => handleTreatmentPlanChange(index, "treatmentDateNp", date)}
+                            placeholder="Select Nepali date"
                           />
                         </div>
 
@@ -1173,7 +1208,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                           <Select
                             value={plan.clinicalFindings[0] || ""}
                             onValueChange={(value: ClinicalFinding) =>
-                              handleTreatmentChange(
+                              handleTreatmentPlanChange(
                                 index,
                                 "clinicalFindings",
                                 plan.clinicalFindings.includes(value)
@@ -1278,7 +1313,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                           <Textarea
                             value={plan.treatmentFindings}
                             onChange={(e) =>
-                              handleTreatmentChange(
+                              handleTreatmentPlanChange(
                                 index,
                                 "treatmentFindings",
                                 e.target.value
@@ -1292,7 +1327,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                           <Textarea
                             value={plan.otherFindings}
                             onChange={(e) =>
-                              handleTreatmentChange(
+                              handleTreatmentPlanChange(
                                 index,
                                 "otherFindings",
                                 e.target.value
@@ -1308,12 +1343,49 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                             type="date"
                             value={plan.followUpDate}
                             onChange={(e) =>
-                              handleTreatmentChange(
+                              handleTreatmentPlanChange(
                                 index,
                                 "followUpDate",
                                 e.target.value
                               )
                             }
+                          />
+                        </div>
+
+                        <div className="space-y-3">
+                          <Label htmlFor="followUpDateNp" className="text-sm font-medium">
+                            Follow-up Date (Nepali)
+                          </Label>
+                          <NepaliDatePickerComponent
+                            value={plan.followUpDateNp}
+                            onChange={(date) => handleTreatmentPlanChange(index, "followUpDateNp", date)}
+                            placeholder="Select Nepali date"
+                          />
+                        </div>
+
+                        <div className="space-y-1 col-span-3 md:col-span-1">
+                          <Label>Completion Date</Label>
+                          <Input
+                            type="date"
+                            value={plan.completionDate}
+                            onChange={(e) =>
+                              handleTreatmentPlanChange(
+                                index,
+                                "completionDate",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="space-y-3">
+                          <Label htmlFor="completionDateNp" className="text-sm font-medium">
+                            Completion Date (Nepali)
+                          </Label>
+                          <NepaliDatePickerComponent
+                            value={plan.completionDateNp}
+                            onChange={(date) => handleTreatmentPlanChange(index, "completionDateNp", date)}
+                            placeholder="Select Nepali date"
                           />
                         </div>
                       </div>

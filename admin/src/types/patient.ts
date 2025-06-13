@@ -28,6 +28,7 @@ export type selectedToothSchema = {
 export type TreatmentPlanning = {
   _id: string;
   treatmentDate: string;
+  treatmentDateNp: string;
   treatmentDetails: string;
   treatmentDocuments: {
     fileName: string;
@@ -43,17 +44,21 @@ export type TreatmentPlanning = {
   balanceAmount: string | number;
   isCompleted: boolean;
   completionDate: string;
+  completionDateNp: string;
   teethNumber: string;
   selectedTeethDetails: selectedToothSchema[];
   clinicalFindings: string[];
   otherFindings: string;
   followUpDate?: string;
+  followUpDateNp?: string;
 };
 
 export type MedicalDetails = {
   _id: string;
   checkUpDate: string;
+  checkUpDateNp: string;
   followUpDate: string;
+  followUpDateNp: string;
   diagnosis: string;
   chiefComplaint: string;
   investigation: {
@@ -88,6 +93,7 @@ export type Patient = {
     gender: string;
     referredBy: string;
     checkUpDate?: string;
+    checkUpDateNp?: string;
     profilePhoto?: {
       url: string;
       publicId: string;
@@ -117,9 +123,10 @@ export type FormData = {
     createdAt: string;
     referredBy: string;
     checkUpDate: string;
+    checkUpDateNp: string;
   };
   medicalDetails: {
-    chiefComplaint : string;
+    chiefComplaint: string;
     diagnosis: string;
     investigation: {
       blood: string;
@@ -134,13 +141,14 @@ export type FormData = {
       asthma: boolean;
       allergies: string;
       otherConditions: string;
-      noMedicalIssues: boolean; // New field
+      noMedicalIssues: boolean;
     };
     treatmentPlanning: TreatmentPlan[];
   };
   treatmentPlans: Array<{
     patientType: "Child" | "Adult";
     treatmentDate: string;
+    treatmentDateNp: string;
     treatmentDetails: string;
     treatmentAmount: string;
     advancedAmount: string;
@@ -151,6 +159,9 @@ export type FormData = {
     clinicalFindings: ClinicalFinding[];
     otherFindings: string;
     followUpDate: string;
+    followUpDateNp: string;
+    completionDate: string;
+    completionDateNp: string;
     isCompleted?: boolean;
     treatmentDocuments?: Array<{
       fileName: string;
@@ -204,6 +215,7 @@ export type ClinicalFinding =
 export interface TreatmentPlan {
   _id?: string;
   treatmentDate: string;
+  treatmentDateNp: string;
   treatmentDetails: string;
   treatmentFindings: string;
   treatmentAmount: string;
@@ -215,6 +227,9 @@ export interface TreatmentPlan {
   clinicalFindings: string[];
   otherFindings: string;
   followUpDate?: string;
+  followUpDateNp?: string;
+  completionDate?: string;
+  completionDateNp?: string;
   treatmentDocuments?: Array<{
     fileName: string;
     fileUrl: string;

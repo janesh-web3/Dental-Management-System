@@ -26,6 +26,8 @@ import { TreatmentSummary } from "./TreatmentSummary";
 import { PaymentHistoryDialog } from "./PaymentHistoryDialog";
 import { DocumentComparison } from "./DocumentComparison";
 import { PatientDocumentUploadButton } from "./PatientDocumentUploadButton";
+import { convertToNepaliDate, convertToEnglishDate } from "@/lib/utils";
+import { NepaliDatePickerComponent } from "@/components/ui/nepali-date-picker";
 
 interface UpdatePatientModalProps {
   isOpen: boolean;
@@ -33,9 +35,10 @@ interface UpdatePatientModalProps {
   patient: Patient;
 }
 
-type TreatmentPlan = {
+interface TreatmentPlan {
   _id?: string;
   treatmentDate: string;
+  treatmentDateNp: string; // Add Nepali date field
   treatmentDetails: string;
   treatmentFindings: string;
   treatmentAmount: string;
@@ -47,6 +50,9 @@ type TreatmentPlan = {
   clinicalFindings: string[];
   otherFindings: string;
   followUpDate?: string;
+  followUpDateNp?: string; // Add Nepali date field
+  completionDate?: string;
+  completionDateNp?: string; // Add Nepali date field
   treatmentDocuments?: Array<{
     fileName: string;
     fileUrl: string;
@@ -71,7 +77,7 @@ type TreatmentPlan = {
     totalPaidAmount: number;
     totalRemainingAmount: number;
   }>;
-};
+}
 
 type MedicalHistory = {
   bloodPressure: string;
@@ -95,10 +101,12 @@ type FormData = {
     age: number;
     gender: string;
     checkUpDate: string;
+    checkUpDateNp: string; // Add Nepali date field
     referredBy: string;
   };
   medicalDetails: {
     followUpDate: string;
+    followUpDateNp: string; // Add Nepali date field
     diagnosis: string;
     investigation: {
       blood: string;
@@ -148,9 +156,11 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
       emailAddress: "",
       referredBy: "",
       checkUpDate: format(new Date(), "yyyy-MM-dd"),
+      checkUpDateNp: "", // Add Nepali date field
     },
     medicalDetails: {
       followUpDate: "",
+      followUpDateNp: "", // Add Nepali date field
       diagnosis: "",
       investigation: {
         blood: "",
@@ -166,7 +176,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
         asthma: false,
         allergies: "",
         otherConditions: "",
-        noMedicalIssues: false, // Add default value
+        noMedicalIssues: false,
       },
       treatmentPlanning: [],
       chiefComplaint: "",
@@ -186,10 +196,12 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
           emailAddress: patient.personalDetails.emailAddress,
           referredBy: patient.personalDetails.referredBy,
           checkUpDate: formatSafeDate(patient.personalDetails.checkUpDate),
+          checkUpDateNp: convertToNepaliDate(formatSafeDate(patient.personalDetails.checkUpDate)),
         },
         medicalDetails: {
           chiefComplaint: patient.medicalDetails[0]?.chiefComplaint || "",
           followUpDate: formatSafeDate(patient.medicalDetails[0]?.followUpDate),
+          followUpDateNp: convertToNepaliDate(formatSafeDate(patient.medicalDetails[0]?.followUpDate)),
           diagnosis: patient.medicalDetails[0]?.diagnosis || "",
           investigation: {
             blood: patient.medicalDetails[0]?.investigation?.blood || "",
@@ -210,10 +222,16 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
           treatmentPlanning:
             patient.medicalDetails[0]?.treatmentPlanning?.map((plan) => ({
               ...plan,
+              treatmentDate: formatSafeDate(plan.treatmentDate),
+              treatmentDateNp: convertToNepaliDate(formatSafeDate(plan.treatmentDate)),
+              followUpDate: formatSafeDate(plan.followUpDate),
+              followUpDateNp: convertToNepaliDate(formatSafeDate(plan.followUpDate)),
+              completionDate: formatSafeDate(plan.completionDate),
+              completionDateNp: plan.completionDate ? convertToNepaliDate(formatSafeDate(plan.completionDate)) : "",
               treatmentAmount: plan.treatmentAmount?.toString() || "0",
               advancedAmount: plan.advancedAmount?.toString() || "0",
               balanceAmount: plan.balanceAmount?.toString() || "0",
-              treatedByDoctor: plan.treatedByDoctor?._id || "", // Assuming treatedByDoctor is a Doctor object,
+              treatedByDoctor: plan.treatedByDoctor?._id || "",
               selectedTeethDetails: plan.selectedTeethDetails?.map(tooth => ({
                 ...tooth,
                 dailyTreatments: tooth.dailyTreatments?.map(dt => ({
@@ -224,7 +242,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                   remainingAmount: Number(dt.remainingAmount) || 0,
                   treatedByDoctor: dt.treatedByDoctor || null,
                   procedure: dt.procedure || "",
-                  notes: dt.notes || "", // Ensure notes is always a string
+                  notes: dt.notes || "",
                   isCompleted: dt.isCompleted || false,
                 })) || []
               })) || []
@@ -281,24 +299,49 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
     return initialTeethMaps;
   });
 
-  const handlePersonalChange = (field: string, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      personalDetails: {
-        ...prev.personalDetails,
-        [field]: value,
-      },
-    }));
+  const handlePersonalChange = (field: string, value: any): void => {
+    setFormData((prev: FormData) => {
+      const newData: FormData = {
+        ...prev,
+        personalDetails: {
+          ...prev.personalDetails,
+          [field]: value,
+        },
+      };
+
+      // Auto-convert English date to Nepali date
+      if (field === "checkUpDate") {
+        newData.personalDetails.checkUpDateNp = convertToNepaliDate(value);
+      } else if (field === "checkUpDateNp") {
+        // Convert Nepali date to English date
+        const englishDate = convertToEnglishDate(value);
+        newData.personalDetails.checkUpDate = englishDate;
+      }
+
+      return newData;
+    });
   };
 
-  const handleMedicalChange = (field: string, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      medicalDetails: {
-        ...prev.medicalDetails,
-        [field]: value,
-      },
-    }));
+  const handleMedicalChange = (field: string, value: any): void => {
+    setFormData((prev: FormData) => {
+      const newData: FormData = {
+        ...prev,
+        medicalDetails: {
+          ...prev.medicalDetails,
+          [field]: value,
+        },
+      };
+
+      // Auto-convert English date to Nepali date
+      if (field === "followUpDate") {
+        newData.medicalDetails.followUpDateNp = convertToNepaliDate(value);
+      } else if (field === "followUpDateNp") {
+        const englishDate = convertToEnglishDate(value);
+        newData.medicalDetails.followUpDate = englishDate;
+      }
+
+      return newData;
+    });
   };
 
   const handleMedicalHistoryChange = (field: string, value: any) => {
@@ -336,6 +379,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
           ...prev.medicalDetails.treatmentPlanning,
           {
             treatmentDate: formatSafeDate(new Date().toISOString()),
+            treatmentDateNp: "",
             treatmentDetails: "",
             treatmentFindings: "",
             treatedByDoctor: "",
@@ -1023,6 +1067,17 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                       />
                     </div>
 
+                    <div className="space-y-3">
+                      <Label htmlFor="checkUpDateNp" className="text-sm font-medium">
+                        Check-up Date (Nepali)
+                      </Label>
+                      <NepaliDatePickerComponent
+                        value={formData.personalDetails.checkUpDateNp}
+                        onChange={(date: string) => handlePersonalChange("checkUpDateNp", date)}
+                        placeholder="Select Nepali date"
+                      />
+                    </div>
+
                     <div className="space-y-3 col">
                       <Label htmlFor="address" className="text-sm font-medium">
                         Address
@@ -1279,6 +1334,17 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                               }
                             />
                           </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <Label htmlFor="followUpDateNp" className="text-sm font-medium">
+                            Follow-up Date (Nepali)
+                          </Label>
+                          <NepaliDatePickerComponent
+                            value={formData.medicalDetails.followUpDateNp}
+                            onChange={(date: string) => handleMedicalChange("followUpDateNp", date)}
+                            placeholder="Select Nepali date"
+                          />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

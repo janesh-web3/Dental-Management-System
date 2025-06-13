@@ -62,6 +62,7 @@ const treatmentPlanningSchema = new mongoose.Schema({
   selectedTeethDetails: [selectedToothSchema],
   teethNumber: { type: String },
   treatmentDate: { type: Date },
+  treatmentDateNp: { type: String }, // Add Nepali date field
   treatmentDocuments: [
     {
       fileName: String,
@@ -75,10 +76,12 @@ const treatmentPlanningSchema = new mongoose.Schema({
   clinicalFindings: [{ type: String }],
   otherFindings: { type: String },
   followUpDate: { type: Date },
+  followUpDateNp: { type: String }, // Add Nepali date field
   totalPlanAmount: { type: Number, default: 0 },
   totalPaidAmount: { type: Number, default: 0 },
   totalRemainingAmount: { type: Number, default: 0 },
-  completionDate: { type: Date }
+  completionDate: { type: Date },
+  completionDateNp: { type: String } // Add Nepali date field
 });
 
 // Update the treatment planning schema pre-save middleware
@@ -180,6 +183,7 @@ const personalDetailsSchema = new mongoose.Schema({
   },
   referredBy: { type: String },
   checkUpDate: { type: Date },
+  checkUpDateNp: { type: String }, // Add Nepali date field
   createdAt: { type: Date },
   updatedAt: { type: Date },
   // Add profile photo fields

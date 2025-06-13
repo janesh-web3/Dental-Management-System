@@ -134,7 +134,6 @@ const medicalHistorySchema = new mongoose.Schema({
 });
 
 // Update the investigation field in the schema
-
 const medicalDetailsSchema = new mongoose.Schema({
   chiefComplaint: { type: String },
   diagnosis: { type: String },

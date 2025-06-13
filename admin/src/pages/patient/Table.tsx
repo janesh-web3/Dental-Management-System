@@ -13,6 +13,7 @@ import {
   CreditCard,
   FileUp,
   UserCircle,
+  FileSpreadsheet,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -73,11 +74,10 @@ import Loading from "@/pages/not-found/loading";
 import ViewPatientDrawer from "@/components/patient/ViewPatientDrawer";
 import UpdatePatientModal from "@/components/patient/UpdatePatientModal";
 import DeletePatientDialog from "@/components/patient/DeletePatientDialog";
-import { Patient } from "@/types/patient";
+import type { Patient, TreatmentPlanning, selectedToothSchema, MedicalDetails } from "@/types/patient";
 import { useAdminContext } from "@/contexts/adminContext";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { FileSpreadsheet } from "lucide-react";
 import { AddPrescriptionButton } from "@/components/prescription";
 import { toast } from "react-toastify";
 import {
@@ -105,13 +105,32 @@ import { PatientDocumentUploadButton } from "@/components/patient/PatientDocumen
 import { ProfilePhotoUploadButton } from "@/components/patient/ProfilePhotoUploadButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// Add a type definition for the procedure response
 interface ProcedureResponse {
   success: boolean;
   procedures: string[];
 }
 
-// Main component for patient table
+interface ColumnConfig {
+  id: string;
+  label: string;
+  enabled: boolean;
+}
+
+const defaultColumns: ColumnConfig[] = [
+  { id: "sn", label: "S.No", enabled: true },
+  { id: "name", label: "Name", enabled: true },
+  { id: "contact", label: "Contact", enabled: true },
+  { id: "gender", label: "Gender", enabled: true },
+  { id: "address", label: "Address", enabled: true },
+  { id: "age", label: "Age", enabled: true },
+  { id: "checkupDate", label: "Check-up Date", enabled: true },
+  { id: "totalAmount", label: "Total Amount", enabled: true },
+  { id: "paidAmount", label: "Paid Amount", enabled: true },
+  { id: "remainingAmount", label: "Remaining Amount", enabled: true },
+  { id: "treatmentDetails", label: "Treatment Details", enabled: true },
+  { id: "teethDetails", label: "Teeth Details", enabled: true },
+];
+
 export function PatientTable() {
   const [patient, setPatient] = useState<Patient[]>([]);
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
@@ -125,13 +144,11 @@ export function PatientTable() {
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [doctors, setDoctors] = useState<any[]>([]);
 
-  // New state variables for filtering
   const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
   const [availableProcedures, setAvailableProcedures] = useState<string[]>([]);
   const [selectedProcedures, setSelectedProcedures] = useState<string[]>([]);
   const [isFilteringEnabled, setIsFilteringEnabled] = useState<boolean>(false);
 
-  // Add near your other states
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [emailPatient, setEmailPatient] = useState<Patient | null>(null);
   const [emailSubject, setEmailSubject] = useState("");
@@ -142,20 +159,21 @@ export function PatientTable() {
   const [isXRayPlanModalOpen, setIsXRayPlanModalOpen] = useState(false);
   const [xRayPlanPatient, setXRayPlanPatient] = useState<Patient | null>(null);
 
-  //pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10); // Customize this based on your requirement
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const { adminDetails } = useAdminContext();
 
-  // Add this function to fetch patient details for email
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [selectedColumns, setSelectedColumns] = useState<ColumnConfig[]>(defaultColumns);
+
   const fetchPatientDetailsForEmail = async (patientId: string) => {
     try {
       setEmailBody("Loading patient details...");
 
       interface EmailDetailsResponse {
         success: boolean;
-        data: any; // Replace `any` with the actual type of `data` if known
+        data: any;
       }
 
       const response: EmailDetailsResponse = await crudRequest(
@@ -179,14 +197,12 @@ export function PatientTable() {
     }
   };
 
-  // Function to format patient data into a readable email body
   const formatPatientEmailBody = (patientData: any) => {
     const { personalDetails, medicalDetails, treatments } = patientData;
 
     let emailBody = `Dear ${personalDetails.name},\n\n`;
     emailBody += `Thank you for choosing Shree Nagar Dental Clinic for your dental care needs. Below is a summary of your dental records.\n\n`;
 
-    // Personal Details Section
     emailBody += `===== PERSONAL INFORMATION =====\n`;
     emailBody += `Name: ${personalDetails.name}\n`;
     if (personalDetails.sn) emailBody += `Patient ID: ${personalDetails.sn}\n`;
@@ -210,7 +226,6 @@ export function PatientTable() {
     }
     emailBody += `\n`;
 
-    // Medical History Section
     if (
       medicalDetails &&
       medicalDetails.length > 0 &&
@@ -238,7 +253,6 @@ export function PatientTable() {
       emailBody += `\n`;
     }
 
-    // Treatment Plans Section
     if (treatments && treatments.length > 0) {
       emailBody += `===== TREATMENT SUMMARY =====\n`;
       treatments.forEach((treatment: any, index: number) => {
@@ -263,7 +277,6 @@ export function PatientTable() {
         if (treatment.doctorName)
           emailBody += `Treated By: ${treatment.doctorName}\n`;
 
-        // Financial information for the overall treatment
         if (treatment.treatmentAmount) {
           emailBody += `Total Amount: ₹${treatment.treatmentAmount}\n`;
           if (treatment.advancedAmount)
@@ -272,7 +285,6 @@ export function PatientTable() {
             emailBody += `Balance: ₹${treatment.balanceAmount}\n`;
         }
 
-        // Detailed tooth-specific treatments
         if (treatment.teethDetails && treatment.teethDetails.length > 0) {
           emailBody += `\n  Detailed Treatment:\n`;
           treatment.teethDetails.forEach((tooth: any) => {
@@ -309,7 +321,6 @@ export function PatientTable() {
       });
     }
 
-    // Footer
     emailBody += `===== ADDITIONAL INFORMATION =====\n`;
     emailBody += `For any questions or to schedule your next appointment, please contact us at:\n`;
     emailBody += `Phone: +977-9858424157 / +977-9848420357\n`;
@@ -320,7 +331,6 @@ export function PatientTable() {
     return emailBody;
   };
 
-  // Update the handleSendEmail function to use the new patient details
   const handleSendEmail = (patient: Patient) => {
     if (!patient.personalDetails.emailAddress) {
       toast.error("This patient doesn't have an email address.");
@@ -333,7 +343,6 @@ export function PatientTable() {
     );
     setIsEmailDialogOpen(true);
 
-    // Fetch patient details to populate the email body
     fetchPatientDetailsForEmail(patient._id);
   };
 
@@ -371,7 +380,6 @@ export function PatientTable() {
     }
   };
 
-  // Add this function to handle payment dialog
   const handleEditPayment = (patient: Patient) => {
     setPaymentPatient(patient);
     setIsPaymentDialogOpen(true);
@@ -387,7 +395,6 @@ export function PatientTable() {
     fetchProcedures();
   }, [currentPage, itemsPerPage]);
 
-  //search functionality
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -431,7 +438,6 @@ export function PatientTable() {
       let endpoint = "/patient/get-pagination-patient";
       let queryParams = `?page=${page}&limit=${limit}&search=${search}`;
 
-      // Use filtered endpoint if filtering is enabled
       if (
         isFilteringEnabled &&
         (selectedDoctor !== "all" || selectedProcedures.length > 0)
@@ -479,7 +485,6 @@ export function PatientTable() {
   useEffect(() => {
     let filtered = patient;
 
-    // Filter by gender
     if (selectedTab !== "all") {
       filtered = filtered.filter(
         (s) =>
@@ -516,34 +521,111 @@ export function PatientTable() {
     setIsFilteringEnabled(false);
   };
 
-  // Add this function to export patient data to Excel
+  const handleColumnToggle = (columnId: string) => {
+    setSelectedColumns(prev =>
+      prev.map(col =>
+        col.id === columnId ? { ...col, enabled: !col.enabled } : col
+      )
+    );
+  };
+
   const exportToExcel = () => {
-    // Create a new workbook
     const workbook = XLSX.utils.book_new();
 
-    // Format patient data for export
-    const patientData = filteredPatients.map((patient) => ({
-      "S.No": patient.personalDetails.sn,
-      Name: patient.personalDetails.name,
-      Contact: patient.personalDetails.contactNumber,
-      Email: patient.personalDetails.emailAddress || "",
-      Age: patient.personalDetails.age,
-      Gender: patient.personalDetails.gender,
-      Address: patient.personalDetails.address || "",
-      "Referred By": patient.personalDetails.referredBy || "",
-      "Check-up Date": patient.personalDetails.checkUpDate
-        ? new Date(patient.personalDetails.checkUpDate).toLocaleDateString()
-        : "",
-      "Created Date": new Date(patient.createdAt).toLocaleDateString(),
-    }));
+    const patientData = filteredPatients.map((patient) => {
+      let treatmentDetails = '';
+      let selectedTeethDetails = '';
+      let totalAmount = 0;
+      let totalPaidAmount = 0;
+      let totalRemainingAmount = 0;
 
-    // Create a worksheet from the patient data
+      if (patient.medicalDetails && patient.medicalDetails.length > 0) {
+        patient.medicalDetails.forEach((medicalDetail) => {
+          if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
+            medicalDetail.treatmentPlanning.forEach((plan, planIndex) => {
+              treatmentDetails += `Treatment Plan ${planIndex + 1}:\n`;
+              treatmentDetails += `Date: ${plan.treatmentDate ? new Date(plan.treatmentDate).toLocaleDateString() : 'N/A'}\n`;
+              treatmentDetails += `Details: ${plan.treatmentDetails || 'N/A'}\n\n`;
+
+              // Calculate totals from daily treatments
+              if (plan.selectedTeethDetails && plan.selectedTeethDetails.length > 0) {
+                plan.selectedTeethDetails.forEach((tooth) => {
+                  if (tooth.dailyTreatments && tooth.dailyTreatments.length > 0) {
+                    // Calculate totals for each tooth
+                    const toothTotal = tooth.dailyTreatments.reduce((sum, treatment) => 
+                      sum + (treatment.treatmentAmount || 0), 0);
+                    const toothPaid = tooth.dailyTreatments.reduce((sum, treatment) => 
+                      sum + (treatment.paidAmount || 0), 0);
+                    const toothRemaining = toothTotal - toothPaid;
+
+                    // Add to overall totals
+                    totalAmount += toothTotal;
+                    totalPaidAmount += toothPaid;
+                    totalRemainingAmount += toothRemaining;
+
+                    // Add tooth details to the export
+                    selectedTeethDetails += `Tooth ${tooth.number}:\n`;
+                    selectedTeethDetails += `Procedure: ${tooth.procedure || 'N/A'}\n`;
+                    selectedTeethDetails += `Position: ${tooth.position || 'N/A'}\n`;
+                    selectedTeethDetails += `Total: ₹${toothTotal}\n`;
+                    selectedTeethDetails += `Paid: ₹${toothPaid}\n`;
+                    selectedTeethDetails += `Remaining: ₹${toothRemaining}\n\n`;
+
+                    // Add daily treatment details
+                    selectedTeethDetails += `Daily Treatments:\n`;
+                    tooth.dailyTreatments.forEach((treatment, index) => {
+                      selectedTeethDetails += `  ${index + 1}. Date: ${new Date(treatment.date).toLocaleDateString()}\n`;
+                      selectedTeethDetails += `     Amount: ₹${treatment.treatmentAmount || 0}\n`;
+                      selectedTeethDetails += `     Paid: ₹${treatment.paidAmount || 0}\n`;
+                      selectedTeethDetails += `     Remaining: ₹${(treatment.treatmentAmount || 0) - (treatment.paidAmount || 0)}\n`;
+                      if (treatment.procedure) {
+                        selectedTeethDetails += `     Procedure: ${treatment.procedure}\n`;
+                      }
+                      if (treatment.notes) {
+                        selectedTeethDetails += `     Notes: ${treatment.notes}\n`;
+                      }
+                      selectedTeethDetails += `     Status: ${treatment.isCompleted ? 'Completed' : 'In Progress'}\n\n`;
+                    });
+                  }
+                });
+              }
+            });
+          }
+        });
+      }
+
+      // Create base data object
+      const data: Record<string, any> = {
+        sn: patient.personalDetails.sn,
+        name: patient.personalDetails.name,
+        contact: patient.personalDetails.contactNumber,
+        gender: patient.personalDetails.gender,
+        address: patient.personalDetails.address || "",
+        age: patient.personalDetails.age,
+        checkupDate: patient.personalDetails.checkUpDate
+          ? new Date(patient.personalDetails.checkUpDate).toLocaleDateString()
+          : "",
+        totalAmount: `₹${totalAmount}`,
+        paidAmount: `₹${totalPaidAmount}`,
+        remainingAmount: `₹${totalRemainingAmount}`,
+        treatmentDetails: treatmentDetails || "No treatment plans",
+        teethDetails: selectedTeethDetails || "No teeth details",
+      };
+
+      // Filter based on selected columns
+      const filteredData: Record<string, any> = {};
+      selectedColumns.forEach(col => {
+        if (col.enabled) {
+          filteredData[col.label] = data[col.id];
+        }
+      });
+
+      return filteredData;
+    });
+
     const worksheet = XLSX.utils.json_to_sheet(patientData);
-
-    // Add the worksheet to the workbook
     XLSX.utils.book_append_sheet(workbook, worksheet, "Patient List");
 
-    // Auto-size columns
     const columnWidths: number[] = [];
     patientData.forEach((patient) => {
       Object.keys(patient).forEach((key, index) => {
@@ -556,28 +638,19 @@ export function PatientTable() {
       });
     });
 
-    // Apply column widths (accounting for header)
     worksheet["!cols"] = columnWidths.map((width) => ({
-      wch: Math.max(width, 10),
+      wch: Math.max(width, 15),
     }));
 
-    // Generate Excel file and trigger download
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
       type: "array",
     });
     const data = new Blob([excelBuffer], { type: "application/octet-stream" });
-
-    // Generate filename with current date
     const fileName = `patient_data_${new Date().toISOString().slice(0, 10)}.xlsx`;
     saveAs(data, fileName);
+    setIsExportDialogOpen(false);
   };
-
-  // Update the handleAddXRayPlan function to make it simpler
-  // const handleAddXRayPlan = (patient: Patient) => {
-  //   setXRayPlanPatient(patient);
-  //   setIsXRayPlanModalOpen(true);
-  // };
 
   const renderPatientTable = () => (
     <Card className=" transition-all duration-200 hover:shadow-lg border-2 border-foreground/10">
@@ -702,7 +775,6 @@ export function PatientTable() {
                       {patient.personalDetails.address}
                     </TableCell>
                     <TableCell className="text-right">
-                      {/* Hidden AddPrescriptionButton that will be triggered by the dropdown menu */}
                       <div className="hidden">
                         <AddPrescriptionButton
                           id={`prescription-btn-${patient._id}`}
@@ -720,7 +792,6 @@ export function PatientTable() {
                           variant="outline"
                           size="sm"
                         />
-                        {/* Hidden PatientDocumentUploadButton */}
                         <PatientDocumentUploadButton
                           id={`upload-docs-btn-${patient._id}`}
                           patientId={patient._id}
@@ -728,7 +799,6 @@ export function PatientTable() {
                             patient.medicalDetails?.[0]?._id || ""
                           }
                           onSuccess={() => {
-                            // Refresh patient data if needed
                             fetchPatient(
                               currentPage,
                               itemsPerPage,
@@ -736,14 +806,12 @@ export function PatientTable() {
                             );
                           }}
                         />
-                        {/* Hidden ProfilePhotoUploadButton */}
                         <ProfilePhotoUploadButton
                           id={`profile-photo-btn-${patient._id}`}
                           patientId={patient._id}
                           patientName={patient.personalDetails.name}
                           currentPhotoUrl={patient.personalDetails.profilePhoto?.url}
                           onSuccess={() => {
-                            // Refresh patient data if needed
                             fetchPatient(
                               currentPage,
                               itemsPerPage,
@@ -788,7 +856,6 @@ export function PatientTable() {
                             <Edit className="h-4 w-4" /> Edit
                           </DropdownMenuItem>
 
-                          {/* Add Profile Photo Upload Menu Item */}
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
@@ -803,7 +870,6 @@ export function PatientTable() {
                             <UserCircle className="h-4 w-4" /> Upload Photo
                           </DropdownMenuItem>
 
-                          {/* Add Payment History Menu Item */}
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
@@ -814,7 +880,6 @@ export function PatientTable() {
                             <CreditCard className="h-4 w-4" /> Edit Payment
                           </DropdownMenuItem>
 
-                          {/* Add Document Upload Menu Item */}
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
@@ -840,32 +905,18 @@ export function PatientTable() {
                             <Mail className="h-4 w-4" /> Send Email
                           </DropdownMenuItem>
 
-                       
-
-                          {/* Add X-Ray Plan Menu Item */}
-                          {/* <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAddXRayPlan(patient);
-                            }}
-                            className="gap-2"
-                          >
-                            <XCircle className="h-4 w-4" /> Add X-Ray Plan
-                          </DropdownMenuItem> */}
-
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
                               const phoneNumber =
                                 patient.personalDetails.contactNumber;
                               if (phoneNumber) {
-                                // Format the phone number for WhatsApp (remove spaces and add country code if needed)
                                 let formattedNumber = phoneNumber.replace(
                                   /\s/g,
                                   ""
                                 );
                                 if (!formattedNumber.startsWith("+")) {
-                                  formattedNumber = `+977${formattedNumber}`; // Adding Nepal's country code as default
+                                  formattedNumber = `+977${formattedNumber}`;
                                 }
                                 window.open(
                                   `https://wa.me/${formattedNumber}`,
@@ -900,11 +951,9 @@ export function PatientTable() {
                             </DropdownMenuItem>
                           )}
 
-                             {/* Add Prescription Menu Item */}
-                             <DropdownMenuItem
+                          <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
-                              // We'll use a modal approach for prescriptions
                               document
                                 .getElementById(
                                   `prescription-btn-${patient._id}`
@@ -983,6 +1032,39 @@ export function PatientTable() {
     </Card>
   );
 
+  const renderExportDialog = () => (
+    <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Select Columns to Export</DialogTitle>
+          <DialogDescription>
+            Choose which columns you want to include in the Excel export.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-2 gap-4">
+            {selectedColumns.map((column) => (
+              <div key={column.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={column.id}
+                  checked={column.enabled}
+                  onCheckedChange={() => handleColumnToggle(column.id)}
+                />
+                <Label htmlFor={column.id}>{column.label}</Label>
+              </div>
+            ))}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsExportDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={exportToExcel}>Export</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
     <div className="flex flex-col w-full bg-muted/40">
       <div className="flex flex-col sm:gap-4 sm:py-4 ">
@@ -1019,15 +1101,13 @@ export function PatientTable() {
           <Button
             variant="outline"
             size="sm"
-            onClick={exportToExcel}
+            onClick={() => setIsExportDialogOpen(true)}
             className="flex items-center gap-1"
           >
             <FileSpreadsheet className="h-4 w-4" />
             Export Excel
           </Button>
         </header>
-
-        {/* Filter Controls */}
 
         <main className="grid items-start flex-1 gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
           <Tabs
@@ -1050,7 +1130,6 @@ export function PatientTable() {
                   <span className="text-sm font-medium">Filter by:</span>
                 </div>
 
-                {/* Doctor Filter */}
                 <Select
                   value={selectedDoctor}
                   onValueChange={handleDoctorChange}
@@ -1068,7 +1147,6 @@ export function PatientTable() {
                   </SelectContent>
                 </Select>
 
-                {/* Procedure Filter */}
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -1111,7 +1189,6 @@ export function PatientTable() {
                   </PopoverContent>
                 </Popover>
 
-                {/* Clear Filters Button */}
                 {isFilteringEnabled && (
                   <Button
                     variant="ghost"
@@ -1124,7 +1201,6 @@ export function PatientTable() {
                   </Button>
                 )}
 
-                {/* Active Filters Display */}
                 <div className="flex flex-wrap gap-1 ml-2">
                   {selectedDoctor !== "all" &&
                     doctors.find((d) => d._id === selectedDoctor) && (
@@ -1219,7 +1295,6 @@ export function PatientTable() {
         />
       )}
 
-      {/* Email Dialog with Preview */}
       <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
         <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -1285,7 +1360,6 @@ export function PatientTable() {
                     </div>
                     <div className="p-4">
                       {emailBody.split("\n").map((line, i) => {
-                        // Check if this is a section header
                         if (line.match(/===== (.*?) =====/)) {
                           const title = line.match(/===== (.*?) =====/)![1];
                           return (
@@ -1298,7 +1372,6 @@ export function PatientTable() {
                           );
                         }
 
-                        // Check if this is a treatment line
                         if (line.match(/^Treatment #\d+:/)) {
                           return (
                             <div
@@ -1312,7 +1385,6 @@ export function PatientTable() {
                           );
                         }
 
-                        // Regular line
                         return line ? (
                           <p key={i} className="my-1">
                             {line}
@@ -1378,7 +1450,6 @@ export function PatientTable() {
         </DialogContent>
       </Dialog>
 
-      {/* Payment History Dialog */}
       {paymentPatient &&
         paymentPatient.medicalDetails &&
         paymentPatient.medicalDetails.length > 0 && (
@@ -1389,7 +1460,6 @@ export function PatientTable() {
               setPaymentPatient(null);
             }}
             selectedTeethMaps={
-              // Create a map of all teeth with treatments from the patient's medical details
               paymentPatient.medicalDetails.reduce(
                 (acc, medicalDetail, medicalDetailIndex) => {
                   medicalDetail.treatmentPlanning.forEach((plan, planIndex) => {
@@ -1413,7 +1483,6 @@ export function PatientTable() {
               treatmentIndex,
               newPaidAmount
             ) => {
-              // Update the local state to reflect the payment change
               setPaymentPatient((prevPatient) => {
                 if (!prevPatient) return null;
 
@@ -1448,7 +1517,6 @@ export function PatientTable() {
                 return updatedPatient;
               });
 
-              // Refresh the patient list to reflect the updated payment
               fetchPatient(currentPage, itemsPerPage, searchQuery);
             }}
             patientId={paymentPatient._id}
@@ -1457,7 +1525,6 @@ export function PatientTable() {
           />
         )}
 
-      {/* Add this new modal at the end of the component, near other modals */}
       {xRayPlanPatient && (
         <AddXRayPlanModal
           isOpen={isXRayPlanModalOpen}
@@ -1468,6 +1535,7 @@ export function PatientTable() {
           patient={xRayPlanPatient}
         />
       )}
+      {renderExportDialog()}
     </div>
   );
 }

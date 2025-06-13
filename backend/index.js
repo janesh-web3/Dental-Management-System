@@ -25,7 +25,7 @@ const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
 // Import multer error handling middleware
 const { handleMulterError } = require('./middleware/multer');
 
-const app = express();
+const app = express();  
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));

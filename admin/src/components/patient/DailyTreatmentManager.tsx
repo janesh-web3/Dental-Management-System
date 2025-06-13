@@ -30,6 +30,7 @@ import { procedureColors } from "../DentalChart";
 import { Checkbox } from "../ui/checkbox";
 import { crudRequest } from "@/lib/api";
 import { toast } from "react-toastify";
+import { Textarea } from "@/components/ui/textarea";
 
 export type Doctor = {
   _id: string;
@@ -273,7 +274,7 @@ export function DailyTreatmentManager({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 col-span-2">
                 <Label>Procedure</Label>
                 <Select
                   value={newTreatment.procedure || ""}
@@ -318,12 +319,13 @@ export function DailyTreatmentManager({
                   }
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 col-span-2">
                 <Label>Notes</Label>
-                <Input
+                <Textarea
                   placeholder="Treatment notes"
                   value={newTreatment.notes || ""}
                   onChange={(e) => handleChange("notes", e.target.value)}
+                  className="min-h-[100px] resize-y"
                 />
               </div>
               <div className="col-span-2">

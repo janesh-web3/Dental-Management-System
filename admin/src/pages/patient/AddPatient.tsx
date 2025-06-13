@@ -1169,20 +1169,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                         </div>
 
                         <div className="space-y-1 col-span-3 md:col-span-1">
-                          <Label>Treatment Procedure</Label>
-                          <Textarea
-                            value={plan.treatmentFindings}
-                            onChange={(e) =>
-                              handleTreatmentChange(
-                                index,
-                                "treatmentFindings",
-                                e.target.value
-                              )
-                            }
-                          />
-                        </div>
-
-                        <div className="space-y-1 col-span-3 md:col-span-1">
                           <Label>Clinical Findings</Label>
                           <Select
                             value={plan.clinicalFindings[0] || ""}
@@ -1285,6 +1271,20 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                               </div>
                             </SelectContent>
                           </Select>
+                        </div>
+
+                        <div className="space-y-1 col-span-3 md:col-span-1">
+                          <Label>Treatment Procedure</Label>
+                          <Textarea
+                            value={plan.treatmentFindings}
+                            onChange={(e) =>
+                              handleTreatmentChange(
+                                index,
+                                "treatmentFindings",
+                                e.target.value
+                              )
+                            }
+                          />
                         </div>
 
                         <div className="space-y-1 col-span-3 md:col-span-1">

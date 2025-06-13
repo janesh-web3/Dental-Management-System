@@ -14,6 +14,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Doctor } from "@/types/doctor";
 import { toast } from "react-toastify";
+import { Textarea } from "./ui/textarea";
 
 interface SelectedTeethListProps {
   selectedTeeth: { [key: string]: ToothData };
@@ -195,9 +196,9 @@ const SelectedTeethList: React.FC<SelectedTeethListProps> = ({
               </div>
 
               {/* Notes */}
-              <Input
+              <Textarea
                 placeholder="Notes"
-                className="h-7 text-xs col-span-4"
+                className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-xs resize-y"
                 onChange={(e) => {
                   const lastTreatment =
                     data.dailyTreatments?.[data.dailyTreatments.length - 1];

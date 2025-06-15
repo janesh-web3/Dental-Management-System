@@ -248,7 +248,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
       })),
     }));
   };
-
   const addTreatmentPlan = () => {
     setFormData((prev) => ({
       ...prev,
@@ -257,6 +256,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
         {
           patientType: "Adult",
           treatmentDate: format(new Date(), "yyyy-MM-dd"),
+          treatmentDateNp: convertToNepaliDate(format(new Date(), "yyyy-MM-dd")),
           treatmentDetails: "",
           treatmentAmount: "",
           advancedAmount: "",
@@ -267,6 +267,9 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
           clinicalFindings: [],
           otherFindings: "",
           followUpDate: "",
+          followUpDateNp: "",
+          completionDate: "",
+          completionDateNp: "",
         },
       ],
     }));

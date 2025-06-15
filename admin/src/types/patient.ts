@@ -81,6 +81,7 @@ export type MedicalDetails = {
 };
 
 export type Patient = {
+  doctorId: string;
   _id: string;
   personalDetails: {
     name: string;

@@ -21,7 +21,7 @@ export function NepaliDatePickerComponent({
   React.useEffect(() => {
     if (inputRef.current) {
       // Dynamically import the Nepali date picker
-      import("nepali-date-picker").then((module) => {
+      import("nepali-date-picker").then((module: any) => {
         const { NepaliDatePicker } = module;
         const datePicker = new NepaliDatePicker({
           input: inputRef.current,

@@ -663,7 +663,7 @@ export function PatientTable() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="w-full max-h-[70vh] overflow-auto rounded-md border">
+        <div className="w-full rounded-md border">
           <Table className="min-w-[800px]">
             <TableHeader className="bg-muted/50 sticky top-0">
               <TableRow>
@@ -938,16 +938,16 @@ export function PatientTable() {
                             WhatsApp
                           </DropdownMenuItem>
 
-                          {adminDetails.role === "admin" && (
+                          {adminDetails.role === "admin" || adminDetails.role === "superadmin" && (
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setPatientToDelete(patient);
                                 setIsDeleteDialogOpen(true);
                               }}
-                              className="gap-2 text-destructive focus:text-destructive"
+                              className="gap-2 "
                             >
-                              <Trash className="h-4 w-4" /> Delete
+                              <Trash className="h-4 w-4 text-destructive focus:text-destructive" fill="red" /> Delete
                             </DropdownMenuItem>
                           )}
 
@@ -994,19 +994,24 @@ export function PatientTable() {
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
-                  href="#"
-                  onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handlePageChange(Math.max(currentPage - 1, 1));
+                  }}
                   className={
-                    currentPage === 1 ? "pointer-events-none opacity-50" : ""
+                    currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"
                   }
                 />
               </PaginationItem>
               {[...Array(totalPages)].map((_, index) => (
                 <PaginationItem key={index}>
                   <PaginationLink
-                    href="#"
-                    onClick={() => handlePageChange(index + 1)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handlePageChange(index + 1);
+                    }}
                     isActive={currentPage === index + 1}
+                    className="cursor-pointer"
                   >
                     {index + 1}
                   </PaginationLink>
@@ -1014,14 +1019,14 @@ export function PatientTable() {
               ))}
               <PaginationItem>
                 <PaginationNext
-                  href="#"
-                  onClick={() =>
-                    handlePageChange(Math.min(currentPage + 1, totalPages))
-                  }
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handlePageChange(Math.min(currentPage + 1, totalPages));
+                  }}
                   className={
                     currentPage === totalPages
                       ? "pointer-events-none opacity-50"
-                      : ""
+                      : "cursor-pointer"
                   }
                 />
               </PaginationItem>
@@ -1396,7 +1401,7 @@ export function PatientTable() {
                     </div>
                     <div className="bg-gray-100 p-3 text-center text-gray-600 text-sm">
                       <p>
-                        © {new Date().getFullYear()} Shree Nagar Dental Clinic.
+                        {new Date().getFullYear()} Shree Nagar Dental Clinic.
                         All rights reserved.
                       </p>
                     </div>

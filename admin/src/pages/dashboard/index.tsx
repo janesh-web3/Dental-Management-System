@@ -10,6 +10,7 @@ import {
   FileText,
   Stethoscope,
   Image as ImageIcon,
+  ChevronRight,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
@@ -40,6 +41,33 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Analytics } from "./Analytics";
+import { motion, AnimatePresence } from "framer-motion";
+
+// Animation variants for Framer Motion
+const fadeIn = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.4 } },
+};
+
+const slideUp = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { duration: 0.5 } },
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const cardHover = {
+  rest: { scale: 1, transition: { duration: 0.2 } },
+  hover: { scale: 1.02, transition: { duration: 0.2 } },
+};
 
 interface DoctorAnalysis {
   _id: string;
@@ -74,7 +102,7 @@ interface RecentTreatment {
   treatment: string;
   date: string;
   status: string;
-  amount: number;
+  treatmentAmount: number;
   documents?: TreatmentDocument[];
 }
 
@@ -159,6 +187,47 @@ interface DashboardData {
     recentTreatments: Array<RecentTreatment>;
   };
 }
+
+// Reusable StatCard component with animation
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  description: string;
+  icon: React.ReactNode;
+  className: string;
+}
+
+const StatCard = ({ title, value, description, icon, className }: StatCardProps) => {
+  return (
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      whileHover="hover"
+      variants={{
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+        hover: { scale: 1.03, transition: { duration: 0.2 } }
+      }}
+    >
+      <Card className={`shadow-sm hover:shadow-md transition-all ${className}`}>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            {title}
+          </CardTitle>
+          {icon}
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {value}
+          </div>
+          <p className="text-xs">
+            {description}
+          </p>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+};
 
 const Dashboard = () => {
   const { t } = useTranslation();
@@ -435,73 +504,42 @@ try {
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 shadow-sm hover:shadow-md transition-all hover:bg-blue-100 dark:hover:bg-blue-900">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">
-              {t("Total Patients")}
-            </CardTitle>
-            <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-900 dark:text-blue-50">
-              {dashboardData?.totalPatients}
-            </div>
-            <p className="text-xs text-blue-700 dark:text-blue-400">
-              {t("Active patients in the system")}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 shadow-sm hover:shadow-md transition-all hover:bg-green-100 dark:hover:bg-green-900">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-800 dark:text-green-300">
-              {t("Total Doctors")}
-            </CardTitle>
-            <Stethoscope className="h-4 w-4 text-green-600 dark:text-green-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-900 dark:text-green-50">
-              {dashboardData?.totalDoctors}
-            </div>
-            <p className="text-xs text-green-700 dark:text-green-400">
-              {t("Active doctors in the system")}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800 shadow-sm hover:shadow-md transition-all hover:bg-purple-100 dark:hover:bg-purple-900">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-800 dark:text-purple-300">
-              {t("Total Appointments")}
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-900 dark:text-purple-50">
-              {dashboardData?.totalAppointments}
-            </div>
-            <p className="text-xs text-purple-700 dark:text-purple-400">
-              {t("Appointments in selected period")}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800 shadow-sm hover:shadow-md transition-all hover:bg-teal-100 dark:hover:bg-teal-900">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-teal-800 dark:text-teal-300">
-              {t("Total Revenue")}
-            </CardTitle>
-            <IndianRupee className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-teal-900 dark:text-teal-50">
-              ₹{revenueData?.financialAnalysis?.total.toLocaleString()}
-            </div>
-            <p className="text-xs text-teal-700 dark:text-teal-400">
-              {t("Total revenue in selected period")}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
+      <motion.div 
+        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+        initial="hidden"
+        animate="visible"
+        variants={staggerContainer}
+      >
+        <StatCard
+          title={t("Total Patients")}
+          value={dashboardData?.totalPatients || 0}
+          description={t("Active patients in the system")}
+          icon={<Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+          className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900"
+        />
+        <StatCard
+          title={t("Total Doctors")}
+          value={dashboardData?.totalDoctors || 0}
+          description={t("Active doctors in the system")}
+          icon={<Stethoscope className="h-4 w-4 text-green-600 dark:text-green-400" />}
+          className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900"
+        />
+        <StatCard
+          title={t("Total Appointments")}
+          value={dashboardData?.totalAppointments || 0}
+          description={t("Appointments in selected period")}
+          icon={<Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400" />}
+          className="bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900"
+        />
+        <StatCard
+          title={t("Total Revenue")}
+          value={`₹${revenueData?.financialAnalysis?.total?.toLocaleString() || 0}`}
+          description={t("Total revenue in selected period")}
+          icon={<IndianRupee className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
+          className="bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800 hover:bg-teal-100 dark:hover:bg-teal-900"
+        />
+      </motion.div>
+      
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="bg-slate-100 dark:bg-slate-800">
           <TabsTrigger
@@ -510,12 +548,6 @@ try {
           >
             {t("Overview")}
           </TabsTrigger>
-          {/* <TabsTrigger
-            value="analytics"
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950"
-          >
-            {t("Analytics")}
-          </TabsTrigger> */}
           {/* <TabsTrigger
             value="appointments"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950"
@@ -816,9 +848,9 @@ try {
                             </p>
                           </div>
                           <div className="text-right">
-                            {treatment.amount > 0 && (
+                            {treatment.treatmentAmount > 0 && (
                               <p className="font-medium dark:text-[hsl(12,80%,80%)]" style={{ color: 'hsl(12, 50%, 25%)' }}>
-                                ₹{treatment.amount}
+                                ₹{treatment.treatmentAmount}
                               </p>
                             )}
                             {treatment.treatment !== "General Documents" && (

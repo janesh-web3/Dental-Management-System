@@ -63,10 +63,21 @@ export type MedicalDetails = {
   chiefComplaint: string;
   investigation: {
     blood: string;
+    bloodTestDate?: string;
     xray: string;
+    xrayDate?: string;
+    xrayImages?: Array<{
+      url: string;
+      publicId: string;
+      uploadDate: string;
+    }>;
+    otherTests?: string;
+    otherTestsDate?: string;
+    [key: string]: any; // Allow additional properties
   };
   patientType: "Child" | "Adult";
   medicalHistory: {
+    additionalNotes: any;
     bloodPressure: string;
     diabetes: boolean;
     thyroid: boolean;

@@ -554,6 +554,7 @@ const getPaginatedPatient = async (req, res) => {
         path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
         model: "Doctor",
       });
+
     // Sort medical details and treatment planning for each patient
     const sortedPatients = patients.map((patient) => {
       const patientObj = patient.toObject();
@@ -1039,20 +1040,22 @@ const getRecentTransactions = async (req, res) => {
 // Add this new function to get the next serial number
 const getNextSerialNumber = async (req, res) => {
   try {
-    // Find the patient with the highest S.N
-    const lastPatient = await Patient.findOne({}, { "personalDetails.sn": 1 })
-      .sort({ "personalDetails.sn": -1 })
-      .limit(1);
-
-    let nextSN = 1; // Default start at 1
-
-    if (lastPatient && lastPatient.personalDetails.sn) {
-      // Try to parse the last S.N and increment it
-      const lastSN = parseInt(lastPatient.personalDetails.sn);
-      if (!isNaN(lastSN)) {
-        nextSN = lastSN + 1;
+    // Get all patients and find the maximum serial number properly
+    const patients = await Patient.find({}, { "personalDetails.sn": 1 });
+    
+    let maxSN = 0;
+    
+    // Parse all serial numbers and find the maximum
+    for (const patient of patients) {
+      if (patient.personalDetails && patient.personalDetails.sn) {
+        const sn = parseInt(patient.personalDetails.sn);
+        if (!isNaN(sn) && sn > maxSN) {
+          maxSN = sn;
+        }
       }
     }
+    
+    const nextSN = maxSN + 1;
 
     res.status(200).json({
       success: true,
@@ -2056,13 +2059,8 @@ const getDashboardMetrics = async (req, res) => {
           amount: {
             $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount",
           },
-          status: {
-            $cond: {
-              if: "$medicalDetails.treatmentPlanning.isCompleted",
-              then: "Completed",
-              else: "Pending",
-            },
-          },
+          status:
+            "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.isCompleted",
           treatmentPlanningId: "$medicalDetails.treatmentPlanning._id",
           documentCount: {
             $cond: {

@@ -18,7 +18,7 @@ const dailyTreatmentSchema = new mongoose.Schema({
   isCompleted: { type: Boolean, default: false } // Add this field to track completion
 });
 
-// Update the selected tooth schema to include daily treatments
+// Update the selected tooth schema to include daily treatmentsb
 const selectedToothSchema = new mongoose.Schema({
   number: { type: String },
   position: { type: String },

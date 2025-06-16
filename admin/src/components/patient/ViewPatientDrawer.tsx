@@ -16,7 +16,6 @@ import {
   CalendarX,
   CheckCircle,
   Clock,
-  ClipboardCheck,
   ClipboardList,
   ClipboardX,
   Droplets,
@@ -144,8 +143,6 @@ const FolderOpen = ({ className }: { className?: string }) => (
 // Calendar alias for consistency
 const CalendarDays = Calendar;
 
-// Custom icon components
-const ToothIcon = UserCheck;
 
 // Import components after custom icons to avoid circular dependencies
 import { TreatmentProgress } from "./TreatmentProgress";
@@ -172,13 +169,6 @@ import { toast } from "react-toastify";
 import { PatientDocumentUploadButton } from "./PatientDocumentUploadButton";
 import DentalChart from "@/components/DentalChart";
 import ChildDentalChart from "@/components/ChildDentalChart";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-
 interface ViewPatientDrawerProps {
   patient: Patient;
   isOpen: boolean;

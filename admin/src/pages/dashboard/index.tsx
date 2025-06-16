@@ -10,7 +10,6 @@ import {
   FileText,
   Stethoscope,
   Image as ImageIcon,
-  ChevronRight,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
@@ -41,18 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Analytics } from "./Analytics";
-import { motion, AnimatePresence } from "framer-motion";
-
-// Animation variants for Framer Motion
-const fadeIn = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.4 } },
-};
-
-const slideUp = {
-  hidden: { y: 20, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { duration: 0.5 } },
-};
+import { motion } from "framer-motion";
 
 const staggerContainer = {
   hidden: { opacity: 0 },
@@ -63,12 +51,6 @@ const staggerContainer = {
     },
   },
 };
-
-const cardHover = {
-  rest: { scale: 1, transition: { duration: 0.2 } },
-  hover: { scale: 1.02, transition: { duration: 0.2 } },
-};
-
 interface DoctorAnalysis {
   _id: string;
   doctorName: string;

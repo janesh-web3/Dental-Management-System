@@ -32,15 +32,6 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: { type: "spring", stiffness: 300, damping: 24 },
-  },
-};
-
 const backgroundVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -48,8 +39,6 @@ const backgroundVariants = {
     transition: { duration: 1.5 },
   },
 };
-
-
 
 // Floating shapes component
 const FloatingShapes = () => {
@@ -112,7 +101,7 @@ export default function ModernSignInPage() {
         initial="hidden"
         animate="visible"
       >
-        <motion.div variants={itemVariants}>
+        <motion.div>
           <Card className="border-none shadow-xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
             <CardHeader className="space-y-1 text-center">
               <motion.div

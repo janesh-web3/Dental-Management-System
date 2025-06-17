@@ -1,0 +1,623 @@
+const Income = require("../model/Income");
+const Expense = require("../model/Expense");
+
+// Helper function to get date filter
+const getDateFilter = (startDate, endDate) => {
+  if (startDate && endDate) {
+    return {
+      date: {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      },
+    };
+  }
+  
+  return {};
+};
+
+// Helper function for predefined date filters
+const getPredefinedDateFilter = (filter) => {
+  const now = new Date();
+  
+  switch (filter) {
+    case 'today': {
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      return {
+        date: {
+          $gte: today,
+          $lt: tomorrow
+        }
+      };
+    }
+    
+    case 'week': {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay()); // Start of current week (Sunday)
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 7); // End of current week (next Sunday)
+      
+      return {
+        date: {
+          $gte: startOfWeek,
+          $lt: endOfWeek
+        }
+      };
+    }
+    
+    case 'month': {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      endOfMonth.setHours(23, 59, 59, 999);
+      
+      return {
+        date: {
+          $gte: startOfMonth,
+          $lte: endOfMonth
+        }
+      };
+    }
+    
+    default:
+      return {};
+  }
+};
+
+// ********************* INCOME CONTROLLERS *********************
+
+// Add new income
+const addIncome = async (req, res) => {
+  try {
+    const { title, amount, date, category, notes } = req.body;
+    
+    // Validate required fields
+    if (!title || !amount || !category) {
+      return res.status(400).json({
+        success: false,
+        message: "Title, amount, and category are required",
+      });
+    }
+    
+    // Create new income
+    const income = await Income.create({
+      title,
+      amount,
+      date: date || new Date(),
+      category,
+      notes,
+      createdBy: req.admin.id,
+    });
+    
+    res.status(201).json({
+      success: true,
+      data: income,
+      message: "Income added successfully",
+    });
+  } catch (error) {
+    console.error("Error adding income:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to add income",
+      error: error.message,
+    });
+  }
+};
+
+// Get all income records with optional filtering
+const getIncomes = async (req, res) => {
+  try {
+    const { startDate, endDate, dateFilter, page = 1, limit = 10, search = "" } = req.query;
+    
+    // Build query
+    let query = {};
+    
+    // Apply date filter if provided
+    if (dateFilter && dateFilter !== "all") {
+      Object.assign(query, getPredefinedDateFilter(dateFilter));
+    } else if (startDate && endDate) {
+      Object.assign(query, getDateFilter(startDate, endDate));
+    }
+    
+    // Apply search if provided
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
+    
+    // Pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Get income records
+    const incomes = await Income.find(query)
+      .sort({ date: -1 }) // Sort by date (newest first)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate("createdBy", "name email");
+    
+    // Get total count
+    const total = await Income.countDocuments(query);
+    
+    // Calculate total income
+    const totalIncome = await Income.aggregate([
+      { $match: query },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    
+    // Calculate total pages
+    const totalPages = Math.ceil(total / parseInt(limit));
+    
+    res.status(200).json({
+      success: true,
+      data: incomes,
+      meta: {
+        total,
+        totalPages,
+        currentPage: parseInt(page),
+        totalAmount: totalIncome.length > 0 ? totalIncome[0].total : 0,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching incomes:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch income records",
+      error: error.message,
+    });
+  }
+};
+
+// Get income by ID
+const getIncomeById = async (req, res) => {
+  try {
+    const income = await Income.findById(req.params.id).populate(
+      "createdBy",
+      "name email"
+    );
+    
+    if (!income) {
+      return res.status(404).json({
+        success: false,
+        message: "Income record not found",
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: income,
+    });
+  } catch (error) {
+    console.error("Error fetching income:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch income record",
+      error: error.message,
+    });
+  }
+};
+
+// Update income
+const updateIncome = async (req, res) => {
+  try {
+    const { title, amount, date, category, notes } = req.body;
+    
+    // Find income
+    let income = await Income.findById(req.params.id);
+    
+    if (!income) {
+      return res.status(404).json({
+        success: false,
+        message: "Income record not found",
+      });
+    }
+    
+    // Only allow admin, superadmin, or the user who created the record to update it
+    if (
+      req.admin.role !== "admin" &&
+      req.admin.role !== "superadmin" &&
+      income.createdBy.toString() !== req.admin.id
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to update this record",
+      });
+    }
+    
+    // Update income
+    income = await Income.findByIdAndUpdate(
+      req.params.id,
+      {
+        title,
+        amount,
+        date: date || income.date,
+        category,
+        notes,
+      },
+      { new: true, runValidators: true }
+    );
+    
+    res.status(200).json({
+      success: true,
+      data: income,
+      message: "Income updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating income:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update income record",
+      error: error.message,
+    });
+  }
+};
+
+// Delete income
+const deleteIncome = async (req, res) => {
+  try {
+    const income = await Income.findById(req.params.id);
+    
+    if (!income) {
+      return res.status(404).json({
+        success: false,
+        message: "Income record not found",
+      });
+    }
+    
+    // Only allow admin, superadmin, or the user who created the record to delete it
+    if (
+      req.admin.role !== "admin" &&
+      req.admin.role !== "superadmin" &&
+      income.createdBy.toString() !== req.admin.id
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to delete this record",
+      });
+    }
+    
+    await Income.findByIdAndDelete(req.params.id);
+    
+    res.status(200).json({
+      success: true,
+      message: "Income record deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting income:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete income record",
+      error: error.message,
+    });
+  }
+};
+
+// ********************* EXPENSE CONTROLLERS *********************
+
+// Add new expense
+const addExpense = async (req, res) => {
+  try {
+    const { title, amount, date, category, notes } = req.body;
+    
+    // Validate required fields
+    if (!title || !amount || !category) {
+      return res.status(400).json({
+        success: false,
+        message: "Title, amount, and category are required",
+      });
+    }
+    
+    // Create new expense
+    const expense = await Expense.create({
+      title,
+      amount,
+      date: date || new Date(),
+      category,
+      notes,
+      createdBy: req.admin.id,
+    });
+    
+    res.status(201).json({
+      success: true,
+      data: expense,
+      message: "Expense added successfully",
+    });
+  } catch (error) {
+    console.error("Error adding expense:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to add expense",
+      error: error.message,
+    });
+  }
+};
+
+// Get all expense records with optional filtering
+const getExpenses = async (req, res) => {
+  try {
+    const { startDate, endDate, dateFilter, page = 1, limit = 10, search = "" } = req.query;
+    
+    // Build query
+    let query = {};
+    
+    // Apply date filter if provided
+    if (dateFilter && dateFilter !== "all") {
+      Object.assign(query, getPredefinedDateFilter(dateFilter));
+    } else if (startDate && endDate) {
+      Object.assign(query, getDateFilter(startDate, endDate));
+    }
+    
+    // Apply search if provided
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
+    
+    // Pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Get expense records
+    const expenses = await Expense.find(query)
+      .sort({ date: -1 }) // Sort by date (newest first)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate("createdBy", "name email");
+    
+    // Get total count
+    const total = await Expense.countDocuments(query);
+    
+    // Calculate total expense
+    const totalExpense = await Expense.aggregate([
+      { $match: query },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    
+    // Calculate total pages
+    const totalPages = Math.ceil(total / parseInt(limit));
+    
+    res.status(200).json({
+      success: true,
+      data: expenses,
+      meta: {
+        total,
+        totalPages,
+        currentPage: parseInt(page),
+        totalAmount: totalExpense.length > 0 ? totalExpense[0].total : 0,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching expenses:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch expense records",
+      error: error.message,
+    });
+  }
+};
+
+// Get expense by ID
+const getExpenseById = async (req, res) => {
+  try {
+    const expense = await Expense.findById(req.params.id).populate(
+      "createdBy",
+      "name email"
+    );
+    
+    if (!expense) {
+      return res.status(404).json({
+        success: false,
+        message: "Expense record not found",
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: expense,
+    });
+  } catch (error) {
+    console.error("Error fetching expense:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch expense record",
+      error: error.message,
+    });
+  }
+};
+
+// Update expense
+const updateExpense = async (req, res) => {
+  try {
+    const { title, amount, date, category, notes } = req.body;
+    
+    // Find expense
+    let expense = await Expense.findById(req.params.id);
+    
+    if (!expense) {
+      return res.status(404).json({
+        success: false,
+        message: "Expense record not found",
+      });
+    }
+    
+    // Only allow admin, superadmin, or the user who created the record to update it
+    if (
+      req.admin.role !== "admin" &&
+      req.admin.role !== "superadmin" &&
+      expense.createdBy.toString() !== req.admin.id
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to update this record",
+      });
+    }
+    
+    // Update expense
+    expense = await Expense.findByIdAndUpdate(
+      req.params.id,
+      {
+        title,
+        amount,
+        date: date || expense.date,
+        category,
+        notes,
+      },
+      { new: true, runValidators: true }
+    );
+    
+    res.status(200).json({
+      success: true,
+      data: expense,
+      message: "Expense updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating expense:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update expense record",
+      error: error.message,
+    });
+  }
+};
+
+// Delete expense
+const deleteExpense = async (req, res) => {
+  try {
+    const expense = await Expense.findById(req.params.id);
+    
+    if (!expense) {
+      return res.status(404).json({
+        success: false,
+        message: "Expense record not found",
+      });
+    }
+    
+    // Only allow admin, superadmin, or the user who created the record to delete it
+    if (
+      req.admin.role !== "admin" &&
+      req.admin.role !== "superadmin" &&
+      expense.createdBy.toString() !== req.admin.id
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to delete this record",
+      });
+    }
+    
+    await Expense.findByIdAndDelete(req.params.id);
+    
+    res.status(200).json({
+      success: true,
+      message: "Expense record deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting expense:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete expense record",
+      error: error.message,
+    });
+  }
+};
+
+// ********************* FINANCIAL SUMMARY *********************
+
+// Get financial summary (income, expense, balance)
+const getFinancialSummary = async (req, res) => {
+  try {
+    const { startDate, endDate, dateFilter } = req.query;
+    
+    // Build query
+    let query = {};
+    
+    // Apply date filter if provided
+    if (dateFilter && dateFilter !== "all") {
+      Object.assign(query, getPredefinedDateFilter(dateFilter));
+    } else if (startDate && endDate) {
+      Object.assign(query, getDateFilter(startDate, endDate));
+    }
+    
+    // Get total income
+    const totalIncome = await Income.aggregate([
+      { $match: query },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    
+    // Get total expense
+    const totalExpense = await Expense.aggregate([
+      { $match: query },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    
+    // Calculate balance
+    const incomeTotal = totalIncome.length > 0 ? totalIncome[0].total : 0;
+    const expenseTotal = totalExpense.length > 0 ? totalExpense[0].total : 0;
+    const balance = incomeTotal - expenseTotal;
+    
+    // Get income by category
+    const incomeByCategory = await Income.aggregate([
+      { $match: query },
+      { $group: { _id: "$category", total: { $sum: "$amount" } } },
+      { $sort: { total: -1 } },
+    ]);
+    
+    // Get expense by category
+    const expenseByCategory = await Expense.aggregate([
+      { $match: query },
+      { $group: { _id: "$category", total: { $sum: "$amount" } } },
+      { $sort: { total: -1 } },
+    ]);
+    
+    // Get recent income (last 5)
+    const recentIncome = await Income.find(query)
+      .sort({ date: -1 })
+      .limit(5)
+      .populate("createdBy", "name");
+    
+    // Get recent expenses (last 5)
+    const recentExpenses = await Expense.find(query)
+      .sort({ date: -1 })
+      .limit(5)
+      .populate("createdBy", "name");
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        summary: {
+          income: incomeTotal,
+          expense: expenseTotal,
+          balance,
+        },
+        incomeByCategory,
+        expenseByCategory,
+        recentIncome,
+        recentExpenses,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching financial summary:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch financial summary",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = {
+  // Income controllers
+  addIncome,
+  getIncomes,
+  getIncomeById,
+  updateIncome,
+  deleteIncome,
+  
+  // Expense controllers
+  addExpense,
+  getExpenses,
+  getExpenseById,
+  updateExpense,
+  deleteExpense,
+  
+  // Financial summary
+  getFinancialSummary,
+};

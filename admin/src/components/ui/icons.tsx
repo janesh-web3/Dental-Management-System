@@ -1,6 +1,8 @@
 import {
   AlertTriangle,
+  ArrowDown,
   ArrowRight,
+  ArrowUp,
   BarChart,
   Bell,
   CalendarIcon,
@@ -10,6 +12,7 @@ import {
   CircuitBoardIcon,
   Command,
   CreditCard,
+  DollarSign,
   File,
   FileText,
   HelpCircle,
@@ -26,6 +29,7 @@ import {
   Pill,
   Pizza,
   Plus,
+  Receipt,
   Settings,
   SunMedium,
   Trash,
@@ -60,6 +64,8 @@ export const Icons = {
   warning: AlertTriangle,
   user: User,
   arrowRight: ArrowRight,
+  arrowUp: ArrowUp,
+  arrowDown: ArrowDown,
   help: HelpCircle,
   pizza: Pizza,
   sun: SunMedium,
@@ -70,6 +76,8 @@ export const Icons = {
   calendar: CalendarIcon,
   message: MessageSquareIcon,
   pill: Pill,
+  dollar: DollarSign,
+  receipt: Receipt,
   // Custom tooth icon for dental treatments
   tooth: ({ ...props }: LucideProps) => (
     <svg

@@ -26,6 +26,44 @@ export const navItems: NavItem[] = [
     label: "Appointment",
   },
   {
+    title: "Finance",
+    href: "/finance",
+    icon: "dollar",
+    label: "Finance",
+    children: [
+      {
+        title: "Income",
+        href: "/finance/income",
+        icon: "arrowUp",
+        label: "Income",
+      },
+      {
+        title: "Expense",
+        href: "/finance/expense",
+        icon: "arrowDown",
+        label: "Expense",
+      },
+      {
+        title: "Summary",
+        href: "/finance/summary",
+        icon: "chart",
+        label: "Summary",
+      },
+    ],
+  },
+  {
+    title: "Income",
+    href: "/income",
+    icon: "arrowUp",
+    label: "Income",
+  },
+  {
+    title: "Expense",
+    href: "/expense",
+    icon: "arrowDown",
+    label: "Expense",
+  },
+  {
     title: "Testimonials",
     href: "/testimonials",
     icon: "kanban",

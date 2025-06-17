@@ -57,3 +57,87 @@ export const crudRequest = async <T>(
     }
   }
 };
+
+// ********************* FINANCE API SERVICES *********************
+
+// Income API
+export const createIncome = async (data: any) => {
+  return await crudRequest("POST", `/finance/income`, data);
+};
+
+export const getIncomes = async (
+  page = 1,
+  limit = 10,
+  search = "",
+  dateFilter = "all",
+  startDate = "",
+  endDate = ""
+) => {
+  let url = `/finance/income?page=${page}&limit=${limit}`;
+  
+  if (search) url += `&search=${search}`;
+  if (dateFilter && dateFilter !== "all") url += `&dateFilter=${dateFilter}`;
+  if (startDate && endDate) url += `&startDate=${startDate}&endDate=${endDate}`;
+  
+  return await crudRequest("GET", url);
+};
+
+export const getIncomeById = async (id: string) => {
+  return await crudRequest("GET", `/finance/income/${id}`);
+};
+
+export const updateIncome = async (id: string, data: any) => {
+  return await crudRequest("PUT", `/finance/income/${id}`, data);
+};
+
+export const deleteIncome = async (id: string) => {
+  return await crudRequest("DELETE", `/finance/income/${id}`);
+};
+
+// Expense API
+export const createExpense = async (data: any) => {
+  return await crudRequest("POST", `/finance/expense`, data);
+};
+
+export const getExpenses = async (
+  page = 1,
+  limit = 10,
+  search = "",
+  dateFilter = "all",
+  startDate = "",
+  endDate = ""
+) => {
+  let url = `/finance/expense?page=${page}&limit=${limit}`;
+  
+  if (search) url += `&search=${search}`;
+  if (dateFilter && dateFilter !== "all") url += `&dateFilter=${dateFilter}`;
+  if (startDate && endDate) url += `&startDate=${startDate}&endDate=${endDate}`;
+  
+  return await crudRequest("GET", url);
+};
+
+export const getExpenseById = async (id: string) => {
+  return await crudRequest("GET", `/finance/expense/${id}`);
+};
+
+export const updateExpense = async (id: string, data: any) => {
+  return await crudRequest("PUT", `/finance/expense/${id}`, data);
+};
+
+export const deleteExpense = async (id: string) => {
+  return await crudRequest("DELETE", `/finance/expense/${id}`);
+};
+
+// Financial Summary API
+export const getFinancialSummary = async (
+  dateFilter = "all",
+  startDate = "",
+  endDate = ""
+) => {
+  let url = `/finance/summary`;
+  
+  if (dateFilter && dateFilter !== "all") url += `?dateFilter=${dateFilter}`;
+  else if (startDate && endDate) url += `?startDate=${startDate}&endDate=${endDate}`;
+  
+  return await crudRequest("GET", url);
+};

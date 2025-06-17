@@ -18,6 +18,11 @@ import TermsOfServicePage from "@/pages/legal/terms";
 import PrivacyPolicyPage from "@/pages/legal/privacy";
 import SMS from "@/pages/SMS";
 
+// Finance pages
+import IncomePage from "@/pages/finance/income";
+import ExpensePage from "@/pages/finance/expense";
+import FinanceSummary from "@/pages/finance/summary";
+
 // Lazy-loaded components
 const DashboardLayout = lazy(
   () => import("@/components/layout/dashboard-layout")
@@ -52,10 +57,16 @@ const AppRouter: React.FC = () => {
         { path: "/appointment", element: <Appointment /> },
         { path: "/user", element: <User /> },
         { path: "/settings", element: <Setting /> },
-        { path: "/revenue", element: <h1>Revenue Details (Working...)</h1> },
         { path: "/testimonials", element: <Testimonials /> },
         { path: "/contacts", element: <Contacts /> },
         { path: "/sms", element: <SMS /> },
+        // Finance routes
+        { path: "/finance/income", element: <IncomePage /> },
+        { path: "/finance/expense", element: <ExpensePage /> },
+        { path: "/finance/summary", element: <FinanceSummary /> },
+        // Standalone Income and Expense routes
+        { path: "/income", element: <IncomePage /> },
+        { path: "/expense", element: <ExpensePage /> },
       ],
     },
   ];

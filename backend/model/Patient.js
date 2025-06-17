@@ -263,4 +263,16 @@ patientSchema.virtual('contact').get(function() {
   return this.personalDetails?.contactNumber || '';
 });
 
+// Add a pre-save hook to ensure createdAt is set in personalDetails
+patientSchema.pre('save', function(next) {
+  // If this is a new patient (being created for the first time)
+  if (this.isNew && this.personalDetails) {
+    // Set createdAt in personalDetails if not already set
+    if (!this.personalDetails.createdAt) {
+      this.personalDetails.createdAt = new Date();
+    }
+  }
+  next();
+});
+
 module.exports = mongoose.model("Patient", patientSchema);

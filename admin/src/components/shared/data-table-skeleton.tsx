@@ -9,11 +9,13 @@ import {
 } from '@/components/ui/table';
 
 type DataTableSkeletonProps = {
-  columnCount: number;
+  columnCount?: number;
   rowCount?: number;
   searchableColumnCount?: number;
   filterableColumnCount?: number;
   showViewOptions?: boolean;
+  columns?: number;
+  rows?: number;
 };
 
 export function DataTableSkeleton({
@@ -21,8 +23,13 @@ export function DataTableSkeleton({
   rowCount = 10,
   searchableColumnCount = 0,
   filterableColumnCount = 0,
-  showViewOptions = true
+  showViewOptions = true,
+  columns,
+  rows,
 }: DataTableSkeletonProps) {
+  const effectiveColumns = columns || columnCount || 5;
+  const effectiveRows = rows || rowCount || 10;
+
   return (
     <div className="w-full space-y-3 overflow-auto">
       <div className="flex w-full items-center justify-between space-x-2 overflow-auto p-1">
@@ -47,7 +54,7 @@ export function DataTableSkeleton({
           <TableHeader>
             {Array.from({ length: 1 }).map((_, i) => (
               <TableRow key={i} className="hover:bg-transparent">
-                {Array.from({ length: columnCount }).map((_, i) => (
+                {Array.from({ length: effectiveColumns }).map((_, i) => (
                   <TableHead key={i}>
                     <Skeleton className="h-6 w-full" />
                   </TableHead>
@@ -56,9 +63,9 @@ export function DataTableSkeleton({
             ))}
           </TableHeader>
           <TableBody>
-            {Array.from({ length: rowCount }).map((_, i) => (
+            {Array.from({ length: effectiveRows }).map((_, i) => (
               <TableRow key={i} className="hover:bg-transparent">
-                {Array.from({ length: columnCount }).map((_, i) => (
+                {Array.from({ length: effectiveColumns }).map((_, i) => (
                   <TableCell key={i}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>

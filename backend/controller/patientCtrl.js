@@ -11,6 +11,80 @@ const {
 } = require("../utils/emailService");
 const mongoose = require("mongoose");
 
+// Helper utility functions for date filtering
+const getDateFilter = (filter, startDate, endDate) => {
+  const now = new Date();
+  console.log(`Creating date filter for '${filter}' (current time: ${now.toISOString()})`);
+  
+  switch (filter) {
+    case 'today': {
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      console.log(`Today filter: ${today.toISOString()} to ${tomorrow.toISOString()}`);
+      return {
+        $gte: today,
+        $lt: tomorrow
+      };
+    }
+    
+    case 'week': {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay()); // Start of current week (Sunday)
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 7); // End of current week (next Sunday)
+      
+      console.log(`Week filter: ${startOfWeek.toISOString()} to ${endOfWeek.toISOString()}`);
+      return {
+        $gte: startOfWeek,
+        $lt: endOfWeek
+      };
+    }
+    
+    case 'month': {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      endOfMonth.setHours(23, 59, 59, 999);
+      
+      console.log(`Month filter: ${startOfMonth.toISOString()} to ${endOfMonth.toISOString()}`);
+      return {
+        $gte: startOfMonth,
+        $lte: endOfMonth
+      };
+    }
+    
+    case 'custom': {
+      if (startDate && endDate) {
+        try {
+          const startDateObj = new Date(startDate);
+          const endDateObj = new Date(endDate);
+          
+          // Set end date to end of day
+          endDateObj.setHours(23, 59, 59, 999);
+          
+          console.log(`Custom date range: ${startDateObj.toISOString()} to ${endDateObj.toISOString()}`);
+          
+          return {
+            $gte: startDateObj,
+            $lte: endDateObj
+          };
+        } catch (error) {
+          console.error("Error parsing date range:", error);
+          return null;
+        }
+      }
+      return null;
+    }
+    
+    default:
+      console.log("Using default 'all' filter (no date constraints)");
+      return null;
+  }
+};
+
 const addPatient = async (req, res) => {
   try {
     // Validate required fields
@@ -535,8 +609,14 @@ const getPaginatedPatient = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const search = req.query.search || "";
+    const dateFilter = req.query.dateFilter || "all";
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
 
-    const query = search
+    console.log("Date filter request:", { dateFilter, startDate, endDate });
+
+    // Base query
+    let query = search
       ? {
           $or: [
             { "personalDetails.name": { $regex: search, $options: "i" } },
@@ -544,6 +624,20 @@ const getPaginatedPatient = async (req, res) => {
           ],
         }
       : {};
+
+    // Apply date filtering if needed
+    if (dateFilter && dateFilter !== "all") {
+      const dateFilterCriteria = getDateFilter(dateFilter, startDate, endDate);
+      
+      if (dateFilterCriteria) {
+        console.log("Applying date filter criteria:", JSON.stringify(dateFilterCriteria));
+        // Ensure we're explicitly filtering on the patient's creation date, not checkUpDate
+        query["createdAt"] = dateFilterCriteria;
+        console.log("Date filter will be applied to 'createdAt' field");
+      }
+    }
+
+    console.log("Final query:", JSON.stringify(query));
 
     // Get patients sorted by createdAt in descending order
     const patients = await Patient.find(query)
@@ -554,6 +648,14 @@ const getPaginatedPatient = async (req, res) => {
         path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
         model: "Doctor",
       });
+
+    console.log(`Found ${patients.length} patients. Checking createdAt dates:`);
+    // Log some sample createdAt dates to debug
+    if (patients.length > 0) {
+      patients.slice(0, Math.min(5, patients.length)).forEach((patient, idx) => {
+        console.log(`Patient ${idx + 1} createdAt: ${patient.createdAt}, personalDetails.createdAt: ${patient.personalDetails?.createdAt}`);
+      });
+    }
 
     // Sort medical details and treatment planning for each patient
     const sortedPatients = patients.map((patient) => {
@@ -589,6 +691,8 @@ const getPaginatedPatient = async (req, res) => {
     const totalPatients = await Patient.countDocuments(query);
     const totalPages = Math.ceil(totalPatients / limit);
 
+    console.log(`Found ${patients.length} patients matching the query criteria`);
+
     res.status(200).json({
       success: true,
       patients: sortedPatients,
@@ -615,6 +719,17 @@ const getFilteredPatients = async (req, res) => {
     const procedures = req.query.procedures
       ? req.query.procedures.split(",")
       : [];
+    const dateFilter = req.query.dateFilter || "all";
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
+
+    console.log("Filtered patients request:", { 
+      dateFilter, 
+      startDate, 
+      endDate,
+      doctorId,
+      procedures: procedures.length > 0 ? procedures : "none"
+    });
 
     // Base query
     let query = {};
@@ -650,6 +765,20 @@ const getFilteredPatients = async (req, res) => {
       ] = { $in: procedures };
     }
 
+    // Apply date filtering if needed
+    if (dateFilter && dateFilter !== "all") {
+      const dateFilterCriteria = getDateFilter(dateFilter, startDate, endDate);
+      
+      if (dateFilterCriteria) {
+        console.log("Applying date filter criteria:", JSON.stringify(dateFilterCriteria));
+        // Ensure we're explicitly filtering on the patient's creation date, not checkUpDate
+        query["createdAt"] = dateFilterCriteria;
+        console.log("Date filter will be applied to 'createdAt' field");
+      }
+    }
+
+    console.log("Final filtered query:", JSON.stringify(query));
+
     // Get patients sorted by createdAt in descending order
     const patients = await Patient.find(query)
       .sort({ createdAt: -1 })
@@ -659,6 +788,14 @@ const getFilteredPatients = async (req, res) => {
         path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
         model: "Doctor",
       });
+
+    console.log(`Found ${patients.length} filtered patients. Checking createdAt dates:`);
+    // Log some sample createdAt dates to debug
+    if (patients.length > 0) {
+      patients.slice(0, Math.min(5, patients.length)).forEach((patient, idx) => {
+        console.log(`Filtered patient ${idx + 1} createdAt: ${patient.createdAt}, personalDetails.createdAt: ${patient.personalDetails?.createdAt}`);
+      });
+    }
 
     // Sort medical details and treatment planning for each patient
     const sortedPatients = patients.map((patient) => {
@@ -688,11 +825,13 @@ const getFilteredPatients = async (req, res) => {
         });
       }
 
-      return patientObj;
+      return patientObj;  
     });
 
     const totalPatients = await Patient.countDocuments(query);
     const totalPages = Math.ceil(totalPatients / limit);
+
+    console.log(`Found ${patients.length} filtered patients matching the criteria`);
 
     res.status(200).json({
       success: true,

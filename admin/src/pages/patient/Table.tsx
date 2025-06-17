@@ -21,6 +21,9 @@ import {
   Settings,
   FileX,
   User,
+  LayoutGrid,
+  LayoutList,
+  LayoutIcon,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -170,6 +173,8 @@ export function PatientTable() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [doctors, setDoctors] = useState<any[]>([]);
+  const [isCompactView, setIsCompactView] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<"table" | "grid" | "list">("table");
 
   const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
   const [availableProcedures, setAvailableProcedures] = useState<string[]>([]);
@@ -942,14 +947,414 @@ export function PatientTable() {
     setIsQRCodeModalOpen(true);
   };
 
+  const renderViewModeToggle = () => (
+    <div className="flex items-center gap-1 border rounded-md overflow-hidden">
+      <Button
+        variant={viewMode === "table" ? "default" : "ghost"}
+        size="sm"
+        onClick={() => setViewMode("table")}
+        className="rounded-none border-0 h-9"
+        title="Table View"
+      >
+        <LayoutIcon className="h-4 w-4" />
+      </Button>
+      <Button
+        variant={viewMode === "list" ? "default" : "ghost"}
+        size="sm"
+        onClick={() => setViewMode("list")}
+        className="rounded-none border-0 h-9"
+        title="List View"
+      >
+        <LayoutList className="h-4 w-4" />
+      </Button>
+      <Button
+        variant={viewMode === "grid" ? "default" : "ghost"}
+        size="sm"
+        onClick={() => setViewMode("grid")}
+        className="rounded-none border-0 h-9"
+        title="Grid View"
+      >
+        <LayoutGrid className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+
+  const renderGridView = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+      {filteredPatients.map((patient, index) => (
+        <motion.div
+          key={patient._id}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, delay: index * 0.05 }}
+          className="group"
+        >
+          <Card 
+            className="h-full overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer border border-border/40 hover:border-primary/20"
+            onClick={() => {
+              setSelectedPatient(patient);
+              setIsViewDrawerOpen(true);
+            }}
+          >
+            <CardHeader className="p-4 pb-2 space-y-2">
+              <div className="flex items-start justify-between">
+                <Avatar className="h-16 w-16 border-2 border-background shadow-sm group-hover:border-primary/20">
+                  <AvatarImage
+                    src={patient.personalDetails.profilePhoto?.url}
+                    alt={patient.personalDetails.name}
+                  />
+                  <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                    {patient.personalDetails.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <Badge variant="outline" className={
+                  patient.personalDetails.gender === "Male" 
+                    ? "bg-blue-50 text-blue-700 border-blue-200" 
+                    : patient.personalDetails.gender === "Female"
+                    ? "bg-pink-50 text-pink-700 border-pink-200"
+                    : "bg-purple-50 text-purple-700 border-purple-200"
+                }>
+                  {patient.personalDetails.gender}
+                </Badge>
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold line-clamp-1">{patient.personalDetails.name}</CardTitle>
+                <CardDescription className="text-xs">ID: {patient.personalDetails.sn}</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 space-y-3">
+              <div className="space-y-1">
+                <div className="flex items-center text-sm">
+                  <Phone className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                  <span className="font-mono text-sm">{patient.personalDetails.contactNumber}</span>
+                </div>
+                {patient.personalDetails.emailAddress && (
+                  <div className="flex items-center text-sm">
+                    <Mail className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                    <span className="truncate text-sm">{patient.personalDetails.emailAddress}</span>
+                  </div>
+                )}
+                <div className="flex items-center text-sm">
+                  <Calendar className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                  <span>{patient.personalDetails.age} years</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-xs text-muted-foreground">
+                  Added: {new Date(patient.createdAt).toLocaleDateString()}
+                </span>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPatient(patient);
+                      setIsViewDrawerOpen(true);
+                    }}
+                    title="View Patient"
+                  >
+                    <View className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPatient(patient);
+                      setIsUpdateModalOpen(true);
+                    }}
+                    title="Edit Patient"
+                  >
+                    <Edit className="h-3.5 w-3.5" />
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 hover:bg-muted"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreHorizontal className="h-3.5 w-3.5" />
+                        <span className="sr-only">Open menu</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-[180px] shadow-lg border border-border/30"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => handleQRCodeClick(patient)}
+                        className="gap-2"
+                      >
+                        <QrCode className="h-4 w-4" /> QR Code
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          document
+                            .getElementById(`profile-photo-btn-${patient._id}`)
+                            ?.click();
+                        }}
+                        className="gap-2"
+                      >
+                        <UserCircle className="h-4 w-4" /> Upload Photo
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleEditPayment(patient)}
+                        className="gap-2"
+                      >
+                        <CreditCard className="h-4 w-4" /> Edit Payment
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => {
+                          document
+                            .getElementById(`prescription-btn-${patient._id}`)
+                            ?.click();
+                        }}
+                        className="gap-2"
+                      >
+                        <FilePlus className="h-4 w-4" /> Add Prescription
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      ))}
+    </div>
+  );
+
+  const renderListView = () => (
+    <div className="divide-y">
+      {filteredPatients.map((patient, index) => (
+        <motion.div
+          key={patient._id}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, delay: index * 0.03 }}
+          className="group"
+        >
+          <div 
+            className="flex flex-col md:flex-row md:items-center gap-4 p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+            onClick={() => {
+              setSelectedPatient(patient);
+              setIsViewDrawerOpen(true);
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <Avatar className="h-12 w-12 border-2 border-background shadow-sm group-hover:border-primary/20">
+                <AvatarImage
+                  src={patient.personalDetails.profilePhoto?.url}
+                  alt={patient.personalDetails.name}
+                />
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {patient.personalDetails.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="font-medium">{patient.personalDetails.name}</div>
+                <div className="text-sm text-muted-foreground flex items-center gap-1">
+                  <span>#{patient.personalDetails.sn}</span>
+                  <span>•</span>
+                  <Badge variant="outline" className={
+                    patient.personalDetails.gender === "Male" 
+                      ? "bg-blue-50 text-blue-700 border-blue-200" 
+                      : patient.personalDetails.gender === "Female"
+                      ? "bg-pink-50 text-pink-700 border-pink-200"
+                      : "bg-purple-50 text-purple-700 border-purple-200"
+                  }>
+                    {patient.personalDetails.gender}
+                  </Badge>
+                  <span>•</span>
+                  <span>{patient.personalDetails.age} years</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex flex-col md:flex-row flex-1 gap-4 md:items-center justify-between">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+                <div className="flex items-center text-sm">
+                  <Phone className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                  <span className="font-mono">{patient.personalDetails.contactNumber}</span>
+                </div>
+                {patient.personalDetails.emailAddress && (
+                  <div className="flex items-center text-sm">
+                    <Mail className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                    <span className="truncate max-w-[200px]">{patient.personalDetails.emailAddress}</span>
+                  </div>
+                )}
+                {patient.personalDetails.address && (
+                  <div className="flex items-center text-sm md:col-span-2">
+                    <MapPin className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                    <span className="truncate max-w-[300px]">{patient.personalDetails.address}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex items-center justify-end gap-2 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedPatient(patient);
+                    setIsViewDrawerOpen(true);
+                  }}
+                  title="View Patient"
+                >
+                  <View className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedPatient(patient);
+                    setIsUpdateModalOpen(true);
+                  }}
+                  title="Edit Patient"
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-violet-600 hover:bg-violet-50 hover:text-violet-700"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleQRCodeClick(patient);
+                  }}
+                  title="QR Code"
+                >
+                  <QrCode className="h-4 w-4" />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 hover:bg-muted"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                      <span className="sr-only">Open menu</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-[180px] shadow-lg border border-border/30"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        document
+                          .getElementById(`profile-photo-btn-${patient._id}`)
+                          ?.click();
+                      }}
+                      className="gap-2"
+                    >
+                      <UserCircle className="h-4 w-4" /> Upload Photo
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleEditPayment(patient)}
+                      className="gap-2"
+                    >
+                      <CreditCard className="h-4 w-4" /> Edit Payment
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        document
+                          .getElementById(`upload-docs-btn-${patient._id}`)
+                          ?.click();
+                      }}
+                      className="gap-2"
+                    >
+                      <FileUp className="h-4 w-4" /> Upload Documents
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleSendEmail(patient)}
+                      className="gap-2"
+                      disabled={!patient.personalDetails.emailAddress}
+                    >
+                      <Mail className="h-4 w-4" /> Send Email
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        document
+                          .getElementById(`prescription-btn-${patient._id}`)
+                          ?.click();
+                      }}
+                      className="gap-2"
+                    >
+                      <FilePlus className="h-4 w-4" /> Add Prescription
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+
   const renderPatientTable = () => (
     <Card className="transition-all duration-300 hover:shadow-xl border border-foreground/10 rounded-xl overflow-hidden">
       <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-4">
-        <div className="flex items-center gap-2">
-          <UserCircle className="h-6 w-6 text-primary" />
-          <CardTitle className="text-2xl font-bold tracking-tight">
-            Patient List
-          </CardTitle>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <UserCircle className="h-6 w-6 text-primary" />
+            <CardTitle className="text-md font-bold tracking-tight">
+              Patient List
+            </CardTitle>
+          </div>
+          <div className="flex items-center gap-2">
+            {renderViewModeToggle()}
+            {viewMode === "table" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCompactView(!isCompactView)}
+                className="gap-2"
+              >
+                {isCompactView ? (
+                  <>
+                    <LayoutGrid className="h-4 w-4" />
+                    <span className="hidden sm:inline">Standard View</span>
+                  </>
+                ) : (
+                  <>
+                    <LayoutList className="h-4 w-4" />
+                    <span className="hidden sm:inline">Compact View</span>
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
         <CardDescription className="text-muted-foreground">
           Manage your patients and view their details. Total: {filteredPatients.length} patients
@@ -961,394 +1366,449 @@ export function PatientTable() {
             <div className="p-6">
               <DataTableSkeleton columns={8} rows={5} />
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table className="min-w-[800px]">
-                <TableHeader className="bg-muted/50 sticky top-0 z-10">
-                  <TableRow>
-                    <TableHead className="text-sm font-semibold text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <span>#</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-sm font-semibold text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <UserCircle className="h-4 w-4" />
-                        <span>Photo</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-sm font-semibold text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <User className="h-4 w-4" />
-                        <span>Name</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-sm font-semibold text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Phone className="h-4 w-4" />
-                        <span>Contact</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-sm font-semibold text-muted-foreground hidden md:table-cell">
-                      <div className="flex items-center gap-1">
-                        <Mail className="h-4 w-4" />
-                        <span>Email</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-sm font-semibold text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>Age</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-sm font-semibold text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <span>Gender</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-sm font-semibold text-muted-foreground hidden lg:table-cell">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-4 w-4" />
-                        <span>Address</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-sm font-semibold text-muted-foreground text-right">
-                      <div className="flex items-center gap-1 justify-end">
-                        <Settings className="h-4 w-4" />
-                        <span>Actions</span>
-                      </div>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPatients.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={10}
-                        className="text-center py-10 text-muted-foreground"
-                      >
-                        <div className="flex flex-col items-center gap-2">
-                          <FileX className="h-10 w-10 text-muted-foreground/50" />
-                          <p>No patients found for the selected filters</p>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => {
-                              clearFilters();
-                              setDateFilter("all");
-                              setDateRange(undefined);
-                              fetchPatient(currentPage, itemsPerPage, searchQuery);
-                            }}
-                            className="mt-2"
-                          >
-                            Clear Filters
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    <AnimatePresence>
-                      {filteredPatients.map((patient, index) => (
-                        <motion.tr
-                          key={patient._id}
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.2, delay: index * 0.05 }}
-                          className={`group hover:bg-primary/5 transition-colors cursor-pointer ${
-                            index % 2 === 0 ? "bg-muted/30" : "bg-background"
-                          }`}
-                          onClick={() => {
-                            setSelectedPatient(patient);
-                            setIsViewDrawerOpen(true);
-                          }}
-                        >
-                          <TableCell className="font-medium py-4">
-                            {patient.personalDetails.sn}
-                          </TableCell>
-                          <TableCell>
-                            <Avatar className="h-10 w-10 border-2 border-background shadow-sm transition-all duration-200 group-hover:border-primary/20 group-hover:scale-110">
-                              <AvatarImage
-                                src={patient.personalDetails.profilePhoto?.url}
-                                alt={patient.personalDetails.name}
-                              />
-                              <AvatarFallback className="bg-primary/10 text-primary">
-                                {patient.personalDetails.name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            <div className="flex flex-col">
-                              <span className="font-semibold">{patient.personalDetails.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                Added: {new Date(patient.createdAt).toLocaleDateString()}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="font-mono text-sm">{patient.personalDetails.contactNumber}</span>
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            <span className="text-sm truncate max-w-[150px] block">
-                              {patient.personalDetails.emailAddress || "-"}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {patient.personalDetails.age}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={
-                              patient.personalDetails.gender === "Male" 
-                                ? "bg-blue-50 text-blue-700 border-blue-200" 
-                                : patient.personalDetails.gender === "Female"
-                                ? "bg-pink-50 text-pink-700 border-pink-200"
-                                : "bg-purple-50 text-purple-700 border-purple-200"
-                            }>
-                              {patient.personalDetails.gender}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            <span className="truncate max-w-[200px] block">
-                              {patient.personalDetails.address}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right p-2">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedPatient(patient);
-                                  setIsViewDrawerOpen(true);
-                                }}
-                                title="View Patient"
-                              >
-                                <View className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedPatient(patient);
-                                  setIsUpdateModalOpen(true);
-                                }}
-                                title="Edit Patient"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-violet-600 hover:bg-violet-50 hover:text-violet-700"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleQRCodeClick(patient);
-                                }}
-                                title="QR Code"
-                              >
-                                <QrCode className="h-4 w-4" />
-                              </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 hover:bg-muted"
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                    <span className="sr-only">Open menu</span>
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                  align="end"
-                                  className="w-[180px] shadow-lg border border-border/30"
-                                >
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-
-                                  <div className="hidden">
-                                    <AddPrescriptionButton
-                                      id={`prescription-btn-${patient._id}`}
-                                      patientId={patient._id}
-                                      patientName={patient.personalDetails.name}
-                                      patientData={{
-                                        contactNumber:
-                                          patient.personalDetails.contactNumber,
-                                        emailAddress:
-                                          patient.personalDetails.emailAddress,
-                                        age: patient.personalDetails.age,
-                                        gender: patient.personalDetails.gender,
-                                        address: patient.personalDetails.address,
-                                      }}
-                                      isAdmin={true}
-                                      variant="outline"
-                                      size="sm"
-                                    />
-                                    <PatientDocumentUploadButton
-                                      id={`upload-docs-btn-${patient._id}`}
-                                      patientId={patient._id}
-                                      medicalDetailId={
-                                        patient.medicalDetails?.[0]?._id || ""
-                                      }
-                                      onSuccess={() => {
-                                        fetchPatient(
-                                          currentPage,
-                                          itemsPerPage,
-                                          searchQuery
-                                        );
-                                      }}
-                                    />
-                                    <ProfilePhotoUploadButton
-                                      id={`profile-photo-btn-${patient._id}`}
-                                      patientId={patient._id}
-                                      patientName={patient.personalDetails.name}
-                                      currentPhotoUrl={
-                                        patient.personalDetails.profilePhoto?.url
-                                      }
-                                      onSuccess={() => {
-                                        fetchPatient(
-                                          currentPage,
-                                          itemsPerPage,
-                                          searchQuery
-                                        );
-                                      }}
-                                    />
-                                  </div>
-
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      document
-                                        .getElementById(
-                                          `profile-photo-btn-${patient._id}`
-                                        )
-                                        ?.click();
-                                    }}
-                                    className="gap-2"
-                                  >
-                                    <UserCircle className="h-4 w-4" /> Upload Photo
-                                  </DropdownMenuItem>
-
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditPayment(patient);
-                                    }}
-                                    className="gap-2"
-                                  >
-                                    <CreditCard className="h-4 w-4" /> Edit Payment
-                                  </DropdownMenuItem>
-
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      document
-                                        .getElementById(
-                                          `upload-docs-btn-${patient._id}`
-                                        )
-                                        ?.click();
-                                    }}
-                                    className="gap-2"
-                                  >
-                                    <FileUp className="h-4 w-4" /> Upload Documents
-                                  </DropdownMenuItem>
-
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleSendEmail(patient);
-                                    }}
-                                    className="gap-2"
-                                    disabled={!patient.personalDetails.emailAddress}
-                                  >
-                                    <Mail className="h-4 w-4" /> Send Email
-                                  </DropdownMenuItem>
-
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const phoneNumber =
-                                        patient.personalDetails.contactNumber;
-                                      if (phoneNumber) {
-                                        let formattedNumber = phoneNumber.replace(
-                                          /\s/g,
-                                          ""
-                                        );
-                                        if (!formattedNumber.startsWith("+")) {
-                                          formattedNumber = `+977${formattedNumber}`;
-                                        }
-                                        window.open(
-                                          `https://wa.me/${formattedNumber}`,
-                                          "_blank"
-                                        );
-                                      } else {
-                                        toast.error(
-                                          "No contact number available for this patient"
-                                        );
-                                      }
-                                    }}
-                                    className="gap-2"
-                                    disabled={
-                                      !patient.personalDetails.contactNumber
-                                    }
-                                  >
-                                    <MessageSquare
-                                      className="h-4 w-4 text-green-500"
-                                      fill="green"
-                                    />{" "}
-                                    WhatsApp
-                                  </DropdownMenuItem>
-
-                                  {adminDetails.role === "admin" ||
-                                    (adminDetails.role === "superadmin" && (
-                                      <DropdownMenuItem
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setPatientToDelete(patient);
-                                          setIsDeleteDialogOpen(true);
-                                        }}
-                                        className="gap-2 text-red-600 hover:text-red-700 focus:text-red-700"
-                                      >
-                                        <Trash
-                                          className="h-4 w-4"
-                                        />{" "}
-                                        Delete
-                                      </DropdownMenuItem>
-                                    ))}
-
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      document
-                                        .getElementById(
-                                          `prescription-btn-${patient._id}`
-                                        )
-                                        ?.click();
-                                    }}
-                                    className="gap-2"
-                                  >
-                                    <FilePlus className="h-4 w-4" /> Add
-                                    Prescription
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </TableCell>
-                        </motion.tr>
-                      ))}
-                    </AnimatePresence>
-                  )}
-                </TableBody>
-              </Table>
+          ) : filteredPatients.length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground">
+              <div className="flex flex-col items-center gap-2">
+                <FileX className="h-10 w-10 text-muted-foreground/50" />
+                <p>No patients found for the selected filters</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    clearFilters();
+                    setDateFilter("all");
+                    setDateRange(undefined);
+                    fetchPatient(currentPage, itemsPerPage, searchQuery);
+                  }}
+                  className="mt-2"
+                >
+                  Clear Filters
+                </Button>
+              </div>
             </div>
+          ) : (
+            <>
+              {viewMode === "table" && (
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[800px]">
+                    <TableHeader className="bg-muted/50 sticky top-0 z-10">
+                      <TableRow>
+                        <TableHead className="text-sm font-semibold text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <span>#</span>
+                          </div>
+                        </TableHead>
+                        {!isCompactView && (
+                          <TableHead className="text-sm font-semibold text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <UserCircle className="h-4 w-4" />
+                              <span>Photo</span>
+                            </div>
+                          </TableHead>
+                        )}
+                        <TableHead className="text-sm font-semibold text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <User className="h-4 w-4" />
+                            <span>Name</span>
+                          </div>
+                        </TableHead>
+                        <TableHead className="text-sm font-semibold text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-4 w-4" />
+                            <span>Contact</span>
+                          </div>
+                        </TableHead>
+                        <TableHead className="text-sm font-semibold text-muted-foreground hidden md:table-cell">
+                          <div className="flex items-center gap-1">
+                            <Mail className="h-4 w-4" />
+                            <span>Email</span>
+                          </div>
+                        </TableHead>
+                        <TableHead className="text-sm font-semibold text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            <span>Age</span>
+                          </div>
+                        </TableHead>
+                        <TableHead className="text-sm font-semibold text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <span>Gender</span>
+                          </div>
+                        </TableHead>
+                        {!isCompactView && (
+                          <TableHead className="text-sm font-semibold text-muted-foreground hidden lg:table-cell">
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-4 w-4" />
+                              <span>Address</span>
+                            </div>
+                          </TableHead>
+                        )}
+                        <TableHead className="text-sm font-semibold text-muted-foreground text-right">
+                          <div className="flex items-center gap-1 justify-end">
+                            <Settings className="h-4 w-4" />
+                            <span>Actions</span>
+                          </div>
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <AnimatePresence>
+                        {filteredPatients.map((patient, index) => (
+                          <motion.tr
+                            key={patient._id}
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2, delay: index * 0.05 }}
+                            className={`group hover:bg-primary/5 transition-colors cursor-pointer ${
+                              index % 2 === 0 ? "bg-muted/30" : "bg-background"
+                            }`}
+                            onClick={() => {
+                              setSelectedPatient(patient);
+                              setIsViewDrawerOpen(true);
+                            }}
+                          >
+                            <TableCell className={`font-medium ${isCompactView ? 'py-2' : 'py-4'}`}>
+                              {patient.personalDetails.sn}
+                            </TableCell>
+                            {!isCompactView && (
+                              <TableCell>
+                                <Avatar className="h-10 w-10 border-2 border-background shadow-sm transition-all duration-200 group-hover:border-primary/20 group-hover:scale-110">
+                                  <AvatarImage
+                                    src={patient.personalDetails.profilePhoto?.url}
+                                    alt={patient.personalDetails.name}
+                                  />
+                                  <AvatarFallback className="bg-primary/10 text-primary">
+                                    {patient.personalDetails.name
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")
+                                      .toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </TableCell>
+                            )}
+                            <TableCell className="font-medium">
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                  {isCompactView && (
+                                    <Avatar className="h-6 w-6 mr-1">
+                                      <AvatarImage
+                                        src={patient.personalDetails.profilePhoto?.url}
+                                        alt={patient.personalDetails.name}
+                                      />
+                                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                                        {patient.personalDetails.name
+                                          .split(" ")
+                                          .map((n) => n[0])
+                                          .join("")
+                                          .toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  )}
+                                  <span className="font-semibold">{patient.personalDetails.name}</span>
+                                </div>
+                                {!isCompactView && (
+                                  <span className="text-xs text-muted-foreground">
+                                    Added: {new Date(patient.createdAt).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="font-mono text-sm">{patient.personalDetails.contactNumber}</span>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              <span className="text-sm truncate max-w-[150px] block">
+                                {patient.personalDetails.emailAddress || "-"}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              {patient.personalDetails.age}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={
+                                patient.personalDetails.gender === "Male" 
+                                  ? "bg-blue-50 text-blue-700 border-blue-200" 
+                                  : patient.personalDetails.gender === "Female"
+                                  ? "bg-pink-50 text-pink-700 border-pink-200"
+                                  : "bg-purple-50 text-purple-700 border-purple-200"
+                              }>
+                                {patient.personalDetails.gender}
+                              </Badge>
+                            </TableCell>
+                            {!isCompactView && (
+                              <TableCell className="hidden lg:table-cell">
+                                <span className="truncate max-w-[200px] block">
+                                  {patient.personalDetails.address}
+                                </span>
+                              </TableCell>
+                            )}
+                            <TableCell className="text-right p-2">
+                              <div className="flex justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedPatient(patient);
+                                    setIsViewDrawerOpen(true);
+                                  }}
+                                  title="View Patient"
+                                >
+                                  <View className="h-4 w-4" />
+                                </Button>
+                                {!isCompactView && (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedPatient(patient);
+                                        setIsUpdateModalOpen(true);
+                                      }}
+                                      title="Edit Patient"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-violet-600 hover:bg-violet-50 hover:text-violet-700"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleQRCodeClick(patient);
+                                      }}
+                                      title="QR Code"
+                                    >
+                                      <QrCode className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 hover:bg-muted"
+                                    >
+                                      <MoreHorizontal className="h-4 w-4" />
+                                      <span className="sr-only">Open menu</span>
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="end"
+                                    className="w-[180px] shadow-lg border border-border/30"
+                                  >
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+
+                                    {isCompactView && (
+                                      <>
+                                        <DropdownMenuItem
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedPatient(patient);
+                                            setIsUpdateModalOpen(true);
+                                          }}
+                                          className="gap-2"
+                                        >
+                                          <Edit className="h-4 w-4" /> Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleQRCodeClick(patient);
+                                          }}
+                                          className="gap-2"
+                                        >
+                                          <QrCode className="h-4 w-4" /> QR Code
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                      </>
+                                    )}
+
+                                    <div className="hidden">
+                                      <AddPrescriptionButton
+                                        id={`prescription-btn-${patient._id}`}
+                                        patientId={patient._id}
+                                        patientName={patient.personalDetails.name}
+                                        patientData={{
+                                          contactNumber:
+                                            patient.personalDetails.contactNumber,
+                                          emailAddress:
+                                            patient.personalDetails.emailAddress,
+                                          age: patient.personalDetails.age,
+                                          gender: patient.personalDetails.gender,
+                                          address: patient.personalDetails.address,
+                                        }}
+                                        isAdmin={true}
+                                        variant="outline"
+                                        size="sm"
+                                      />
+                                      <PatientDocumentUploadButton
+                                        id={`upload-docs-btn-${patient._id}`}
+                                        patientId={patient._id}
+                                        medicalDetailId={
+                                          patient.medicalDetails?.[0]?._id || ""
+                                        }
+                                        onSuccess={() => {
+                                          fetchPatient(
+                                            currentPage,
+                                            itemsPerPage,
+                                            searchQuery
+                                          );
+                                        }}
+                                      />
+                                      <ProfilePhotoUploadButton
+                                        id={`profile-photo-btn-${patient._id}`}
+                                        patientId={patient._id}
+                                        patientName={patient.personalDetails.name}
+                                        currentPhotoUrl={
+                                          patient.personalDetails.profilePhoto?.url
+                                        }
+                                        onSuccess={() => {
+                                          fetchPatient(
+                                            currentPage,
+                                            itemsPerPage,
+                                            searchQuery
+                                          );
+                                        }}
+                                      />
+                                    </div>
+
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        document
+                                          .getElementById(
+                                            `profile-photo-btn-${patient._id}`
+                                          )
+                                          ?.click();
+                                      }}
+                                      className="gap-2"
+                                    >
+                                      <UserCircle className="h-4 w-4" /> Upload Photo
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditPayment(patient);
+                                      }}
+                                      className="gap-2"
+                                    >
+                                      <CreditCard className="h-4 w-4" /> Edit Payment
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        document
+                                          .getElementById(
+                                            `upload-docs-btn-${patient._id}`
+                                          )
+                                          ?.click();
+                                      }}
+                                      className="gap-2"
+                                    >
+                                      <FileUp className="h-4 w-4" /> Upload Documents
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSendEmail(patient);
+                                      }}
+                                      className="gap-2"
+                                      disabled={!patient.personalDetails.emailAddress}
+                                    >
+                                      <Mail className="h-4 w-4" /> Send Email
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const phoneNumber =
+                                          patient.personalDetails.contactNumber;
+                                        if (phoneNumber) {
+                                          let formattedNumber = phoneNumber.replace(
+                                            /\s/g,
+                                            ""
+                                          );
+                                          if (!formattedNumber.startsWith("+")) {
+                                            formattedNumber = `+977${formattedNumber}`;
+                                          }
+                                          window.open(
+                                            `https://wa.me/${formattedNumber}`,
+                                            "_blank"
+                                          );
+                                        } else {
+                                          toast.error(
+                                            "No contact number available for this patient"
+                                          );
+                                        }
+                                      }}
+                                      className="gap-2"
+                                      disabled={
+                                        !patient.personalDetails.contactNumber
+                                      }
+                                    >
+                                      <MessageSquare
+                                        className="h-4 w-4 text-green-500"
+                                        fill="green"
+                                      />{" "}
+                                      WhatsApp
+                                    </DropdownMenuItem>
+
+                                    {adminDetails.role === "admin" ||
+                                      (adminDetails.role === "superadmin" && (
+                                        <DropdownMenuItem
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPatientToDelete(patient);
+                                            setIsDeleteDialogOpen(true);
+                                          }}
+                                          className="gap-2 text-red-600 hover:text-red-700 focus:text-red-700"
+                                        >
+                                          <Trash
+                                            className="h-4 w-4"
+                                          />{" "}
+                                          Delete
+                                        </DropdownMenuItem>
+                                      ))}
+
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        document
+                                          .getElementById(
+                                            `prescription-btn-${patient._id}`
+                                          )
+                                          ?.click();
+                                      }}
+                                      className="gap-2"
+                                    >
+                                      <FilePlus className="h-4 w-4" /> Add
+                                      Prescription
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </TableCell>
+                          </motion.tr>
+                        ))}
+                      </AnimatePresence>
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+              {viewMode === "grid" && renderGridView()}
+              {viewMode === "list" && renderListView()}
+            </>
           )}
         </div>
 

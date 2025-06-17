@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, QrCode, User, Phone, Mail, MapPin, Calendar, Stethoscope, Receipt } from "lucide-react";
+import { Loader2, ArrowLeft, User, Phone, Mail, MapPin, Calendar, Stethoscope, Receipt } from "lucide-react";
 import { crudRequest } from "@/lib/api";
 import {
   Card,
@@ -60,17 +59,22 @@ interface PatientDetails {
   }>;
 }
 
+interface ApiResponse {
+  success: boolean;
+  data: PatientDetails;
+  message?: string;
+}
+
 export function QRScanner() {
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scannedPatient, setScannedPatient] = useState<PatientDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
 
   const fetchPatientDetails = async (patientId: string) => {
     try {
       setIsLoading(true);
-      const response = await crudRequest("GET", `/patient/get-single-patient/${patientId}`);
+      const response = await crudRequest<ApiResponse>("GET", `/patient/get-single-patient/${patientId}`);
       if (response.success) {
         setScannedPatient(response.data);
       } else {

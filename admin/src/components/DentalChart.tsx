@@ -22,8 +22,15 @@ export const procedureColors: { [key: string]: { color: string, description: str
   'L.C': { color: 'bg-blue-500', description: 'L.C' },
   "Composite Filling": { color: 'bg-teal-500', description: 'Composite Filling' },
   "Restoration": { color: 'bg-slate-500', description: 'Restoration' },
-  "UCC": { color: 'bg-green-500', description: 'UCC' },
-  "Pul Pectory": { color: 'bg-red-500', description: 'Pul Pectory' },
+  "Pulpectomy": { color: 'bg-red-500', description: 'Pulpectomy' },
+  "UCC 1": { color: 'bg-green-500', description: 'UCC 1' },
+  "UCC 2": { color: 'bg-red-500', description: 'UCC 2' },
+  "UCC 3": { color: 'bg-blue-500', description: 'UCC 3' },
+  "UCC 4": { color: 'bg-purple-500', description: 'UCC 4' },
+  "UCC 5": { color: 'bg-pink-500', description: 'UCC 5' },
+  "UCC 6": { color: 'bg-yellow-500', description: 'UCC 6' },
+  "UCC 7": { color: 'bg-orange-500', description: 'UCC 7' },
+  "UCC 8": { color: 'bg-pink-500', description: 'UCC 8' },
 };
 
 export interface ToothProps {

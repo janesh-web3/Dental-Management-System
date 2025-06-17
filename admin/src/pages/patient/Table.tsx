@@ -3,7 +3,6 @@ import {
   Mail,
   MoreHorizontal,
   Plus,
-  Search,
   Trash,
   MessageSquare,
   View,
@@ -62,7 +61,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useNavigate } from "react-router-dom";
 import PopupModal from "@/components/shared/popup-modal";
 import AddPatient from "./AddPatient";
-import { SetStateAction, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { crudRequest } from "@/lib/api";
 import {
   Pagination,
@@ -115,18 +114,15 @@ import { PatientDocumentUploadButton } from "@/components/patient/PatientDocumen
 import { ProfilePhotoUploadButton } from "@/components/patient/ProfilePhotoUploadButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { DataTableSkeleton } from "@/components/shared/data-table-skeleton";
 import {
   Drawer,
-  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
 } from "@/components/ui/drawer";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { motion, AnimatePresence } from "framer-motion";
@@ -210,6 +206,7 @@ export function PatientTable() {
     useState<Patient | null>(null);
 
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const fetchPatientDetailsForEmail = async (patientId: string) => {
     try {
@@ -439,12 +436,6 @@ export function PatientTable() {
     fetchProcedures();
   }, [currentPage, itemsPerPage]);
 
-  const [searchQuery, setSearchQuery] = useState<string>("");
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
-
   const fetchDoctors = async () => {
     try {
       const response = await crudRequest("GET", "/doctor/get-doctor");
@@ -479,14 +470,6 @@ export function PatientTable() {
     } else {
       setDateRange(undefined);
       fetchPatientsByDateFilter(filter as "all" | "today" | "week" | "month");
-    }
-  };
-
-  const handleDateRangeChange = (range: DateRange | undefined) => {
-    setDateRange(range);
-    if (range?.from && range?.to) {
-      setIsFilteringEnabled(true);
-      fetchPatientsByDateRange(range.from, range.to);
     }
   };
 

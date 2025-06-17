@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
-import { ChevronRight, Download, LineChart, PieChart, Loader2 } from "lucide-react";
+import { ChevronRight, Download, PieChart, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateRangeFilter } from "@/components/finance/DateRangeFilter";
 import { FinancialSummaryCards } from "@/components/finance/FinancialSummaryCards";
 import { getFinancialSummary } from "@/lib/api";
-import { Income, Expense, FinancialSummary } from "@/types/finance";
+import { FinancialSummary } from "@/types/finance";
 import { Link } from "react-router-dom";
 
 export default function FinancialSummaryPage() {
@@ -46,7 +46,12 @@ export default function FinancialSummaryPage() {
         endDate = format(dateRange.to, "yyyy-MM-dd");
       }
 
-      const response = await getFinancialSummary(
+      interface ApiResponse {
+        success: boolean;
+        data: FinancialSummary;
+      }
+
+      const response = await getFinancialSummary<ApiResponse>(
         dateFilter === "custom" ? "all" : dateFilter,
         startDate,
         endDate

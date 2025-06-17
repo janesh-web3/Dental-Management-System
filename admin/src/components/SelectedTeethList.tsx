@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "./ui/card";
 import { format } from "date-fns";
 import { procedureColors } from "./DentalChart";
@@ -15,6 +15,8 @@ import { Label } from "./ui/label";
 import { Doctor } from "@/types/doctor";
 import { toast } from "react-toastify";
 import { Textarea } from "./ui/textarea";
+import { Check, ChevronsUpDown, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface SelectedTeethListProps {
   selectedTeeth: { [key: string]: ToothData };
@@ -30,6 +32,98 @@ const SelectedTeethList: React.FC<SelectedTeethListProps> = ({
   onDailyTreatmentAdd,
   doctors,
 }) => {
+  // Create a simpler dropdown for procedure selection
+  const ProcedureDropdown = ({ 
+    currentProcedure, 
+    onSelect 
+  }: { 
+    currentProcedure: string | undefined; 
+    onSelect: (procedure: string) => void;
+  }) => {
+    // Local state for search and dropdown
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isOpen, setIsOpen] = useState(false);
+    
+    // Get all procedures safely
+    const allProcedures = procedureColors ? Object.entries(procedureColors) : [];
+    
+    // Filter procedures based on search query
+    const filteredProcedures = allProcedures.filter(([proc]) => 
+      proc.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Handle selection
+    const handleSelect = (proc: string) => {
+      onSelect(proc);
+      setIsOpen(false);
+      setSearchQuery("");
+    };
+
+    // Reset search when dropdown closes
+    useEffect(() => {
+      if (!isOpen) {
+        setSearchQuery("");
+      }
+    }, [isOpen]);
+
+    return (
+      <div className="relative">
+        {/* Button to open dropdown */}
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex h-8 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        >
+          <span className="truncate">{currentProcedure || "Select procedure"}</span>
+          <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+        </button>
+
+        {/* Dropdown */}
+        {isOpen && (
+          <div className="absolute z-50 mt-1 w-full rounded-md border border-input bg-popover shadow-md">
+            {/* Search input */}
+            <div className="flex items-center border-b p-2">
+              <Search className="mr-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+              <input
+                type="text"
+                placeholder="Search procedures..."
+                className="h-7 w-full bg-transparent text-xs outline-none"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            {/* Procedure list */}
+            <div className="max-h-[200px] overflow-y-auto p-1">
+              {filteredProcedures.length > 0 ? (
+                filteredProcedures.map(([proc, { color }]) => (
+                  <div
+                    key={proc}
+                    className={cn(
+                      "flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-xs hover:bg-accent",
+                      currentProcedure === proc ? "bg-accent text-accent-foreground" : ""
+                    )}
+                    onClick={() => handleSelect(proc)}
+                  >
+                    <div className={`mr-2 h-2 w-2 rounded-full ${color}`} />
+                    <span>{proc}</span>
+                    {currentProcedure === proc && (
+                      <Check className="ml-auto h-3 w-3" />
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="py-2 text-center text-xs text-muted-foreground">
+                  No procedures found
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-1">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -48,26 +142,10 @@ const SelectedTeethList: React.FC<SelectedTeethListProps> = ({
 
               {/* Procedure and Doctor Selection */}
               <div className="grid grid-cols-2 gap-1">
-                <Select
-                  value={data.procedure}
-                  onValueChange={(value) => onProcedureChange(number, value)}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Select procedure" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(procedureColors).map(
-                      ([proc, { color }]) => (
-                        <SelectItem key={proc} value={proc} className="text-xs">
-                          <div className="flex items-center gap-1">
-                            <div className={`w-2 h-2 rounded-full ${color}`} />
-                            <span>{proc}</span>
-                          </div>
-                        </SelectItem>
-                      )
-                    )}
-                  </SelectContent>
-                </Select>
+                <ProcedureDropdown
+                  currentProcedure={data.procedure}
+                  onSelect={(procedure) => onProcedureChange(number, procedure)}
+                />
                 <Select
                   value={
                     data.dailyTreatments?.[data.dailyTreatments?.length - 1]

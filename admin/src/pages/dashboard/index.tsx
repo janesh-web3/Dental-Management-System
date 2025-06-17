@@ -5,7 +5,6 @@ import { format } from "date-fns";
 import {
   Users,
   Calendar,
-  IndianRupee,
   User,
   FileText,
   Stethoscope,

@@ -139,15 +139,15 @@ export const deleteExpense = async (id: string) => {
 };
 
 // Financial Summary API
-export const getFinancialSummary = async (
+export const getFinancialSummary = async <T>(
   dateFilter = "all",
   startDate = "",
   endDate = ""
-) => {
+): Promise<T> => {
   let url = `/finance/summary`;
   
   if (dateFilter && dateFilter !== "all") url += `?dateFilter=${dateFilter}`;
   else if (startDate && endDate) url += `?startDate=${startDate}&endDate=${endDate}`;
   
-  return await crudRequest("GET", url);
+  return await crudRequest<T>("GET", url);
 };

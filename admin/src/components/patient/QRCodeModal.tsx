@@ -28,7 +28,10 @@ export function QRCodeModal({ isOpen, onClose, patient }: QRCodeModalProps) {
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
+    documentTitle: `QR Code - ${patient.personalDetails.name}`,
+    onPrintError: (error) => console.error("Print failed:", error),
+    onAfterPrint: () => console.log("Printing completed"),
+    contentRef: printRef,
   });
 
   const qrValue = `${window.location.origin}/patient/${patient._id}`;

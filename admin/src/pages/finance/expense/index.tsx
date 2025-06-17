@@ -38,6 +38,15 @@ import { DateRangeFilter } from "@/components/finance/DateRangeFilter";
 import { getExpenses, createExpense, updateExpense, deleteExpense } from "@/lib/api";
 import { Expense } from "@/types/finance";
 
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  meta?: {
+    totalPages: number;
+    totalAmount: number;
+  };
+}
+
 export default function ExpensePage() {
   const { toast } = useToast();
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -75,9 +84,11 @@ export default function ExpensePage() {
       );
 
       if (response.success) {
-        setExpenses(response.data);
-        setTotalPages(response.meta.totalPages);
-        setTotalExpense(response.meta.totalAmount);
+        const typedResponse = response as ApiResponse<Expense[]>;
+        
+        setExpenses(typedResponse.data);
+        setTotalPages(typedResponse.meta?.totalPages || 1);
+        setTotalExpense(typedResponse.meta?.totalAmount || 0);
       }
     } catch (error) {
       console.error("Error fetching expenses:", error);
@@ -114,11 +125,11 @@ export default function ExpensePage() {
       const response = await createExpense({
         ...data,
         date: format(data.date, "yyyy-MM-dd"),
-      });
+      }) as ApiResponse<Expense>;
 
       if (response.success) {
         toast({
-          title: "Success",
+          title: "Success", 
           description: "Expense added successfully",
         });
         fetchExpenses();
@@ -144,7 +155,7 @@ export default function ExpensePage() {
       const response = await updateExpense(selectedExpense._id, {
         ...data,
         date: format(data.date, "yyyy-MM-dd"),
-      });
+      }) as ApiResponse<Expense>;
 
       if (response.success) {
         toast({
@@ -172,7 +183,7 @@ export default function ExpensePage() {
 
     setIsSubmitting(true);
     try {
-      const response = await deleteExpense(selectedExpense._id);
+      const response = await deleteExpense(selectedExpense._id) as ApiResponse<Expense>;
 
       if (response.success) {
         toast({

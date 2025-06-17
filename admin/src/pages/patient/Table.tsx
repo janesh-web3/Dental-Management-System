@@ -15,6 +15,12 @@ import {
   UserCircle,
   FileSpreadsheet,
   Calendar,
+  QrCode,
+  Phone,
+  MapPin,
+  Settings,
+  FileX,
+  User,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -50,7 +56,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import PopupModal from "@/components/shared/popup-modal";
 import AddPatient from "./AddPatient";
 import { SetStateAction, useEffect, useState } from "react";
@@ -75,7 +81,7 @@ import Loading from "@/pages/not-found/loading";
 import ViewPatientDrawer from "@/components/patient/ViewPatientDrawer";
 import UpdatePatientModal from "@/components/patient/UpdatePatientModal";
 import DeletePatientDialog from "@/components/patient/DeletePatientDialog";
-import type { Patient} from "@/types/patient";
+import type { Patient } from "@/types/patient";
 import { useAdminContext } from "@/contexts/adminContext";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -121,6 +127,7 @@ import {
 } from "@/components/ui/drawer";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { motion, AnimatePresence } from "framer-motion";
+import { QRCodeModal } from "@/components/patient/QRCodeModal";
 
 interface ProcedureResponse {
   success: boolean;
@@ -185,12 +192,19 @@ export function PatientTable() {
   const { adminDetails } = useAdminContext();
 
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-  const [selectedColumns, setSelectedColumns] = useState<ColumnConfig[]>(defaultColumns);
+  const [selectedColumns, setSelectedColumns] =
+    useState<ColumnConfig[]>(defaultColumns);
 
   const [dateFilter, setDateFilter] = useState<DateFilterType>("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [isDateRangePickerOpen, setIsDateRangePickerOpen] = useState(false);
   const [isTableLoading, setIsTableLoading] = useState(false);
+
+  const [isQRCodeModalOpen, setIsQRCodeModalOpen] = useState(false);
+  const [selectedPatientForQR, setSelectedPatientForQR] =
+    useState<Patient | null>(null);
+
+  const navigate = useNavigate();
 
   const fetchPatientDetailsForEmail = async (patientId: string) => {
     try {
@@ -454,7 +468,7 @@ export function PatientTable() {
   const handleDateFilterChange = (filter: DateFilterType) => {
     setDateFilter(filter);
     setIsFilteringEnabled(true);
-    
+
     if (filter === "custom") {
       setIsDateRangePickerOpen(true);
     } else {
@@ -471,7 +485,9 @@ export function PatientTable() {
     }
   };
 
-  const fetchPatientsByDateFilter = async (filter: "all" | "today" | "week" | "month") => {
+  const fetchPatientsByDateFilter = async (
+    filter: "all" | "today" | "week" | "month"
+  ) => {
     setIsTableLoading(true);
     try {
       let endpoint = "/patient/get-pagination-patient";
@@ -481,7 +497,7 @@ export function PatientTable() {
         queryParams += `&doctorId=${selectedDoctor}`;
         endpoint = "/patient/get-filtered-patients";
       }
-      
+
       if (selectedProcedures.length > 0) {
         queryParams += `&procedures=${selectedProcedures.join(",")}`;
         endpoint = "/patient/get-filtered-patients";
@@ -492,9 +508,11 @@ export function PatientTable() {
 
       const response: { patients: Patient[]; totalPages: number } =
         await crudRequest("GET", `${endpoint}${queryParams}`);
-      
+
       if (response && Array.isArray(response.patients)) {
-        console.log(`Received ${response.patients.length} patients from server`);
+        console.log(
+          `Received ${response.patients.length} patients from server`
+        );
         setPatient(response.patients);
         setFilteredPatients(response.patients);
         setTotalPages(response.totalPages);
@@ -519,20 +537,24 @@ export function PatientTable() {
         queryParams += `&doctorId=${selectedDoctor}`;
         endpoint = "/patient/get-filtered-patients";
       }
-      
+
       if (selectedProcedures.length > 0) {
         queryParams += `&procedures=${selectedProcedures.join(",")}`;
         endpoint = "/patient/get-filtered-patients";
       }
 
-      console.log(`Fetching patients with custom date range: ${from.toLocaleDateString()} to ${to.toLocaleDateString()}`);
+      console.log(
+        `Fetching patients with custom date range: ${from.toLocaleDateString()} to ${to.toLocaleDateString()}`
+      );
       console.log(`Endpoint: ${endpoint}${queryParams}`);
 
       const response: { patients: Patient[]; totalPages: number } =
         await crudRequest("GET", `${endpoint}${queryParams}`);
-      
+
       if (response && Array.isArray(response.patients)) {
-        console.log(`Received ${response.patients.length} patients from server`);
+        console.log(
+          `Received ${response.patients.length} patients from server`
+        );
         setPatient(response.patients);
         setFilteredPatients(response.patients);
         setTotalPages(response.totalPages);
@@ -561,7 +583,7 @@ export function PatientTable() {
 
       if (dateFilter !== "all") {
         queryParams += `&dateFilter=${dateFilter}`;
-        
+
         if (dateFilter === "custom" && dateRange?.from && dateRange?.to) {
           queryParams += `&startDate=${dateRange.from.toISOString()}&endDate=${dateRange.to.toISOString()}`;
         }
@@ -585,7 +607,9 @@ export function PatientTable() {
       const response: { patients: Patient[]; totalPages: number } =
         await crudRequest("GET", `${endpoint}${queryParams}`);
       if (response && Array.isArray(response.patients)) {
-        console.log(`Received ${response.patients.length} patients from server`);
+        console.log(
+          `Received ${response.patients.length} patients from server`
+        );
         setPatient(response.patients);
         setFilteredPatients(response.patients);
         setTotalPages(response.totalPages);
@@ -610,7 +634,7 @@ export function PatientTable() {
     selectedDoctor,
     selectedProcedures,
     dateFilter,
-    dateRange
+    dateRange,
   ]);
 
   useEffect(() => {
@@ -655,8 +679,8 @@ export function PatientTable() {
   };
 
   const handleColumnToggle = (columnId: string) => {
-    setSelectedColumns(prev =>
-      prev.map(col =>
+    setSelectedColumns((prev) =>
+      prev.map((col) =>
         col.id === columnId ? { ...col, enabled: !col.enabled } : col
       )
     );
@@ -666,27 +690,41 @@ export function PatientTable() {
     const workbook = XLSX.utils.book_new();
 
     const patientData = filteredPatients.map((patient) => {
-      let treatmentDetails = '';
-      let selectedTeethDetails = '';
+      let treatmentDetails = "";
+      let selectedTeethDetails = "";
       let totalAmount = 0;
       let totalPaidAmount = 0;
       let totalRemainingAmount = 0;
 
       if (patient.medicalDetails && patient.medicalDetails.length > 0) {
         patient.medicalDetails.forEach((medicalDetail) => {
-          if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
+          if (
+            medicalDetail.treatmentPlanning &&
+            medicalDetail.treatmentPlanning.length > 0
+          ) {
             medicalDetail.treatmentPlanning.forEach((plan, planIndex) => {
               treatmentDetails += `Treatment Plan ${planIndex + 1}:\n`;
-              treatmentDetails += `Date: ${plan.treatmentDate ? new Date(plan.treatmentDate).toLocaleDateString() : 'N/A'}\n`;
-              treatmentDetails += `Details: ${plan.treatmentDetails || 'N/A'}\n\n`;
+              treatmentDetails += `Date: ${plan.treatmentDate ? new Date(plan.treatmentDate).toLocaleDateString() : "N/A"}\n`;
+              treatmentDetails += `Details: ${plan.treatmentDetails || "N/A"}\n\n`;
 
-              if (plan.selectedTeethDetails && plan.selectedTeethDetails.length > 0) {
+              if (
+                plan.selectedTeethDetails &&
+                plan.selectedTeethDetails.length > 0
+              ) {
                 plan.selectedTeethDetails.forEach((tooth) => {
-                  if (tooth.dailyTreatments && tooth.dailyTreatments.length > 0) {
-                    const toothTotal = tooth.dailyTreatments.reduce((sum, treatment) => 
-                      sum + (treatment.treatmentAmount || 0), 0);
-                    const toothPaid = tooth.dailyTreatments.reduce((sum, treatment) => 
-                      sum + (treatment.paidAmount || 0), 0);
+                  if (
+                    tooth.dailyTreatments &&
+                    tooth.dailyTreatments.length > 0
+                  ) {
+                    const toothTotal = tooth.dailyTreatments.reduce(
+                      (sum, treatment) =>
+                        sum + (treatment.treatmentAmount || 0),
+                      0
+                    );
+                    const toothPaid = tooth.dailyTreatments.reduce(
+                      (sum, treatment) => sum + (treatment.paidAmount || 0),
+                      0
+                    );
                     const toothRemaining = toothTotal - toothPaid;
 
                     totalAmount += toothTotal;
@@ -694,8 +732,8 @@ export function PatientTable() {
                     totalRemainingAmount += toothRemaining;
 
                     selectedTeethDetails += `Tooth ${tooth.number}:\n`;
-                    selectedTeethDetails += `Procedure: ${tooth.procedure || 'N/A'}\n`;
-                    selectedTeethDetails += `Position: ${tooth.position || 'N/A'}\n`;
+                    selectedTeethDetails += `Procedure: ${tooth.procedure || "N/A"}\n`;
+                    selectedTeethDetails += `Position: ${tooth.position || "N/A"}\n`;
                     selectedTeethDetails += `Total: ₹${toothTotal}\n`;
                     selectedTeethDetails += `Paid: ₹${toothPaid}\n`;
                     selectedTeethDetails += `Remaining: ₹${toothRemaining}\n\n`;
@@ -712,7 +750,7 @@ export function PatientTable() {
                       if (treatment.notes) {
                         selectedTeethDetails += `     Notes: ${treatment.notes}\n`;
                       }
-                      selectedTeethDetails += `     Status: ${treatment.isCompleted ? 'Completed' : 'In Progress'}\n\n`;
+                      selectedTeethDetails += `     Status: ${treatment.isCompleted ? "Completed" : "In Progress"}\n\n`;
                     });
                   }
                 });
@@ -740,7 +778,7 @@ export function PatientTable() {
       };
 
       const filteredData: Record<string, any> = {};
-      selectedColumns.forEach(col => {
+      selectedColumns.forEach((col) => {
         if (col.enabled) {
           filteredData[col.label] = data[col.id];
         }
@@ -819,16 +857,24 @@ export function PatientTable() {
                 <DropdownMenuItem onClick={() => handleDateFilterChange("all")}>
                   All Time
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleDateFilterChange("today")}>
+                <DropdownMenuItem
+                  onClick={() => handleDateFilterChange("today")}
+                >
                   Today
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleDateFilterChange("week")}>
+                <DropdownMenuItem
+                  onClick={() => handleDateFilterChange("week")}
+                >
                   This Week
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleDateFilterChange("month")}>
+                <DropdownMenuItem
+                  onClick={() => handleDateFilterChange("month")}
+                >
                   This Month
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleDateFilterChange("custom")}>
+                <DropdownMenuItem
+                  onClick={() => handleDateFilterChange("custom")}
+                >
                   Custom Range
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -856,7 +902,10 @@ export function PatientTable() {
   };
 
   const renderDateRangePicker = () => (
-    <Drawer open={isDateRangePickerOpen} onOpenChange={setIsDateRangePickerOpen}>
+    <Drawer
+      open={isDateRangePickerOpen}
+      onOpenChange={setIsDateRangePickerOpen}
+    >
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>Select Date Range</DrawerTitle>
@@ -877,7 +926,7 @@ export function PatientTable() {
           />
         </div>
         <DrawerFooter>
-          <Button 
+          <Button
             onClick={() => setIsDateRangePickerOpen(false)}
             variant="outline"
           >
@@ -888,335 +937,422 @@ export function PatientTable() {
     </Drawer>
   );
 
+  const handleQRCodeClick = (patient: Patient) => {
+    setSelectedPatientForQR(patient);
+    setIsQRCodeModalOpen(true);
+  };
+
   const renderPatientTable = () => (
-    <Card className=" transition-all duration-200 hover:shadow-lg border-2 border-foreground/10">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold tracking-tight">
-          Patients
-        </CardTitle>
+    <Card className="transition-all duration-300 hover:shadow-xl border border-foreground/10 rounded-xl overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-4">
+        <div className="flex items-center gap-2">
+          <UserCircle className="h-6 w-6 text-primary" />
+          <CardTitle className="text-2xl font-bold tracking-tight">
+            Patient List
+          </CardTitle>
+        </div>
         <CardDescription className="text-muted-foreground">
-          Manage your patients and view their details.
+          Manage your patients and view their details. Total: {filteredPatients.length} patients
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="w-full rounded-md border">
+      <CardContent className="p-0">
+        <div className="w-full rounded-md overflow-hidden">
           {isTableLoading ? (
-            <div className="p-4">
+            <div className="p-6">
               <DataTableSkeleton columns={8} rows={5} />
             </div>
           ) : (
-            <Table className="min-w-[800px]">
-              <TableHeader className="bg-muted/50 sticky top-0 z-10">
-                <TableRow>
-                  <TableHead className="font-semibold">S.N</TableHead>
-                  <TableHead className="font-semibold">Photo</TableHead>
-                  <TableHead className="font-semibold">Name</TableHead>
-                  <TableHead className="font-semibold">Contact</TableHead>
-                  <TableHead className="font-semibold">Email</TableHead>
-                  <TableHead className="font-semibold">Age</TableHead>
-                  <TableHead className="font-semibold">Gender</TableHead>
-                  <TableHead className="font-semibold">Address</TableHead>
-                  <TableHead className="font-semibold text-right">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPatients.length === 0 ? (
+            <div className="overflow-x-auto">
+              <Table className="min-w-[800px]">
+                <TableHeader className="bg-muted/50 sticky top-0 z-10">
                   <TableRow>
-                    <TableCell
-                      colSpan={10}
-                      className="text-center py-8 text-muted-foreground"
-                    >
-                      No patients found for the selected date range
-                    </TableCell>
+                    <TableHead className="text-sm font-semibold text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <span>#</span>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-sm font-semibold text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <UserCircle className="h-4 w-4" />
+                        <span>Photo</span>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-sm font-semibold text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <User className="h-4 w-4" />
+                        <span>Name</span>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-sm font-semibold text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Phone className="h-4 w-4" />
+                        <span>Contact</span>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-sm font-semibold text-muted-foreground hidden md:table-cell">
+                      <div className="flex items-center gap-1">
+                        <Mail className="h-4 w-4" />
+                        <span>Email</span>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-sm font-semibold text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        <span>Age</span>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-sm font-semibold text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <span>Gender</span>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-sm font-semibold text-muted-foreground hidden lg:table-cell">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        <span>Address</span>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-sm font-semibold text-muted-foreground text-right">
+                      <div className="flex items-center gap-1 justify-end">
+                        <Settings className="h-4 w-4" />
+                        <span>Actions</span>
+                      </div>
+                    </TableHead>
                   </TableRow>
-                ) : (
-                  filteredPatients.map((patient, index) => (
-                    <TableRow
-                      key={index}
-                      className="hover:bg-muted/50 transition-colors cursor-pointer"
-                    >
+                </TableHeader>
+                <TableBody>
+                  {filteredPatients.length === 0 ? (
+                    <TableRow>
                       <TableCell
-                        className="font-medium"
-                        onClick={() => {
-                          setSelectedPatient(patient);
-                          setIsUpdateModalOpen(true);
-                        }}
+                        colSpan={10}
+                        className="text-center py-10 text-muted-foreground"
                       >
-                        {patient.personalDetails.sn}
-                      </TableCell>
-                      <TableCell
-                        onClick={() => {
-                          setSelectedPatient(patient);
-                          setIsUpdateModalOpen(true);
-                        }}
-                      >
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage 
-                            src={patient.personalDetails.profilePhoto?.url} 
-                            alt={patient.personalDetails.name} 
-                          />
-                          <AvatarFallback>
-                            {patient.personalDetails.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                      </TableCell>
-                      <TableCell
-                        className="font-medium"
-                        onClick={() => {
-                          setSelectedPatient(patient);
-                          setIsUpdateModalOpen(true);
-                        }}
-                      >
-                        {patient.personalDetails.name}
-                      </TableCell>
-                      <TableCell
-                        onClick={() => {
-                          setSelectedPatient(patient);
-                          setIsUpdateModalOpen(true);
-                        }}
-                      >
-                        {patient.personalDetails.contactNumber}
-                      </TableCell>
-                      <TableCell
-                        onClick={() => {
-                          setSelectedPatient(patient);
-                          setIsUpdateModalOpen(true);
-                        }}
-                      >
-                        {patient.personalDetails.emailAddress}
-                      </TableCell>
-                      <TableCell
-                        onClick={() => {
-                          setSelectedPatient(patient);
-                          setIsUpdateModalOpen(true);
-                        }}
-                      >
-                        {patient.personalDetails.age}
-                      </TableCell>
-                      <TableCell
-                        onClick={() => {
-                          setSelectedPatient(patient);
-                          setIsUpdateModalOpen(true);
-                        }}
-                      >
-                        {patient.personalDetails.gender}
-                      </TableCell>
-                      <TableCell
-                        onClick={() => {
-                          setSelectedPatient(patient);
-                          setIsUpdateModalOpen(true);
-                        }}
-                      >
-                        {patient.personalDetails.address}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="hidden">
-                          <AddPrescriptionButton
-                            id={`prescription-btn-${patient._id}`}
-                            patientId={patient._id}
-                            patientName={patient.personalDetails.name}
-                            patientData={{
-                              contactNumber:
-                                patient.personalDetails.contactNumber,
-                              emailAddress: patient.personalDetails.emailAddress,
-                              age: patient.personalDetails.age,
-                              gender: patient.personalDetails.gender,
-                              address: patient.personalDetails.address,
+                        <div className="flex flex-col items-center gap-2">
+                          <FileX className="h-10 w-10 text-muted-foreground/50" />
+                          <p>No patients found for the selected filters</p>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => {
+                              clearFilters();
+                              setDateFilter("all");
+                              setDateRange(undefined);
+                              fetchPatient(currentPage, itemsPerPage, searchQuery);
                             }}
-                            isAdmin={true}
-                            variant="outline"
-                            size="sm"
-                          />
-                          <PatientDocumentUploadButton
-                            id={`upload-docs-btn-${patient._id}`}
-                            patientId={patient._id}
-                            medicalDetailId={
-                              patient.medicalDetails?.[0]?._id || ""
-                            }
-                            onSuccess={() => {
-                              fetchPatient(
-                                currentPage,
-                                itemsPerPage,
-                                searchQuery
-                              );
-                            }}
-                          />
-                          <ProfilePhotoUploadButton
-                            id={`profile-photo-btn-${patient._id}`}
-                            patientId={patient._id}
-                            patientName={patient.personalDetails.name}
-                            currentPhotoUrl={patient.personalDetails.profilePhoto?.url}
-                            onSuccess={() => {
-                              fetchPatient(
-                                currentPage,
-                                itemsPerPage,
-                                searchQuery
-                              );
-                            }}
-                          />
+                            className="mt-2"
+                          >
+                            Clear Filters
+                          </Button>
                         </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              className="h-8 w-8 p-0 hover:bg-muted"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Open menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-[160px]">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedPatient(patient);
-                                setIsViewDrawerOpen(true);
-                              }}
-                              className="gap-2"
-                            >
-                              <View className="h-4 w-4" /> View
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedPatient(patient);
-                                setIsUpdateModalOpen(true);
-                              }}
-                              className="gap-2"
-                            >
-                              <Edit className="h-4 w-4" /> Edit
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                document
-                                  .getElementById(
-                                    `profile-photo-btn-${patient._id}`
-                                  )
-                                  ?.click();
-                              }}
-                              className="gap-2"
-                            >
-                              <UserCircle className="h-4 w-4" /> Upload Photo
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditPayment(patient);
-                              }}
-                              className="gap-2"
-                            >
-                              <CreditCard className="h-4 w-4" /> Edit Payment
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                document
-                                  .getElementById(
-                                    `upload-docs-btn-${patient._id}`
-                                  )
-                                  ?.click();
-                              }}
-                              className="gap-2"
-                            >
-                              <FileUp className="h-4 w-4" /> Upload Documents
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSendEmail(patient);
-                              }}
-                              className="gap-2"
-                              disabled={!patient.personalDetails.emailAddress}
-                            >
-                              <Mail className="h-4 w-4" /> Send Email
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const phoneNumber =
-                                  patient.personalDetails.contactNumber;
-                                if (phoneNumber) {
-                                  let formattedNumber = phoneNumber.replace(
-                                    /\s/g,
-                                    ""
-                                  );
-                                  if (!formattedNumber.startsWith("+")) {
-                                    formattedNumber = `+977${formattedNumber}`;
-                                  }
-                                  window.open(
-                                    `https://wa.me/${formattedNumber}`,
-                                    "_blank"
-                                  );
-                                } else {
-                                  toast.error(
-                                    "No contact number available for this patient"
-                                  );
-                                }
-                              }}
-                              className="gap-2"
-                              disabled={!patient.personalDetails.contactNumber}
-                            >
-                              <MessageSquare
-                                className="h-4 w-4 text-green-500"
-                                fill="green"
-                              />{" "}
-                              WhatsApp
-                            </DropdownMenuItem>
-
-                            {adminDetails.role === "admin" || adminDetails.role === "superadmin" && (
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPatientToDelete(patient);
-                                  setIsDeleteDialogOpen(true);
-                                }}
-                                className="gap-2 "
-                              >
-                                <Trash className="h-4 w-4 text-destructive focus:text-destructive" fill="red" /> Delete
-                              </DropdownMenuItem>
-                            )}
-
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                document
-                                  .getElementById(
-                                    `prescription-btn-${patient._id}`
-                                  )
-                                  ?.click();
-                              }}
-                              className="gap-2"
-                            >
-                              <FilePlus className="h-4 w-4" /> Add Prescription
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    <AnimatePresence>
+                      {filteredPatients.map((patient, index) => (
+                        <motion.tr
+                          key={patient._id}
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.2, delay: index * 0.05 }}
+                          className={`group hover:bg-primary/5 transition-colors cursor-pointer ${
+                            index % 2 === 0 ? "bg-muted/30" : "bg-background"
+                          }`}
+                          onClick={() => {
+                            setSelectedPatient(patient);
+                            setIsViewDrawerOpen(true);
+                          }}
+                        >
+                          <TableCell className="font-medium py-4">
+                            {patient.personalDetails.sn}
+                          </TableCell>
+                          <TableCell>
+                            <Avatar className="h-10 w-10 border-2 border-background shadow-sm transition-all duration-200 group-hover:border-primary/20 group-hover:scale-110">
+                              <AvatarImage
+                                src={patient.personalDetails.profilePhoto?.url}
+                                alt={patient.personalDetails.name}
+                              />
+                              <AvatarFallback className="bg-primary/10 text-primary">
+                                {patient.personalDetails.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex flex-col">
+                              <span className="font-semibold">{patient.personalDetails.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                Added: {new Date(patient.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-mono text-sm">{patient.personalDetails.contactNumber}</span>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            <span className="text-sm truncate max-w-[150px] block">
+                              {patient.personalDetails.emailAddress || "-"}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {patient.personalDetails.age}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={
+                              patient.personalDetails.gender === "Male" 
+                                ? "bg-blue-50 text-blue-700 border-blue-200" 
+                                : patient.personalDetails.gender === "Female"
+                                ? "bg-pink-50 text-pink-700 border-pink-200"
+                                : "bg-purple-50 text-purple-700 border-purple-200"
+                            }>
+                              {patient.personalDetails.gender}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <span className="truncate max-w-[200px] block">
+                              {patient.personalDetails.address}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right p-2">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedPatient(patient);
+                                  setIsViewDrawerOpen(true);
+                                }}
+                                title="View Patient"
+                              >
+                                <View className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedPatient(patient);
+                                  setIsUpdateModalOpen(true);
+                                }}
+                                title="Edit Patient"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-violet-600 hover:bg-violet-50 hover:text-violet-700"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleQRCodeClick(patient);
+                                }}
+                                title="QR Code"
+                              >
+                                <QrCode className="h-4 w-4" />
+                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 hover:bg-muted"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">Open menu</span>
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align="end"
+                                  className="w-[180px] shadow-lg border border-border/30"
+                                >
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+
+                                  <div className="hidden">
+                                    <AddPrescriptionButton
+                                      id={`prescription-btn-${patient._id}`}
+                                      patientId={patient._id}
+                                      patientName={patient.personalDetails.name}
+                                      patientData={{
+                                        contactNumber:
+                                          patient.personalDetails.contactNumber,
+                                        emailAddress:
+                                          patient.personalDetails.emailAddress,
+                                        age: patient.personalDetails.age,
+                                        gender: patient.personalDetails.gender,
+                                        address: patient.personalDetails.address,
+                                      }}
+                                      isAdmin={true}
+                                      variant="outline"
+                                      size="sm"
+                                    />
+                                    <PatientDocumentUploadButton
+                                      id={`upload-docs-btn-${patient._id}`}
+                                      patientId={patient._id}
+                                      medicalDetailId={
+                                        patient.medicalDetails?.[0]?._id || ""
+                                      }
+                                      onSuccess={() => {
+                                        fetchPatient(
+                                          currentPage,
+                                          itemsPerPage,
+                                          searchQuery
+                                        );
+                                      }}
+                                    />
+                                    <ProfilePhotoUploadButton
+                                      id={`profile-photo-btn-${patient._id}`}
+                                      patientId={patient._id}
+                                      patientName={patient.personalDetails.name}
+                                      currentPhotoUrl={
+                                        patient.personalDetails.profilePhoto?.url
+                                      }
+                                      onSuccess={() => {
+                                        fetchPatient(
+                                          currentPage,
+                                          itemsPerPage,
+                                          searchQuery
+                                        );
+                                      }}
+                                    />
+                                  </div>
+
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      document
+                                        .getElementById(
+                                          `profile-photo-btn-${patient._id}`
+                                        )
+                                        ?.click();
+                                    }}
+                                    className="gap-2"
+                                  >
+                                    <UserCircle className="h-4 w-4" /> Upload Photo
+                                  </DropdownMenuItem>
+
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditPayment(patient);
+                                    }}
+                                    className="gap-2"
+                                  >
+                                    <CreditCard className="h-4 w-4" /> Edit Payment
+                                  </DropdownMenuItem>
+
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      document
+                                        .getElementById(
+                                          `upload-docs-btn-${patient._id}`
+                                        )
+                                        ?.click();
+                                    }}
+                                    className="gap-2"
+                                  >
+                                    <FileUp className="h-4 w-4" /> Upload Documents
+                                  </DropdownMenuItem>
+
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSendEmail(patient);
+                                    }}
+                                    className="gap-2"
+                                    disabled={!patient.personalDetails.emailAddress}
+                                  >
+                                    <Mail className="h-4 w-4" /> Send Email
+                                  </DropdownMenuItem>
+
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const phoneNumber =
+                                        patient.personalDetails.contactNumber;
+                                      if (phoneNumber) {
+                                        let formattedNumber = phoneNumber.replace(
+                                          /\s/g,
+                                          ""
+                                        );
+                                        if (!formattedNumber.startsWith("+")) {
+                                          formattedNumber = `+977${formattedNumber}`;
+                                        }
+                                        window.open(
+                                          `https://wa.me/${formattedNumber}`,
+                                          "_blank"
+                                        );
+                                      } else {
+                                        toast.error(
+                                          "No contact number available for this patient"
+                                        );
+                                      }
+                                    }}
+                                    className="gap-2"
+                                    disabled={
+                                      !patient.personalDetails.contactNumber
+                                    }
+                                  >
+                                    <MessageSquare
+                                      className="h-4 w-4 text-green-500"
+                                      fill="green"
+                                    />{" "}
+                                    WhatsApp
+                                  </DropdownMenuItem>
+
+                                  {adminDetails.role === "admin" ||
+                                    (adminDetails.role === "superadmin" && (
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setPatientToDelete(patient);
+                                          setIsDeleteDialogOpen(true);
+                                        }}
+                                        className="gap-2 text-red-600 hover:text-red-700 focus:text-red-700"
+                                      >
+                                        <Trash
+                                          className="h-4 w-4"
+                                        />{" "}
+                                        Delete
+                                      </DropdownMenuItem>
+                                    ))}
+
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      document
+                                        .getElementById(
+                                          `prescription-btn-${patient._id}`
+                                        )
+                                        ?.click();
+                                    }}
+                                    className="gap-2"
+                                  >
+                                    <FilePlus className="h-4 w-4" /> Add
+                                    Prescription
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </motion.tr>
+                      ))}
+                    </AnimatePresence>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-3 items-center">
+        <div className="grid grid-cols-1 gap-4 mt-6 md:grid-cols-3 items-center p-4 border-t">
           <Select
             onValueChange={(value) => setItemsPerPage(Number(value))}
             value={itemsPerPage.toString()}
@@ -1241,7 +1377,9 @@ export function PatientTable() {
                     handlePageChange(Math.max(currentPage - 1, 1));
                   }}
                   className={
-                    currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"
+                    currentPage === 1
+                      ? "pointer-events-none opacity-50"
+                      : "cursor-pointer"
                   }
                 />
               </PaginationItem>
@@ -1274,6 +1412,10 @@ export function PatientTable() {
               </PaginationItem>
             </PaginationContent>
           </Pagination>
+          
+          <div className="text-right text-sm text-muted-foreground">
+            Showing {filteredPatients.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, filteredPatients.length)} of {filteredPatients.length}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -1303,7 +1445,10 @@ export function PatientTable() {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setIsExportDialogOpen(false)}>
+          <Button
+            variant="outline"
+            onClick={() => setIsExportDialogOpen(false)}
+          >
             Cancel
           </Button>
           <Button onClick={exportToExcel}>Export</Button>
@@ -1315,7 +1460,7 @@ export function PatientTable() {
   return (
     <div className="flex flex-col w-full bg-muted/40">
       <div className="flex flex-col sm:gap-4 sm:py-4 ">
-        <header className="sticky top-0 z-30 flex items-center gap-4 px-4 border-b h-14 bg-background sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+        <header className="sticky justify-between top-0 z-30 grid grid-cols-1 md:grid-cols-2 items-center gap-4 px-4 border-b h-10 bg-background sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
           <Breadcrumb className="hidden md:flex">
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -1335,35 +1480,24 @@ export function PatientTable() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="relative flex-1 mx-2 ml-auto md:grow-0">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <div className="relative flex-1 mx-2 ml-auto w-80">
             <Input
-              type="search"
-              placeholder="Search by Name or SN..."
+              placeholder="Search patients with name or sn..."
               value={searchQuery}
-              onChange={handleSearchChange}
-              className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
             />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsExportDialogOpen(true)}
-            className="flex items-center gap-1"
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            Export Excel
-          </Button>
         </header>
 
-        <main className="grid items-start flex-1 gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+        <main className="grid items-start grid-cols-1 gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
           <Tabs
             defaultValue="all"
             value={selectedTab}
             className="p-2"
             onValueChange={(value) => setSelectedTab(value)}
           >
-            <div className="flex items-center flex-wrap">
+            <div className="flex items-center flex-wrap justify-between">
               <TabsList>
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="male">Male</TabsTrigger>
@@ -1460,7 +1594,12 @@ export function PatientTable() {
                     variant="secondary"
                     className="flex items-center gap-1"
                   >
-                    Date: {dateFilter === "today" ? "Today" : dateFilter === "week" ? "This Week" : "This Month"}
+                    Date:{" "}
+                    {dateFilter === "today"
+                      ? "Today"
+                      : dateFilter === "week"
+                        ? "This Week"
+                        : "This Month"}
                     <X
                       className="h-3 w-3 cursor-pointer"
                       onClick={() => {
@@ -1501,6 +1640,25 @@ export function PatientTable() {
                   ))}
                 </div>
               </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/scan-patient")}
+                className="gap-2"
+              >
+                <QrCode className="h-4 w-4" />
+                Scan Patient
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsExportDialogOpen(true)}
+                className="gap-2"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Export
+              </Button>
 
               <div className="flex items-center ml-auto">
                 <PopupModal
@@ -1729,24 +1887,22 @@ export function PatientTable() {
               setIsPaymentDialogOpen(false);
               setPaymentPatient(null);
             }}
-            selectedTeethMaps={
-              paymentPatient.medicalDetails.reduce(
-                (acc, medicalDetail, medicalDetailIndex) => {
-                  medicalDetail.treatmentPlanning.forEach((plan, planIndex) => {
-                    const mapKey = `${medicalDetailIndex}-${planIndex}`;
-                    acc[mapKey] = {};
+            selectedTeethMaps={paymentPatient.medicalDetails.reduce(
+              (acc, medicalDetail, medicalDetailIndex) => {
+                medicalDetail.treatmentPlanning.forEach((plan, planIndex) => {
+                  const mapKey = `${medicalDetailIndex}-${planIndex}`;
+                  acc[mapKey] = {};
 
-                    if (plan.selectedTeethDetails) {
-                      plan.selectedTeethDetails.forEach((tooth) => {
-                        acc[mapKey][tooth.number] = tooth;
-                      });
-                    }
-                  });
-                  return acc;
-                },
-                {} as Record<string, Record<string, any>>
-              )
-            }
+                  if (plan.selectedTeethDetails) {
+                    plan.selectedTeethDetails.forEach((tooth) => {
+                      acc[mapKey][tooth.number] = tooth;
+                    });
+                  }
+                });
+                return acc;
+              },
+              {} as Record<string, Record<string, any>>
+            )}
             onPaymentUpdate={(
               mapKey,
               toothNumber,
@@ -1803,6 +1959,16 @@ export function PatientTable() {
             setXRayPlanPatient(null);
           }}
           patient={xRayPlanPatient}
+        />
+      )}
+      {selectedPatientForQR && (
+        <QRCodeModal
+          isOpen={isQRCodeModalOpen}
+          onClose={() => {
+            setIsQRCodeModalOpen(false);
+            setSelectedPatientForQR(null);
+          }}
+          patient={selectedPatientForQR}
         />
       )}
       {renderExportDialog()}

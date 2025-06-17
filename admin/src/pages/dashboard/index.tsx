@@ -10,6 +10,9 @@ import {
   FileText,
   Stethoscope,
   Image as ImageIcon,
+  TrendingUp,
+  TrendingDown,
+  Wallet,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
@@ -170,6 +173,24 @@ interface DashboardData {
   };
 }
 
+interface FinancialSummary {
+  summary: {
+    income: number;
+    expense: number;
+    balance: number;
+  };
+  incomeByCategory: Array<{
+    _id: string;
+    total: number;
+  }>;
+  expenseByCategory: Array<{
+    _id: string;
+    total: number;
+  }>;
+  recentIncome: Array<any>;
+  recentExpenses: Array<any>;
+}
+
 // Reusable StatCard component with animation
 interface StatCardProps {
   title: string;
@@ -218,6 +239,7 @@ const Dashboard = () => {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] =
     useState<TreatmentDocument | null>(null);
+  const [financialSummary, setFinancialSummary] = useState<FinancialSummary | null>(null);
 
   const [dateRange, setDateRange] = useState<{
     from: Date;
@@ -392,6 +414,20 @@ const Dashboard = () => {
     setViewerOpen(false);
   };
 
+  const fetchFinancialSummary = async () => {
+    try {
+      const response = await crudRequest<{ success: boolean; data: FinancialSummary }>(
+        "GET",
+        `${server}/finance/summary`
+      );
+      if (response.success) {
+        setFinancialSummary(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching financial summary:", error);
+    }
+  };
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -410,7 +446,7 @@ const Dashboard = () => {
     };
 
     const fetchRevenueData = async () => {
-try {
+      try {
         setLoading(true);
         const response = (await crudRequest(
           "GET",
@@ -427,6 +463,7 @@ try {
 
     fetchDashboardData();
     fetchRevenueData();
+    fetchFinancialSummary();
   }, [dateRange, viewMode]);
 
   if (loading) {
@@ -460,7 +497,7 @@ try {
             value={viewMode}
             onValueChange={(value: "daily" | "weekly" | "monthly" | "yearly") =>
               setViewMode(value)
-            }
+            }   
           >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select view mode" />
@@ -487,7 +524,7 @@ try {
       </div>
 
       <motion.div 
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+        className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
         initial="hidden"
         animate="visible"
         variants={staggerContainer}
@@ -513,12 +550,33 @@ try {
           icon={<Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400" />}
           className="bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900"
         />
-        <StatCard
+        {/* <StatCard
           title={t("Total Revenue")}
           value={`₹${revenueData?.financialAnalysis?.total?.toLocaleString() || 0}`}
-          description={t("Total revenue in selected period")}
+          description={t("Total revenue in from treatments")}
           icon={<IndianRupee className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
           className="bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800 hover:bg-teal-100 dark:hover:bg-teal-900"
+        /> */}
+        <StatCard
+          title={t("Total Income")}
+          value={`₹${(revenueData?.financialAnalysis?.total || 0) + (financialSummary?.summary.income || 0)}`}
+          description={t("Total income from treatments and other sources")}
+          icon={<TrendingUp className="h-4 w-4 text-emerald-500" />}
+          className="bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900"
+        />
+        <StatCard
+          title={t("Total Expense")}
+          value={`₹${financialSummary?.summary.expense.toLocaleString() || 0}`}
+          description={t("Total expenses incurred")}
+          icon={<TrendingDown className="h-4 w-4 text-rose-500" />}
+          className="bg-rose-50 dark:bg-rose-950 border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900"
+        />
+        <StatCard
+          title={t("Net Balance")}
+          value={`₹${((revenueData?.financialAnalysis?.total || 0) + (financialSummary?.summary.income || 0) - (financialSummary?.summary.expense || 0)).toLocaleString()}`}
+          description={t("Total balance after expenses")}
+          icon={<Wallet className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+          className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900"
         />
       </motion.div>
       

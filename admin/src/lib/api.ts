@@ -1,5 +1,6 @@
 import { server } from "@/server";
 import axios, { AxiosRequestConfig, Method } from "axios";
+import { Expense } from "@/types/finance";
 
 // Create axios instance without default headers
 const axiosInstance = axios.create({
@@ -95,18 +96,27 @@ export const deleteIncome = async (id: string) => {
 };
 
 // Expense API
-export const createExpense = async (data: any) => {
+export const createExpense = async (data: Partial<Expense>) => {
   return await crudRequest("POST", `/finance/expense`, data);
 };
 
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  meta?: {
+    totalPages: number;
+    totalAmount: number;
+  };
+}
+
 export const getExpenses = async (
-  page = 1,
-  limit = 10,
-  search = "",
-  dateFilter = "all",
-  startDate = "",
-  endDate = ""
-) => {
+  page: number,
+  limit: number,
+  search: string,
+  dateFilter: string,
+  startDate: string,
+  endDate: string
+): Promise<ApiResponse<Expense[]>> => {
   let url = `/finance/expense?page=${page}&limit=${limit}`;
   
   if (search) url += `&search=${search}`;
@@ -120,7 +130,7 @@ export const getExpenseById = async (id: string) => {
   return await crudRequest("GET", `/finance/expense/${id}`);
 };
 
-export const updateExpense = async (id: string, data: any) => {
+export const updateExpense = async (id: string, data: Partial<Expense>) => {
   return await crudRequest("PUT", `/finance/expense/${id}`, data);
 };
 

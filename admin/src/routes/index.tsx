@@ -17,6 +17,7 @@ import LandingPage from "@/pages/landing";
 import TermsOfServicePage from "@/pages/legal/terms";
 import PrivacyPolicyPage from "@/pages/legal/privacy";
 import SMS from "@/pages/SMS";
+import { ScanPatient } from "@/pages/patient/ScanPatient";
 
 // Finance pages
 import IncomePage from "@/pages/finance/income";
@@ -53,6 +54,7 @@ const AppRouter: React.FC = () => {
       children: [
         { path: "/", element: <Dashboard />, index: true },
         { path: "/patients", element: <Patient /> },
+        { path: "/scan-patient", element: <ScanPatient /> },
         { path: "/doctors", element: <Doctor /> },
         { path: "/appointment", element: <Appointment /> },
         { path: "/user", element: <User /> },

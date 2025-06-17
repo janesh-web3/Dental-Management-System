@@ -38,6 +38,15 @@ import { DateRangeFilter } from "@/components/finance/DateRangeFilter";
 import { getIncomes, createIncome, updateIncome, deleteIncome } from "@/lib/api";
 import { Income } from "@/types/finance";
 
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  meta?: {
+    totalPages: number;
+    totalAmount: number;
+  };
+}
+
 export default function IncomePage() {
   const { toast } = useToast();
   const [incomes, setIncomes] = useState<Income[]>([]);
@@ -72,12 +81,12 @@ export default function IncomePage() {
         dateFilter === "custom" ? "all" : dateFilter,
         startDate,
         endDate
-      );
+      ) as ApiResponse<Income[]>;
 
       if (response.success) {
         setIncomes(response.data);
-        setTotalPages(response.meta.totalPages);
-        setTotalIncome(response.meta.totalAmount);
+        setTotalPages(response.meta?.totalPages || 1);
+        setTotalIncome(response.meta?.totalAmount || 0);
       }
     } catch (error) {
       console.error("Error fetching incomes:", error);
@@ -114,7 +123,7 @@ export default function IncomePage() {
       const response = await createIncome({
         ...data,
         date: format(data.date, "yyyy-MM-dd"),
-      });
+      }) as ApiResponse<Income>;
 
       if (response.success) {
         toast({
@@ -144,7 +153,7 @@ export default function IncomePage() {
       const response = await updateIncome(selectedIncome._id, {
         ...data,
         date: format(data.date, "yyyy-MM-dd"),
-      });
+      }) as ApiResponse<Income>;
 
       if (response.success) {
         toast({
@@ -172,7 +181,7 @@ export default function IncomePage() {
 
     setIsSubmitting(true);
     try {
-      const response = await deleteIncome(selectedIncome._id);
+      const response = await deleteIncome(selectedIncome._id) as ApiResponse<Income>;
 
       if (response.success) {
         toast({

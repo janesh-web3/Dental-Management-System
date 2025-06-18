@@ -59,7 +59,7 @@ export function RecentTransactions() {
   }
 
   return (
-    <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 shadow-sm hover:shadow-md transition-all">
+    <Card className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
       <CardHeader>
         <CardTitle className="text-blue-800 dark:text-blue-300">Recent Transactions</CardTitle>
       </CardHeader>

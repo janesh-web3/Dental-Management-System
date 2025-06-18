@@ -12,6 +12,7 @@ import {
   TrendingUp,
   TrendingDown,
   Wallet,
+  TrendingUpIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
@@ -22,25 +23,7 @@ import { Button } from "@/components/ui/button";
 import { RecentTransactions } from "./RecentTransactions";
 import { useTranslation } from "react-i18next";
 import { DocumentViewer } from "@/components/ui/document-viewer";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import { DateRange } from "react-day-picker";
 import { server } from "@/server";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Analytics } from "./Analytics";
 import { motion } from "framer-motion";
 
@@ -199,7 +182,14 @@ interface StatCardProps {
   className: string;
 }
 
-const StatCard = ({ title, value, description, icon, className }: StatCardProps) => {
+
+const StatCard = ({
+  title,
+  value,
+  description,
+  icon,
+  className,
+}: StatCardProps) => {
   return (
     <motion.div
       initial="hidden"
@@ -208,39 +198,141 @@ const StatCard = ({ title, value, description, icon, className }: StatCardProps)
       variants={{
         hidden: { opacity: 0, y: 20 },
         visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-        hover: { scale: 1.03, transition: { duration: 0.2 } }
+        hover: {
+          scale: 1.05,
+          z: 20,
+          transition: { duration: 0.3 },
+        },
       }}
+      style={{
+        perspective: "1200px",
+        transformStyle: "preserve-3d",
+        position: "relative",
+        transformOrigin: "center center",
+      }}
+      className="group"
     >
-      <Card className={`shadow-sm hover:shadow-md transition-all ${className}`}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
+      {/* Shadow card layer - sits at the bottom */}
+      <div
+        className={`absolute inset-0 rounded-lg bg-black/20 dark:bg-white/10 transition-all duration-300 group-hover:translate-x-2 group-hover:translate-y-2 group-hover:blur-sm`}
+        style={{ transform: "translateZ(-15px)" }}
+      />
+
+      {/* Background card layer */}
+      <div
+        className={`absolute inset-0 rounded-lg ${className} opacity-80 transition-all duration-300 group-hover:scale-95`}
+        style={{ transform: "translateZ(-5px)" }}
+      />
+
+      {/* Main card layer */}
+      <Card
+        className={`relative shadow-lg transition-all ${className} h-[150px] z-10 backdrop-blur-sm bg-opacity-90 dark:bg-opacity-90`}
+        style={{
+          transform: "translateZ(0)",
+          backfaceVisibility: "hidden",
+        }}
+      >
+        {/* Highlight overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/40 dark:from-white/20 to-transparent rounded-lg pointer-events-none group-hover:opacity-80 transition-opacity duration-300" />
+
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+          <CardTitle className="text-sm font-medium relative z-10">
             {title}
           </CardTitle>
-          {icon}
+          <motion.div
+            className="p-2 rounded-full bg-white/30 dark:bg-black/20 backdrop-blur-sm shadow-md"
+            style={{ transformStyle: "preserve-3d" }}
+            variants={{
+              hover: {
+                y: -10,
+                x: 5,
+                rotateY: 15,
+                scale: 1.1,
+                boxShadow:
+                  "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+                transition: { duration: 0.4, delay: 0.1 },
+              },
+            }}
+          >
+            {icon}
+          </motion.div>
         </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
+
+        <CardContent className="relative z-10">
+          <motion.div
+            className="text-2xl font-bold mb-1"
+            variants={{
+              hover: {
+                y: -8,
+                x: 5,
+                scale: 1.05,
+                transition: { duration: 0.3, delay: 0.05 },
+              },
+            }}
+            style={{ transformStyle: "preserve-3d" }}
+          >
             {value}
-          </div>
-          <p className="text-xs">
+          </motion.div>
+          <motion.p
+            className="text-[10px] text-gray-500 dark:text-gray-400"
+            variants={{
+              hover: {
+                y: -5,
+                transition: { duration: 0.3 },
+              },
+            }}
+            style={{ transformStyle: "preserve-3d" }}
+          >
             {description}
-          </p>
+          </motion.p>
         </CardContent>
       </Card>
+
+      {/* Floating accent elements */}
+      <motion.div
+        className="absolute top-3 right-3 w-8 h-8 rounded-full opacity-60 bg-white dark:bg-white/10 z-20 shadow-md"
+        style={{ transform: "translateZ(10px)" }}
+        variants={{
+          hover: {
+            y: -15,
+            x: -5,
+            scale: 1.2,
+            opacity: 0.8,
+            transition: { duration: 0.4, delay: 0.2 },
+          },
+        }}
+      />
+
+      {/* Small decorative dot */}
+      <motion.div
+        className="absolute bottom-4 right-8 w-3 h-3 rounded-full opacity-70 bg-white dark:bg-white/20 z-20 hidden group-hover:block"
+        style={{ transform: "translateZ(15px)" }}
+        variants={{
+          hover: {
+            y: -10,
+            x: 8,
+            scale: 1.5,
+            opacity: 0.6,
+            transition: { duration: 0.5, delay: 0.3 },
+          },
+        }}
+      />
     </motion.div>
   );
 };
 
+
 const Dashboard = () => {
   const { t } = useTranslation();
 
-  const [isCustomDateRange, setIsCustomDateRange] = useState(false);
+  const [isCustomDateRange, _setIsCustomDateRange] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] =
     useState<TreatmentDocument | null>(null);
-  const [financialSummary, setFinancialSummary] = useState<FinancialSummary | null>(null);
+  const [financialSummary, setFinancialSummary] =
+    useState<FinancialSummary | null>(null);
 
-  const [dateRange, setDateRange] = useState<{
+  const [dateRange, _setDateRange] = useState<{
     from: Date;
     to: Date;
   }>({
@@ -250,31 +342,11 @@ const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
     null
   );
-  const [revenueData, setRevenueData] = useState<DashboardData | null>(
-    null
-  );
+  const [revenueData, setRevenueData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"daily" | "weekly" | "monthly" | "yearly">(
-    "daily"
-  );
-
-  const handleDateRangeChange = (range: DateRange | undefined) => {
-    if (range?.from) {
-      setDateRange({
-        from: range.from,
-        to: range.to || range.from,
-      });
-      setIsCustomDateRange(true);
-    }
-  };
-
-  const handleResetDateRange = () => {
-    setDateRange({
-      from: new Date(2020, 0, 1),
-      to: new Date(),
-    });
-    setIsCustomDateRange(false);
-  };
+  const [viewMode, _setViewMode] = useState<
+    "daily" | "weekly" | "monthly" | "yearly"
+  >("daily");
 
   // Function to determine document icon and type
   const getDocumentDetails = (doc: TreatmentDocument) => {
@@ -415,10 +487,10 @@ const Dashboard = () => {
 
   const fetchFinancialSummary = async () => {
     try {
-      const response = await crudRequest<{ success: boolean; data: FinancialSummary }>(
-        "GET",
-        `${server}/finance/summary`
-      );
+      const response = await crudRequest<{
+        success: boolean;
+        data: FinancialSummary;
+      }>("GET", `${server}/finance/summary`);
       if (response.success) {
         setFinancialSummary(response.data);
       }
@@ -485,30 +557,6 @@ const Dashboard = () => {
     <div className="space-y-4 p-8">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">{t("Dashboard")}</h2>
-        <div className="flex items-center gap-4">
-          <DateRangePicker value={dateRange} onChange={handleDateRangeChange} />
-          {isCustomDateRange && (
-            <Button variant="outline" onClick={handleResetDateRange} size="sm">
-              {t("All Time Data")}
-            </Button>
-          )}
-          <Select
-            value={viewMode}
-            onValueChange={(value: "daily" | "weekly" | "monthly" | "yearly") =>
-              setViewMode(value)
-            }   
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select view mode" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="daily">{t("Daily")}</SelectItem>
-              <SelectItem value="weekly">{t("Weekly")}</SelectItem>
-              <SelectItem value="monthly">{t("Monthly")}</SelectItem>
-              <SelectItem value="yearly">{t("Yearly")}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       <div className="text-sm text-muted-foreground mb-2">
@@ -522,8 +570,8 @@ const Dashboard = () => {
         )}
       </div>
 
-      <motion.div 
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+      <motion.div
+        className="grid gap-4 md:grid-cols-2 lg:grid-cols-6"
         initial="hidden"
         animate="visible"
         variants={staggerContainer}
@@ -532,53 +580,58 @@ const Dashboard = () => {
           title={t("Total Patients")}
           value={dashboardData?.totalPatients || 0}
           description={t("Active patients in the system")}
-          icon={<Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
-          className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900"
+          icon={
+            <Users className="h-4 w-4 md:h-8 md:w-8 text-blue-600 dark:text-blue-200" />
+          }
+          className="bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-800"
         />
         <StatCard
           title={t("Total Doctors")}
           value={dashboardData?.totalDoctors || 0}
           description={t("Active doctors in the system")}
-          icon={<Stethoscope className="h-4 w-4 text-green-600 dark:text-green-400" />}
-          className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900"
+          icon={
+            <Stethoscope className="h-4 w-4 md:h-8 md:w-8 text-green-600 dark:text-green-200" />
+          }
+          className="bg-green-50 dark:bg-green-900 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-800"
         />
         <StatCard
           title={t("Total Appointments")}
           value={dashboardData?.totalAppointments || 0}
           description={t("Appointments in selected period")}
-          icon={<Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400" />}
-          className="bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900"
+          icon={
+            <Calendar className="h-4 w-4 md:h-8 md:w-8 text-purple-600 dark:text-purple-200" />
+          }
+          className="bg-purple-50 dark:bg-purple-900 border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-800"
         />
-        {/* <StatCard
-          title={t("Total Revenue")}
-          value={`₹${revenueData?.financialAnalysis?.total?.toLocaleString() || 0}`}
-          description={t("Total revenue in from treatments")}
-          icon={<IndianRupee className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
-          className="bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800 hover:bg-teal-100 dark:hover:bg-teal-900"
-        /> */}
         <StatCard
           title={t("Total Income")}
           value={`₹${(revenueData?.financialAnalysis?.total || 0) + (financialSummary?.summary.income || 0)}`}
-          description={t("Total income from treatments and other sources")}
-          icon={<TrendingUp className="h-4 w-4 text-emerald-500" />}
-          className="bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900"
+          description={t("Total income ")}
+          icon={
+            <TrendingUp className="h-4 w-4 md:h-8 md:w-8 text-emerald-200" />
+          }
+          className="bg-emerald-50 dark:bg-emerald-900 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-800"
         />
         <StatCard
           title={t("Total Expense")}
           value={`₹${financialSummary?.summary.expense.toLocaleString() || 0}`}
-          description={t("Total expenses incurred")}
-          icon={<TrendingDown className="h-4 w-4 text-rose-500" />}
-          className="bg-rose-50 dark:bg-rose-950 border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900"
+          description={t("Total expenses")}
+          icon={
+            <TrendingDown className="h-4 w-4 md:h-8 md:w-8 text-rose-200" />
+          }
+          className="bg-rose-50 dark:bg-rose-900 border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-800"
         />
         <StatCard
           title={t("Net Balance")}
           value={`₹${((revenueData?.financialAnalysis?.total || 0) + (financialSummary?.summary.income || 0) - (financialSummary?.summary.expense || 0)).toLocaleString()}`}
           description={t("Total balance after expenses")}
-          icon={<Wallet className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
-          className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900"
+          icon={
+            <Wallet className="h-4 w-4 md:h-8 md:w-8 text-blue-200 dark:text-blue-400" />
+          }
+          className="bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-800"
         />
       </motion.div>
-      
+
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="bg-slate-100 dark:bg-slate-800">
           <TabsTrigger
@@ -587,18 +640,6 @@ const Dashboard = () => {
           >
             {t("Overview")}
           </TabsTrigger>
-          {/* <TabsTrigger
-            value="appointments"
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950"
-          >
-            {t("Appointments")}
-          </TabsTrigger> */}
-          {/* <TabsTrigger
-            value="doctors"
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950"
-          >
-            {t("Doctors")}
-          </TabsTrigger> */}
           <TabsTrigger
             value="transactions"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950"
@@ -615,7 +656,7 @@ const Dashboard = () => {
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4 bg-indigo-50 dark:bg-indigo-950 border-indigo-200 dark:border-indigo-800 shadow-sm hover:shadow-md transition-all">
+            <Card className="col-span-4 bg-indigo-50 dark:bg-neutral-900 border-indigo-200 dark:border-neutral-800 shadow-sm hover:shadow-md transition-all">
               <CardHeader className="pb-2">
                 <CardTitle className="text-indigo-800 dark:text-indigo-300">
                   {t("Financial Overview")}
@@ -623,70 +664,47 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  <div className="bg-white dark:bg-indigo-900 p-3 rounded-lg shadow-sm">
-                    <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-                      {t("Daily Revenue")}
-                    </p>
-                    <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-50">
-                      ₹{revenueData?.financialAnalysis.daily.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="bg-white dark:bg-indigo-900 p-3 rounded-lg shadow-sm">
-                    <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-                      {t("Weekly Revenue")}
-                    </p>
-                    <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-50">
-                      ₹
-                      {revenueData?.financialAnalysis.weekly.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="bg-white dark:bg-indigo-900 p-3 rounded-lg shadow-sm">
-                    <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-                      {t("Monthly Revenue")}
-                    </p>
-                    <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-50">
-                      ₹
-                      {revenueData?.financialAnalysis.monthly.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="bg-white dark:bg-indigo-900 p-3 rounded-lg shadow-sm">
-                    <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-                      {t("Total Revenue")}
-                    </p>
-                    <p className="text-2xl font-bold text-indigo-900 dark:text-indigo-50">
-                      ₹{revenueData?.financialAnalysis.total.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4 h-[300px] bg-white dark:bg-indigo-900 p-3 rounded-lg">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={dashboardData?.financialAnalysis.revenueTrend}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#cdd7e7" />
-                      <XAxis dataKey="date" stroke="#6366f1" />
-                      <YAxis stroke="#6366f1" />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "#eef2ff",
-                          borderColor: "#a5b4fc",
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#6366f1"
-                        strokeWidth={2}
-                        dot={{ fill: "#4f46e5", r: 4 }}
-                        activeDot={{ r: 6, fill: "#4338ca" }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <StatCard
+                    title={t("Daily Revenue")}
+                    value={`₹${revenueData?.financialAnalysis.daily.toLocaleString()}`}
+                    description={t("Daily revenue")}
+                    icon={
+                      <TrendingUp className="h-4 w-4 md:h-8 md:w-8 text-emerald-200" />
+                    }
+                    className="bg-emerald-50 dark:bg-red-900 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-800"
+                  />
+                  <StatCard
+                    title={t("Weekly Revenue")}
+                    value={`₹${revenueData?.financialAnalysis.weekly.toLocaleString()}`}
+                    description={t("Weekly revenue")}
+                    icon={
+                      <TrendingUp className="h-4 w-4 md:h-8 md:w-8 text-emerald-200" />
+                    }
+                    className="bg-emerald-50 dark:bg-lime-900 border-lime-200 dark:border-lime-800 hover:bg-lime-100 dark:hover:bg-lime-800"
+                  />
+                  <StatCard
+                    title={t("Monthly Revenue")}
+                    value={`₹${revenueData?.financialAnalysis.monthly.toLocaleString()}`}
+                    description={t("Monthly revenue")}
+                    icon={
+                      <TrendingUpIcon className="h-4 w-4 md:h-8 md:w-8 text-emerald-200" />
+                    }
+                    className="bg-fuchsia-50 dark:bg-fuchsia-900 border-fuchsia-200 dark:border-fuchsia-800 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-800"
+                  />
+                  <StatCard
+                    title={t("Total Revenue")}
+                    value={`₹${revenueData?.financialAnalysis.total.toLocaleString()}`}
+                    description={t("Total revenue")}
+                    icon={
+                      <TrendingUp className="h-4 w-4 md:h-8 md:w-8 text-emerald-200" />
+                    }
+                    className="bg-emerald-50 dark:bg-cyan-900 border-cyan-200 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-800"
+                  />
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="col-span-3 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all">
+            <Card className="col-span-3 bg-gray-50 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 shadow-sm hover:shadow-md transition-all">
               <CardHeader className="pb-2">
                 <CardTitle className="text-gray-800 dark:text-gray-300">
                   {t("Recent Documents")}
@@ -696,106 +714,155 @@ const Dashboard = () => {
                 <ScrollArea className="h-[400px]">
                   {dashboardData?.analytics.recentTreatments.map(
                     (treatment, index) => (
-                      <div
-                        key={index}
-                        className={`mb-4 p-3 rounded-lg shadow-sm ${
-                          treatment.treatment === "General Documents" 
-                            ? "bg-blue-50 dark:bg-blue-900" 
-                            : "bg-white dark:bg-gray-800"
-                        }`}
+                      <motion.div
+                        initial="hidden"
+                        animate="visible"
+                        whileHover="hover"
+                        variants={{
+                          hidden: { opacity: 0, y: 20 },
+                          visible: {
+                            opacity: 1,
+                            y: 0,
+                            transition: { duration: 0.5 },
+                          },
+                        }}
+                        style={{
+                          perspective: "1200px",
+                          transformStyle: "preserve-3d",
+                          position: "relative",
+                          transformOrigin: "center center",
+                        }}
+                        className="group"
                       >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-gray-100">
-                              {treatment.patientName}
-                            </p>
-                            <p className="text-sm text-gray-700 dark:text-gray-400">
-                              {treatment.treatment}
-                            </p>
-                            {treatment.treatment === "General Documents" && (
-                              <Badge variant="outline" className="mt-1 bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
-                                General Documents
+                        {/* Shadow card layer - sits at the bottom */}
+                        <div
+                          className={`absolute inset-0 rounded-lg bg-black/20 dark:bg-white/10 transition-all duration-300 group-hover:translate-x-2 group-hover:translate-y-2 group-hover:blur-sm`}
+                          style={{ transform: "translateZ(-15px)" }}
+                        />
+
+                        {/* Background card layer */}
+                        <div
+                          className={`absolute inset-0 rounded-lg opacity-80 transition-all duration-300 group-hover:scale-95`}
+                          style={{ transform: "translateZ(-5px)" }}
+                        />
+
+                        <div
+                          key={index}
+                          className={`mb-2 p-4 rounded-lg shadow-sm ${
+                            treatment.treatment === "General Documents"
+                              ? "dark:bg-sky-900 border-sky-200 dark:border-sky-800  z-10 backdrop-blur-lg bg-opacity-80 dark:bg-opacity-80"
+                              : "dark:bg-emerald-900 border-emerald-200 dark:border-emerald-800  z-10 backdrop-blur-lg bg-opacity-80 dark:bg-opacity-80"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-gray-900 dark:text-gray-100">
+                                {treatment.patientName}
+                              </p>
+                              <p className="text-sm text-gray-700 dark:text-gray-400">
+                                {treatment.treatment}
+                              </p>
+                              {treatment.treatment === "General Documents" && (
+                                <Badge
+                                  variant="outline"
+                                  className="mt-1 bg-blue-100 text-sky-800 dark:bg-sky-800 dark:text-sky-100"
+                                >
+                                  General Documents
+                                </Badge>
+                              )}
+                            </div>
+                            {treatment.treatment !== "General Documents" && (
+                              <Badge
+                                variant={
+                                  treatment.status === "Completed"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                                className={
+                                  treatment.status === "Completed"
+                                    ? "bg-green-500 hover:bg-green-600"
+                                    : ""
+                                }
+                              >
+                                {treatment.status}
                               </Badge>
                             )}
                           </div>
-                          {treatment.treatment !== "General Documents" && (
-                            <Badge
-                              variant={
-                                treatment.status === "Completed"
-                                  ? "default"
-                                  : "secondary"
-                              }
-                              className={
-                                treatment.status === "Completed"
-                                  ? "bg-green-500 hover:bg-green-600"
-                                  : ""
-                              }
-                            >
-                              {treatment.status}
-                            </Badge>
-                          )}
-                        </div>
-                        {treatment.documents &&
-                          treatment.documents.length > 0 && (
-                            <div className="mt-2 flex flex-col space-y-2">
-                              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                                {treatment.treatment === "General Documents" 
-                                  ? t("Patient Documents") 
-                                  : t("Treatment Documents")} (
-                                {treatment.documents.length})
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                {treatment.documents
-                                  .filter((doc) => doc && doc.url)
-                                  .map((doc, docIndex) => (
-                                    <div
-                                      key={docIndex}
-                                      className="group relative"
-                                    >
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className={`border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                                          treatment.treatment === "General Documents" 
-                                            ? "border-blue-300 dark:border-blue-600 hover:bg-blue-100 dark:hover:bg-blue-800" 
-                                            : ""
-                                        }`}
-                                        onClick={() => handleOpenDocument(doc)}
+                          {/* Floating accent elements */}
+                          <motion.div
+                            className="absolute top-3 right-3 w-8 h-8 rounded-full opacity-60 bg-white dark:bg-white/10 z-20 shadow-md"
+                            style={{ transform: "translateZ(10px)" }}
+                            variants={{
+                              hover: {
+                                y: -15,
+                                x: -5,
+                                scale: 1.2,
+                                opacity: 0.8,
+                                transition: { duration: 0.4, delay: 0.2 },
+                              },
+                            }}
+                          />
+
+                          {/* Small decorative dot */}
+                          <motion.div
+                            className="absolute bottom-4 right-8 w-3 h-3 rounded-full opacity-70 bg-white dark:bg-white/20 z-20 hidden group-hover:block"
+                            style={{ transform: "translateZ(15px)" }}
+                            variants={{
+                              hover: {
+                                y: -10,
+                                x: 8,
+                                scale: 1.5,
+                                opacity: 0.6,
+                                transition: { duration: 0.5, delay: 0.3 },
+                              },
+                            }}
+                          />
+                          {treatment.documents &&
+                            treatment.documents.length > 0 && (
+                              <div className="mt-2 flex flex-col space-y-2">
+                                <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                  {treatment.treatment === "General Documents"
+                                    ? t("Patient Documents")
+                                    : t("Treatment Documents")}{" "}
+                                  ({treatment.documents.length})
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {treatment.documents
+                                    .filter((doc) => doc && doc.url)
+                                    .map((doc, docIndex) => (
+                                      <div
+                                        key={docIndex}
+                                        className="group relative"
                                       >
-                                        {getDocumentDetails(doc).icon}
-                                        <span className="text-gray-700 dark:text-gray-300">
-                                          {doc.name
-                                            ? doc.name.length > 20
-                                              ? `${doc.name.substring(0, 20)}...`
-                                              : doc.name
-                                            : "Unnamed document"}
-                                        </span>
-                                      </Button>
-                                      {doc.description && (
-                                        <div className="absolute z-10 invisible group-hover:visible bg-white dark:bg-gray-800 shadow-lg rounded-md p-2 mt-1 text-xs max-w-[200px] top-full left-0">
-                                          <p className="font-semibold mb-1">
-                                            {doc.name}
-                                          </p>
-                                          <p className="text-gray-600 dark:text-gray-400">
-                                            {doc.description}
-                                          </p>
-                                          {doc.uploadDate && (
-                                            <p className="text-gray-500 dark:text-gray-500 mt-1">
-                                              {t("Uploaded")}:{" "}
-                                              {format(
-                                                new Date(doc.uploadDate),
-                                                "MMM d, yyyy"
-                                              )}
-                                            </p>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className={`border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                                            treatment.treatment ===
+                                            "General Documents"
+                                              ? "border-blue-300 dark:border-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900"
+                                              : ""
+                                          }`}
+                                          onClick={() =>
+                                            handleOpenDocument(doc)
+                                          }
+                                        >
+                                          {getDocumentDetails(doc).icon}
+                                          <span className="text-gray-700 dark:text-gray-300">
+                                            {doc.name
+                                              ? doc.name.length > 20
+                                                ? `${doc.name.substring(0, 20)}...`
+                                                : doc.name
+                                              : "Unnamed document"}
+                                          </span>
+                                        </Button>
+                                      </div>
+                                    ))}
+                                </div>
                               </div>
-                            </div>
-                          )}
-                      </div>
+                            )}
+                        </div>
+                      </motion.div>
                     )
                   )}
                 </ScrollArea>
@@ -806,7 +873,7 @@ const Dashboard = () => {
 
         <TabsContent value="appointments" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            <Card className="bg-cyan-50 dark:bg-cyan-950 border-cyan-200 dark:border-cyan-800 shadow-sm hover:shadow-md transition-all">
+            <Card className="bg-neutral-50 dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800 shadow-sm hover:shadow-md transition-all">
               <CardHeader>
                 <CardTitle className="text-cyan-800 dark:text-cyan-300">
                   {t("Today's Appointments")}
@@ -860,35 +927,54 @@ const Dashboard = () => {
                       <div
                         key={index}
                         className="mb-4 p-3 rounded-lg shadow-sm dark:bg-[hsl(12,50%,10%)]"
-                        style={{ 
-                          backgroundColor: treatment.treatment === "General Documents" ? '#EBF5FF' : 'white', 
-                          color: 'hsl(12, 50%, 30%)' 
+                        style={{
+                          backgroundColor:
+                            treatment.treatment === "General Documents"
+                              ? "#EBF5FF"
+                              : "white",
+                          color: "hsl(12, 50%, 30%)",
                         }}
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-medium dark:text-[hsl(12,80%,80%)]" style={{ color: 'hsl(12, 50%, 25%)' }}>
+                            <p
+                              className="font-medium dark:text-[hsl(12,80%,80%)]"
+                              style={{ color: "hsl(12, 50%, 25%)" }}
+                            >
                               {treatment.patientName}
                             </p>
-                            <p className="text-sm dark:text-[hsl(12,70%,70%)]" style={{ color: 'hsl(12, 40%, 40%)' }}>
+                            <p
+                              className="text-sm dark:text-[hsl(12,70%,70%)]"
+                              style={{ color: "hsl(12, 40%, 40%)" }}
+                            >
                               {treatment.treatment}
                             </p>
                             {treatment.treatment === "General Documents" && (
-                              <Badge variant="outline" className="mt-1" style={{ 
-                                backgroundColor: '#DBEAFE', 
-                                color: '#1E40AF',
-                                borderColor: '#93C5FD' 
-                              }}>
+                              <Badge
+                                variant="outline"
+                                className="mt-1"
+                                style={{
+                                  backgroundColor: "#DBEAFE",
+                                  color: "#1E40AF",
+                                  borderColor: "#93C5FD",
+                                }}
+                              >
                                 General Documents
                               </Badge>
                             )}
-                            <p className="text-sm dark:text-[hsl(12,70%,70%)]" style={{ color: 'hsl(12, 40%, 40%)' }}>
+                            <p
+                              className="text-sm dark:text-[hsl(12,70%,70%)]"
+                              style={{ color: "hsl(12, 40%, 40%)" }}
+                            >
                               {treatment.date}
                             </p>
                           </div>
                           <div className="text-right">
                             {treatment.treatmentAmount > 0 && (
-                              <p className="font-medium dark:text-[hsl(12,80%,80%)]" style={{ color: 'hsl(12, 50%, 25%)' }}>
+                              <p
+                                className="font-medium dark:text-[hsl(12,80%,80%)]"
+                                style={{ color: "hsl(12, 50%, 25%)" }}
+                              >
                                 ₹{treatment.treatmentAmount}
                               </p>
                             )}
@@ -913,11 +999,14 @@ const Dashboard = () => {
                         {treatment.documents &&
                           treatment.documents.length > 0 && (
                             <div className="mt-2 flex flex-col space-y-2">
-                              <p className="text-xs font-medium dark:text-[hsl(12,70%,70%)]" style={{ color: 'hsl(12, 40%, 40%)' }}>
-                                {treatment.treatment === "General Documents" 
-                                  ? t("Patient Documents") 
-                                  : t("Treatment Documents")} (
-                                {treatment.documents.length})
+                              <p
+                                className="text-xs font-medium dark:text-[hsl(12,70%,70%)]"
+                                style={{ color: "hsl(12, 40%, 40%)" }}
+                              >
+                                {treatment.treatment === "General Documents"
+                                  ? t("Patient Documents")
+                                  : t("Treatment Documents")}{" "}
+                                ({treatment.documents.length})
                               </p>
                               <div className="flex flex-wrap gap-2">
                                 {treatment.documents
@@ -931,10 +1020,22 @@ const Dashboard = () => {
                                         variant="outline"
                                         size="sm"
                                         className="hover:bg-amber-100 dark:hover:bg-[hsl(12,40%,15%)] dark:border-[hsl(12,40%,30%)] dark:text-[hsl(12,70%,70%)]"
-                                        style={{ 
-                                          borderColor: treatment.treatment === "General Documents" ? '#93C5FD' : 'hsl(12, 30%, 80%)', 
-                                          color: treatment.treatment === "General Documents" ? '#1E40AF' : 'hsl(12, 50%, 40%)',
-                                          backgroundColor: treatment.treatment === "General Documents" ? 'rgba(219, 234, 254, 0.3)' : 'transparent'
+                                        style={{
+                                          borderColor:
+                                            treatment.treatment ===
+                                            "General Documents"
+                                              ? "#93C5FD"
+                                              : "hsl(12, 30%, 80%)",
+                                          color:
+                                            treatment.treatment ===
+                                            "General Documents"
+                                              ? "#1E40AF"
+                                              : "hsl(12, 50%, 40%)",
+                                          backgroundColor:
+                                            treatment.treatment ===
+                                            "General Documents"
+                                              ? "rgba(219, 234, 254, 0.3)"
+                                              : "transparent",
                                         }}
                                         onClick={() => handleOpenDocument(doc)}
                                       >
@@ -948,15 +1049,33 @@ const Dashboard = () => {
                                         </span>
                                       </Button>
                                       {doc.description && (
-                                        <div className="absolute z-10 invisible group-hover:visible bg-white shadow-lg rounded-md p-2 mt-1 text-xs max-w-[200px] top-full left-0 dark:bg-[hsl(12,50%,10%)]" style={{ backgroundColor: 'white' }}>
-                                          <p className="font-semibold mb-1 dark:text-[hsl(12,80%,80%)]" style={{ color: 'hsl(12, 50%, 30%)' }}>
+                                        <div
+                                          className="absolute z-10 invisible group-hover:visible bg-white shadow-lg rounded-md p-2 mt-1 text-xs max-w-[200px] top-full left-0 dark:bg-[hsl(12,50%,10%)]"
+                                          style={{ backgroundColor: "white" }}
+                                        >
+                                          <p
+                                            className="font-semibold mb-1 dark:text-[hsl(12,80%,80%)]"
+                                            style={{
+                                              color: "hsl(12, 50%, 30%)",
+                                            }}
+                                          >
                                             {doc.name}
                                           </p>
-                                          <p className="dark:text-[hsl(12,70%,70%)]" style={{ color: 'hsl(12, 40%, 40%)' }}>
+                                          <p
+                                            className="dark:text-[hsl(12,70%,70%)]"
+                                            style={{
+                                              color: "hsl(12, 40%, 40%)",
+                                            }}
+                                          >
                                             {doc.description}
                                           </p>
                                           {doc.uploadDate && (
-                                            <p className="mt-1 dark:text-[hsl(12,60%,60%)]" style={{ color: 'hsl(12, 30%, 60%)' }}>
+                                            <p
+                                              className="mt-1 dark:text-[hsl(12,60%,60%)]"
+                                              style={{
+                                                color: "hsl(12, 30%, 60%)",
+                                              }}
+                                            >
                                               {t("Uploaded")}:{" "}
                                               {format(
                                                 new Date(doc.uploadDate),

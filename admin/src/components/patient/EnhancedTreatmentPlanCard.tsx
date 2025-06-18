@@ -206,8 +206,8 @@ export function EnhancedTreatmentPlanCard({
           </TabsContent>
 
           <TabsContent value="teeth" className="space-y-4 pt-4">
-            <div className="border rounded-lg p-2 sm:p-4 overflow-x-auto">
-              <div className="min-width-full w-full max-w-[800px] mx-auto">
+            <div className="border rounded-lg p-2 sm:p-4  overflow-x-auto">
+              <div className="w-[300px] mx-auto ">
                 {patientType === "Child" ? (
                   <ChildDentalChart
                     selectedTeeth={selectedTeethMap}

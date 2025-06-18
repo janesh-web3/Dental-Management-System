@@ -6,7 +6,7 @@ const Appointment = () => {
 
   return <div>
     <PageHead title="Appontment"/>
-    <div className="mt-5 space-x-5">
+    <div className="mt-5 md:space-x-5">
       <AppointmentTable/>
     </div>
   </div>;

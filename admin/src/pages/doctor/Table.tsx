@@ -9,13 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash, Plus, Eye, Key } from "lucide-react";
+import { Edit, Trash, Plus, Eye, Key } from "lucide-react";
 import { crudRequest } from "@/lib/api";
 import AddDoctor from "./AddDoctor";
 import PopupModal from "@/components/shared/popup-modal";
@@ -103,84 +97,97 @@ export function DoctorTable() {
   };
 
   const renderDoctorTable = () => (
-    <Table className="min-w-full table-fixed">
+    <Table className="min-w-full border-collapse">
       <TableHeader>
         <TableRow>
-          <TableHead className="table-cell">Name</TableHead>
-          <TableHead className="table-cell">Age</TableHead>
-          <TableHead className="table-cell">Phone Number</TableHead>
-          <TableHead className="table-cell">Address</TableHead>
-          <TableHead className="table-cell">Experience Years</TableHead>
-          <TableHead className="table-cell">Specialization</TableHead>
-          <TableHead className="table-cell">Actions</TableHead>
+          <TableHead className="hidden sm:table-cell whitespace-nowrap font-semibold">Name</TableHead>
+          <TableHead className="hidden md:table-cell whitespace-nowrap font-semibold">Age</TableHead>
+          <TableHead className="hidden sm:table-cell whitespace-nowrap font-semibold">Phone</TableHead>
+          <TableHead className="hidden lg:table-cell whitespace-nowrap font-semibold">Address</TableHead>
+          <TableHead className="hidden lg:table-cell whitespace-nowrap font-semibold">Experience</TableHead>
+          <TableHead className="hidden md:table-cell whitespace-nowrap font-semibold">Specialization</TableHead>
+          <TableHead className="text-right whitespace-nowrap font-semibold">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {doctors.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={7}>No doctors available</TableCell>
+            <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+              No doctors available
+            </TableCell>
           </TableRow>
         ) : (
           doctors.map((doctor, index) => (
-            <TableRow key={index}>
-              <TableCell className="table-cell">{doctor.name}</TableCell>
-              <TableCell className="table-cell">{doctor.age}</TableCell>
-              <TableCell className="table-cell">
+            <TableRow key={index} className="hover:bg-muted/50">
+              <TableCell className="sm:table-cell font-medium">
+                <div className="block sm:hidden text-xs text-muted-foreground mb-1">Doctor</div>
+                {doctor.name}
+              </TableCell>
+              <TableCell className="hidden md:table-cell">
+                {doctor.age}
+              </TableCell>
+              <TableCell className="hidden sm:table-cell">
                 {doctor.contactNumber}
               </TableCell>
-              <TableCell className="table-cell">{doctor.address}</TableCell>
-              <TableCell className="table-cell">
-                {doctor.experienceYears}
+              <TableCell className="hidden lg:table-cell">
+                {doctor.address}
               </TableCell>
-              <TableCell className="table-cell">
+              <TableCell className="hidden lg:table-cell">
+                {doctor.experienceYears} years
+              </TableCell>
+              <TableCell className="hidden md:table-cell">
                 {doctor.specialization}
               </TableCell>
-              <TableCell className="table-cell">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-8 h-8 p-0">
-                      <MoreHorizontal className="w-6 h-6" />
-                      <span className="sr-only">Open menu</span>
+              <TableCell className="text-right">
+                <div className="flex sm:justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                    onClick={() => {
+                      setSelectedDoctor(doctor);
+                      setIsViewModalOpen(true);
+                    }}
+                    title="View Doctor"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 p-0 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                    onClick={() => {
+                      setSelectedDoctor(doctor);
+                      setIsUpdateModalOpen(true);
+                    }}
+                    title="Edit Doctor"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 p-0 text-violet-600 hover:bg-violet-50 hover:text-violet-700"
+                    onClick={() => {
+                      setSelectedDoctor(doctor);
+                      setIsPasswordModalOpen(true);
+                    }}
+                    title="Change Password"
+                  >
+                    <Key className="h-4 w-4" />
+                  </Button>
+                  {adminDetails.role === "admin" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => handleDeleteClick(doctor)}
+                      title="Delete Doctor"
+                    >
+                      <Trash className="h-4 w-4" />
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="cursor-pointer">
-                    <DropdownMenuItem
-                      className="flex justify-between cursor-pointer"
-                      onClick={() => {
-                        setSelectedDoctor(doctor);
-                        setIsUpdateModalOpen(true);
-                      }}
-                    >
-                      Edit <Edit size={17} />
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setSelectedDoctor(doctor);
-                        setIsViewModalOpen(true);
-                      }}
-                      className="flex justify-between cursor-pointer"
-                    >
-                      View <Eye size={17} />
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setSelectedDoctor(doctor);
-                        setIsPasswordModalOpen(true);
-                      }}
-                      className="flex justify-between cursor-pointer"
-                    >
-                      Change Password <Key size={17} />
-                    </DropdownMenuItem>
-                    {adminDetails.role === "admin" && (
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteClick(doctor)}
-                        className="flex justify-between cursor-pointer"
-                      >
-                        Delete <Trash size={17} />
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))
@@ -192,19 +199,34 @@ export function DoctorTable() {
   return (
     <div className="flex flex-col w-full bg-muted/40">
       <div className="flex flex-col sm:gap-4 sm:py-4">
-        <header className="sticky top-0 z-30 flex items-center gap-4 px-4 border-b h-14 bg-background sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-          <div className="relative flex-1 mx-2 ml-auto md:grow-0">
+        <header className="sticky top-0 z-30 flex flex-col sm:flex-row items-center gap-4 px-4 py-2 border-b bg-background sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+          <div className="relative flex-1 w-full sm:w-auto sm:max-w-xs">
             <Input
               type="search"
-              placeholder="Search..."
+              placeholder="Search doctors..."
               value={searchQuery}
               onChange={handleSearchChange}
-              className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"
+              className="w-full rounded-lg bg-background pl-8"
             />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
           </div>
         </header>
-        <main className="grid items-start flex-1 gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-          <div className="flex items-center">
+        <main className="grid items-start flex-1 gap-4 p-2 sm:p-4 sm:px-6 sm:py-0 md:gap-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-muted-foreground hidden sm:block">Doctor Management</h2>
             <div className="flex items-center gap-2 ml-auto">
               <PopupModal
                 text="Add Doctor"
@@ -223,8 +245,8 @@ export function DoctorTable() {
               <Error />
             </div>
           ) : (
-            <div className="w-full overflow-x-auto max-h-[500px] py-2">
-              <div>{renderDoctorTable()}</div>
+            <div className="w-full overflow-x-auto rounded-md border bg-card shadow-sm">
+              <div className="p-1 sm:p-2">{renderDoctorTable()}</div>
             </div>
           )}
         </main>
@@ -260,22 +282,27 @@ export function DoctorTable() {
         />
       )}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[90vw] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-center sm:text-left">Confirm Deletion</DialogTitle>
+            <DialogDescription className="text-center sm:text-left">
               Are you sure you want to delete Dr. {doctorToDelete?.name}? This
               action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete}
+              className="w-full sm:w-auto"
+            >
               Delete
             </Button>
           </DialogFooter>

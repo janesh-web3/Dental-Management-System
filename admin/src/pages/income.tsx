@@ -129,7 +129,7 @@ export default function IncomePage() {
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="2xl:container mx-auto py-6">
       <Card className="bg-background border-border">
         <CardHeader>
           <CardTitle>Income Management</CardTitle>

@@ -37,12 +37,12 @@ export const navItems: NavItem[] = [
     icon: "arrowDown",
     label: "Expense",
   },
-  {
-    title: "Notifications",
-    href: "/notifications",
-    icon: "bell",
-    label: "Notifications",
-  },
+  // {
+  //   title: "Notifications",
+  //   href: "/notifications",
+  //   icon: "bell",
+  //   label: "Notifications",
+  // },
   {
     title: "Testimonials",
     href: "/testimonials",
@@ -55,18 +55,12 @@ export const navItems: NavItem[] = [
     icon: "profile",
     label: "Contacts",
   },
-  {
-    title: "SMS",
-    href: "/sms",
-    icon: "message",
-    label: "SMS",
-  },
-  {
-    title: "Socket.IO Example",
-    href: "/socket-example",
-    icon: "message",
-    label: "Socket.IO",
-  },
+  // {
+  //   title: "SMS",
+  //   href: "/sms",
+  //   icon: "message",
+  //   label: "SMS",
+  // },
 ];
 
 export const users = [

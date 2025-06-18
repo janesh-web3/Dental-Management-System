@@ -235,7 +235,7 @@ const DentalChart: React.FC<DentalChartProps> = ({
   const lowerTeeth = ['48','47','46','45','44','43','42','41','31','32','33','34','35','36','37','38'];
 
   return (
-    <div className="w-full max-w-5xl mx-auto p-4 border rounded-lg bg-background">
+    <div className="w-full max-w-5xl mx-10 md:mx-auto p-4 border rounded-lg bg-background">
       <div className="text-center mb-4 font-semibold">Adult Dental Chart</div>
       
       <div className="flex flex-col gap-0">

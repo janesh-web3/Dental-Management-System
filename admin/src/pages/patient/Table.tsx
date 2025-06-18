@@ -590,7 +590,6 @@ export function PatientTable() {
         }
       }
 
-      console.log(`Fetching patients: ${endpoint}${queryParams}`);
 
       const response: { patients: Patient[]; totalPages: number } =
         await crudRequest("GET", `${endpoint}${queryParams}`);

@@ -218,7 +218,7 @@ export function PaymentHistoryDialog({
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 items-center gap-2">
+                        <div className="grid md:grid-cols-2 items-center gap-2">
                           <Input
                             type="number"
                             placeholder="Add payment"

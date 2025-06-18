@@ -31,12 +31,19 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CheckIcon, Trash2, RefreshCw, Check, CalendarIcon, FilterIcon, X } from "lucide-react";
-import { format, parseISO, isAfter, isBefore, isEqual } from "date-fns";
+import {
+  CheckIcon,
+  Trash2,
+  RefreshCw,
+  Check,
+  CalendarIcon,
+  FilterIcon,
+  X,
+} from "lucide-react";
+import { format, parseISO, isEqual } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -73,7 +80,7 @@ export default function NotificationsPage() {
   // Fetch notifications based on current filters
   const fetchNotifications = async (pageNum = 1, replace = true) => {
     if (!adminDetails?._id) return;
-    
+
     try {
       setLoading(true);
       const response = await getNotifications(
@@ -81,46 +88,54 @@ export default function NotificationsPage() {
         "User",
         pageNum,
         10,
-        isReadFilter === "read" ? true : isReadFilter === "unread" ? false : undefined
+        isReadFilter === "read"
+          ? true
+          : isReadFilter === "unread"
+            ? false
+            : undefined
       );
-      
+
       if (response.success) {
         let filteredNotifications = response.data.notifications;
-        
+
         // Apply client-side filters (type and date)
         if (typeFilter) {
           filteredNotifications = filteredNotifications.filter(
-            notification => notification.type === typeFilter
+            (notification) => notification.type === typeFilter
           );
         }
-        
+
         if (date) {
-          filteredNotifications = filteredNotifications.filter(notification => {
-            const notificationDate = parseISO(notification.createdAt);
-            return (
-              isEqual(
-                new Date(notificationDate.getFullYear(), notificationDate.getMonth(), notificationDate.getDate()),
+          filteredNotifications = filteredNotifications.filter(
+            (notification) => {
+              const notificationDate = parseISO(notification.createdAt);
+              return isEqual(
+                new Date(
+                  notificationDate.getFullYear(),
+                  notificationDate.getMonth(),
+                  notificationDate.getDate()
+                ),
                 new Date(date.getFullYear(), date.getMonth(), date.getDate())
-              )
-            );
-          });
+              );
+            }
+          );
         }
-        
+
         if (searchQuery) {
           const query = searchQuery.toLowerCase();
           filteredNotifications = filteredNotifications.filter(
-            notification => 
-              notification.title.toLowerCase().includes(query) || 
+            (notification) =>
+              notification.title.toLowerCase().includes(query) ||
               notification.description.toLowerCase().includes(query)
           );
         }
-        
+
         if (replace) {
           setNotifications(filteredNotifications);
         } else {
-          setNotifications(prev => [...prev, ...filteredNotifications]);
+          setNotifications((prev) => [...prev, ...filteredNotifications]);
         }
-        
+
         setHasMore(response.data.hasNextPage);
         setPage(response.data.currentPage);
         setTotalCount(response.data.totalCount);
@@ -141,17 +156,20 @@ export default function NotificationsPage() {
   };
 
   // Handle mark as read/unread
-  const handleMarkAsRead = async (notificationId: string, currentStatus: boolean) => {
+  const handleMarkAsRead = async (
+    notificationId: string,
+    _currentStatus: boolean
+  ) => {
     try {
       setLoading(true);
       const response = await markAsRead(notificationId);
-      
+
       if (response.success) {
         // Update local state
-        setNotifications(prev => 
-          prev.map(notification => 
-            notification._id === notificationId 
-              ? { ...notification, isRead: true } 
+        setNotifications((prev) =>
+          prev.map((notification) =>
+            notification._id === notificationId
+              ? { ...notification, isRead: true }
               : notification
           )
         );
@@ -168,15 +186,15 @@ export default function NotificationsPage() {
   // Handle mark all as read
   const handleMarkAllAsRead = async () => {
     if (!adminDetails?._id) return;
-    
+
     try {
       setLoading(true);
       const response = await markAllAsRead(adminDetails._id, "User");
-      
+
       if (response.success) {
         // Update all notifications in state to read
-        setNotifications(prev => 
-          prev.map(notification => ({ ...notification, isRead: true }))
+        setNotifications((prev) =>
+          prev.map((notification) => ({ ...notification, isRead: true }))
         );
         toast.success(`Marked ${response.modifiedCount} notifications as read`);
       }
@@ -193,11 +211,11 @@ export default function NotificationsPage() {
     try {
       setLoading(true);
       const response = await deleteNotification(notificationId);
-      
+
       if (response.success) {
         // Remove from local state
-        setNotifications(prev => 
-          prev.filter(notification => notification._id !== notificationId)
+        setNotifications((prev) =>
+          prev.filter((notification) => notification._id !== notificationId)
         );
         toast.success("Notification deleted");
       }
@@ -220,23 +238,23 @@ export default function NotificationsPage() {
   // Format date/time helpers
   const formatDate = (dateString: string) => {
     try {
-      return format(parseISO(dateString), 'PP');
+      return format(parseISO(dateString), "PP");
     } catch {
       return dateString;
     }
   };
-  
+
   const formatTime = (dateString: string) => {
     try {
-      return format(parseISO(dateString), 'p');
+      return format(parseISO(dateString), "p");
     } catch {
       return dateString;
     }
   };
-  
+
   const formatDateTime = (dateString: string) => {
     try {
-      return format(parseISO(dateString), 'PPp');
+      return format(parseISO(dateString), "PPp");
     } catch {
       return dateString;
     }
@@ -267,11 +285,11 @@ export default function NotificationsPage() {
 
   return (
     <div className="container mx-auto py-6">
-      <PageTitle 
-        heading="Notifications" 
+      <PageTitle
+        heading="Notifications"
         text="View and manage your notification history"
       />
-      
+
       <div className="flex flex-col-reverse md:flex-row gap-4 mt-4">
         {/* Main Content */}
         <div className="w-full">
@@ -284,33 +302,37 @@ export default function NotificationsPage() {
                     You have {totalCount} total notifications
                   </CardDescription>
                 </div>
-                
+
                 <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => setShowFilters(!showFilters)}
                   >
                     <FilterIcon className="h-4 w-4 mr-1" />
                     {showFilters ? "Hide Filters" : "Show Filters"}
                   </Button>
-                  
-                  <Button 
-                    variant="outline" 
+
+                  <Button
+                    variant="outline"
                     size="sm"
-                    onClick={() => setCurrentView(currentView === "list" ? "card" : "list")}
+                    onClick={() =>
+                      setCurrentView(currentView === "list" ? "card" : "list")
+                    }
                   >
                     {currentView === "list" ? "Card View" : "List View"}
                   </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => fetchNotifications()}
                   >
-                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                    <RefreshCw
+                      className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                    />
                   </Button>
-                  
+
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="outline" size="sm">
@@ -322,7 +344,8 @@ export default function NotificationsPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Mark all as read?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will mark all your notifications as read. You can't undo this action.
+                          This will mark all your notifications as read. You
+                          can't undo this action.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -335,7 +358,7 @@ export default function NotificationsPage() {
                   </AlertDialog>
                 </div>
               </div>
-              
+
               {/* Filters */}
               {showFilters && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 p-4 border rounded-md bg-muted/30">
@@ -349,11 +372,11 @@ export default function NotificationsPage() {
                       className="mt-1"
                     />
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="type">Type</Label>
-                    <Select 
-                      value={typeFilter || ""} 
+                    <Select
+                      value={typeFilter || ""}
                       onValueChange={(value) => setTypeFilter(value || null)}
                     >
                       <SelectTrigger id="type" className="mt-1">
@@ -368,11 +391,11 @@ export default function NotificationsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="status">Status</Label>
-                    <Select 
-                      value={isReadFilter || ""} 
+                    <Select
+                      value={isReadFilter || ""}
                       onValueChange={(value) => setIsReadFilter(value || null)}
                     >
                       <SelectTrigger id="status" className="mt-1">
@@ -385,7 +408,7 @@ export default function NotificationsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="date">Date</Label>
                     <Popover>
@@ -402,13 +425,13 @@ export default function NotificationsPage() {
                         <Calendar
                           mode="single"
                           selected={date || undefined}
-                          onSelect={setDate}
+                          onSelect={(date) => setDate(date || null)}
                           initialFocus
                         />
                       </PopoverContent>
                     </Popover>
                   </div>
-                  
+
                   <div className="md:col-span-4 flex justify-end">
                     <Button variant="outline" size="sm" onClick={clearFilters}>
                       <X className="h-4 w-4 mr-1" />
@@ -418,7 +441,7 @@ export default function NotificationsPage() {
                 </div>
               )}
             </CardHeader>
-            
+
             <CardContent>
               {loading && notifications.length === 0 ? (
                 <div className="flex justify-center items-center h-40">
@@ -426,7 +449,9 @@ export default function NotificationsPage() {
                 </div>
               ) : notifications.length === 0 ? (
                 <div className="text-center py-10">
-                  <p className="text-muted-foreground">No notifications found</p>
+                  <p className="text-muted-foreground">
+                    No notifications found
+                  </p>
                 </div>
               ) : currentView === "list" ? (
                 <div>
@@ -435,14 +460,21 @@ export default function NotificationsPage() {
                       <TableRow>
                         <TableHead className="w-[100px]">Type</TableHead>
                         <TableHead>Title</TableHead>
-                        <TableHead className="hidden md:table-cell">Date</TableHead>
-                        <TableHead className="hidden md:table-cell">Status</TableHead>
+                        <TableHead className="hidden md:table-cell">
+                          Date
+                        </TableHead>
+                        <TableHead className="hidden md:table-cell">
+                          Status
+                        </TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {notifications.map((notification) => (
-                        <TableRow key={notification._id} className={notification.isRead ? "" : "bg-muted/50"}>
+                        <TableRow
+                          key={notification._id}
+                          className={notification.isRead ? "" : "bg-muted/50"}
+                        >
                           <TableCell>
                             <Badge variant={getTypeVariant(notification.type)}>
                               {notification.type}
@@ -450,7 +482,11 @@ export default function NotificationsPage() {
                           </TableCell>
                           <TableCell>
                             <div>
-                              <p className={notification.isRead ? "" : "font-medium"}>
+                              <p
+                                className={
+                                  notification.isRead ? "" : "font-medium"
+                                }
+                              >
                                 {notification.title}
                               </p>
                               <p className="text-xs text-muted-foreground line-clamp-1">
@@ -461,7 +497,9 @@ export default function NotificationsPage() {
                           <TableCell className="hidden md:table-cell">
                             <div className="text-sm">
                               <p>{formatDate(notification.createdAt)}</p>
-                              <p className="text-xs text-muted-foreground">{formatTime(notification.createdAt)}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatTime(notification.createdAt)}
+                              </p>
                             </div>
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
@@ -477,7 +515,12 @@ export default function NotificationsPage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleMarkAsRead(notification._id, notification.isRead)}
+                                  onClick={() =>
+                                    handleMarkAsRead(
+                                      notification._id,
+                                      notification.isRead
+                                    )
+                                  }
                                   title="Mark as read"
                                 >
                                   <CheckIcon className="h-4 w-4" />
@@ -495,15 +538,24 @@ export default function NotificationsPage() {
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete notification?</AlertDialogTitle>
+                                    <AlertDialogTitle>
+                                      Delete notification?
+                                    </AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      This will permanently delete this notification.
+                                      This will permanently delete this
+                                      notification.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction 
-                                      onClick={() => handleDeleteNotification(notification._id)}
+                                    <AlertDialogCancel>
+                                      Cancel
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() =>
+                                        handleDeleteNotification(
+                                          notification._id
+                                        )
+                                      }
                                     >
                                       Delete
                                     </AlertDialogAction>
@@ -516,7 +568,7 @@ export default function NotificationsPage() {
                       ))}
                     </TableBody>
                   </Table>
-                  
+
                   {hasMore && (
                     <div className="flex justify-center mt-4">
                       <Button
@@ -539,10 +591,20 @@ export default function NotificationsPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {notifications.map((notification) => (
-                    <Card key={notification._id} className={notification.isRead ? "" : "bg-muted/50 border-primary/50"}>
+                    <Card
+                      key={notification._id}
+                      className={
+                        notification.isRead
+                          ? ""
+                          : "bg-muted/50 border-primary/50"
+                      }
+                    >
                       <CardHeader className="pb-2">
                         <div className="flex justify-between">
-                          <Badge variant={getTypeVariant(notification.type)} className="mb-2">
+                          <Badge
+                            variant={getTypeVariant(notification.type)}
+                            className="mb-2"
+                          >
                             {notification.type}
                           </Badge>
                           {notification.isRead ? (
@@ -551,19 +613,28 @@ export default function NotificationsPage() {
                             <Badge variant="secondary">Unread</Badge>
                           )}
                         </div>
-                        <CardTitle className="text-base">{notification.title}</CardTitle>
+                        <CardTitle className="text-base">
+                          {notification.title}
+                        </CardTitle>
                         <CardDescription className="text-xs">
                           {formatDateTime(notification.createdAt)}
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-sm mb-4">{notification.description}</p>
+                        <p className="text-sm mb-4">
+                          {notification.description}
+                        </p>
                         <div className="flex justify-end space-x-2">
                           {!notification.isRead && (
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleMarkAsRead(notification._id, notification.isRead)}
+                              onClick={() =>
+                                handleMarkAsRead(
+                                  notification._id,
+                                  notification.isRead
+                                )
+                              }
                             >
                               <CheckIcon className="h-4 w-4 mr-1" />
                               Mark as read
@@ -571,25 +642,27 @@ export default function NotificationsPage() {
                           )}
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                              >
+                              <Button variant="outline" size="sm">
                                 <Trash2 className="h-4 w-4 mr-1 text-destructive" />
                                 Delete
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete notification?</AlertDialogTitle>
+                                <AlertDialogTitle>
+                                  Delete notification?
+                                </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This will permanently delete this notification.
+                                  This will permanently delete this
+                                  notification.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => handleDeleteNotification(notification._id)}
+                                <AlertDialogAction
+                                  onClick={() =>
+                                    handleDeleteNotification(notification._id)
+                                  }
                                 >
                                   Delete
                                 </AlertDialogAction>
@@ -600,7 +673,7 @@ export default function NotificationsPage() {
                       </CardContent>
                     </Card>
                   ))}
-                  
+
                   {hasMore && (
                     <div className="flex justify-center mt-4 md:col-span-2">
                       <Button

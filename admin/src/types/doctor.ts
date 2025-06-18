@@ -1,9 +1,10 @@
-export interface NotificationPreferences {
+interface NotificationPreferences {
   desktopNotifications: boolean;
   soundAlerts: boolean;
   appointmentNotifications: boolean;
   patientNotifications: boolean;
   treatmentNotifications: boolean;
+  paymentNotifications: boolean;  // This is the missing property
   xrayNotifications: boolean;
 }
 

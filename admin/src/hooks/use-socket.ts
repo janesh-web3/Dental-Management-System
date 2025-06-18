@@ -1,19 +1,24 @@
 import { useEffect, useCallback } from 'react';
 import { useSocket } from '../contexts/socketContext';
-import type { Socket } from 'socket.io-client';
+import type { Socket as BaseSocket } from 'socket.io-client';
 
 // Type definition for event handlers
 type EventHandler = (...args: any[]) => void;
 
-// Extend the Socket type to include our auth property
-declare module 'socket.io-client' {
-  interface Socket {
-    auth?: {
-      token?: string;
-      userId?: string;
-    };
-  }
-}
+// Define our custom auth type
+type CustomAuth = {
+  token?: string;
+  userId?: string;
+  [key: string]: any;
+} | ((cb: (data: object) => void) => void);
+
+// Create a type that combines the base Socket with our custom auth type
+export type CustomSocket = BaseSocket & {
+  auth?: CustomAuth;
+};
+
+// For backward compatibility
+type Socket = CustomSocket;
 
 interface UseSocketHookReturn {
   socket: Socket | null;

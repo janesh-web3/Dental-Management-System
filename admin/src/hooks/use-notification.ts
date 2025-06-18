@@ -34,12 +34,6 @@ export const useNotification = () => {
   const [notifications, setNotifications] = useState<NotificationPayload[]>([]);
   const { emit, isConnected, socket, subscribe, unsubscribe, userRole } = useSocketIO();
 
-  // Get the current user's ID from socket auth if available
-  const getCurrentUserId = (): string | null => {
-    if (!socket || !socket.auth) return null;
-    return typeof socket.auth === 'object' ? (socket.auth.userId as string || null) : null;
-  };
-
   // Listen for all notification types
   useEffect(() => {
     if (!socket || !isConnected) return;
@@ -110,97 +104,6 @@ export const useNotification = () => {
         }
       } catch (error) {
         console.error('Error handling notification:', error);
-      }
-    };
-
-    // Handle appointment notifications - only for admin, reception, and relevant doctor
-    const handleAppointmentNotification = (data: any) => {
-      const userId = getCurrentUserId();
-      if (userRole === 'admin' || userRole === 'reception' || 
-          (userRole === 'doctor' && data.doctor === userId)) {
-        toast.info(`Appointment: ${data.firstName} ${data.lastName} on ${data.appointmentDate}`);
-        setNotifications(prev => [{
-          _id: data._id || `temp-${Date.now()}`,
-          title: 'New Appointment',
-          description: `${data.firstName} ${data.lastName} on ${data.appointmentDate}`,
-          type: 'info',
-          isRead: false,
-          createdAt: new Date().toISOString(),
-          receiver: userId as ObjectId,
-          additionalData: data
-        }, ...prev]);
-      }
-    };
-
-    // Handle patient notifications - only for admin and reception
-    const handlePatientNotification = (data: any) => {
-      const userId = getCurrentUserId();
-      if (userRole === 'admin' || userRole === 'reception') {
-        toast.info(`Patient: ${data.personalDetails?.name || 'Unknown'}`);
-        setNotifications(prev => [{
-          _id: data._id || `temp-${Date.now()}`,
-          title: 'New Patient Registration',
-          description: `${data.personalDetails?.name || 'Unknown'} has registered`,
-          type: 'info',
-          isRead: false,
-          createdAt: new Date().toISOString(),
-          receiver: userId as ObjectId,
-          additionalData: data
-        }, ...prev]);
-      }
-    };
-
-    // Handle payment notifications - only for admin and reception
-    const handlePaymentNotification = (data: any) => {
-      const userId = getCurrentUserId();
-      if (userRole === 'admin' || userRole === 'reception') {
-        toast.success(`Payment received: $${data.amount} for ${data.title}`);
-        setNotifications(prev => [{
-          _id: data._id || `temp-${Date.now()}`,
-          title: 'Payment Received',
-          description: `$${data.amount} for ${data.title}`,
-          type: 'success',
-          isRead: false,
-          createdAt: new Date().toISOString(),
-          receiver: userId as ObjectId,
-          additionalData: data
-        }, ...prev]);
-      }
-    };
-
-    // Handle treatment notifications - only for admin and doctors
-    const handleTreatmentNotification = (data: any) => {
-      const userId = getCurrentUserId();
-      if (userRole === 'admin' || userRole === 'doctor') {
-        toast.info(`Treatment ${data.isCompleted ? 'completed' : 'updated'} for patient`);
-        setNotifications(prev => [{
-          _id: data._id || `temp-${Date.now()}`,
-          title: `Treatment ${data.isCompleted ? 'Completed' : 'Updated'}`,
-          description: `Treatment for ${data.patientName || 'Unknown patient'} has been ${data.isCompleted ? 'completed' : 'updated'}`,
-          type: 'info',
-          isRead: false,
-          createdAt: new Date().toISOString(),
-          receiver: userId as ObjectId,
-          additionalData: data
-        }, ...prev]);
-      }
-    };
-
-    // Handle X-ray notifications - only for admin and doctors
-    const handleXrayNotification = (data: any) => {
-      const userId = getCurrentUserId();
-      if (userRole === 'admin' || userRole === 'doctor') {
-        toast.info(`X-ray uploaded for patient ${data.patient?.name || 'Unknown'}`);
-        setNotifications(prev => [{
-          _id: data._id || `temp-${Date.now()}`,
-          title: 'X-Ray Uploaded',
-          description: `X-ray for ${data.patient?.name || 'Unknown patient'} has been uploaded`,
-          type: 'info',
-          isRead: false,
-          createdAt: new Date().toISOString(),
-          receiver: userId as ObjectId,
-          additionalData: data
-        }, ...prev]);
       }
     };
 

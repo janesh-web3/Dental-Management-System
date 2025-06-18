@@ -36,7 +36,8 @@ const NotificationPreferencesModal: React.FC<NotificationPreferencesModalProps> 
             appointmentNotifications: true,
             patientNotifications: true,
             treatmentNotifications: true,
-            xrayNotifications: true
+            xrayNotifications: true,
+            paymentNotifications: true
           }}
           onSaved={(prefs) => {
             if (onSaved) {

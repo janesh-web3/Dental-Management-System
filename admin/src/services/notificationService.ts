@@ -1,6 +1,5 @@
 import { crudRequest } from "@/lib/api";
 import {
-  Notification,
   NotificationResponse,
   UnreadCountResponse,
   NotificationMarkReadResponse,

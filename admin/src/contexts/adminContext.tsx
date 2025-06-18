@@ -2,6 +2,7 @@ import { crudRequest } from "@/lib/api";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface AdminDetails {
+  notificationPreferences: { desktopNotifications: boolean; soundAlerts: boolean; appointmentNotifications: boolean; patientNotifications: boolean; treatmentNotifications: boolean; paymentNotifications: boolean; xrayNotifications: boolean; };
   role: string;
   name: string;
   email : string;
@@ -16,6 +17,15 @@ const initialState: AdminDetails = {
   name: "",
   _id: "",
   email: "",
+  notificationPreferences: {
+    desktopNotifications: false,
+    soundAlerts: false,
+    appointmentNotifications: false,
+    patientNotifications: false,
+    treatmentNotifications: false,
+    paymentNotifications: false,
+    xrayNotifications: false
+  }
 };
 
 // Define the shape of the context

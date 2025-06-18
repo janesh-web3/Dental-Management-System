@@ -75,7 +75,7 @@ export function SocketExample() {
           <CardTitle className="flex items-center justify-between">
             Socket.IO Example
             {isConnected ? (
-              <Badge variant="success" className="bg-green-500">Connected</Badge>
+              <Badge variant="success">Connected</Badge>
             ) : (
               <Badge variant="destructive">Disconnected</Badge>
             )}

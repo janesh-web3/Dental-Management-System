@@ -64,7 +64,7 @@ const Setting = () => {
       patientNotifications: true,
       treatmentNotifications: true,
       paymentNotifications: true,
-      xrayNotifications: true
+      xrayNotifications: true,
     }
   );
 

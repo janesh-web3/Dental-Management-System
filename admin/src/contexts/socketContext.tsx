@@ -25,7 +25,7 @@ const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const [_connectionAttempts, setConnectionAttempts] = useState(0);
   const MAX_RECONNECTION_ATTEMPTS = 5;
   
   // Get authentication tokens from various contexts

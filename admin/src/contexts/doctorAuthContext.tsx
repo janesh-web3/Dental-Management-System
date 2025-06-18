@@ -25,6 +25,7 @@ interface DoctorAuthContextType {
   doctorDetails: DoctorDetails;
   isAuthenticated: boolean;
   isLoading: boolean;
+  token: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   fetchDoctorDetails: () => Promise<void>;
@@ -42,16 +43,18 @@ export default function DoctorAuthProvider({ children }: DoctorAuthProviderProps
   const [doctorDetails, setDoctorDetails] = useState<DoctorDetails>(initialState);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
 
   const fetchDoctorDetails = async () => {
     try {
-      const token = sessionStorage.getItem("doctorToken");
-      if (!token) {
+      const storedToken = sessionStorage.getItem("doctorToken");
+      if (!storedToken) {
         setIsAuthenticated(false);
         return;
       }
 
-      const response = await getCurrentDoctor(token);
+      setToken(storedToken);
+      const response = await getCurrentDoctor(storedToken);
       
       if (response.success && response.doctor) {
         setDoctorDetails(response.doctor as DoctorDetails);
@@ -60,11 +63,13 @@ export default function DoctorAuthProvider({ children }: DoctorAuthProviderProps
         // Token invalid or expired
         console.error("Failed to fetch doctor details:", response.message);
         setIsAuthenticated(false);
+        setToken(null);
         sessionStorage.removeItem("doctorToken");
       }
     } catch (error) {
       console.error("Failed to fetch doctor details:", error);
       setIsAuthenticated(false);
+      setToken(null);
       sessionStorage.removeItem("doctorToken");
     }
   };
@@ -76,6 +81,7 @@ export default function DoctorAuthProvider({ children }: DoctorAuthProviderProps
       
       if (response.success && response.token && response.doctor) {
         sessionStorage.setItem("doctorToken", response.token);
+        setToken(response.token);
         setDoctorDetails(response.doctor as DoctorDetails);
         setIsAuthenticated(true);
         return true;
@@ -95,6 +101,7 @@ export default function DoctorAuthProvider({ children }: DoctorAuthProviderProps
 
   const logout = () => {
     sessionStorage.removeItem("doctorToken");
+    setToken(null);
     setDoctorDetails(initialState);
     setIsAuthenticated(false);
   };
@@ -115,6 +122,7 @@ export default function DoctorAuthProvider({ children }: DoctorAuthProviderProps
         doctorDetails,
         isAuthenticated,
         isLoading,
+        token,
         login,
         logout,
         fetchDoctorDetails,

@@ -43,7 +43,10 @@ export function AddPrescriptionButton({
         id={id}
         variant={variant}
         size={size}
-        onClick={openModal}
+        onClick={(e) => {
+          e.stopPropagation();
+          openModal();
+        }}
         className="flex items-center gap-1"
       >
         <FilePlus className="h-4 w-4" />

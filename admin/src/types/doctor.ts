@@ -1,3 +1,12 @@
+export interface NotificationPreferences {
+  desktopNotifications: boolean;
+  soundAlerts: boolean;
+  appointmentNotifications: boolean;
+  patientNotifications: boolean;
+  treatmentNotifications: boolean;
+  xrayNotifications: boolean;
+}
+
 export type Doctor = {
     _id: string;
     name: string;
@@ -14,4 +23,5 @@ export type Doctor = {
     image: { url: string };
     isActive: boolean;
     appointments: string[];
+    notificationPreferences?: NotificationPreferences;
   };

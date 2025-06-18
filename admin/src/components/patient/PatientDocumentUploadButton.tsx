@@ -33,7 +33,10 @@ export function PatientDocumentUploadButton({
         id={id}
         variant={variant}
         size={size}
-        onClick={() => setIsDialogOpen(true)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsDialogOpen(true);
+        }}
         className={className}
       >
         {children || (
@@ -44,8 +47,19 @@ export function PatientDocumentUploadButton({
         )}
       </Button>
       
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          // Prevent this from immediately triggering parent onClick handlers
+          setTimeout(() => {
+            setIsDialogOpen(false);
+          }, 100);
+        } else {
+          setIsDialogOpen(true);
+        }
+      }}>
+        <DialogContent 
+          onClick={(e) => e.stopPropagation()}
+          className="sm:max-w-[600px]">
           <TreatmentFileUpload
             patientId={patientId}
             medicalDetailId={medicalDetailId}

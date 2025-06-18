@@ -38,6 +38,12 @@ export const navItems: NavItem[] = [
     label: "Expense",
   },
   {
+    title: "Notifications",
+    href: "/notifications",
+    icon: "bell",
+    label: "Notifications",
+  },
+  {
     title: "Testimonials",
     href: "/testimonials",
     icon: "kanban",
@@ -54,6 +60,12 @@ export const navItems: NavItem[] = [
     href: "/sms",
     icon: "message",
     label: "SMS",
+  },
+  {
+    title: "Socket.IO Example",
+    href: "/socket-example",
+    icon: "message",
+    label: "Socket.IO",
   },
 ];
 

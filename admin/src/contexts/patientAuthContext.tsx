@@ -27,6 +27,7 @@ interface PatientAuthContextType {
   patientDetails: PatientDetails;
   isAuthenticated: boolean;
   isLoading: boolean;
+  token: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   fetchPatientDetails: () => Promise<void>;
@@ -47,18 +48,20 @@ export default function PatientAuthProvider({
     useState<PatientDetails>(initialState);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
 
   const fetchPatientDetails = async () => {
     try {
       // Get token from localStorage
-      const token = localStorage.getItem("patientToken");
+      const storedToken = localStorage.getItem("patientToken");
 
-      if (!token) {
+      if (!storedToken) {
         setIsAuthenticated(false);
         return;
       }
 
-      const response = await getCurrentPatient(token);
+      setToken(storedToken);
+      const response = await getCurrentPatient(storedToken);
       try {
         if (response.success && response.patient) {
           setPatientDetails(response.patient as PatientDetails);
@@ -76,6 +79,7 @@ export default function PatientAuthProvider({
               response.message.includes("Authentication failed"))
           ) {
             // localStorage.removeItem("patientToken");
+            setToken(null);
           } else {
           }
         }
@@ -86,18 +90,21 @@ export default function PatientAuthProvider({
     } catch (error) {
       console.error("Unexpected error in fetchPatientDetails:", error);
       setIsAuthenticated(false);
+      setToken(null);
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
     const checkAuthentication = () => {
-      const token = localStorage.getItem("patientToken");
+      const storedToken = localStorage.getItem("patientToken");
 
-      if (token) {
+      if (storedToken) {
+        setToken(storedToken);
         setIsLoading(true);
         fetchPatientDetails();
       } else {
+        setToken(null);
         setIsAuthenticated(false);
         setIsLoading(false);
       }
@@ -106,8 +113,8 @@ export default function PatientAuthProvider({
     checkAuthentication();
 
     const intervalId = setInterval(() => {
-      const token = localStorage.getItem("patientToken");
-      if (token && !isAuthenticated) {
+      const storedToken = localStorage.getItem("patientToken");
+      if (storedToken && !isAuthenticated) {
         checkAuthentication();
       }
     }, 5000); // Check every 5 seconds
@@ -134,6 +141,7 @@ export default function PatientAuthProvider({
         }
         localStorage.removeItem("patientToken");
         localStorage.setItem("patientToken", response.token);
+        setToken(response.token);
         setPatientDetails(response.patient as PatientDetails);
         setIsAuthenticated(true);
         setIsLoading(false);
@@ -143,6 +151,7 @@ export default function PatientAuthProvider({
 
       // Login failed, remove any existing token
       localStorage.removeItem("patientToken");
+      setToken(null);
       setIsAuthenticated(false);
       setIsLoading(false);
 
@@ -156,6 +165,7 @@ export default function PatientAuthProvider({
     } catch (error) {
       console.error("Patient login failed with exception:", error);
       localStorage.removeItem("patientToken");
+      setToken(null);
       setIsAuthenticated(false);
       setIsLoading(false);
       return false;
@@ -164,6 +174,7 @@ export default function PatientAuthProvider({
 
   const logout = () => {
     localStorage.removeItem("patientToken");
+    setToken(null);
     setPatientDetails(initialState);
     setIsAuthenticated(false);
     setIsLoading(true);
@@ -175,6 +186,7 @@ export default function PatientAuthProvider({
         patientDetails,
         isAuthenticated,
         isLoading,
+        token,
         login,
         logout,
         fetchPatientDetails,

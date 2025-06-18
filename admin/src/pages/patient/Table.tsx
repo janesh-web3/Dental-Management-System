@@ -1078,33 +1078,48 @@ export function PatientTable() {
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onClick={() => handleQRCodeClick(patient)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleQRCodeClick(patient);
+                        }}
                         className="gap-2"
                       >
                         <QrCode className="h-4 w-4" /> QR Code
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => {
-                          document
-                            .getElementById(`profile-photo-btn-${patient._id}`)
-                            ?.click();
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Add a delay to prevent the parent view drawer from opening
+                          setTimeout(() => {
+                            document
+                              .getElementById(`profile-photo-btn-${patient._id}`)
+                              ?.click();
+                          }, 50);
                         }}
                         className="gap-2"
                       >
                         <UserCircle className="h-4 w-4" /> Upload Photo
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => handleEditPayment(patient)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditPayment(patient);
+                        }}
                         className="gap-2"
                       >
                         <CreditCard className="h-4 w-4" /> Edit Payment
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onClick={() => {
-                          document
-                            .getElementById(`prescription-btn-${patient._id}`)
-                            ?.click();
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          // Add a delay to prevent the parent view drawer from opening
+                          setTimeout(() => {
+                            document
+                              .getElementById(`prescription-btn-${patient._id}`)
+                              ?.click();
+                          }, 100);
                         }}
                         className="gap-2"
                       >
@@ -1238,7 +1253,10 @@ export function PatientTable() {
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 hover:bg-muted"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                      }}
                     >
                       <MoreHorizontal className="h-4 w-4" />
                       <span className="sr-only">Open menu</span>
@@ -1247,38 +1265,57 @@ export function PatientTable() {
                   <DropdownMenuContent
                     align="end"
                     className="w-[180px] shadow-lg border border-border/30"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}
                   >
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={() => {
-                        document
-                          .getElementById(`profile-photo-btn-${patient._id}`)
-                          ?.click();
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        // Add a delay to prevent the parent view drawer from opening
+                        setTimeout(() => {
+                          document
+                            .getElementById(`profile-photo-btn-${patient._id}`)
+                            ?.click();
+                        }, 100);
                       }}
                       className="gap-2"
                     >
                       <UserCircle className="h-4 w-4" /> Upload Photo
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => handleEditPayment(patient)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditPayment(patient);
+                      }}
                       className="gap-2"
                     >
                       <CreditCard className="h-4 w-4" /> Edit Payment
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => {
-                        document
-                          .getElementById(`upload-docs-btn-${patient._id}`)
-                          ?.click();
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        // Add a delay to prevent the parent view drawer from opening
+                        setTimeout(() => {
+                          document
+                            .getElementById(`upload-docs-btn-${patient._id}`)
+                            ?.click();
+                        }, 100);
                       }}
                       className="gap-2"
                     >
                       <FileUp className="h-4 w-4" /> Upload Documents
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => handleSendEmail(patient)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSendEmail(patient);
+                      }}
                       className="gap-2"
                       disabled={!patient.personalDetails.emailAddress}
                     >
@@ -1286,10 +1323,15 @@ export function PatientTable() {
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={() => {
-                        document
-                          .getElementById(`prescription-btn-${patient._id}`)
-                          ?.click();
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        // Add a delay to prevent the parent view drawer from opening
+                        setTimeout(() => {
+                          document
+                            .getElementById(`prescription-btn-${patient._id}`)
+                            ?.click();
+                        }, 100);
                       }}
                       className="gap-2"
                     >
@@ -1614,7 +1656,7 @@ export function PatientTable() {
                                       </>
                                     )}
 
-                                    <div className="hidden">
+                                    <div className="hidden" onClick={(e) => e.stopPropagation()}>
                                       <AddPrescriptionButton
                                         id={`prescription-btn-${patient._id}`}
                                         patientId={patient._id}
@@ -1663,19 +1705,21 @@ export function PatientTable() {
                                       />
                                     </div>
 
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        document
-                                          .getElementById(
-                                            `profile-photo-btn-${patient._id}`
-                                          )
-                                          ?.click();
-                                      }}
-                                      className="gap-2"
-                                    >
-                                      <UserCircle className="h-4 w-4" /> Upload Photo
-                                    </DropdownMenuItem>
+                                                                          <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          e.preventDefault();
+                                          // Add a delay to prevent the parent view drawer from opening
+                                          setTimeout(() => {
+                                            document
+                                              .getElementById(`profile-photo-btn-${patient._id}`)
+                                              ?.click();
+                                          }, 100);
+                                        }}
+                                        className="gap-2"
+                                      >
+                                        <UserCircle className="h-4 w-4" /> Upload Photo
+                                      </DropdownMenuItem>
 
                                     <DropdownMenuItem
                                       onClick={(e) => {
@@ -1690,11 +1734,15 @@ export function PatientTable() {
                                     <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        document
-                                          .getElementById(
-                                            `upload-docs-btn-${patient._id}`
-                                          )
-                                          ?.click();
+                                        e.preventDefault();
+                                        // Add a delay to prevent the parent view drawer from opening
+                                        setTimeout(() => {
+                                          document
+                                            .getElementById(
+                                              `upload-docs-btn-${patient._id}`
+                                            )
+                                            ?.click();
+                                        }, 100);
                                       }}
                                       className="gap-2"
                                     >
@@ -1767,11 +1815,15 @@ export function PatientTable() {
                                     <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        document
-                                          .getElementById(
-                                            `prescription-btn-${patient._id}`
-                                          )
-                                          ?.click();
+                                        e.preventDefault();
+                                        // Add a delay to prevent the parent view drawer from opening
+                                        setTimeout(() => {
+                                          document
+                                            .getElementById(
+                                              `prescription-btn-${patient._id}`
+                                            )
+                                            ?.click();
+                                        }, 100);
                                       }}
                                       className="gap-2"
                                     >

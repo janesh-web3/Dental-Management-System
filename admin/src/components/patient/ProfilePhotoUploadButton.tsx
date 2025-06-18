@@ -198,8 +198,11 @@ export function ProfilePhotoUploadButton({
       <Button
         id={id}
         variant="outline"
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(true);
+        }}
         size="sm"
-        onClick={() => setIsOpen(true)}
         className="gap-2"
       >
         <UserCircle className="h-4 w-4" />
@@ -207,10 +210,19 @@ export function ProfilePhotoUploadButton({
       </Button>
 
       <Dialog open={isOpen} onOpenChange={(open) => {
-        setIsOpen(open);
-        if (!open) resetUpload();
+        if (!open) {
+          // Prevent this from immediately triggering parent onClick handlers
+          setTimeout(() => {
+            setIsOpen(false);
+            resetUpload();
+          }, 100);
+        } else {
+          setIsOpen(true);
+        }
       }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent 
+          onClick={(e) => e.stopPropagation()}
+          className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Upload Profile Photo</DialogTitle>
           </DialogHeader>

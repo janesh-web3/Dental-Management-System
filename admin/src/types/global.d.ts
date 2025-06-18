@@ -24,3 +24,6 @@ declare module 'nepali-date-picker' {
 
   export { NepaliDatePicker, NepaliDatePickerOptions };
 }
+
+// Define ObjectId type that can be imported throughout the application
+export type ObjectId = string;

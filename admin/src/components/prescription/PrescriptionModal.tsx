@@ -45,8 +45,16 @@ export function PrescriptionModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!open) {
+          // Prevent this from immediately triggering parent onClick handlers
+          setTimeout(() => {
+            onClose();
+          }, 100);
+        }
+      }}>
       <DialogContent 
+        onClick={(e) => e.stopPropagation()}
         className={cn(
           /* Base styles for all devices */
           "w-full p-0 rounded-lg shadow-lg",

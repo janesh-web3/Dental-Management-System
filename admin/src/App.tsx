@@ -1,4 +1,4 @@
-import { AdminProvider, DoctorProvider, DoctorAuthProvider, PatientAuthProvider } from "./contexts";
+import { AdminProvider, DoctorAuthProvider, DoctorProvider, PatientAuthProvider, SocketProvider } from "./contexts";
 import AppProvider from "./providers";
 import AppRouter from "./routes";
 import { ToastContainer } from "react-toastify";
@@ -9,23 +9,25 @@ export default function App() {
     <AppProvider>
       <DoctorAuthProvider>
         <PatientAuthProvider>
-          <DoctorProvider>
-            <AdminProvider>
-              <ToastContainer
-                position="top-right"
-                autoClose={2000}
-                hideProgressBar={false}
-                newestOnTop={false}
-                closeOnClick
-                rtl={false}
-                pauseOnFocusLoss
-                draggable
-                pauseOnHover
-                theme="dark"
-              />
-              <AppRouter />
-            </AdminProvider>
-          </DoctorProvider>
+          <AdminProvider>
+            <DoctorProvider>
+              <SocketProvider>
+                <ToastContainer
+                  position="top-right"
+                  autoClose={3000}
+                  hideProgressBar={false}
+                  newestOnTop={true}
+                  closeOnClick
+                  rtl={false}
+                  pauseOnFocusLoss
+                  draggable
+                  pauseOnHover
+                  theme="light"
+                />
+                <AppRouter />
+              </SocketProvider>
+            </DoctorProvider>
+          </AdminProvider>
         </PatientAuthProvider>
       </DoctorAuthProvider>
     </AppProvider>

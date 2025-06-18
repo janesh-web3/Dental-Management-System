@@ -30,6 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { NotificationSettings } from "@/components/shared/NotificationSettings";
 
 interface UserData {
   _id: string;
@@ -52,6 +54,19 @@ const Setting = () => {
     password: "",
     avatar: "https://github.com/shadcn.png",
   });
+  
+  // Add state for notification preferences
+  const [notificationPreferences, setNotificationPreferences] = useState(
+    adminDetails.notificationPreferences || {
+      desktopNotifications: true,
+      soundAlerts: true,
+      appointmentNotifications: true,
+      patientNotifications: true,
+      treatmentNotifications: true,
+      paymentNotifications: true,
+      xrayNotifications: true
+    }
+  );
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<UserData>(userData);
@@ -296,7 +311,15 @@ const Setting = () => {
         </Dialog>
       </div>
 
-      <Card className="max-w-2xl">
+      <Tabs defaultValue="profile" className="w-full mb-6">
+        <TabsList>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="users">Users</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="profile" className="mt-4">
+          <Card className="max-w-2xl">
         <CardHeader>
           <CardTitle>User Profile</CardTitle>
         </CardHeader>
@@ -437,79 +460,93 @@ const Setting = () => {
         </CardContent>
       </Card>
 
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>All Users</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Avatar</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user._id}>
-                  <TableCell>
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.avatar} />
-                      <AvatarFallback>{user.name[0]}</AvatarFallback>
-                    </Avatar>
-                  </TableCell>
-                  <TableCell>{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.contact}</TableCell>
-                  <TableCell>{user.role}</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditedData(user);
-                          setIsEditing(true);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="destructive" size="sm">
-                            Delete
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Delete User</DialogTitle>
-                          </DialogHeader>
-                          <p>Are you sure you want to delete {user.name}?</p>
-                          <div className="flex justify-end space-x-2">
-                            <Button
-                              variant="destructive"
-                              onClick={() => handleDelete(user._id, user.name)}
-                            >
+      </TabsContent>
+        
+      <TabsContent value="notifications" className="mt-4">
+        <NotificationSettings 
+          userId={adminDetails._id} 
+          userType="User"
+          initialPreferences={notificationPreferences}
+          onSaved={(prefs) => setNotificationPreferences(prefs)}
+        />
+      </TabsContent>
+      
+      <TabsContent value="users" className="mt-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>All Users</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Avatar</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user._id}>
+                    <TableCell>
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.avatar} />
+                        <AvatarFallback>{user.name[0]}</AvatarFallback>
+                      </Avatar>
+                    </TableCell>
+                    <TableCell>{user.name}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{user.contact}</TableCell>
+                    <TableCell>{user.role}</TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditedData(user);
+                            setIsEditing(true);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
                               Delete
                             </Button>
-                            <DialogTrigger asChild>
-                              <Button variant="outline">Cancel</Button>
-                            </DialogTrigger>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Delete User</DialogTitle>
+                            </DialogHeader>
+                            <p>Are you sure you want to delete {user.name}?</p>
+                            <div className="flex justify-end space-x-2">
+                              <Button
+                                variant="destructive"
+                                onClick={() => handleDelete(user._id, user.name)}
+                              >
+                                Delete
+                              </Button>
+                              <DialogTrigger asChild>
+                                <Button variant="outline">Cancel</Button>
+                              </DialogTrigger>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
     </div>
   );
 };

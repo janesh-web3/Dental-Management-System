@@ -29,7 +29,7 @@ const DashboardLayout = lazy(
   () => import("@/components/layout/dashboard-layout")
 );
 const SignInPage = lazy(() => import("@/pages/auth/signin/modern-signin"));
-
+const NotificationsPage = lazy(() => import("@/pages/notifications"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 const AppRouter: React.FC = () => {
@@ -62,6 +62,7 @@ const AppRouter: React.FC = () => {
         { path: "/testimonials", element: <Testimonials /> },
         { path: "/contacts", element: <Contacts /> },
         { path: "/sms", element: <SMS /> },
+        { path: "/notifications", element: <NotificationsPage /> },
         // Finance routes
         { path: "/finance/income", element: <IncomePage /> },
         { path: "/finance/expense", element: <ExpensePage /> },

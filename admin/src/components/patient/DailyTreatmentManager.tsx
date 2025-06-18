@@ -24,13 +24,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, Check, ChevronsUpDown, Search } from "lucide-react";
 import { DailyTreatment, ToothData } from "@/types/patient";
 import { procedureColors } from "../DentalChart";
 import { Checkbox } from "../ui/checkbox";
 import { crudRequest } from "@/lib/api";
 import { toast } from "react-toastify";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 export type Doctor = {
   _id: string;
@@ -106,12 +107,6 @@ export function DailyTreatmentManager({
     if (!treatmentClone._id) {
       treatmentClone._id = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
-    
-    console.log("Adding treatment in DailyTreatmentManager:", {
-      toothNumber,
-      treatment: treatmentClone,
-      existingTreatments: toothData.dailyTreatments?.length || 0
-    });
     
     // Call the parent component's callback with the cloned treatment
     onAddTreatment(toothNumber, treatmentClone);
@@ -217,6 +212,89 @@ export function DailyTreatmentManager({
     }
   };
 
+  // ProcedureDropdown component for searching and selecting procedures
+  type ProcedureDropdownProps = {
+    value: string;
+    onChange: (value: string) => void;
+    disabled?: boolean;
+  };
+
+  const ProcedureDropdown = ({ value, onChange, disabled }: ProcedureDropdownProps) => {
+    const [open, setOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    
+    const procedures = Object.keys(procedureColors);
+
+    const filteredProcedures = searchQuery
+      ? procedures.filter((proc) => 
+          proc.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : procedures;
+
+    return (
+      <div className="relative w-full">
+        <div className="relative">
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            aria-disabled={disabled}
+            className={cn(
+              "w-full justify-between font-normal",
+              !value && "text-muted-foreground"
+            )}
+            onClick={() => !disabled && setOpen(!open)}
+            disabled={disabled}
+          >
+            {value ? value : "Select procedure"}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </div>
+        
+        {open && (
+          <div className="absolute top-full z-10 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in mt-1">
+            <div className="flex items-center border-b px-3 py-2">
+              <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+              <Input
+                placeholder="Search procedures..."
+                className="h-8 w-full border-0 bg-transparent p-1 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="max-h-[200px] overflow-y-auto p-1">
+              {filteredProcedures.length > 0 ? (
+                filteredProcedures.map((procedure) => (
+                  <div
+                    key={procedure}
+                    className={cn(
+                      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                      value === procedure && "bg-accent text-accent-foreground"
+                    )}
+                    onClick={() => {
+                      onChange(procedure);
+                      setOpen(false);
+                      setSearchQuery("");
+                    }}
+                  >
+                    {procedure}
+                    {value === procedure && (
+                      <Check className="absolute right-2 h-4 w-4" />
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="relative flex w-full select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm text-muted-foreground">
+                  No procedures found
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Card className="mb-4">
       <CardContent className="p-4">
@@ -273,29 +351,12 @@ export function DailyTreatmentManager({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2 col-span-2">
+              </div>              <div className="space-y-2 col-span-2">
                 <Label>Procedure</Label>
-                <Select
+                <ProcedureDropdown
                   value={newTreatment.procedure || ""}
-                  onValueChange={(value) => handleChange("procedure", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select procedure" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(procedureColors).map(
-                      ([proc, { color }]) => (
-                        <SelectItem key={proc} value={proc}>
-                          <div className="flex items-center gap-1">
-                            <div className={`w-2 h-2 rounded-full ${color}`} />
-                            <span>{proc}</span>
-                          </div>
-                        </SelectItem>
-                      )
-                    )}
-                  </SelectContent>
-                </Select>
+                  onChange={(value) => handleChange("procedure", value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Treatment Amount (₹)</Label>

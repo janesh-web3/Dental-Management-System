@@ -235,7 +235,7 @@ const StatCard = ({
         {/* Highlight overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-white/40 dark:from-white/20 to-transparent rounded-lg pointer-events-none group-hover:opacity-80 transition-opacity duration-300" />
 
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative gap-2">
           <CardTitle className="text-sm font-medium relative z-10">
             {title}
           </CardTitle>
@@ -554,7 +554,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-4 p-8">
+    <div className="space-y-1 p-2 md:space-y-4 md:p-8">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">{t("Dashboard")}</h2>
       </div>
@@ -571,7 +571,7 @@ const Dashboard = () => {
       </div>
 
       <motion.div
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-6"
+        className="grid gap-2 md:gap-4 grid-cols-2 lg:grid-cols-6"
         initial="hidden"
         animate="visible"
         variants={staggerContainer}
@@ -654,8 +654,8 @@ const Dashboard = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <TabsContent value="overview" className="space-y-2 md:space-y-4">
+          <div className="grid gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-7">
             <Card className="col-span-4 bg-indigo-50 dark:bg-neutral-900 border-indigo-200 dark:border-neutral-800 shadow-sm hover:shadow-md transition-all">
               <CardHeader className="pb-2">
                 <CardTitle className="text-indigo-800 dark:text-indigo-300">
@@ -663,13 +663,13 @@ const Dashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-2 md:gap-4 grid-cols-2 lg:grid-cols-4">
                   <StatCard
                     title={t("Daily Revenue")}
                     value={`₹${revenueData?.financialAnalysis.daily.toLocaleString()}`}
                     description={t("Daily revenue")}
                     icon={
-                      <TrendingUp className="h-4 w-4 md:h-8 md:w-8 text-emerald-200" />
+                      <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
                     }
                     className="bg-emerald-50 dark:bg-red-900 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-800"
                   />
@@ -678,7 +678,7 @@ const Dashboard = () => {
                     value={`₹${revenueData?.financialAnalysis.weekly.toLocaleString()}`}
                     description={t("Weekly revenue")}
                     icon={
-                      <TrendingUp className="h-4 w-4 md:h-8 md:w-8 text-emerald-200" />
+                      <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
                     }
                     className="bg-emerald-50 dark:bg-lime-900 border-lime-200 dark:border-lime-800 hover:bg-lime-100 dark:hover:bg-lime-800"
                   />
@@ -687,7 +687,7 @@ const Dashboard = () => {
                     value={`₹${revenueData?.financialAnalysis.monthly.toLocaleString()}`}
                     description={t("Monthly revenue")}
                     icon={
-                      <TrendingUpIcon className="h-4 w-4 md:h-8 md:w-8 text-emerald-200" />
+                      <TrendingUpIcon className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
                     }
                     className="bg-fuchsia-50 dark:bg-fuchsia-900 border-fuchsia-200 dark:border-fuchsia-800 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-800"
                   />
@@ -696,7 +696,7 @@ const Dashboard = () => {
                     value={`₹${revenueData?.financialAnalysis.total.toLocaleString()}`}
                     description={t("Total revenue")}
                     icon={
-                      <TrendingUp className="h-4 w-4 md:h-8 md:w-8 text-emerald-200" />
+                      <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
                     }
                     className="bg-emerald-50 dark:bg-cyan-900 border-cyan-200 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-800"
                   />

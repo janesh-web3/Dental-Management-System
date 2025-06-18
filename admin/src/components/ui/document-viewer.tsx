@@ -115,26 +115,25 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
     if (invert) filters += " invert(100%)";
     return filters;
   };
-
   const renderContent = () => {
     if (isLoading) {
       return (
         <div className="flex items-center justify-center h-full">
-          <div className="animate-spin h-10 w-10 border-4 border-primary rounded-full border-t-transparent"></div>
+          <div className="animate-spin h-8 w-8 sm:h-10 sm:w-10 border-4 border-primary rounded-full border-t-transparent"></div>
         </div>
       );
     }
     
     if (error) {
       return (
-        <div className="flex flex-col items-center justify-center h-full text-center p-4">
+        <div className="flex flex-col items-center justify-center h-full text-center p-3 sm:p-4">
           <div className="text-red-500 mb-2">
-            <X className="h-10 w-10 mx-auto" />
+            <X className="h-8 w-8 sm:h-10 sm:w-10 mx-auto" />
           </div>
-          <p className="text-red-600 dark:text-red-400">{error}</p>
+          <p className="text-sm sm:text-base text-red-600 dark:text-red-400">{error}</p>
           <Button 
             variant="outline" 
-            className="mt-4"
+            className="mt-3 sm:mt-4 text-xs sm:text-sm h-8 sm:h-10"
             asChild
           >
             <a href={document.url} target="_blank" rel="noopener noreferrer">
@@ -153,11 +152,12 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
             alt={document.name}
             style={{ 
               transform: `scale(${zoom}) rotate(${rotation}deg)`,
-              maxHeight: '70vh',
+              maxHeight: '65vh',
+              maxWidth: '100%',
               transition: 'transform 0.3s ease',
               filter: getImageFilters()
             }}
-            className="object-contain"
+            className="object-contain p-2 sm:p-4"
             onLoad={handleImageLoad}
             onError={handleImageError}
           />
@@ -168,32 +168,32 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
         <iframe 
           src={document.url} 
           title={document.name}
-          className="w-full h-[70vh] border-0"
+          className="w-full h-[65vh] sm:h-[70vh] border-0"
           onLoad={() => setIsLoading(false)}
         />
       );
     } else {
       // For other document types
       return (
-        <div className="flex flex-col items-center justify-center h-full text-center p-8">
-          <div className="mb-4">
-            <FileText className="h-16 w-16 mx-auto text-blue-500" />
+        <div className="flex flex-col items-center justify-center h-full text-center p-4 sm:p-8">
+          <div className="mb-3 sm:mb-4">
+            <FileText className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-blue-500" />
           </div>
-          <h3 className="text-lg font-semibold mb-2">{document.name}</h3>
-          <p className="mb-4 text-muted-foreground">This file type can't be previewed directly.</p>
-          <div className="flex gap-2">
-            <Button variant="outline" asChild>
+          <h3 className="text-base sm:text-lg font-semibold mb-2">{document.name}</h3>
+          <p className="mb-4 text-sm text-muted-foreground">This file type can't be previewed directly.</p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" size="sm" className="text-xs sm:text-sm h-8 sm:h-10" asChild>
               <a 
                 href={document.url} 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 download={document.name}
               >
-                <Download className="mr-2 h-4 w-4" />
+                <Download className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                 Download
               </a>
             </Button>
-            <Button asChild>
+            <Button size="sm" className="text-xs sm:text-sm h-8 sm:h-10" asChild>
               <a 
                 href={document.url} 
                 target="_blank" 
@@ -207,74 +207,77 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
       );
     }
   };
-
   return (
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()} modal>
-      <DialogContent className="max-w-5xl w-full h-[85vh] max-h-[85vh] flex flex-col p-0">
-        <DialogHeader className="flex flex-row items-center justify-between p-4 border-b">
+      <DialogContent className="max-w-5xl w-[95vw] sm:w-full h-[90vh] sm:h-[85vh] max-h-[90vh] sm:max-h-[85vh] flex flex-col p-0">
+        <DialogHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border-b gap-2 sm:gap-0">
           <div className="flex items-center">
             {isImage ? (
-              <Image className="h-5 w-5 mr-2 text-blue-500" />
+              <Image className="h-5 w-5 mr-2 text-blue-500 flex-shrink-0" />
             ) : (
-              <FileText className="h-5 w-5 mr-2 text-blue-500" /> 
+              <FileText className="h-5 w-5 mr-2 text-blue-500 flex-shrink-0" /> 
             )}
-            <div>
-              <DialogTitle className="text-xl">
+            <div className="min-w-0">
+              <DialogTitle className="text-base sm:text-xl truncate max-w-[200px] sm:max-w-[300px] md:max-w-md">
                 {document.name}
-                {isXray && <span className="text-sm ml-2 font-normal text-red-500">(X-ray)</span>}
+                {isXray && <span className="text-xs sm:text-sm ml-1 sm:ml-2 font-normal text-red-500">(X-ray)</span>}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-xs sm:text-sm">
                 {isXray ? "X-ray viewer" : isImage ? "Image viewer" : isPdf ? "PDF viewer" : "Document viewer"}
-                {document.description && <span className="block text-xs mt-1 italic">{document.description}</span>}
-                {formattedUploadDate && <span className="block text-xs mt-0.5">Uploaded: {formattedUploadDate}</span>}
+                {document.description && <span className="hidden sm:block text-xs mt-1 italic truncate max-w-[200px] sm:max-w-[300px] md:max-w-md">{document.description}</span>}
+                {formattedUploadDate && <span className="hidden sm:block text-xs mt-0.5">Uploaded: {formattedUploadDate}</span>}
               </DialogDescription>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-2 w-full sm:w-auto justify-end">
             {isImage && (
               <>
-                <Button variant="outline" size="icon" onClick={handleZoomIn} disabled={zoom >= 3}>
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={handleZoomOut} disabled={zoom <= 0.2}>
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={handleRotateClockwise}>
-                  <RotateCw className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={handleRotateCounterClockwise}>
-                  <RotateCcw className="h-4 w-4" />
-                </Button>
+                <div className="flex gap-1">
+                  <Button variant="outline" size="icon" onClick={handleZoomIn} disabled={zoom >= 3} className="h-8 w-8">
+                    <ZoomIn className="h-3 w-3 sm:h-4 sm:w-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" onClick={handleZoomOut} disabled={zoom <= 0.2} className="h-8 w-8">
+                    <ZoomOut className="h-3 w-3 sm:h-4 sm:w-4" />
+                  </Button>
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="outline" size="icon" onClick={handleRotateClockwise} className="h-8 w-8">
+                    <RotateCw className="h-3 w-3 sm:h-4 sm:w-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" onClick={handleRotateCounterClockwise} className="h-8 w-8">
+                    <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4" />
+                  </Button>
+                </div>
                 {isXray && (
                   <Button 
                     variant={invert ? "secondary" : "outline"} 
                     size="icon" 
                     onClick={handleToggleInvert}
                     title="Invert colors"
+                    className="h-8 w-8"
                   >
-                    {invert ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+                    {invert ? <SunIcon className="h-3 w-3 sm:h-4 sm:w-4" /> : <MoonIcon className="h-3 w-3 sm:h-4 sm:w-4" />}
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={handleReset}>
+                <Button variant="outline" size="sm" onClick={handleReset} className="h-8 text-xs">
                   Reset
                 </Button>
               </>
             )}
-            <Button variant="outline" size="icon" asChild>
+            <Button variant="outline" size="icon" asChild className="h-8 w-8">
               <a href={document.url} download={document.name} target="_blank" rel="noopener noreferrer">
-                <Download className="h-4 w-4" />
+                <Download className="h-3 w-3 sm:h-4 sm:w-4" />
               </a>
             </Button>
-            <Button variant="outline" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
+            <Button variant="outline" size="icon" onClick={onClose} className="h-8 w-8">
+              <X className="h-3 w-3 sm:h-4 sm:w-4" />
             </Button>
           </div>
         </DialogHeader>
-        
-        {isXray && (
-          <div className="px-4 py-2 border-b bg-gray-50 dark:bg-gray-900 flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs w-28">Brightness: {brightness}%</span>
+          {isXray && (
+          <div className="px-2 sm:px-4 py-1 sm:py-2 border-b bg-gray-50 dark:bg-gray-900 flex flex-col gap-1 sm:gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-[10px] sm:text-xs w-20 sm:w-28">Brightness: {brightness}%</span>
               <Slider
                 className="flex-1"
                 value={[brightness]}
@@ -284,8 +287,8 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
                 onValueChange={(vals) => setBrightness(vals[0])}
               />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs w-28">Contrast: {contrast}%</span>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-[10px] sm:text-xs w-20 sm:w-28">Contrast: {contrast}%</span>
               <Slider
                 className="flex-1"
                 value={[contrast]}
@@ -297,8 +300,7 @@ export function DocumentViewer({ isOpen, onClose, document }: DocumentViewerProp
             </div>
           </div>
         )}
-        
-        <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
+          <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-1 sm:p-0">
           {renderContent()}
         </div>
       </DialogContent>

@@ -929,41 +929,39 @@ export function PatientTable() {
     setSelectedPatientForQR(patient);
     setIsQRCodeModalOpen(true);
   };
-
   const renderViewModeToggle = () => (
     <div className="flex items-center gap-1 border rounded-md overflow-hidden">
       <Button
         variant={viewMode === "table" ? "default" : "ghost"}
-        size="sm"
+        size="icon"
         onClick={() => setViewMode("table")}
-        className="rounded-none border-0 h-9"
+        className="rounded-none border-0 h-8 w-8 sm:h-9 sm:w-9"
         title="Table View"
       >
-        <LayoutIcon className="h-4 w-4" />
+        <LayoutIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
       </Button>
       <Button
         variant={viewMode === "list" ? "default" : "ghost"}
-        size="sm"
+        size="icon"
         onClick={() => setViewMode("list")}
-        className="rounded-none border-0 h-9"
+        className="rounded-none border-0 h-8 w-8 sm:h-9 sm:w-9"
         title="List View"
       >
-        <LayoutList className="h-4 w-4" />
+        <LayoutList className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
       </Button>
       <Button
         variant={viewMode === "grid" ? "default" : "ghost"}
-        size="sm"
+        size="icon"
         onClick={() => setViewMode("grid")}
-        className="rounded-none border-0 h-9"
+        className="rounded-none border-0 h-8 w-8 sm:h-9 sm:w-9"
         title="Grid View"
       >
-        <LayoutGrid className="h-4 w-4" />
+        <LayoutGrid className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
       </Button>
     </div>
   );
-
   const renderGridView = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+    <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-2 sm:p-4">
       {filteredPatients.map((patient, index) => (
         <motion.div
           key={patient._id}
@@ -1160,8 +1158,9 @@ export function PatientTable() {
           transition={{ duration: 0.2, delay: index * 0.03 }}
           className="group"
         >
+          {" "}
           <div
-            className="flex flex-col md:flex-row md:items-center gap-4 p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+            className="flex flex-col md:flex-row md:items-center gap-4 p-3 sm:p-4 hover:bg-muted/50 transition-colors cursor-pointer"
             onClick={() => {
               setSelectedPatient(patient);
               setIsViewDrawerOpen(true);
@@ -1207,7 +1206,7 @@ export function PatientTable() {
             </div>
 
             <div className="flex flex-col md:flex-row flex-1 gap-4 md:items-center justify-between">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+              <div className="grid grid-cols-1 gap-y-1 md:grid-cols-2 md:gap-x-8 w-full">
                 <div className="flex items-center text-sm">
                   <Phone className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
                   <span className="font-mono">
@@ -1232,7 +1231,7 @@ export function PatientTable() {
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-2 shrink-0">
+              <div className="flex flex-wrap items-center justify-end gap-1 sm:gap-2 shrink-0 mt-2 md:mt-0">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1373,15 +1372,16 @@ export function PatientTable() {
 
   const renderPatientTable = () => (
     <Card className="transition-all duration-300 hover:shadow-xl border border-foreground/10 rounded-xl overflow-hidden">
+      {" "}
       <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <UserCircle className="h-6 w-6 text-primary" />
             <CardTitle className="text-md font-bold tracking-tight">
               Patient List
             </CardTitle>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             {renderViewModeToggle()}
             {viewMode === "table" && (
               <Button
@@ -1904,25 +1904,26 @@ export function PatientTable() {
               {viewMode === "list" && renderListView()}
             </>
           )}
-        </div>
+        </div>{" "}
+        <div className="flex flex-col sm:grid sm:grid-cols-1 gap-4 mt-6 md:grid-cols-3 items-center p-4 border-t">
+          <div className="w-full sm:w-auto">
+            <Select
+              onValueChange={(value) => setItemsPerPage(Number(value))}
+              value={itemsPerPage.toString()}
+            >
+              <SelectTrigger id="itemsPerPage" className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Items per page" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5 items per page</SelectItem>
+                <SelectItem value="10">10 items per page</SelectItem>
+                <SelectItem value="20">20 items per page</SelectItem>
+                <SelectItem value="50">50 items per page</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="grid grid-cols-1 gap-4 mt-6 md:grid-cols-3 items-center p-4 border-t">
-          <Select
-            onValueChange={(value) => setItemsPerPage(Number(value))}
-            value={itemsPerPage.toString()}
-          >
-            <SelectTrigger id="itemsPerPage" className="w-[180px]">
-              <SelectValue placeholder="Items per page" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="5">5 items per page</SelectItem>
-              <SelectItem value="10">10 items per page</SelectItem>
-              <SelectItem value="20">20 items per page</SelectItem>
-              <SelectItem value="50">50 items per page</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Pagination className="justify-center">
+          <Pagination className="justify-center mt-4 sm:mt-0">
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
@@ -2019,7 +2020,8 @@ export function PatientTable() {
   return (
     <div className="flex flex-col w-full bg-muted/40">
       <div className="flex flex-col sm:gap-4 sm:py-4 ">
-        <header className="sticky justify-between top-0 z-30 grid grid-cols-2 md:grid-cols-3 items-center gap-4 px-4 border-b h-10 bg-background sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+        {" "}
+        <header className="sticky justify-between top-0 z-30 grid grid-cols-2 md:grid-cols-3 sm:items-center gap-4 px-4 py-2 border-b bg-background  sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
           <Breadcrumb className="hidden md:flex">
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -2039,16 +2041,16 @@ export function PatientTable() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="relative flex-1 mx-2 ml-auto w-80">
+          <div className="relative flex-1 w-full sm:w-auto sm:max-w-xs">
             <Input
-              placeholder="Search patients with name or sn..."
+              placeholder="Search patients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8"
+              className="pl-8 w-full"
             />
           </div>
 
-          <div className="flex items-center ml-auto">
+          <div className="flex items-center w-full sm:w-auto justify-end mt-2 sm:mt-0">
             <PopupModal
               text="Add Patient"
               icon={<Plus className="w-4 h-4 mr-2" />}
@@ -2056,7 +2058,6 @@ export function PatientTable() {
             />
           </div>
         </header>
-
         <main className="grid items-start grid-cols-1 gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
           <Tabs
             defaultValue="all"
@@ -2064,15 +2065,15 @@ export function PatientTable() {
             className="p-2"
             onValueChange={(value) => setSelectedTab(value)}
           >
-            <div className="flex items-center flex-wrap justify-between">
-              <TabsList>
+            {" "}
+            <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-between">
+              <TabsList className="mb-2 sm:mb-0">
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="male">Male</TabsTrigger>
                 <TabsTrigger value="female">Female</TabsTrigger>
                 <TabsTrigger value="other">Other</TabsTrigger>
-              </TabsList>
-
-              <div className="px-6 py-2 flex flex-wrap gap-2 items-center">
+              </TabsList>{" "}
+              <div className="px-2 sm:px-6 py-2 flex flex-wrap gap-2 items-center overflow-x-auto">
                 <div className="flex items-center gap-2 mr-4">
                   <Filter className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Filter by:</span>
@@ -2207,7 +2208,6 @@ export function PatientTable() {
                   ))}
                 </div>
               </div>
-
               <Button
                 variant="outline"
                 size="sm"
@@ -2227,7 +2227,6 @@ export function PatientTable() {
                 Export
               </Button>
             </div>
-
             {loading ? (
               <div>
                 <Loading />

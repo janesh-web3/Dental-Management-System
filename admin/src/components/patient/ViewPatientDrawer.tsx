@@ -143,7 +143,6 @@ const FolderOpen = ({ className }: { className?: string }) => (
 // Calendar alias for consistency
 const CalendarDays = Calendar;
 
-
 // Import components after custom icons to avoid circular dependencies
 import { TreatmentProgress } from "./TreatmentProgress";
 import { MedicalTimeline } from "./MedicalTimeline";
@@ -370,15 +369,9 @@ export function ViewPatientDrawer({
         previousAutoTable?: { finalY: number };
       };
 
-      // Add clinic logo if available
-      // const img = new Image();
-      // img.src = '/logos.png';
-      // doc.addImage(img, 'PNG', 170, 10, 30, 30);
-
-      // Document title and header - better positioning
       doc.setFontSize(18);
       doc.setTextColor(41, 128, 185); // Primary color
-      doc.text("Shree Nagar Dental Clinic", 105, 20, { align: "center" });
+      doc.text("Crown Mantra Dental Clinic", 105, 20, { align: "center" });
 
       doc.setFontSize(12);
       doc.setTextColor(100);
@@ -675,13 +668,13 @@ export function ViewPatientDrawer({
                   <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   <span className="sm:inline">Export PDF</span>
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={onClose}
                   className="h-8 px-2 sm:h-9 sm:px-3 text-xs sm:text-sm"
                 >
-                  <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> 
+                  <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   <span className="sm:inline">Close</span>
                 </Button>
               </div>
@@ -692,11 +685,36 @@ export function ViewPatientDrawer({
             <Tabs defaultValue="overview" className="space-y-4 sm:space-y-6">
               <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm pt-1 pb-2 sm:pb-3 -mx-2 sm:-mx-4 px-2 sm:px-4 border-b border-gray-100 dark:border-gray-800">
                 <TabsList className="w-full overflow-x-auto h-20 md:h-auto flex flex-wrap md:flex-nowrap sm:grid sm:grid-cols-5 bg-gray-100 dark:bg-gray-800/50 p-1 sm:p-1.5 rounded-lg gap-1">
-                  <TabsTrigger value="overview" className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3">Overview</TabsTrigger>
-                  <TabsTrigger value="medical" className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3">Medical Records</TabsTrigger>
-                  <TabsTrigger value="timeline" className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3">Timeline</TabsTrigger>
-                  <TabsTrigger value="documents" className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3">Documents</TabsTrigger>
-                  <TabsTrigger value="prescriptions" className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3">Prescriptions</TabsTrigger>
+                  <TabsTrigger
+                    value="overview"
+                    className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3"
+                  >
+                    Overview
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="medical"
+                    className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3"
+                  >
+                    Medical Records
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="timeline"
+                    className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3"
+                  >
+                    Timeline
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="documents"
+                    className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3"
+                  >
+                    Documents
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="prescriptions"
+                    className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3"
+                  >
+                    Prescriptions
+                  </TabsTrigger>
                 </TabsList>
               </div>
 
@@ -952,10 +970,10 @@ export function ViewPatientDrawer({
                       {localPatient.medicalDetails.length > 0 && (
                         <DateDisplay
                           englishDate={
-                            localPatient.medicalDetails[0].followUpDate
+                            localPatient.medicalDetails[0].treatmentPlanning[0].followUpDate
                           }
                           nepaliDate={
-                            localPatient.medicalDetails[0].followUpDateNp
+                            localPatient.medicalDetails[0].treatmentPlanning[0].followUpDateNp
                           }
                           label="Next Follow-up"
                           icon={CalendarX}
@@ -1037,16 +1055,16 @@ export function ViewPatientDrawer({
                               className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3 sm:gap-4"
                             >
                               <DateDisplay
-                                englishDate={record.checkUpDate}
-                                nepaliDate={record.checkUpDateNp}
+                                 englishDate={record.treatmentPlanning[0]?.followUpDate}
+                                nepaliDate={record.treatmentPlanning[0]?.followUpDateNp}
                                 label="Check-up Date"
                                 icon={CalendarCheck}
                                 color="text-blue-500"
                               />
 
                               <DateDisplay
-                                englishDate={record.followUpDate}
-                                nepaliDate={record.followUpDateNp}
+                                englishDate={record.treatmentPlanning[0]?.followUpDate}
+                                nepaliDate={record.treatmentPlanning[0]?.followUpDateNp}
                                 label="Follow-up Date"
                                 icon={CalendarPlus}
                                 color="text-purple-500"
@@ -1939,6 +1957,7 @@ export function ViewPatientDrawer({
                                                                                     -{" "}
                                                                                     {treatment.procedure ||
                                                                                       "General"}
+
                                                                                     :
                                                                                   </p>
                                                                                   <p className="text-sm">

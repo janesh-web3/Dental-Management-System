@@ -928,37 +928,37 @@ export function PatientTable() {
     setSelectedPatientForQR(patient);
     setIsQRCodeModalOpen(true);
   };
-  const renderViewModeToggle = () => (
-    <div className="flex items-center gap-1 border rounded-md overflow-hidden">
-      <Button
-        variant={viewMode === "table" ? "default" : "ghost"}
-        size="icon"
-        onClick={() => setViewMode("table")}
-        className="rounded-none border-0 h-8 w-8 sm:h-9 sm:w-9"
-        title="Table View"
-      >
-        <LayoutIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-      </Button>
-      <Button
-        variant={viewMode === "list" ? "default" : "ghost"}
-        size="icon"
-        onClick={() => setViewMode("list")}
-        className="rounded-none border-0 h-8 w-8 sm:h-9 sm:w-9"
-        title="List View"
-      >
-        <LayoutList className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-      </Button>
-      <Button
-        variant={viewMode === "grid" ? "default" : "ghost"}
-        size="icon"
-        onClick={() => setViewMode("grid")}
-        className="rounded-none border-0 h-8 w-8 sm:h-9 sm:w-9"
-        title="Grid View"
-      >
-        <LayoutGrid className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-      </Button>
-    </div>
-  );
+  // const renderViewModeToggle = () => (
+  //   <div className="flex items-center gap-1 border rounded-md overflow-hidden">
+  //     <Button
+  //       variant={viewMode === "table" ? "default" : "ghost"}
+  //       size="icon"
+  //       onClick={() => setViewMode("table")}
+  //       className="rounded-none border-0 h-8 w-8 sm:h-9 sm:w-9"
+  //       title="Table View"
+  //     >
+  //       <LayoutIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+  //     </Button>
+  //     <Button
+  //       variant={viewMode === "list" ? "default" : "ghost"}
+  //       size="icon"
+  //       onClick={() => setViewMode("list")}
+  //       className="rounded-none border-0 h-8 w-8 sm:h-9 sm:w-9"
+  //       title="List View"
+  //     >
+  //       <LayoutList className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+  //     </Button>
+  //     <Button
+  //       variant={viewMode === "grid" ? "default" : "ghost"}
+  //       size="icon"
+  //       onClick={() => setViewMode("grid")}
+  //       className="rounded-none border-0 h-8 w-8 sm:h-9 sm:w-9"
+  //       title="Grid View"
+  //     >
+  //       <LayoutGrid className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+  //     </Button>
+  //   </div>
+  // );
   const renderGridView = () => (
     <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-2 sm:p-4">
       {filteredPatients.map((patient, index) => (
@@ -1380,8 +1380,8 @@ export function PatientTable() {
               Patient List
             </CardTitle>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            {renderViewModeToggle()}
+          <div className=" items-center gap-2 w-full sm:w-auto justify-end hidden">
+            {/* {renderViewModeToggle()} */}
             {viewMode === "table" && (
               <Button
                 variant="outline"
@@ -2211,7 +2211,7 @@ export function PatientTable() {
                 variant="outline"
                 size="sm"
                 onClick={() => navigate("/scan-patient")}
-                className="gap-2"
+                className="gap-2 hidden"
               >
                 <QrCode className="h-4 w-4" />
                 Scan Patient

@@ -36,11 +36,11 @@ const selectedToothSchema = new mongoose.Schema({
 // Modify the pre-save middleware to update tooth completion status
 selectedToothSchema.pre('save', function(next) {
   if (this.dailyTreatments && this.dailyTreatments.length > 0) {
-    // Calculate totals as before
+    // Calculate totals with more explicit checks for null/undefined values
     this.totalTreatmentAmount = this.dailyTreatments.reduce((sum, treatment) => 
-      sum + (treatment.treatmentAmount || 0), 0);
+      sum + (Number(treatment.treatmentAmount) || 0), 0);
     this.totalPaidAmount = this.dailyTreatments.reduce((sum, treatment) => 
-      sum + (treatment.paidAmount || 0), 0);
+      sum + (Number(treatment.paidAmount) || 0), 0);
     this.totalRemainingAmount = this.totalTreatmentAmount - this.totalPaidAmount;
     
     // Check if any daily treatment is marked as completed
@@ -92,16 +92,16 @@ treatmentPlanningSchema.pre('save', function(next) {
     let totalPaidAmount = 0;
 
     this.selectedTeethDetails.forEach(tooth => {
+      // Ensure the tooth has the required calculations
       if (tooth.dailyTreatments && tooth.dailyTreatments.length > 0) {
-        // Sum up all treatment amounts for this tooth
+        // Calculate the totals directly from the daily treatments to ensure accuracy
         const toothTreatmentAmount = tooth.dailyTreatments.reduce((sum, treatment) => 
-          sum + (treatment.treatmentAmount || 0), 0);
+          sum + (Number(treatment.treatmentAmount) || 0), 0);
         
-        // Sum up all paid amounts for this tooth
         const toothPaidAmount = tooth.dailyTreatments.reduce((sum, treatment) => 
-          sum + (treatment.paidAmount || 0), 0);
+          sum + (Number(treatment.paidAmount) || 0), 0);
 
-        // Update tooth totals
+        // Update tooth totals - use direct assignment to ensure values are set
         tooth.totalTreatmentAmount = toothTreatmentAmount;
         tooth.totalPaidAmount = toothPaidAmount;
         tooth.totalRemainingAmount = toothTreatmentAmount - toothPaidAmount;
@@ -119,6 +119,11 @@ treatmentPlanningSchema.pre('save', function(next) {
 
     // Update completion status
     this.isCompleted = this.totalRemainingAmount === 0 && this.totalPlanAmount > 0;
+    
+    // If treatment is completed, set the completion date
+    if (this.isCompleted && !this.completionDate) {
+      this.completionDate = new Date();
+    }
   }
   next();
 });

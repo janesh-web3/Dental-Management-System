@@ -115,11 +115,11 @@ export default function ModernSignInPage() {
                   delay: 0.2,
                 }}
               >
-                <div className="h-16 w-16 rounded-full bg-primary/20 flex items-center justify-center">
+                <div className="h-20 w-20 rounded-full bg-primary/20 flex items-center justify-center">
                   <img
-                    src="/crown.jpg"
+                    src="/TLogoNew.png"
                     alt="Crown Dental"
-                    className="h-12 w-12 rounded-full object-cover"
+                    className="h-16 w-16 object-cover"
                     onError={(e) => {
                       e.currentTarget.src =
                         "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z'/%3E%3C/svg%3E";

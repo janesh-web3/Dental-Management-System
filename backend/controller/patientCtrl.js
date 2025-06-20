@@ -670,8 +670,8 @@ const getPaginatedPatient = async (req, res) => {
     const dateFilter = req.query.dateFilter || "all";
     const startDate = req.query.startDate;
     const endDate = req.query.endDate;
+    const followUpFilter = req.query.followUpFilter || ""; 
 
-    console.log("Date filter request:", { dateFilter, startDate, endDate });
 
     // Base query
     let query = search
@@ -688,14 +688,19 @@ const getPaginatedPatient = async (req, res) => {
       const dateFilterCriteria = getDateFilter(dateFilter, startDate, endDate);
       
       if (dateFilterCriteria) {
-        console.log("Applying date filter criteria:", JSON.stringify(dateFilterCriteria));
         // Ensure we're explicitly filtering on the patient's creation date, not checkUpDate
         query["createdAt"] = dateFilterCriteria;
-        console.log("Date filter will be applied to 'createdAt' field");
       }
     }
 
-    console.log("Final query:", JSON.stringify(query));
+    // Apply follow-up date filtering if needed
+    if (followUpFilter && followUpFilter !== "all") {
+      const followUpDateCriteria = getDateFilter(followUpFilter, startDate, endDate);
+      
+      if (followUpDateCriteria) {
+        query["medicalDetails.treatmentPlanning.followUpDate"] = followUpDateCriteria;
+      }
+    }
 
     // Get patients sorted by createdAt in descending order
     const patients = await Patient.find(query)
@@ -780,13 +785,15 @@ const getFilteredPatients = async (req, res) => {
     const dateFilter = req.query.dateFilter || "all";
     const startDate = req.query.startDate;
     const endDate = req.query.endDate;
+    const followUpFilter = req.query.followUpFilter || ""; // Add follow-up filter parameter
 
     console.log("Filtered patients request:", { 
       dateFilter, 
       startDate, 
       endDate,
       doctorId,
-      procedures: procedures.length > 0 ? procedures : "none"
+      procedures: procedures.length > 0 ? procedures : "none",
+      followUpFilter // Log the follow-up filter
     });
 
     // Base query
@@ -832,6 +839,18 @@ const getFilteredPatients = async (req, res) => {
         // Ensure we're explicitly filtering on the patient's creation date, not checkUpDate
         query["createdAt"] = dateFilterCriteria;
         console.log("Date filter will be applied to 'createdAt' field");
+      }
+    }
+
+    // Apply follow-up date filtering if needed
+    if (followUpFilter && followUpFilter !== "all") {
+      const followUpDateCriteria = getDateFilter(followUpFilter, startDate, endDate);
+      
+      if (followUpDateCriteria) {
+        console.log("Applying follow-up date filter criteria:", JSON.stringify(followUpDateCriteria));
+        // Filter on medical details follow-up date
+        query["medicalDetails.followUpDate"] = followUpDateCriteria;
+        console.log("Follow-up date filter will be applied to 'medicalDetails.followUpDate' field");
       }
     }
 

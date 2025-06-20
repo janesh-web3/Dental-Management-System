@@ -4,7 +4,6 @@ import {
   MoreHorizontal,
   Plus,
   Trash,
-  MessageSquare,
   View,
   FilePlus,
   Filter,
@@ -86,7 +85,6 @@ import type { Patient } from "@/types/patient";
 import { useAdminContext } from "@/contexts/adminContext";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { AddPrescriptionButton } from "@/components/prescription";
 import { toast } from "react-toastify";
 import {
   Dialog,
@@ -109,8 +107,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PaymentHistoryDialog } from "@/components/patient/PaymentHistoryDialog";
 import AddXRayPlanModal from "@/components/patient/AddXRayPlanModal";
-import { PatientDocumentUploadButton } from "@/components/patient/PatientDocumentUploadButton";
-import { ProfilePhotoUploadButton } from "@/components/patient/ProfilePhotoUploadButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
@@ -157,6 +153,7 @@ const defaultColumns: ColumnConfig[] = [
 
 // Add date filter type
 type DateFilterType = "all" | "today" | "week" | "month" | "custom";
+type FollowUpFilterType = "all" | "today" | "week" | "month" | "custom";
 
 export function PatientTable() {
   const [patient, setPatient] = useState<Patient[]>([]);
@@ -191,7 +188,7 @@ export function PatientTable() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
-  const { adminDetails } = useAdminContext();
+  const {} = useAdminContext();
 
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [selectedColumns, setSelectedColumns] =
@@ -202,6 +199,15 @@ export function PatientTable() {
   const [isDateRangePickerOpen, setIsDateRangePickerOpen] = useState(false);
   const [isTableLoading, setIsTableLoading] = useState(false);
 
+  // Add follow-up date filter state
+  const [followUpFilter, setFollowUpFilter] =
+    useState<FollowUpFilterType>("all");
+  const [followUpDateRange, setFollowUpDateRange] = useState<
+    DateRange | undefined
+  >();
+  const [isFollowUpDateRangePickerOpen, setIsFollowUpDateRangePickerOpen] =
+    useState(false);
+
   const [isQRCodeModalOpen, setIsQRCodeModalOpen] = useState(false);
   const [selectedPatientForQR, setSelectedPatientForQR] =
     useState<Patient | null>(null);
@@ -209,9 +215,12 @@ export function PatientTable() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  const [isServicePaymentDialogOpen, setIsServicePaymentDialogOpen] = useState(false);
-  const [servicePaymentPatient, setServicePaymentPatient] = useState<Patient | null>(null);
-  const [isSubmittingServicePayment, setIsSubmittingServicePayment] = useState(false);
+  const [isServicePaymentDialogOpen, setIsServicePaymentDialogOpen] =
+    useState(false);
+  const [servicePaymentPatient, setServicePaymentPatient] =
+    useState<Patient | null>(null);
+  const [isSubmittingServicePayment, setIsSubmittingServicePayment] =
+    useState(false);
 
   const fetchPatientDetailsForEmail = async (patientId: string) => {
     try {
@@ -496,16 +505,10 @@ export function PatientTable() {
         endpoint = "/patient/get-filtered-patients";
       }
 
-      console.log(`Fetching patients with date filter: ${filter}`);
-      console.log(`Endpoint: ${endpoint}${queryParams}`);
-
       const response: { patients: Patient[]; totalPages: number } =
         await crudRequest("GET", `${endpoint}${queryParams}`);
 
       if (response && Array.isArray(response.patients)) {
-        console.log(
-          `Received ${response.patients.length} patients from server`
-        );
         setPatient(response.patients);
         setFilteredPatients(response.patients);
         setTotalPages(response.totalPages);
@@ -536,18 +539,10 @@ export function PatientTable() {
         endpoint = "/patient/get-filtered-patients";
       }
 
-      console.log(
-        `Fetching patients with custom date range: ${from.toLocaleDateString()} to ${to.toLocaleDateString()}`
-      );
-      console.log(`Endpoint: ${endpoint}${queryParams}`);
-
       const response: { patients: Patient[]; totalPages: number } =
         await crudRequest("GET", `${endpoint}${queryParams}`);
 
       if (response && Array.isArray(response.patients)) {
-        console.log(
-          `Received ${response.patients.length} patients from server`
-        );
         setPatient(response.patients);
         setFilteredPatients(response.patients);
         setTotalPages(response.totalPages);
@@ -582,6 +577,18 @@ export function PatientTable() {
         }
       }
 
+      if (followUpFilter !== "all") {
+        queryParams += `&followUpFilter=${followUpFilter}`;
+
+        if (
+          followUpFilter === "custom" &&
+          followUpDateRange?.from &&
+          followUpDateRange?.to
+        ) {
+          queryParams += `&startDate=${followUpDateRange.from.toISOString()}&endDate=${followUpDateRange.to.toISOString()}`;
+        }
+      }
+
       if (
         isFilteringEnabled &&
         (selectedDoctor !== "all" || selectedProcedures.length > 0)
@@ -594,7 +601,6 @@ export function PatientTable() {
           queryParams += `&procedures=${selectedProcedures.join(",")}`;
         }
       }
-
 
       const response: { patients: Patient[]; totalPages: number } =
         await crudRequest("GET", `${endpoint}${queryParams}`);
@@ -627,6 +633,8 @@ export function PatientTable() {
     selectedProcedures,
     dateFilter,
     dateRange,
+    followUpFilter,
+    followUpDateRange,
   ]);
 
   useEffect(() => {
@@ -667,6 +675,8 @@ export function PatientTable() {
     setSelectedProcedures([]);
     setDateFilter("all");
     setDateRange(undefined);
+    setFollowUpFilter("all");
+    setFollowUpDateRange(undefined);
     setIsFilteringEnabled(false);
   };
 
@@ -844,7 +854,9 @@ export function PatientTable() {
               transition={{ duration: 0.2 }}
             >
               <DropdownMenuContent className="w-56">
-                <DropdownMenuLabel>Filter by Date</DropdownMenuLabel>
+                <DropdownMenuLabel>
+                  Filter by Registration Date
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleDateFilterChange("all")}>
                   All Time
@@ -933,37 +945,7 @@ export function PatientTable() {
     setSelectedPatientForQR(patient);
     setIsQRCodeModalOpen(true);
   };
-  // const renderViewModeToggle = () => (
-  //   <div className="flex items-center gap-1 border rounded-md overflow-hidden">
-  //     <Button
-  //       variant={viewMode === "table" ? "default" : "ghost"}
-  //       size="icon"
-  //       onClick={() => setViewMode("table")}
-  //       className="rounded-none border-0 h-8 w-8 sm:h-9 sm:w-9"
-  //       title="Table View"
-  //     >
-  //       <LayoutIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-  //     </Button>
-  //     <Button
-  //       variant={viewMode === "list" ? "default" : "ghost"}
-  //       size="icon"
-  //       onClick={() => setViewMode("list")}
-  //       className="rounded-none border-0 h-8 w-8 sm:h-9 sm:w-9"
-  //       title="List View"
-  //     >
-  //       <LayoutList className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-  //     </Button>
-  //     <Button
-  //       variant={viewMode === "grid" ? "default" : "ghost"}
-  //       size="icon"
-  //       onClick={() => setViewMode("grid")}
-  //       className="rounded-none border-0 h-8 w-8 sm:h-9 sm:w-9"
-  //       title="Grid View"
-  //     >
-  //       <LayoutGrid className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-  //     </Button>
-  //   </div>
-  // );
+
   const renderGridView = () => (
     <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-2 sm:p-4">
       {filteredPatients.map((patient, index) => (
@@ -1675,13 +1657,18 @@ export function PatientTable() {
                                 )}
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <Button
+                                      variant="ghost"
+                                      className="h-8 w-8 p-0"
+                                    >
                                       <span className="sr-only">Open menu</span>
                                       <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuLabel>
+                                      Actions
+                                    </DropdownMenuLabel>
                                     <DropdownMenuItem
                                       onClick={() => {
                                         setSelectedPatient(patient);
@@ -1732,7 +1719,8 @@ export function PatientTable() {
                                       }}
                                       className="gap-2"
                                     >
-                                      <CreditCard className="h-4 w-4" /> Add Service Payment
+                                      <CreditCard className="h-4 w-4" /> Add
+                                      Service Payment
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => {
@@ -1884,17 +1872,22 @@ export function PatientTable() {
 
   const handleSubmitServicePayment = async (data: any) => {
     if (!servicePaymentPatient) return;
-    
+
     setIsSubmittingServicePayment(true);
     try {
       const formattedData = {
         ...data,
         date: format(data.date, "yyyy-MM-dd"),
       };
-      
+
       const response = await createServicePayment(formattedData);
 
-      if (typeof response === "object" && response !== null && "success" in response && (response as any).success) {
+      if (
+        typeof response === "object" &&
+        response !== null &&
+        "success" in response &&
+        (response as any).success
+      ) {
         toast.success("Service payment added successfully");
         setIsServicePaymentDialogOpen(false);
       } else {
@@ -1907,6 +1900,228 @@ export function PatientTable() {
       setIsSubmittingServicePayment(false);
     }
   };
+
+  // Add follow-up filter handler
+  const handleFollowUpFilterChange = (filter: FollowUpFilterType) => {
+    setFollowUpFilter(filter);
+    setIsFilteringEnabled(true);
+
+    if (filter === "custom") {
+      setIsFollowUpDateRangePickerOpen(true);
+    } else {
+      setFollowUpDateRange(undefined);
+      fetchPatientsByFollowUpFilter(
+        filter as "all" | "today" | "week" | "month"
+      );
+    }
+  };
+
+  const fetchPatientsByFollowUpFilter = async (
+    filter: "all" | "today" | "week" | "month"
+  ) => {
+    setIsTableLoading(true);
+    try {
+      let endpoint = "/patient/get-pagination-patient";
+      let queryParams = `?page=${currentPage}&limit=${itemsPerPage}&search=${searchQuery}&followUpFilter=${filter}`;
+
+      if (selectedDoctor !== "all") {
+        queryParams += `&doctorId=${selectedDoctor}`;
+        endpoint = "/patient/get-filtered-patients";
+      }
+
+      if (selectedProcedures.length > 0) {
+        queryParams += `&procedures=${selectedProcedures.join(",")}`;
+        endpoint = "/patient/get-filtered-patients";
+      }
+
+      console.log(`Fetching patients with follow-up filter: ${filter}`);
+      console.log(`Endpoint: ${endpoint}${queryParams}`);
+
+      const response: { patients: Patient[]; totalPages: number } =
+        await crudRequest("GET", `${endpoint}${queryParams}`);
+
+      if (response && Array.isArray(response.patients)) {
+        console.log(
+          `Received ${response.patients.length} patients from server`
+        );
+        setPatient(response.patients);
+        setFilteredPatients(response.patients);
+        setTotalPages(response.totalPages);
+      } else {
+        setError("Unexpected response format");
+      }
+    } catch (error) {
+      setError("Error fetching patient data");
+      console.error("Error fetching patient data:", error);
+    } finally {
+      setIsTableLoading(false);
+    }
+  };
+
+  const fetchPatientsByFollowUpDateRange = async (from: Date, to: Date) => {
+    setIsTableLoading(true);
+    try {
+      let endpoint = "/patient/get-pagination-patient";
+      let queryParams = `?page=${currentPage}&limit=${itemsPerPage}&search=${searchQuery}&followUpFilter=custom&startDate=${from.toISOString()}&endDate=${to.toISOString()}`;
+
+      if (selectedDoctor !== "all") {
+        queryParams += `&doctorId=${selectedDoctor}`;
+        endpoint = "/patient/get-filtered-patients";
+      }
+
+      if (selectedProcedures.length > 0) {
+        queryParams += `&procedures=${selectedProcedures.join(",")}`;
+        endpoint = "/patient/get-filtered-patients";
+      }
+
+      console.log(
+        `Fetching patients with custom follow-up date range: ${from.toLocaleDateString()} to ${to.toLocaleDateString()}`
+      );
+      console.log(`Endpoint: ${endpoint}${queryParams}`);
+
+      const response: { patients: Patient[]; totalPages: number } =
+        await crudRequest("GET", `${endpoint}${queryParams}`);
+
+      if (response && Array.isArray(response.patients)) {
+        console.log(
+          `Received ${response.patients.length} patients from server`
+        );
+        setPatient(response.patients);
+        setFilteredPatients(response.patients);
+        setTotalPages(response.totalPages);
+      } else {
+        setError("Unexpected response format");
+      }
+    } catch (error) {
+      setError("Error fetching patient data");
+      console.error("Error fetching patient data:", error);
+    } finally {
+      setIsTableLoading(false);
+    }
+  };
+
+  const renderFollowUpFilter = () => {
+    const getFollowUpFilterLabel = () => {
+      switch (followUpFilter) {
+        case "today":
+          return "Today";
+        case "week":
+          return "This Week";
+        case "month":
+          return "This Month";
+        case "custom":
+          if (followUpDateRange?.from && followUpDateRange?.to) {
+            return `${format(followUpDateRange.from, "PP")} - ${format(followUpDateRange.to, "PP")}`;
+          }
+          return "Custom Range";
+        default:
+          return "All Time";
+      }
+    };
+
+    return (
+      <div className="flex items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              <span>Follow-up: {getFollowUpFilterLabel()}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <AnimatePresence>
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <DropdownMenuContent className="w-56">
+                <DropdownMenuLabel>Filter by Follow-up Date</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleFollowUpFilterChange("all")}
+                >
+                  All Time
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleFollowUpFilterChange("today")}
+                >
+                  Today
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleFollowUpFilterChange("week")}
+                >
+                  This Week
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleFollowUpFilterChange("month")}
+                >
+                  This Month
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleFollowUpFilterChange("custom")}
+                >
+                  Custom Range
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </motion.div>
+          </AnimatePresence>
+        </DropdownMenu>
+
+        {followUpFilter === "custom" && (
+          <Badge variant="outline" className="flex items-center gap-1">
+            {followUpDateRange?.from && followUpDateRange?.to
+              ? `${format(followUpDateRange.from, "PP")} - ${format(followUpDateRange.to, "PP")}`
+              : "Select dates"}
+            <X
+              className="h-3 w-3 cursor-pointer"
+              onClick={() => {
+                setFollowUpFilter("all");
+                setFollowUpDateRange(undefined);
+                fetchPatient(currentPage, itemsPerPage, searchQuery);
+              }}
+            />
+          </Badge>
+        )}
+      </div>
+    );
+  };
+
+  const renderFollowUpDateRangePicker = () => (
+    <Drawer
+      open={isFollowUpDateRangePickerOpen}
+      onOpenChange={setIsFollowUpDateRangePickerOpen}
+    >
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>Select Follow-up Date Range</DrawerTitle>
+          <DrawerDescription>
+            Choose a custom follow-up date range to filter patients
+          </DrawerDescription>
+        </DrawerHeader>
+        <div className="p-4 flex justify-center">
+          <DatePickerWithRange
+            date={followUpDateRange}
+            setDate={(range) => {
+              setFollowUpDateRange(range);
+              if (range?.from && range?.to) {
+                fetchPatientsByFollowUpDateRange(range.from, range.to);
+                setIsFollowUpDateRangePickerOpen(false);
+              }
+            }}
+          />
+        </div>
+        <DrawerFooter>
+          <Button
+            onClick={() => setIsFollowUpDateRangePickerOpen(false)}
+            variant="outline"
+          >
+            Cancel
+          </Button>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
+  );
 
   return (
     <div className="flex flex-col w-full bg-muted/40">
@@ -1971,6 +2186,7 @@ export function PatientTable() {
                 </div>
 
                 {renderDateFilter()}
+                {renderFollowUpFilter()}
 
                 <Select
                   value={selectedDoctor}
@@ -2039,6 +2255,8 @@ export function PatientTable() {
                       clearFilters();
                       setDateFilter("all");
                       setDateRange(undefined);
+                      setFollowUpFilter("all");
+                      setFollowUpDateRange(undefined);
                       fetchPatient(currentPage, itemsPerPage, searchQuery);
                     }}
                     className="flex items-center gap-1"
@@ -2063,6 +2281,27 @@ export function PatientTable() {
                       className="h-3 w-3 cursor-pointer"
                       onClick={() => {
                         setDateFilter("all");
+                        fetchPatient(currentPage, itemsPerPage, searchQuery);
+                      }}
+                    />
+                  </Badge>
+                )}
+
+                {followUpFilter !== "all" && followUpFilter !== "custom" && (
+                  <Badge
+                    variant="secondary"
+                    className="flex items-center gap-1"
+                  >
+                    Follow-up:{" "}
+                    {followUpFilter === "today"
+                      ? "Today"
+                      : followUpFilter === "week"
+                        ? "This Week"
+                        : "This Month"}
+                    <X
+                      className="h-3 w-3 cursor-pointer"
+                      onClick={() => {
+                        setFollowUpFilter("all");
                         fetchPatient(currentPage, itemsPerPage, searchQuery);
                       }}
                     />
@@ -2422,14 +2661,19 @@ export function PatientTable() {
       )}
       {renderExportDialog()}
       {renderDateRangePicker()}
+      {renderFollowUpDateRangePicker()}
 
       {/* Service Payment Dialog */}
-      <Dialog open={isServicePaymentDialogOpen} onOpenChange={setIsServicePaymentDialogOpen}>
+      <Dialog
+        open={isServicePaymentDialogOpen}
+        onOpenChange={setIsServicePaymentDialogOpen}
+      >
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Add Service Payment</DialogTitle>
             <DialogDescription>
-              Add a service payment for {servicePaymentPatient?.personalDetails.name}
+              Add a service payment for{" "}
+              {servicePaymentPatient?.personalDetails.name}
             </DialogDescription>
           </DialogHeader>
           <div className="overflow-y-auto pr-1 max-h-[calc(80vh-120px)]">
@@ -2444,13 +2688,14 @@ export function PatientTable() {
                   createdAt: "",
                   updatedAt: "",
                   patientName: servicePaymentPatient.personalDetails.name,
-                  contactNumber: servicePaymentPatient.personalDetails.contactNumber || "",
+                  contactNumber:
+                    servicePaymentPatient.personalDetails.contactNumber || "",
                   serviceType: "Consultation",
                   amount: 0,
                   paymentMethod: "Cash",
                   date: new Date().toISOString(),
                   isWalkIn: false,
-                  patient: servicePaymentPatient._id
+                  patient: servicePaymentPatient._id,
                 }}
                 patients={[servicePaymentPatient]}
               />

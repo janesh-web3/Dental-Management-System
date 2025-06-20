@@ -117,15 +117,15 @@ export function TreatmentCard({
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div>
             <p className="text-sm text-muted-foreground">Amount</p>
-            <p className="font-medium">₹{treatment.treatmentAmount}</p>
+            <p className="font-medium">₹{treatment.totalPlanAmount}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Advanced</p>
-            <p className="font-medium">₹{treatment.advancedAmount}</p>
+            <p className="font-medium">₹{treatment.totalPaidAmount}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Balance</p>
-            <p className="font-medium">₹{treatment.balanceAmount}</p>
+            <p className="font-medium">₹{treatment.totalRemainingAmount}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Status</p>

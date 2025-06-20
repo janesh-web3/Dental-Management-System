@@ -22,7 +22,6 @@ import {
   User,
   LayoutGrid,
   LayoutList,
-  LayoutIcon,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -170,7 +169,7 @@ export function PatientTable() {
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [isCompactView, setIsCompactView] = useState<boolean>(false);
-  const [viewMode, setViewMode] = useState<"table" | "grid" | "list">("table");
+  const [viewMode, _setViewMode] = useState<"table" | "grid" | "list">("table");
 
   const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
   const [availableProcedures, setAvailableProcedures] = useState<string[]>([]);

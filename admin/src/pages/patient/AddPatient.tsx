@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "react-toastify";
 import { crudRequest } from "@/lib/api";
 import { format } from "date-fns";
-import { Plus, Trash2 } from "lucide-react";
+import {  Trash2 } from "lucide-react";
 import DentalChart from "@/components/DentalChart";
 import SelectedTeethList from "@/components/SelectedTeethList";
 import { getToothPosition, getToothSide } from "@/helper/PatientHelper";
@@ -247,43 +247,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
         patientType: value,
       })),
     }));
-  };
-  const addTreatmentPlan = () => {
-    setFormData((prev) => ({
-      ...prev,
-      treatmentPlans: [
-        ...prev.treatmentPlans,
-        {
-          patientType: "Adult",
-          treatmentDate: format(new Date(), "yyyy-MM-dd"),
-          treatmentDateNp: convertToNepaliDate(format(new Date(), "yyyy-MM-dd")),
-          treatmentDetails: "",
-          treatmentAmount: "",
-          advancedAmount: "",
-          treatedByDoctor: "",
-          balanceAmount: "",
-          treatmentFindings: "",
-          teethNumber: "",
-          clinicalFindings: [],
-          otherFindings: "",
-          followUpDate: "",
-          followUpDateNp: "",
-          completionDate: "",
-          completionDateNp: "",
-        },
-      ],
-    }));
-
-    setTimeout(() => {
-      const treatmentPlans = document.querySelectorAll(".p-2.md\\:p-4");
-      const lastTreatmentPlan = treatmentPlans[treatmentPlans.length - 1];
-      if (lastTreatmentPlan) {
-        lastTreatmentPlan.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }
-    }, 100);
   };
 
   const removeTreatmentPlan = (index: number) => {
@@ -1092,16 +1055,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                 </div>
               </div>
 
-              <div className="flex justify-between items-center">
-                <h3 className="text-base md:text-lg font-semibold text-primary">
-                  X-Ray Plan
-                </h3>
-                <Button onClick={addTreatmentPlan} size={"sm"}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add X-Ray Plan
-                </Button>
-              </div>
-
               {formData.treatmentPlans.map((plan, index: number) => (
                 <Card
                   key={index}
@@ -1136,6 +1089,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                                 onToothSelect={(toothNumber) =>
                                   handleToothSelect(index, toothNumber)
                                 }
+                                 readOnly={false}
                               />
                             ) : (
                               <ChildDentalChart
@@ -1143,6 +1097,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                                 onToothSelect={(toothNumber) =>
                                   handleToothSelect(index, toothNumber)
                                 }
+                                 readOnly={false}
                               />
                             )}
                           </div>

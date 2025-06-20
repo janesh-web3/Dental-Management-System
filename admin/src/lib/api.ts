@@ -1,6 +1,6 @@
 import { server } from "@/server";
 import axios, { AxiosRequestConfig, Method } from "axios";
-import { Expense } from "@/types/finance";
+import { Expense, ServicePayment } from "@/types/finance";
 
 // Create axios instance without default headers
 const axiosInstance = axios.create({
@@ -136,6 +136,50 @@ export const updateExpense = async (id: string, data: Partial<Expense>) => {
 
 export const deleteExpense = async (id: string) => {
   return await crudRequest("DELETE", `/finance/expense/${id}`);
+};
+
+// Service Payment API
+export const createServicePayment = async (data: Partial<ServicePayment>) => {
+  return await crudRequest("POST", `/service-payment`, data);
+};
+
+export const getServicePayments = async (
+  page = 1,
+  limit = 10,
+  search = "",
+  startDate = "",
+  endDate = "",
+  patient = "",
+  isWalkIn?: boolean
+): Promise<ApiResponse<ServicePayment[]>> => {
+  let url = `/service-payment?page=${page}&limit=${limit}`;
+  
+  if (search) url += `&search=${search}`;
+  if (startDate && endDate) url += `&startDate=${startDate}&endDate=${endDate}`;
+  if (patient) url += `&patient=${patient}`;
+  if (isWalkIn !== undefined) url += `&isWalkIn=${isWalkIn}`;
+  
+  return await crudRequest("GET", url);
+};
+
+export const getServicePaymentById = async (id: string) => {
+  return await crudRequest("GET", `/service-payment/${id}`);
+};
+
+export const updateServicePayment = async (id: string, data: Partial<ServicePayment>) => {
+  return await crudRequest("PUT", `/service-payment/${id}`, data);
+};
+
+export const deleteServicePayment = async (id: string) => {
+  return await crudRequest("DELETE", `/service-payment/${id}`);
+};
+
+export const getServicePaymentSummary = async () => {
+  return await crudRequest("GET", `/service-payment/summary`);
+};
+
+export const getPatientServicePayments = async (patientId: string) => {
+  return await crudRequest("GET", `/service-payment/patient/${patientId}`);
 };
 
 // Financial Summary API

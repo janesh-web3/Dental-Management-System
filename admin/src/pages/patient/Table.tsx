@@ -126,6 +126,8 @@ import {
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeModal } from "@/components/patient/QRCodeModal";
+import { ServicePaymentForm } from "@/components/finance/ServicePaymentForm";
+import { createServicePayment } from "@/lib/api";
 
 interface ProcedureResponse {
   success: boolean;
@@ -206,6 +208,10 @@ export function PatientTable() {
 
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  const [isServicePaymentDialogOpen, setIsServicePaymentDialogOpen] = useState(false);
+  const [servicePaymentPatient, setServicePaymentPatient] = useState<Patient | null>(null);
+  const [isSubmittingServicePayment, setIsSubmittingServicePayment] = useState(false);
 
   const fetchPatientDetailsForEmail = async (patientId: string) => {
     try {
@@ -1654,238 +1660,76 @@ export function PatientTable() {
                                 )}
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 hover:bg-muted"
-                                    >
-                                      <MoreHorizontal className="h-4 w-4" />
+                                    <Button variant="ghost" className="h-8 w-8 p-0">
                                       <span className="sr-only">Open menu</span>
+                                      <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent
-                                    align="end"
-                                    className="w-[180px] shadow-lg border border-border/30"
-                                  >
-                                    <DropdownMenuLabel>
-                                      Actions
-                                    </DropdownMenuLabel>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setSelectedPatient(patient);
+                                        setIsViewDrawerOpen(true);
+                                      }}
+                                    >
+                                      <View className="mr-2 h-4 w-4" />
+                                      View Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setSelectedPatient(patient);
+                                        setIsUpdateModalOpen(true);
+                                      }}
+                                    >
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setPatientToDelete(patient);
+                                        setIsDeleteDialogOpen(true);
+                                      }}
+                                    >
+                                      <Trash className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
                                     <DropdownMenuSeparator />
-
-                                    {isCompactView && (
-                                      <>
-                                        <DropdownMenuItem
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setSelectedPatient(patient);
-                                            setIsUpdateModalOpen(true);
-                                          }}
-                                          className="gap-2"
-                                        >
-                                          <Edit className="h-4 w-4" /> Edit
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleQRCodeClick(patient);
-                                          }}
-                                          className="gap-2"
-                                        >
-                                          <QrCode className="h-4 w-4" /> QR Code
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                      </>
-                                    )}
-
-                                    <div
-                                      className="hidden"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <AddPrescriptionButton
-                                        id={`prescription-btn-${patient._id}`}
-                                        patientId={patient._id}
-                                        patientName={
-                                          patient.personalDetails.name
-                                        }
-                                        patientData={{
-                                          contactNumber:
-                                            patient.personalDetails
-                                              .contactNumber,
-                                          emailAddress:
-                                            patient.personalDetails
-                                              .emailAddress,
-                                          age: patient.personalDetails.age,
-                                          gender:
-                                            patient.personalDetails.gender,
-                                          address:
-                                            patient.personalDetails.address,
-                                        }}
-                                        isAdmin={true}
-                                        variant="outline"
-                                        size="sm"
-                                      />
-                                      <PatientDocumentUploadButton
-                                        id={`upload-docs-btn-${patient._id}`}
-                                        patientId={patient._id}
-                                        medicalDetailId={
-                                          patient.medicalDetails?.[0]?._id || ""
-                                        }
-                                        onSuccess={() => {
-                                          fetchPatient(
-                                            currentPage,
-                                            itemsPerPage,
-                                            searchQuery
-                                          );
-                                        }}
-                                      />
-                                      <ProfilePhotoUploadButton
-                                        id={`profile-photo-btn-${patient._id}`}
-                                        patientId={patient._id}
-                                        patientName={
-                                          patient.personalDetails.name
-                                        }
-                                        currentPhotoUrl={
-                                          patient.personalDetails.profilePhoto
-                                            ?.url
-                                        }
-                                        onSuccess={() => {
-                                          fetchPatient(
-                                            currentPage,
-                                            itemsPerPage,
-                                            searchQuery
-                                          );
-                                        }}
-                                      />
-                                    </div>
-
                                     <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        // Add a delay to prevent the parent view drawer from opening
-                                        setTimeout(() => {
-                                          document
-                                            .getElementById(
-                                              `profile-photo-btn-${patient._id}`
-                                            )
-                                            ?.click();
-                                        }, 100);
-                                      }}
-                                      className="gap-2"
+                                      onClick={() => handleSendEmail(patient)}
                                     >
-                                      <UserCircle className="h-4 w-4" /> Upload
-                                      Photo
+                                      <Mail className="mr-2 h-4 w-4" />
+                                      Send Email
                                     </DropdownMenuItem>
-
                                     <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleEditPayment(patient);
+                                      onClick={() => {
+                                        setPaymentPatient(patient);
+                                        setIsPaymentDialogOpen(true);
                                       }}
-                                      className="gap-2"
                                     >
-                                      <CreditCard className="h-4 w-4" /> Edit
-                                      Payment
+                                      <CreditCard className="mr-2 h-4 w-4" />
+                                      Payment History
                                     </DropdownMenuItem>
-
                                     <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        // Add a delay to prevent the parent view drawer from opening
-                                        setTimeout(() => {
-                                          document
-                                            .getElementById(
-                                              `upload-docs-btn-${patient._id}`
-                                            )
-                                            ?.click();
-                                        }, 100);
-                                      }}
-                                      className="gap-2"
+                                      onClick={() => handleAddServicePayment(patient)}
                                     >
-                                      <FileUp className="h-4 w-4" /> Upload
-                                      Documents
+                                      <CreditCard className="mr-2 h-4 w-4" />
+                                      Add Service Payment
                                     </DropdownMenuItem>
-
                                     <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleSendEmail(patient);
+                                      onClick={() => {
+                                        setXRayPlanPatient(patient);
+                                        setIsXRayPlanModalOpen(true);
                                       }}
-                                      className="gap-2"
-                                      disabled={
-                                        !patient.personalDetails.emailAddress
-                                      }
                                     >
-                                      <Mail className="h-4 w-4" /> Send Email
+                                      <FileSpreadsheet className="mr-2 h-4 w-4" />
+                                      Add X-Ray Plan
                                     </DropdownMenuItem>
-
                                     <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const phoneNumber =
-                                          patient.personalDetails.contactNumber;
-                                        if (phoneNumber) {
-                                          let formattedNumber =
-                                            phoneNumber.replace(/\s/g, "");
-                                          if (
-                                            !formattedNumber.startsWith("+")
-                                          ) {
-                                            formattedNumber = `+977${formattedNumber}`;
-                                          }
-                                          window.open(
-                                            `https://wa.me/${formattedNumber}`,
-                                            "_blank"
-                                          );
-                                        } else {
-                                          toast.error(
-                                            "No contact number available for this patient"
-                                          );
-                                        }
-                                      }}
-                                      className="gap-2"
-                                      disabled={
-                                        !patient.personalDetails.contactNumber
-                                      }
+                                      onClick={() => handleQRCodeClick(patient)}
                                     >
-                                      <MessageSquare
-                                        className="h-4 w-4 text-green-500"
-                                        fill="green"
-                                      />{" "}
-                                      WhatsApp
-                                    </DropdownMenuItem>
-
-                                    {adminDetails.role === "admin" ||
-                                      (adminDetails.role === "superadmin" && (
-                                        <DropdownMenuItem
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setPatientToDelete(patient);
-                                            setIsDeleteDialogOpen(true);
-                                          }}
-                                          className="gap-2 text-red-600 hover:text-red-700 focus:text-red-700"
-                                        >
-                                          <Trash className="h-4 w-4" /> Delete
-                                        </DropdownMenuItem>
-                                      ))}
-
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        // Add a delay to prevent the parent view drawer from opening
-                                        setTimeout(() => {
-                                          document
-                                            .getElementById(
-                                              `prescription-btn-${patient._id}`
-                                            )
-                                            ?.click();
-                                        }, 100);
-                                      }}
-                                      className="gap-2"
-                                    >
-                                      <FilePlus className="h-4 w-4" /> Add
-                                      Prescription
+                                      <QrCode className="mr-2 h-4 w-4" />
+                                      Generate QR Code
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -2014,6 +1858,37 @@ export function PatientTable() {
       </DialogContent>
     </Dialog>
   );
+
+  const handleAddServicePayment = (patient: Patient) => {
+    setServicePaymentPatient(patient);
+    setIsServicePaymentDialogOpen(true);
+  };
+
+  const handleSubmitServicePayment = async (data: any) => {
+    if (!servicePaymentPatient) return;
+    
+    setIsSubmittingServicePayment(true);
+    try {
+      const formattedData = {
+        ...data,
+        date: format(data.date, "yyyy-MM-dd"),
+      };
+      
+      const response = await createServicePayment(formattedData);
+
+      if (response.success) {
+        toast.success("Service payment added successfully");
+        setIsServicePaymentDialogOpen(false);
+      } else {
+        toast.error("Failed to add service payment");
+      }
+    } catch (error) {
+      console.error("Error adding service payment:", error);
+      toast.error("Failed to add service payment");
+    } finally {
+      setIsSubmittingServicePayment(false);
+    }
+  };
 
   return (
     <div className="flex flex-col w-full bg-muted/40">
@@ -2529,6 +2404,36 @@ export function PatientTable() {
       )}
       {renderExportDialog()}
       {renderDateRangePicker()}
+
+      {/* Service Payment Dialog */}
+      <Dialog open={isServicePaymentDialogOpen} onOpenChange={setIsServicePaymentDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Add Service Payment</DialogTitle>
+            <DialogDescription>
+              Add a service payment for {servicePaymentPatient?.personalDetails.name}
+            </DialogDescription>
+          </DialogHeader>
+          {servicePaymentPatient && (
+            <ServicePaymentForm
+              onSubmit={handleSubmitServicePayment}
+              onCancel={() => setIsServicePaymentDialogOpen(false)}
+              isSubmitting={isSubmittingServicePayment}
+              initialData={{
+                patientName: servicePaymentPatient.personalDetails.name,
+                contactNumber: servicePaymentPatient.personalDetails.contactNumber || "",
+                serviceType: "Consultation",
+                amount: 0,
+                paymentMethod: "Cash",
+                date: new Date().toISOString(),
+                isWalkIn: false,
+                patient: servicePaymentPatient._id
+              }}
+              patients={[servicePaymentPatient]}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

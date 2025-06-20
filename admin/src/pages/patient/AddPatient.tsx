@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "react-toastify";
 import { crudRequest } from "@/lib/api";
 import { format } from "date-fns";
-import {  Trash2 } from "lucide-react";
+import {  Trash2, PlusCircle } from "lucide-react";
 import DentalChart from "@/components/DentalChart";
 import SelectedTeethList from "@/components/SelectedTeethList";
 import { getToothPosition, getToothSide } from "@/helper/PatientHelper";
@@ -26,6 +26,7 @@ import {
   ClinicalFinding,
   DailyTreatment,
 } from "@/types/patient";
+import { ServiceType, PaymentMethod } from "@/types/finance";
 import ChildDentalChart from "@/components/ChildDentalChart";
 import { useDoctorContext } from "@/contexts/DoctorContext";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -94,6 +95,16 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
       },
     ],
   });
+
+  // Add state for service payment
+  const [includeServicePayment, setIncludeServicePayment] = useState(false);
+  const [servicePayment, setServicePayment] = useState({
+    serviceType: "Consultation" as ServiceType,
+    amount: "",
+    description: "",
+    paymentMethod: "Cash" as PaymentMethod,
+  });
+
   const [selectedTeethMaps, setSelectedTeethMaps] = useState<{
     [planIndex: number]: { [key: string]: ToothData };
   }>({});
@@ -154,6 +165,14 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
 
       return newData;
     });
+  };
+
+  // Add handler for service payment changes
+  const handleServicePaymentChange = (field: string, value: any) => {
+    setServicePayment((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const handleMedicalChange = (field: string, value: any) => {
@@ -407,9 +426,33 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     try {
       setIsSubmitting(true);
       const formattedData = formatDataForBackend(formData);
-      await crudRequest("POST", "/patient/add-patient", formattedData);
+      const response = await crudRequest("POST", "/patient/add-patient", formattedData);
 
       toast.success("Patient added successfully");
+      
+      // If service payment is included, add it
+      if (includeServicePayment && servicePayment.amount && parseFloat(servicePayment.amount) > 0) {
+        try {
+          const servicePaymentData = {
+            patientName: formData.personalDetails.name,
+            contactNumber: formData.personalDetails.contactNumber,
+            serviceType: servicePayment.serviceType,
+            description: servicePayment.description,
+            amount: parseFloat(servicePayment.amount),
+            paymentMethod: servicePayment.paymentMethod,
+            date: format(new Date(), "yyyy-MM-dd"),
+            patient: (response as any)._id,
+            isWalkIn: false
+          };
+
+          await crudRequest("POST", "/service-payment", servicePaymentData);
+          toast.success("Service payment added successfully");
+        } catch (error: any) {
+          console.error("Error adding service payment:", error);
+          toast.error("Patient added but failed to add service payment");
+        }
+      }
+      
       modalClose();
       window.location.reload();
     } catch (error: any) {
@@ -707,10 +750,95 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end">
-              <Button onClick={() => setActiveTab("complaint")}>
-                Next: Chief Complaint
-              </Button>
+            <div className="mt-6">
+              <Card className="mb-6 p-4 border border-dashed">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Checkbox 
+                    id="includeServicePayment" 
+                    checked={includeServicePayment} 
+                    onCheckedChange={() => setIncludeServicePayment(!includeServicePayment)} 
+                  />
+                  <Label htmlFor="includeServicePayment" className="font-medium">
+                    Add Service Payment
+                  </Label>
+                </div>
+                
+                {includeServicePayment && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="serviceType">Service Type</Label>
+                        <Select
+                          value={servicePayment.serviceType}
+                          onValueChange={(value) => handleServicePaymentChange("serviceType", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select service type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="X-Ray">X-Ray</SelectItem>
+                            <SelectItem value="Consultation">Consultation</SelectItem>
+                            <SelectItem value="Medicine">Medicine</SelectItem>
+                            <SelectItem value="Lab Test">Lab Test</SelectItem>
+                            <SelectItem value="Cleaning">Cleaning</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="amount">Amount (Rs)</Label>
+                        <Input
+                          id="amount"
+                          type="number"
+                          min="0"
+                          value={servicePayment.amount}
+                          onChange={(e) => handleServicePaymentChange("amount", e.target.value)}
+                          placeholder="Enter amount"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="paymentMethod">Payment Method</Label>
+                        <Select
+                          value={servicePayment.paymentMethod}
+                          onValueChange={(value) => handleServicePaymentChange("paymentMethod", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select payment method" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Cash">Cash</SelectItem>
+                            <SelectItem value="Credit Card">Credit Card</SelectItem>
+                            <SelectItem value="Debit Card">Debit Card</SelectItem>
+                            <SelectItem value="Insurance">Insurance</SelectItem>
+                            <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="description">Description (Optional)</Label>
+                        <Input
+                          id="description"
+                          value={servicePayment.description}
+                          onChange={(e) => handleServicePaymentChange("description", e.target.value)}
+                          placeholder="Enter description"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Card>
+              
+              <div className="flex justify-end">
+                <Button onClick={() => setActiveTab("complaint")}>
+                  Next: Chief Complaint
+                </Button>
+              </div>
             </div>
           </Card>
         </TabsContent>

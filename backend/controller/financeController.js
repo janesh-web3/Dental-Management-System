@@ -1,5 +1,6 @@
 const Income = require("../model/Income");
 const Expense = require("../model/Expense");
+const ServicePayment = require("../model/ServicePayment");
 
 // Helper function to get date filter
 const getDateFilter = (startDate, endDate) => {
@@ -548,9 +549,21 @@ const getFinancialSummary = async (req, res) => {
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     
+    // Get service payment revenue (these are already included in Income but we want to track separately)
+    const servicePaymentQuery = { ...query };
+    if (query.date) {
+      servicePaymentQuery.date = query.date;
+    }
+    
+    const totalServicePayment = await ServicePayment.aggregate([
+      { $match: servicePaymentQuery },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    
     // Calculate balance
     const incomeTotal = totalIncome.length > 0 ? totalIncome[0].total : 0;
     const expenseTotal = totalExpense.length > 0 ? totalExpense[0].total : 0;
+    const servicePaymentTotal = totalServicePayment.length > 0 ? totalServicePayment[0].total : 0;
     const balance = incomeTotal - expenseTotal;
     
     // Get income by category
@@ -567,6 +580,13 @@ const getFinancialSummary = async (req, res) => {
       { $sort: { total: -1 } },
     ]);
     
+    // Get service payments by type
+    const serviceByType = await ServicePayment.aggregate([
+      { $match: servicePaymentQuery },
+      { $group: { _id: "$serviceType", total: { $sum: "$amount" } } },
+      { $sort: { total: -1 } },
+    ]);
+    
     // Get recent income (last 5)
     const recentIncome = await Income.find(query)
       .sort({ date: -1 })
@@ -579,6 +599,13 @@ const getFinancialSummary = async (req, res) => {
       .limit(5)
       .populate("createdBy", "name");
     
+    // Get recent service payments (last 5)
+    const recentServicePayments = await ServicePayment.find(servicePaymentQuery)
+      .sort({ date: -1 })
+      .limit(5)
+      .populate("createdBy", "name")
+      .populate("patient", "personalDetails.name");
+    
     res.status(200).json({
       success: true,
       data: {
@@ -586,11 +613,14 @@ const getFinancialSummary = async (req, res) => {
           income: incomeTotal,
           expense: expenseTotal,
           balance,
+          servicePayment: servicePaymentTotal
         },
         incomeByCategory,
         expenseByCategory,
+        serviceByType,
         recentIncome,
         recentExpenses,
+        recentServicePayments
       },
     });
   } catch (error) {

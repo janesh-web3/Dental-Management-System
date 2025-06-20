@@ -19,6 +19,7 @@ const prescriptionRouter = require("./routes/prescriptionRoutes.js");
 const analyticsRouter = require("./routes/analyticsRoutes.js");
 const smsRouter = require("./routes/smsRoutes.js");
 const financeRouter = require("./routes/financeRoutes.js");
+const servicePaymentRouter = require("./routes/servicePaymentRoutes.js");
 
 // Import utilities
 const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
@@ -68,6 +69,7 @@ app.use("/api/prescription", prescriptionRouter);
 app.use("/api/analytics", analyticsRouter); // Advanced analytics routes
 app.use("/api/sms", smsRouter);
 app.use("/api/finance", financeRouter); // Finance management routes
+app.use("/api/service-payment", servicePaymentRouter); // Service payment routes
 
 const port = process.env.PORT || 8080;
 

@@ -1,20 +1,22 @@
 import { motion } from "framer-motion";
-import { ArrowDown, ArrowUp, DollarSign } from "lucide-react";
+import { ArrowDown, ArrowUp, DollarSign, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface FinancialSummaryCardsProps {
   income: number;
   expense: number;
   balance: number;
+  servicePayment?: number;
 }
 
 export function FinancialSummaryCards({
   income,
   expense,
   balance,
+  servicePayment = 0,
 }: FinancialSummaryCardsProps) {
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -27,9 +29,29 @@ export function FinancialSummaryCards({
             <ArrowUp className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${income.toFixed(2)}</div>
+            <div className="text-2xl font-bold">Rs. {income.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               All income received to date
+            </p>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.05 }}
+        whileHover={{ scale: 1.02 }}
+      >
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Service Payments</CardTitle>
+            <Activity className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">Rs. {servicePayment.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              Revenue from one-time services
             </p>
           </CardContent>
         </Card>
@@ -47,7 +69,7 @@ export function FinancialSummaryCards({
             <ArrowDown className="h-4 w-4 text-rose-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${expense.toFixed(2)}</div>
+            <div className="text-2xl font-bold">Rs. {expense.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               All expenses to date
             </p>
@@ -58,7 +80,7 @@ export function FinancialSummaryCards({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
+        transition={{ duration: 0.3, delay: 0.15 }}
         whileHover={{ scale: 1.02 }}
       >
         <Card>
@@ -68,7 +90,7 @@ export function FinancialSummaryCards({
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${balance >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-              ${balance.toFixed(2)}
+              Rs. {balance.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
               Income minus expenses

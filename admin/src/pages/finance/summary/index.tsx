@@ -125,6 +125,7 @@ export default function FinancialSummaryPage() {
             income={financialData.summary.income}
             expense={financialData.summary.expense}
             balance={financialData.summary.balance}
+            servicePayment={financialData.summary.servicePayment || 0}
           />
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mt-8">
@@ -163,7 +164,7 @@ export default function FinancialSummaryPage() {
                         return (
                           <TableRow key={category._id}>
                             <TableCell>{category._id}</TableCell>
-                            <TableCell className="text-right">${category.total.toFixed(2)}</TableCell>
+                            <TableCell className="text-right">Rs. {category.total.toLocaleString()}</TableCell>
                             <TableCell className="text-right">{percentage}%</TableCell>
                           </TableRow>
                         );
@@ -175,6 +176,46 @@ export default function FinancialSummaryPage() {
             </Card>
 
             <Card className="col-span-3">
+              <CardHeader>
+                <CardTitle>Service Payments by Type</CardTitle>
+                <CardDescription>Distribution of service revenue</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[200px] flex items-center justify-center">
+                  <PieChart className="h-16 w-16 text-muted-foreground/70" />
+                  <span className="ml-2 text-muted-foreground">Service revenue distribution</span>
+                </div>
+
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Service Type</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {!financialData.serviceByType || financialData.serviceByType.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={2} className="text-center py-6">
+                          <p className="text-muted-foreground">No service payment data available</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      financialData.serviceByType.map((service) => (
+                        <TableRow key={service._id}>
+                          <TableCell>{service._id}</TableCell>
+                          <TableCell className="text-right">Rs. {service.total.toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mt-8">
+            <Card className="col-span-4">
               <CardHeader>
                 <CardTitle>Expense by Category</CardTitle>
                 <CardDescription>Distribution of expenses</CardDescription>
@@ -203,7 +244,7 @@ export default function FinancialSummaryPage() {
                       financialData.expenseByCategory.map((category) => (
                         <TableRow key={category._id}>
                           <TableCell>{category._id}</TableCell>
-                          <TableCell className="text-right">${category.total.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">Rs. {category.total.toLocaleString()}</TableCell>
                         </TableRow>
                       ))
                     )}
@@ -216,6 +257,7 @@ export default function FinancialSummaryPage() {
           <Tabs defaultValue="income" className="mt-8">
             <TabsList>
               <TabsTrigger value="income">Recent Income</TabsTrigger>
+              <TabsTrigger value="services">Service Payments</TabsTrigger>
               <TabsTrigger value="expense">Recent Expenses</TabsTrigger>
             </TabsList>
             <TabsContent value="income">
@@ -257,7 +299,7 @@ export default function FinancialSummaryPage() {
                             <TableCell className="font-medium">{income.title}</TableCell>
                             <TableCell>{income.category}</TableCell>
                             <TableCell>{formatDate(income.date)}</TableCell>
-                            <TableCell className="text-right">${income.amount.toFixed(2)}</TableCell>
+                            <TableCell className="text-right">Rs. {income.amount.toLocaleString()}</TableCell>
                           </TableRow>
                         ))
                       )}
@@ -266,6 +308,55 @@ export default function FinancialSummaryPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+            <TabsContent value="services">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Recent Service Payments</CardTitle>
+                    <CardDescription>Latest service payment entries</CardDescription>
+                  </div>
+                  <Link to="/finance/service-payment">
+                    <Button variant="ghost" className="text-sm">
+                      View All <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </Link>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Patient</TableHead>
+                        <TableHead>Service Type</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {!financialData.recentServicePayments || financialData.recentServicePayments.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-6">
+                            <p className="text-muted-foreground">No service payment records found</p>
+                            <Link to="/finance/service-payment">
+                              <Button variant="link">Add your first service payment</Button>
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        financialData.recentServicePayments.map((payment) => (
+                          <TableRow key={payment._id}>
+                            <TableCell className="font-medium">{payment.patientName}</TableCell>
+                            <TableCell>{payment.serviceType}</TableCell>
+                            <TableCell>{formatDate(payment.date)}</TableCell>
+                            <TableCell className="text-right">Rs. {payment.amount.toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
             <TabsContent value="expense">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -305,7 +396,7 @@ export default function FinancialSummaryPage() {
                             <TableCell className="font-medium">{expense.title}</TableCell>
                             <TableCell>{expense.category}</TableCell>
                             <TableCell>{formatDate(expense.date)}</TableCell>
-                            <TableCell className="text-right">${expense.amount.toFixed(2)}</TableCell>
+                            <TableCell className="text-right">Rs. {expense.amount.toLocaleString()}</TableCell>
                           </TableRow>
                         ))
                       )}

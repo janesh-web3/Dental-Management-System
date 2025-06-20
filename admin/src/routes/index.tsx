@@ -67,6 +67,14 @@ const AppRouter: React.FC = () => {
         { path: "/finance/income", element: <IncomePage /> },
         { path: "/finance/expense", element: <ExpensePage /> },
         { path: "/finance/summary", element: <FinanceSummary /> },
+        { 
+          path: "/finance/service-payment", 
+          element: (
+            <Suspense fallback={<Loading />}>
+              {React.createElement(lazy(() => import("@/pages/finance/service-payment")))}
+            </Suspense>
+          ) 
+        },
         // Standalone Income and Expense routes
         { path: "/income", element: <IncomePage /> },
         { path: "/expense", element: <ExpensePage /> },

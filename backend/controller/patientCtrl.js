@@ -5,6 +5,8 @@ const { deleteFile } = require("../middleware/multer");
 const User = require("../model/User.js");
 const Appointment = require("../model/Appointment.js");
 const Doctor = require("../model/Doctor.js");
+const ServicePayment = require("../model/ServicePayment");
+const Income = require("../model/Income");
 const {
   generateStrongPassword,
   sendPatientCredentials,
@@ -129,18 +131,25 @@ const addPatient = async (req, res) => {
       });
     }
 
-    // Ensure medicalHistory is properly nested in medicalDetails
-    if (req.body.medicalDetails && !req.body.medicalDetails[0].medicalHistory) {
-      req.body.medicalDetails[0].medicalHistory = {
-        bloodPressure: "",
-        diabetes: false,
-        thyroid: false,
-        bleedingDisorder: false,
-        pregnancy: false,
-        asthma: false,
-        allergies: "",
-        otherConditions: "",
-      };
+    // Check if medical details are provided
+    if (req.body.medicalDetails && req.body.medicalDetails.length > 0) {
+      // Ensure medicalHistory is properly nested in medicalDetails
+      if (!req.body.medicalDetails[0].medicalHistory) {
+        req.body.medicalDetails[0].medicalHistory = {
+          bloodPressure: "",
+          diabetes: false,
+          thyroid: false,
+          bleedingDisorder: false,
+          pregnancy: false,
+          asthma: false,
+          allergies: "",
+          otherConditions: "",
+        };
+      }
+    } else {
+      // If no medical details provided, initialize with empty array
+      // This allows creating a patient with only personal information
+      req.body.medicalDetails = [];
     }
 
     // Generate a strong password for the patient
@@ -183,6 +192,36 @@ const addPatient = async (req, res) => {
       } catch (emailError) {
         console.error("Error in email sending process:", emailError);
       }
+    }
+
+    // Check if there are service payments to add
+    if (req.body.servicePayment) {
+      const { serviceType, amount, description } = req.body.servicePayment;
+      
+      // Create service payment record
+      await ServicePayment.create({
+        patientName: personalDetails.name,
+        contactNumber: personalDetails.contactNumber || "",
+        serviceType,
+        description,
+        amount,
+        paymentMethod: req.body.servicePayment.paymentMethod || "Cash",
+        createdBy: req.admin.id,
+        patient: patient._id,
+        date: new Date()
+      });
+      
+      // Also record this as income for financial tracking
+      await Income.create({
+        title: `${serviceType} - ${personalDetails.name}`,
+        amount,
+        date: new Date(),
+        category: serviceType === "X-Ray" ? "X-ray Fee" : 
+                  serviceType === "Medicine" ? "Dental Products" : 
+                  serviceType === "Consultation" ? "Consultation Fee" : "Other",
+        notes: description || `Service payment for ${serviceType}`,
+        createdBy: req.admin.id,
+      });
     }
 
     res.status(201).json({
@@ -2139,6 +2178,88 @@ const getDashboardMetrics = async (req, res) => {
       return result;
     };
 
+    // Define functions to get service payment revenue
+    const getDailyServicePaymentRevenue = async () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const result = await ServicePayment.aggregate([
+        {
+          $match: {
+            date: {
+              $gte: today,
+              $lt: tomorrow,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            revenue: { $sum: "$amount" },
+          },
+        },
+      ]);
+      
+      return result.length > 0 ? result[0].revenue : 0;
+    };
+    
+    const getWeeklyServicePaymentRevenue = async () => {
+      const result = await ServicePayment.aggregate([
+        {
+          $match: {
+            date: {
+              $gte: startOfWeek,
+              $lt: tomorrow,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            revenue: { $sum: "$amount" },
+          },
+        },
+      ]);
+      
+      return result.length > 0 ? result[0].revenue : 0;
+    };
+    
+    const getMonthlyServicePaymentRevenue = async () => {
+      const result = await ServicePayment.aggregate([
+        {
+          $match: {
+            date: {
+              $gte: startOfMonth,
+              $lte: endOfMonth,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            revenue: { $sum: "$amount" },
+          },
+        },
+      ]);
+      
+      return result.length > 0 ? result[0].revenue : 0;
+    };
+    
+    const getTotalServicePaymentRevenue = async () => {
+      const result = await ServicePayment.aggregate([
+        {
+          $group: {
+            _id: null,
+            revenue: { $sum: "$amount" },
+          },
+        },
+      ]);
+      
+      return result.length > 0 ? result[0].revenue : 0;
+    };
+
     // Get revenue data using Promise.all for better performance
     const [
       dailyRevenue,
@@ -2146,12 +2267,20 @@ const getDashboardMetrics = async (req, res) => {
       monthlyRevenue,
       totalRevenue,
       revenueTrend,
+      dailyServiceRevenue,
+      weeklyServiceRevenue,
+      monthlyServiceRevenue,
+      totalServiceRevenue
     ] = await Promise.all([
       getDailyRevenue(),
       getWeeklyRevenue(),
       getMonthlyRevenue(),
       getTotalRevenue(),
       getRevenueTrend(),
+      getDailyServicePaymentRevenue(),
+      getWeeklyServicePaymentRevenue(),
+      getMonthlyServicePaymentRevenue(),
+      getTotalServicePaymentRevenue()
     ]);
 
     // Calculate derived values
@@ -2376,11 +2505,25 @@ const getDashboardMetrics = async (req, res) => {
         appointmentDistribution,
         doctorPerformance,
         financialAnalysis: {
-          daily: dailyRevenue,
-          weekly: weeklyRevenue,
-          monthly: monthlyRevenue,
-          yearly: yearlyRevenue,
-          total: totalRevenue,
+          daily: dailyRevenue + dailyServiceRevenue,
+          weekly: weeklyRevenue + weeklyServiceRevenue,
+          monthly: monthlyRevenue + monthlyServiceRevenue,
+          yearly: (monthlyRevenue + monthlyServiceRevenue) * 12,
+          total: totalRevenue + totalServiceRevenue,
+          treatmentRevenue: {
+            daily: dailyRevenue,
+            weekly: weeklyRevenue,
+            monthly: monthlyRevenue,
+            yearly: yearlyRevenue,
+            total: totalRevenue
+          },
+          serviceRevenue: {
+            daily: dailyServiceRevenue,
+            weekly: weeklyServiceRevenue,
+            monthly: monthlyServiceRevenue,
+            yearly: monthlyServiceRevenue * 12,
+            total: totalServiceRevenue
+          },
           revenueByDoctor: doctorPerformance.map((doctor) => ({
             doctorName: doctor.doctorName,
             revenue: doctor.revenue || 0,

@@ -46,6 +46,15 @@ interface DashboardMetrics {
     appointments: number;
     completedAppointments: number;
   }>;
+  servicePayments?: {
+    count: number;
+    total: number;
+    byType?: Array<{
+      type: string;
+      count: number;
+      amount: number;
+    }>;
+  };
 }
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
@@ -136,6 +145,19 @@ export function DashboardMetrics() {
             <div className="text-2xl font-bold">{metrics?.totalAppointments}</div>
           </CardContent>
         </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Service Payments</CardTitle>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
+              <path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2h0V5z"></path>
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics?.servicePayments?.count || 0}</div>
+            <p className="text-xs text-muted-foreground mt-1">Rs. {metrics?.servicePayments?.total?.toLocaleString() || 0}</p>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -201,6 +223,7 @@ export function DashboardMetrics() {
               <TabsTrigger value="patient-growth">Patient Growth</TabsTrigger>
               <TabsTrigger value="appointment-distribution">Appointment Distribution</TabsTrigger>
               <TabsTrigger value="doctor-performance">Doctor Performance</TabsTrigger>
+              <TabsTrigger value="service-payments">Service Payments</TabsTrigger>
             </TabsList>
 
             <TabsContent value="patient-growth" className="space-y-4">
@@ -268,6 +291,28 @@ export function DashboardMetrics() {
                     <Bar dataKey="completedAppointments" fill="#82ca9d" name="Completed Appointments" />
                   </BarChart>
                 </ResponsiveContainer>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="service-payments" className="space-y-4">
+              <div className="h-[400px]">
+                {metrics?.servicePayments?.byType && metrics.servicePayments.byType.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={metrics.servicePayments.byType}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="type" />
+                      <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
+                      <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
+                      <Tooltip />
+                      <Bar yAxisId="left" dataKey="count" fill="#8884d8" name="Number of Services" />
+                      <Bar yAxisId="right" dataKey="amount" fill="#82ca9d" name="Revenue (Rs)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-muted-foreground">No service payment data available</p>
+                  </div>
+                )}
               </div>
             </TabsContent>
           </Tabs>

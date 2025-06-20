@@ -27,6 +27,10 @@ export type selectedToothSchema = {
 
 export type TreatmentPlanning = {
   _id: string;
+  patientType : "Child" | "Adult";
+  isCompleted: boolean;
+  selectedTeethDetails: selectedToothSchema[];
+  teethNumber: string;
   treatmentDate: string;
   treatmentDateNp: string;
   treatmentDetails: string;
@@ -38,19 +42,16 @@ export type TreatmentPlanning = {
     publicId: string;
   }[];
   treatmentFindings: string;
-  treatedByDoctor: Doctor;
-  treatmentAmount: string | number;
-  advancedAmount: string | number;
-  balanceAmount: string | number;
-  isCompleted: boolean;
-  completionDate: string;
-  completionDateNp: string;
-  teethNumber: string;
-  selectedTeethDetails: selectedToothSchema[];
   clinicalFindings: string[];
   otherFindings: string;
   followUpDate?: string;
   followUpDateNp?: string;
+  treatedByDoctor: Doctor;
+  totalPlanAmount: string | number;
+  totalPaidAmount: string | number;
+  totalRemainingAmount: string | number;
+  completionDate: string;
+  completionDateNp: string;
 };
 
 export type MedicalDetails = {

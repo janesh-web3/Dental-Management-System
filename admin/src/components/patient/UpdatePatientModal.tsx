@@ -137,6 +137,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
   onClose,
   patient,
 }) => {
+  console.log("UpdatePatientModal patient:", patient);
   const [activeTab, setActiveTab] = useState("personal");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { doctors } = useDoctorContext();
@@ -228,9 +229,9 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
               followUpDateNp: convertToNepaliDate(formatSafeDate(plan.followUpDate)),
               completionDate: formatSafeDate(plan.completionDate),
               completionDateNp: plan.completionDate ? convertToNepaliDate(formatSafeDate(plan.completionDate)) : "",
-              treatmentAmount: plan.treatmentAmount?.toString() || "0",
-              advancedAmount: plan.advancedAmount?.toString() || "0",
-              balanceAmount: plan.balanceAmount?.toString() || "0",
+              treatmentAmount: plan.totalPlanAmount?.toString() || "0",
+              advancedAmount: plan.totalPaidAmount?.toString() || "0",
+              balanceAmount: plan.totalRemainingAmount?.toString() || "0",
               treatedByDoctor: plan.treatedByDoctor?._id || "",
               selectedTeethDetails: plan.selectedTeethDetails?.map(tooth => ({
                 ...tooth,
@@ -437,6 +438,11 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
               const mapKey = `0-${planIndex}`;
               const teethMap = selectedTeethMaps[mapKey] || {};
 
+              // Calculate plan-level totals directly from teeth data
+              let planTotalTreatmentAmount = 0;
+              let planTotalPaidAmount = 0;
+              let planTotalRemainingAmount = 0;
+
               // Format teeth data for backend
               const selectedTeethDetails = Object.entries(teethMap).map(
                 ([number, toothData]) => {
@@ -453,6 +459,22 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                       isCompleted: treatment.isCompleted || false,
                     })) || [];
 
+                  // Calculate tooth-level totals
+                  const toothTreatmentAmount = formattedDailyTreatments.reduce(
+                    (sum, dt) => sum + (Number(dt.treatmentAmount) || 0),
+                    0
+                  );
+                  const toothPaidAmount = formattedDailyTreatments.reduce(
+                    (sum, dt) => sum + (Number(dt.paidAmount) || 0),
+                    0
+                  );
+                  const toothRemainingAmount = Math.max(0, toothTreatmentAmount - toothPaidAmount);
+
+                  // Add to plan totals
+                  planTotalTreatmentAmount += toothTreatmentAmount;
+                  planTotalPaidAmount += toothPaidAmount;
+                  planTotalRemainingAmount += toothRemainingAmount;
+
                   return {
                     number,
                     details: toothData.details || "",
@@ -460,9 +482,9 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                     side: getToothSide(number),
                     procedure: toothData.procedure || "",
                     dailyTreatments: formattedDailyTreatments,
-                    totalTreatmentAmount: toothData.totalTreatmentAmount || 0,
-                    totalPaidAmount: toothData.totalPaidAmount || 0,
-                    totalRemainingAmount: toothData.totalRemainingAmount || 0,
+                    totalTreatmentAmount: toothTreatmentAmount,
+                    totalPaidAmount: toothPaidAmount,
+                    totalRemainingAmount: toothRemainingAmount,
                   };
                 }
               );
@@ -480,8 +502,10 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                   ? formatSafeDate(plan.followUpDate)
                   : undefined,
                 isCompleted: plan.isCompleted,
-                // Remove this line - don't try to modify treatmentDocuments at all
-                // treatmentDocuments: plan.treatmentDocuments || [],
+                // Explicitly set the calculated totals for the plan
+                totalPlanAmount: planTotalTreatmentAmount,
+                totalPaidAmount: planTotalPaidAmount,
+                totalRemainingAmount: planTotalRemainingAmount,
               };
             }
           ),

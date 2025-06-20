@@ -86,6 +86,13 @@ const treatmentPlanningSchema = new mongoose.Schema({
 
 // Update the treatment planning schema pre-save middleware
 treatmentPlanningSchema.pre('save', function(next) {
+  // Call the calculation method
+  this.calculateTotals();
+  next();
+});
+
+// Add a method to calculate totals that can be called manually
+treatmentPlanningSchema.methods.calculateTotals = function() {
   if (this.selectedTeethDetails && this.selectedTeethDetails.length > 0) {
     // Calculate totals from all teeth
     let totalPlanAmount = 0;
@@ -125,8 +132,8 @@ treatmentPlanningSchema.pre('save', function(next) {
       this.completionDate = new Date();
     }
   }
-  next();
-});
+  return this;
+};
 
 // Add this new schema before the medicalDetailsSchema
 const medicalHistorySchema = new mongoose.Schema({
@@ -236,6 +243,20 @@ const patientSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Add the method here after patientSchema is defined
+patientSchema.methods.recalculateTreatmentTotals = function() {
+  if (this.medicalDetails && this.medicalDetails.length > 0) {
+    this.medicalDetails.forEach(medical => {
+      if (medical.treatmentPlanning && medical.treatmentPlanning.length > 0) {
+        medical.treatmentPlanning.forEach(plan => {
+          plan.calculateTotals();
+        });
+      }
+    });
+  }
+  return this;
+};
 
 // Hash password before saving
 patientSchema.pre('save', async function(next) {

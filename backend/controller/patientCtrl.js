@@ -432,6 +432,10 @@ const updatePatient = async (req, res) => {
             followUpDate: treatment.followUpDate
               ? new Date(treatment.followUpDate)
               : undefined,
+            // Explicitly preserve total values from the request or keep existing values
+            totalPlanAmount: Number(treatment.treatmentAmount) || treatment.totalPlanAmount || 0,
+            totalPaidAmount: Number(treatment.advancedAmount) || treatment.totalPaidAmount || 0,
+            totalRemainingAmount: Number(treatment.balanceAmount) || treatment.totalRemainingAmount || 0,
           };
         }) || [],
     };
@@ -456,6 +460,10 @@ const updatePatient = async (req, res) => {
         message: "Patient not found",
       });
     }
+
+    // IMPORTANT: Recalculate all treatment totals to ensure they're accurate
+    patient.recalculateTreatmentTotals();
+    await patient.save(); // Save the patient again with recalculated totals
 
     // Track doctors who have treated this patient and update their totalPatients field
     try {
@@ -2353,20 +2361,16 @@ const getDashboardMetrics = async (req, res) => {
         totalPatients,
         totalDoctors,
         totalAppointments,
-        appointmentStatus,
-        todayAppointmentsCount: todayAppointments.length,
+        appointmentStatus: {
+          scheduled: 0,
+          completed: 0,
+          canceled: 0,
+        },
+        todayAppointmentsCount: 0,
         today: {
-          appointments: todayAppointments.map((apt) => ({
-            id: apt._id.toString(),
-            patientName: `${apt.firstName} ${apt.lastName}`,
-            time: apt.appointmentTime,
-            status: apt.status,
-          })),
-          revenue: dailyRevenue,
-          newPatients:
-            patientGrowth.find(
-              (p) => p.date === todayDate.toISOString().split("T")[0]
-            )?.count || 0,
+          appointments: [],
+          revenue: 0,
+          newPatients: 0,
         },
         patientGrowth,
         appointmentDistribution,

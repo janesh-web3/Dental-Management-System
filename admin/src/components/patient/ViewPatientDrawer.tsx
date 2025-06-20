@@ -557,9 +557,9 @@ export function ViewPatientDrawer({
             // Treatment details table
             const treatmentData = [
               ["Date", formatSafeDate(plan.treatmentDate || "")],
-              ["Amount", `Rs. ${plan.treatmentAmount || 0}`],
-              ["Paid", `Rs. ${plan.advancedAmount || 0}`],
-              ["Balance", `Rs. ${plan.balanceAmount || 0}`],
+              ["Amount", `Rs. ${plan.totalPlanAmount || 0}`],
+              ["Paid", `Rs. ${plan.totalPaidAmount || 0}`],
+              ["Balance", `Rs. ${plan.totalRemainingAmount || 0}`],
               ["Status", plan.isCompleted ? "Completed" : "In Progress"],
             ];
 
@@ -1636,7 +1636,7 @@ export function ViewPatientDrawer({
                                                   </p>
                                                   <p className="font-medium text-sm">
                                                     ₹
-                                                    {treatment.treatmentAmount ||
+                                                    {treatment.totalPlanAmount ||
                                                       0}
                                                   </p>
                                                 </div>

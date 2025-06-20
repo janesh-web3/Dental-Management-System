@@ -198,8 +198,8 @@ const addPatient = async (req, res) => {
     if (req.body.servicePayment) {
       const { serviceType, amount, description } = req.body.servicePayment;
       
-      // Create service payment record
-      await ServicePayment.create({
+      // Create service payment data object
+      const servicePaymentData = {
         patientName: personalDetails.name,
         contactNumber: personalDetails.contactNumber || "",
         serviceType,
@@ -207,9 +207,20 @@ const addPatient = async (req, res) => {
         amount,
         paymentMethod: req.body.servicePayment.paymentMethod || "Cash",
         createdBy: req.admin.id,
-        patient: patient._id,
-        date: new Date()
-      });
+        date: new Date(),
+        isWalkIn: false
+      };
+      
+      // Explicitly set the patient ID and ensure it's a valid ObjectId
+      if (patient && patient._id) {
+        servicePaymentData.patient = patient._id;
+        console.log("Setting patient ID in service payment:", patient._id.toString());
+      }
+      
+      // Create service payment record
+      const servicePayment = await ServicePayment.create(servicePaymentData);
+      
+      console.log("Service payment created:", servicePayment._id, "with patient:", servicePayment.patient);
       
       // Also record this as income for financial tracking
       await Income.create({

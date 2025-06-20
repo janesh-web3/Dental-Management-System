@@ -433,6 +433,15 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
       // If service payment is included, add it
       if (includeServicePayment && servicePayment.amount && parseFloat(servicePayment.amount) > 0) {
         try {
+          // Make sure we have a valid patient ID from the response
+          const patientId = response.data?._id || response._id;
+          
+          if (!patientId) {
+            console.error("No patient ID returned from patient creation");
+            toast.error("Patient added but failed to add service payment: Missing patient ID");
+            return;
+          }
+          
           const servicePaymentData = {
             patientName: formData.personalDetails.name,
             contactNumber: formData.personalDetails.contactNumber,
@@ -441,10 +450,11 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
             amount: parseFloat(servicePayment.amount),
             paymentMethod: servicePayment.paymentMethod,
             date: format(new Date(), "yyyy-MM-dd"),
-            patient: (response as any)._id,
+            patient: patientId,
             isWalkIn: false
           };
 
+          console.log("Creating service payment with data:", servicePaymentData);
           await crudRequest("POST", "/service-payment", servicePaymentData);
           toast.success("Service payment added successfully");
         } catch (error: any) {

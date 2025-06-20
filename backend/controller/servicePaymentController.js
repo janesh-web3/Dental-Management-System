@@ -1,6 +1,7 @@
 const ServicePayment = require("../model/ServicePayment");
 const Patient = require("../model/Patient");
 const Income = require("../model/Income");
+const { default: mongoose } = require("mongoose");
 
 // Helper function to get date filter
 const getDateFilter = (startDate, endDate) => {
@@ -29,8 +30,8 @@ const addServicePayment = async (req, res) => {
       });
     }
     
-    // Create new service payment
-    const servicePayment = await ServicePayment.create({
+    // Create service payment data object
+    const servicePaymentData = {
       patientName,
       contactNumber,
       serviceType,
@@ -38,9 +39,22 @@ const addServicePayment = async (req, res) => {
       amount,
       paymentMethod: paymentMethod || "Cash",
       createdBy: req.admin.id,
-      patient: patient || null,
       date: new Date()
-    });
+    };
+    
+    // Only add patient field if it's provided and not null/empty
+    if (patient && patient !== 'null' && patient !== '') {
+      servicePaymentData.patient = patient;
+      servicePaymentData.isWalkIn = false;
+    } else {
+      servicePaymentData.isWalkIn = true;
+    }
+    
+    // Log the data being saved
+    console.log("Creating service payment with data:", JSON.stringify(servicePaymentData));
+    
+    // Create new service payment
+    const servicePayment = await ServicePayment.create(servicePaymentData);
     
     // Also record this as income for financial tracking
     await Income.create({
@@ -291,7 +305,7 @@ const getPatientServicePayments = async (req, res) => {
     
     // Calculate total amount
     const totalAmount = await ServicePayment.aggregate([
-      { $match: { patient: mongoose.Types.ObjectId(patientId) } },
+      { $match: { patient: new mongoose.Types.ObjectId(patientId) } },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     

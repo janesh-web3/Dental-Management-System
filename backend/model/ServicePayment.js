@@ -67,8 +67,12 @@ const servicePaymentSchema = new mongoose.Schema(
 
 // Pre-save hook to set isWalkIn flag if no patient ID is provided
 servicePaymentSchema.pre('save', function(next) {
-  if (!this.patient) {
+  // Check if patient field is null, undefined, or empty string
+  if (!this.patient || this.patient === '' || this.patient === null) {
     this.isWalkIn = true;
+  } else {
+    // Ensure isWalkIn is false when patient ID is provided
+    this.isWalkIn = false;
   }
   next();
 });

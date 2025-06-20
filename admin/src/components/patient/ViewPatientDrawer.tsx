@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 // Custom icon components to replace missing lucide-react icons
 const Globe = ({ className }: { className?: string }) => (
@@ -168,6 +169,8 @@ import { toast } from "react-toastify";
 import { PatientDocumentUploadButton } from "./PatientDocumentUploadButton";
 import DentalChart from "@/components/DentalChart";
 import ChildDentalChart from "@/components/ChildDentalChart";
+import { ServicePayment } from "@/types/finance";
+
 interface ViewPatientDrawerProps {
   patient: Patient;
   isOpen: boolean;
@@ -236,7 +239,6 @@ export function ViewPatientDrawer({
   isOpen,
   onClose,
 }: ViewPatientDrawerProps) {
-  console.log("Patient data:", patient);
   const [localPatient] = useState(patient);
   const [_selectedMedicalRecordId, setSelectedMedicalRecordId] = useState<
     string | null
@@ -247,6 +249,8 @@ export function ViewPatientDrawer({
   const [expandedPrescription, setExpandedPrescription] = useState<
     string | null
   >(null);
+  const [servicePayments, setServicePayments] = useState<ServicePayment[]>([]);
+  const [loadingServicePayments, setLoadingServicePayments] = useState<boolean>(false);
 
   // Get all treatments and their teeth details for calculations
   const allTreatments = localPatient.medicalDetails.flatMap(
@@ -323,6 +327,7 @@ export function ViewPatientDrawer({
   useEffect(() => {
     if (isOpen && patient._id) {
       fetchPatientPrescriptions(patient._id);
+      fetchPatientServicePayments(patient._id);
     }
   }, [isOpen, patient._id]);
 
@@ -348,6 +353,31 @@ export function ViewPatientDrawer({
       toast.error("Failed to load prescriptions");
     } finally {
       setLoadingPrescriptions(false);
+    }
+  };
+
+  const fetchPatientServicePayments = async (patientId: string) => {
+    try {
+      setLoadingServicePayments(true);
+      const response = await crudRequest<{
+        success: boolean;
+        data?: ServicePayment[];
+        count?: number;
+        message?: string;
+      }>("GET", `/service-payment/patient/${patientId}`);
+
+      if (response.success && response.data) {
+        setServicePayments(response.data || []);
+      } else {
+        setServicePayments([]);
+        toast.error(response.message || "Failed to load service payments");
+      }
+    } catch (error) {
+      console.error("Error fetching patient service payments:", error);
+      setServicePayments([]);
+      toast.error("Failed to load service payments");
+    } finally {
+      setLoadingServicePayments(false);
     }
   };
 
@@ -684,7 +714,7 @@ export function ViewPatientDrawer({
           <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-2">
             <Tabs defaultValue="overview" className="space-y-4 sm:space-y-6">
               <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm pt-1 pb-2 sm:pb-3 -mx-2 sm:-mx-4 px-2 sm:px-4 border-b border-gray-100 dark:border-gray-800">
-                <TabsList className="w-full overflow-x-auto h-20 md:h-auto flex flex-wrap md:flex-nowrap sm:grid sm:grid-cols-5 bg-gray-100 dark:bg-gray-800/50 p-1 sm:p-1.5 rounded-lg gap-1">
+                <TabsList className="w-full overflow-x-auto h-20 md:h-auto flex flex-wrap md:flex-nowrap sm:grid sm:grid-cols-6 bg-gray-100 dark:bg-gray-800/50 p-1 sm:p-1.5 rounded-lg gap-1">
                   <TabsTrigger
                     value="overview"
                     className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3"
@@ -714,6 +744,12 @@ export function ViewPatientDrawer({
                     className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3"
                   >
                     Prescriptions
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="service-payments"
+                    className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3"
+                  >
+                    Service Payments
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -2306,6 +2342,138 @@ export function ViewPatientDrawer({
                             ))}
                           </TableBody>
                         </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="service-payments" className="pb-6">
+                <Card className="border-none shadow-sm bg-card">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileDigit className="h-5 w-5 text-primary" />
+                      Service Payments
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingServicePayments ? (
+                      <div className="flex justify-center items-center py-10">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      </div>
+                    ) : servicePayments.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-center bg-muted/30 rounded-lg">
+                        <FileText className="h-12 w-12 text-muted-foreground mb-3" />
+                        <h3 className="text-lg font-medium">
+                          No Service Payments
+                        </h3>
+                        <p className="text-sm text-muted-foreground max-w-md mt-1">
+                          This patient doesn't have any service payments yet.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Service Type</TableHead>
+                              <TableHead>Description</TableHead>
+                              <TableHead>Amount</TableHead>
+                              <TableHead>Payment Method</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {servicePayments.map((payment) => (
+                              <TableRow key={payment._id}>
+                                <TableCell className="font-medium">
+                                  {formatSafeDate(payment.date)}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="bg-card">
+                                    {payment.serviceType}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {payment.description || "N/A"}
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  ₹{payment.amount}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant="outline" 
+                                    className={cn(
+                                      "bg-card",
+                                      payment.paymentMethod === "Cash" && "border-green-200 text-green-700 dark:border-green-800 dark:text-green-300",
+                                      payment.paymentMethod === "Credit Card" && "border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-300",
+                                      payment.paymentMethod === "Debit Card" && "border-indigo-200 text-indigo-700 dark:border-indigo-800 dark:text-indigo-300",
+                                      payment.paymentMethod === "Insurance" && "border-purple-200 text-purple-700 dark:border-purple-800 dark:text-purple-300",
+                                      payment.paymentMethod === "Bank Transfer" && "border-amber-200 text-amber-700 dark:border-amber-800 dark:text-amber-300"
+                                    )}
+                                  >
+                                    {payment.paymentMethod}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+
+                        {/* Financial Summary */}
+                        <div className="mt-6 p-4 bg-muted/10 rounded-md">
+                          <h3 className="text-sm font-medium mb-3">Service Payments Summary</h3>
+                          <div className="grid grid-cols-3 gap-4">
+                            {(() => {
+                              // Calculate totals
+                              const totalAmount = servicePayments.reduce(
+                                (sum, payment) => sum + payment.amount,
+                                0
+                              );
+                              
+                              // Count by service type
+                              const serviceTypeCounts = servicePayments.reduce((acc, payment) => {
+                                acc[payment.serviceType] = (acc[payment.serviceType] || 0) + 1;
+                                return acc;
+                              }, {} as Record<string, number>);
+                              
+                              // Count by payment method
+                              const paymentMethodCounts = servicePayments.reduce((acc, payment) => {
+                                acc[payment.paymentMethod] = (acc[payment.paymentMethod] || 0) + 1;
+                                return acc;
+                              }, {} as Record<string, number>);
+
+                              return (
+                                <>
+                                  <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                                    <p className="text-xs text-muted-foreground">
+                                      Total Services
+                                    </p>
+                                    <p className="font-bold text-lg text-blue-600 dark:text-blue-400">
+                                      {servicePayments.length}
+                                    </p>
+                                  </div>
+                                  <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-md">
+                                    <p className="text-xs text-muted-foreground">
+                                      Total Amount
+                                    </p>
+                                    <p className="font-bold text-lg text-green-600 dark:text-green-400">
+                                      ₹{totalAmount}
+                                    </p>
+                                  </div>
+                                  <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-md">
+                                    <p className="text-xs text-muted-foreground">
+                                      Most Common Service
+                                    </p>
+                                    <p className="font-bold text-lg text-purple-600 dark:text-purple-400">
+                                      {Object.entries(serviceTypeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A"}
+                                    </p>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </CardContent>

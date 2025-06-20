@@ -161,9 +161,9 @@ export function ServicePaymentForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 max-h-[calc(80vh-120px)]">
         {/* Existing Patient Checkbox */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 mb-4">
           <Checkbox
             id="existingPatient"
             checked={isExistingPatient}
@@ -177,30 +177,101 @@ export function ServicePaymentForm({
           </label>
         </div>
 
-        {/* Patient Selection (if existing patient) */}
-        {isExistingPatient && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Patient Selection (if existing patient) */}
+          {isExistingPatient && (
+            <div className="col-span-1 sm:col-span-2">
+              <FormField
+                control={form.control}
+                name="patient"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Select Patient</FormLabel>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        handlePatientChange(value);
+                      }}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a patient" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {patients.map((patient) => (
+                          <SelectItem key={patient._id} value={patient._id}>
+                            {patient.personalDetails.name} ({patient.personalDetails.contactNumber || "No contact"})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
+
+          {/* Patient Name */}
           <FormField
             control={form.control}
-            name="patient"
+            name="patientName"
+            render={({ field }) => (
+              <FormItem className="col-span-1 sm:col-span-2">
+                <FormLabel>Patient Name</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    disabled={isExistingPatient && !!form.getValues("patient")}
+                    placeholder="Enter patient name"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Contact Number */}
+          <FormField
+            control={form.control}
+            name="contactNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Select Patient</FormLabel>
+                <FormLabel>Contact Number</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    disabled={isExistingPatient && !!form.getValues("patient")}
+                    placeholder="Enter 10-digit contact number"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Service Type */}
+          <FormField
+            control={form.control}
+            name="serviceType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Service Type</FormLabel>
                 <Select
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    handlePatientChange(value);
-                  }}
+                  onValueChange={field.onChange}
                   defaultValue={field.value}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a patient" />
+                      <SelectValue placeholder="Select service type" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {patients.map((patient) => (
-                      <SelectItem key={patient._id} value={patient._id}>
-                        {patient.personalDetails.name} ({patient.personalDetails.contactNumber || "No contact"})
+                    {serviceTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -209,166 +280,99 @@ export function ServicePaymentForm({
               </FormItem>
             )}
           />
-        )}
 
-        {/* Patient Name */}
-        <FormField
-          control={form.control}
-          name="patientName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Patient Name</FormLabel>
-              <FormControl>
-                <Input
-                  {...field}
-                  disabled={isExistingPatient && !!form.getValues("patient")}
-                  placeholder="Enter patient name"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Contact Number */}
-        <FormField
-          control={form.control}
-          name="contactNumber"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Contact Number</FormLabel>
-              <FormControl>
-                <Input
-                  {...field}
-                  disabled={isExistingPatient && !!form.getValues("patient")}
-                  placeholder="Enter 10-digit contact number"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Service Type */}
-        <FormField
-          control={form.control}
-          name="serviceType"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Service Type</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-              >
+          {/* Amount */}
+          <FormField
+            control={form.control}
+            name="amount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Amount (Rs)</FormLabel>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select service type" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {serviceTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Amount */}
-        <FormField
-          control={form.control}
-          name="amount"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Amount (Rs)</FormLabel>
-              <FormControl>
-                <Input
-                  {...field}
-                  type="number"
-                  min="0"
-                  placeholder="Enter amount"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Payment Method */}
-        <FormField
-          control={form.control}
-          name="paymentMethod"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Payment Method</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select payment method" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {paymentMethods.map((method) => (
-                    <SelectItem key={method} value={method}>
-                      {method}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Date */}
-        <FormField
-          control={form.control}
-          name="date"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Date</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      {field.value ? (
-                        format(field.value, "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    disabled={(date) =>
-                      date > new Date() || date < new Date("1900-01-01")
-                    }
-                    initialFocus
+                  <Input
+                    {...field}
+                    type="number"
+                    min="0"
+                    placeholder="Enter amount"
                   />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Payment Method */}
+          <FormField
+            control={form.control}
+            name="paymentMethod"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Payment Method</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment method" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {paymentMethods.map((method) => (
+                      <SelectItem key={method} value={method}>
+                        {method}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Date */}
+          <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Date</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(field.value, "PPP")
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) =>
+                        date > new Date() || date < new Date("1900-01-01")
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         {/* Description */}
         <FormField
@@ -390,7 +394,7 @@ export function ServicePaymentForm({
         />
 
         {/* Form Actions */}
-        <div className="flex justify-end space-x-4">
+        <div className="flex justify-end space-x-4 pt-2">
           <Button
             type="button"
             variant="outline"
@@ -400,10 +404,14 @@ export function ServicePaymentForm({
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {isSubmitting ? (
+              <>
+                <span className="mr-2">Saving...</span>
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </>
+            ) : (
+              "Save"
             )}
-            {initialData ? "Update" : "Save"}
           </Button>
         </div>
       </form>

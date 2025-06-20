@@ -1124,6 +1124,15 @@ export function PatientTable() {
                       >
                         <CreditCard className="h-4 w-4" /> Edit Payment
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddServicePayment(patient);
+                        }}
+                        className="gap-2"
+                      >
+                        <CreditCard className="h-4 w-4" /> Add Service Payment
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={(e) => {
@@ -1292,10 +1301,7 @@ export function PatientTable() {
                   <DropdownMenuContent
                     align="end"
                     className="w-[180px] shadow-lg border border-border/30"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                    }}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -1322,6 +1328,15 @@ export function PatientTable() {
                       className="gap-2"
                     >
                       <CreditCard className="h-4 w-4" /> Edit Payment
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddServicePayment(patient);
+                      }}
+                      className="gap-2"
+                    >
+                      <CreditCard className="h-4 w-4" /> Add Service Payment
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={(e) => {
@@ -1711,10 +1726,13 @@ export function PatientTable() {
                                       Payment History
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                      onClick={() => handleAddServicePayment(patient)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAddServicePayment(patient);
+                                      }}
+                                      className="gap-2"
                                     >
-                                      <CreditCard className="mr-2 h-4 w-4" />
-                                      Add Service Payment
+                                      <CreditCard className="h-4 w-4" /> Add Service Payment
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => {
@@ -1876,7 +1894,7 @@ export function PatientTable() {
       
       const response = await createServicePayment(formattedData);
 
-      if (response.success) {
+      if (typeof response === "object" && response !== null && "success" in response && (response as any).success) {
         toast.success("Service payment added successfully");
         setIsServicePaymentDialogOpen(false);
       } else {
@@ -2407,31 +2425,37 @@ export function PatientTable() {
 
       {/* Service Payment Dialog */}
       <Dialog open={isServicePaymentDialogOpen} onOpenChange={setIsServicePaymentDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Add Service Payment</DialogTitle>
             <DialogDescription>
               Add a service payment for {servicePaymentPatient?.personalDetails.name}
             </DialogDescription>
           </DialogHeader>
-          {servicePaymentPatient && (
-            <ServicePaymentForm
-              onSubmit={handleSubmitServicePayment}
-              onCancel={() => setIsServicePaymentDialogOpen(false)}
-              isSubmitting={isSubmittingServicePayment}
-              initialData={{
-                patientName: servicePaymentPatient.personalDetails.name,
-                contactNumber: servicePaymentPatient.personalDetails.contactNumber || "",
-                serviceType: "Consultation",
-                amount: 0,
-                paymentMethod: "Cash",
-                date: new Date().toISOString(),
-                isWalkIn: false,
-                patient: servicePaymentPatient._id
-              }}
-              patients={[servicePaymentPatient]}
-            />
-          )}
+          <div className="overflow-y-auto pr-1 max-h-[calc(80vh-120px)]">
+            {servicePaymentPatient && (
+              <ServicePaymentForm
+                onSubmit={handleSubmitServicePayment}
+                onCancel={() => setIsServicePaymentDialogOpen(false)}
+                isSubmitting={isSubmittingServicePayment}
+                initialData={{
+                  _id: "",
+                  createdBy: "",
+                  createdAt: "",
+                  updatedAt: "",
+                  patientName: servicePaymentPatient.personalDetails.name,
+                  contactNumber: servicePaymentPatient.personalDetails.contactNumber || "",
+                  serviceType: "Consultation",
+                  amount: 0,
+                  paymentMethod: "Cash",
+                  date: new Date().toISOString(),
+                  isWalkIn: false,
+                  patient: servicePaymentPatient._id
+                }}
+                patients={[servicePaymentPatient]}
+              />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

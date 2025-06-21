@@ -25,6 +25,7 @@ import {
   User,
   FileX,
   Printer,
+  MessageSquare,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -128,6 +129,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeModal } from "@/components/patient/QRCodeModal";
 import { ServicePaymentForm } from "@/components/finance/ServicePaymentForm";
 import { createServicePayment } from "@/lib/api";
+import { PatientDocumentUploadButton } from "@/components/patient/PatientDocumentUploadButton";
+import { ProfilePhotoUploadButton } from "@/components/patient/ProfilePhotoUploadButton";
+import { AddPrescriptionButton } from "@/components/prescription";
 
 interface ProcedureResponse {
   success: boolean;
@@ -191,59 +195,73 @@ export function PatientTable() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportContent, setReportContent] = useState("");
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const { adminDetails } = useAdminContext();
 
   // Handle report generation
   const handleGenerateReport = async (patient: Patient) => {
     try {
       setIsGeneratingReport(true);
       setSelectedPatient(patient);
-      
+
       // Prepare structured data for the report
       const patientInfo = {
-        name: patient.personalDetails?.name || 'N/A',
-        age: patient.personalDetails?.age || 'N/A',
-        gender: patient.personalDetails?.gender || 'N/A',
-        contact: patient.personalDetails?.contactNumber || 'N/A',
-        email: patient.personalDetails?.emailAddress || 'N/A',
-        address: patient.personalDetails?.address || 'N/A',
-        registrationDate: patient.createdAt ? new Date(patient.createdAt).toISOString().split('T')[0] : 'N/A',
-        lastVisit: patient.updatedAt ? new Date(patient.updatedAt).toISOString().split('T')[0] : 'N/A'
+        name: patient.personalDetails?.name || "N/A",
+        age: patient.personalDetails?.age || "N/A",
+        gender: patient.personalDetails?.gender || "N/A",
+        contact: patient.personalDetails?.contactNumber || "N/A",
+        email: patient.personalDetails?.emailAddress || "N/A",
+        address: patient.personalDetails?.address || "N/A",
+        registrationDate: patient.createdAt
+          ? new Date(patient.createdAt).toISOString().split("T")[0]
+          : "N/A",
+        lastVisit: patient.updatedAt
+          ? new Date(patient.updatedAt).toISOString().split("T")[0]
+          : "N/A",
       };
 
       const medicalHistory = patient.medicalDetails?.[0]?.medicalHistory || {};
-      const treatmentHistory = patient.medicalDetails?.[0]?.treatmentPlanning || [];
-      
+      const treatmentHistory =
+        patient.medicalDetails?.[0]?.treatmentPlanning || [];
+
       // Format treatment history for the report
-      const formattedTreatmentHistory = treatmentHistory.map(treatment => ({
-        date: treatment.treatmentDate ? new Date(treatment.treatmentDate).toLocaleDateString() : 'N/A',
-        details: treatment.treatmentDetails || 'No details provided',
-        teeth: treatment.teethNumber || 'N/A',
-        status: treatment.isCompleted ? 'Completed' : 'In Progress',
-        findings: treatment.treatmentFindings || 'No findings recorded',
-        doctor: treatment.treatedByDoctor?.name || 'N/A',
-        clinicalFindings: treatment.clinicalFindings?.join(', ') || 'None',
-        followUpDate: treatment.followUpDate 
-          ? new Date(treatment.followUpDate).toLocaleDateString() 
-          : 'No follow-up scheduled'
+      const formattedTreatmentHistory = treatmentHistory.map((treatment) => ({
+        date: treatment.treatmentDate
+          ? new Date(treatment.treatmentDate).toLocaleDateString()
+          : "N/A",
+        details: treatment.treatmentDetails || "No details provided",
+        teeth: treatment.teethNumber || "N/A",
+        status: treatment.isCompleted ? "Completed" : "In Progress",
+        findings: treatment.treatmentFindings || "No findings recorded",
+        doctor: treatment.treatedByDoctor?.name || "N/A",
+        clinicalFindings: treatment.clinicalFindings?.join(", ") || "None",
+        followUpDate: treatment.followUpDate
+          ? new Date(treatment.followUpDate).toLocaleDateString()
+          : "No follow-up scheduled",
       }));
 
       // Prepare medical history summary
       const medicalHistorySummary = {
-        bloodPressure: medicalHistory.bloodPressure || 'Not recorded',
-        conditions: [
-          medicalHistory.diabetes && 'Diabetes',
-          medicalHistory.thyroid && 'Thyroid Issues',
-          medicalHistory.bleedingDisorder && 'Bleeding Disorder',
-          medicalHistory.asthma && 'Asthma',
-          medicalHistory.pregnancy && 'Pregnancy',
-          medicalHistory.allergies && `Allergies: ${medicalHistory.allergies}`,
-          medicalHistory.otherConditions && `Other: ${medicalHistory.otherConditions}`
-        ].filter(Boolean).join(', ') || 'No significant medical history',
-        chiefComplaint: patient.medicalDetails?.[0]?.chiefComplaint || 'Not specified'
+        bloodPressure: medicalHistory.bloodPressure || "Not recorded",
+        conditions:
+          [
+            medicalHistory.diabetes && "Diabetes",
+            medicalHistory.thyroid && "Thyroid Issues",
+            medicalHistory.bleedingDisorder && "Bleeding Disorder",
+            medicalHistory.asthma && "Asthma",
+            medicalHistory.pregnancy && "Pregnancy",
+            medicalHistory.allergies &&
+              `Allergies: ${medicalHistory.allergies}`,
+            medicalHistory.otherConditions &&
+              `Other: ${medicalHistory.otherConditions}`,
+          ]
+            .filter(Boolean)
+            .join(", ") || "No significant medical history",
+        chiefComplaint:
+          patient.medicalDetails?.[0]?.chiefComplaint || "Not specified",
       };
 
       // Call the Gemini API to generate the report
-      const response = await crudRequest('POST', '/gemini/get-response', {
+      const response = await crudRequest("POST", "/gemini/get-response", {
         prompt: `Generate a comprehensive dental report based on the following patient data. 
         
         PATIENT INFORMATION:
@@ -275,16 +293,16 @@ export function PatientTable() {
         - Status (Completed/In Progress)
         - Key findings
         - Treating dentist
-        - Next steps or follow-up required`
+        - Next steps or follow-up required`,
       });
-      
+
       // Type assertion for the response
       const responseData = response as { data?: string };
-      setReportContent(responseData.data || 'No report content available.');
+      setReportContent(responseData.data || "No report content available.");
       setIsReportModalOpen(true);
     } catch (error) {
-      console.error('Error generating report:', error);
-      toast.error('Failed to generate report. Please try again.');
+      console.error("Error generating report:", error);
+      toast.error("Failed to generate report. Please try again.");
     } finally {
       setIsGeneratingReport(false);
     }
@@ -1724,17 +1742,23 @@ export function PatientTable() {
                               </TableCell>
                             )}
                             <TableCell className="table-cell">
-                              <button 
+                              <button
                                 className={`relative overflow-hidden group flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-sm font-medium transition-all duration-500 rounded-lg
-                                  ${isGeneratingReport && selectedPatient?._id === patient._id 
-                                    ? 'bg-gradient-to-r from-green-600 to-blue-600 scale-95' 
-                                    : 'bg-gradient-to-br  from-green-500/90 via-lime-500/90 to-sky-500/90 hover:scale-[1.03] hover:shadow-xl hover:shadow-blue-500/30'}
+                                  ${
+                                    isGeneratingReport &&
+                                    selectedPatient?._id === patient._id
+                                      ? "bg-gradient-to-r from-green-600 to-blue-600 scale-95"
+                                      : "bg-gradient-to-br  from-green-500/90 via-lime-500/90 to-sky-500/90 hover:scale-[1.03] hover:shadow-xl hover:shadow-blue-500/30"
+                                  }
                                   backdrop-blur-sm border border-white/10 hover:border-white/20`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleGenerateReport(patient);
                                 }}
-                                disabled={isGeneratingReport && selectedPatient?._id === patient._id}
+                                disabled={
+                                  isGeneratingReport &&
+                                  selectedPatient?._id === patient._id
+                                }
                               >
                                 {/* Animated gradient background */}
                                 <span className="absolute inset-0 overflow-hidden rounded-xl">
@@ -1742,14 +1766,17 @@ export function PatientTable() {
                                   <span className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></span>
                                   <span className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.1),rgba(255,255,255,0.05),transparent)]"></span>
                                 </span>
-                                
+
                                 {/* Animated dots for loading state */}
-                                {isGeneratingReport && selectedPatient?._id === patient._id ? (
+                                {isGeneratingReport &&
+                                selectedPatient?._id === patient._id ? (
                                   <div className="relative flex items-center justify-center space-x-2 z-10">
                                     <span className="w-2.5 h-2.5 bg-blue-950 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
                                     <span className="w-2.5 h-2.5 bg-blue-950 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
                                     <span className="w-2.5 h-2.5 bg-blue-950 rounded-full animate-bounce"></span>
-                                    <span className="absolute -bottom-5 text-[11px] font-normal text-white/70 tracking-wider">Analyzing...</span>
+                                    <span className="absolute -bottom-5 text-[11px] font-normal text-white/70 tracking-wider">
+                                      Analyzing...
+                                    </span>
                                   </div>
                                 ) : (
                                   <>
@@ -1759,41 +1786,44 @@ export function PatientTable() {
                                         <span className="absolute -inset-1 bg-white/20 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                                       </div>
                                       <span className="text-blue-950 font-medium tracking-wide relative text-xs">
-                                        <span className="relative z-10">AI Report</span>
+                                        <span className="relative z-10">
+                                          AI Report
+                                        </span>
                                         <span className="absolute -bottom-0.5 left-0 w-0 h-[1px] bg-white/50 group-hover:w-full transition-all duration-400"></span>
                                       </span>
                                     </div>
                                     {/* Particle effect on hover */}
                                     <span className="absolute inset-0 overflow-hidden rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                                       {[...Array(6)].map((_, i) => (
-                                        <span 
+                                        <span
                                           key={i}
                                           className="absolute w-1 h-1 bg-white/40 rounded-full"
                                           style={{
                                             top: `${Math.random() * 100}%`,
                                             left: `${Math.random() * 100}%`,
                                             animation: `float ${3 + Math.random() * 4}s ease-in-out infinite`,
-                                            animationDelay: `${Math.random() * 2}s`
+                                            animationDelay: `${Math.random() * 2}s`,
                                           }}
                                         ></span>
                                       ))}
                                     </span>
                                   </>
                                 )}
-                                
+
                                 {/* Subtle border and shadow effects */}
                                 <span className="absolute inset-0 border border-white/10 rounded-lg group-hover:border-white/20 transition-all duration-500"></span>
                                 <span className="absolute inset-0 rounded-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]"></span>
-                                
+
                                 {/* Animated shine effect */}
                                 <span className="absolute inset-0 rounded-xl overflow-hidden">
                                   <span className="absolute top-0 -left-full h-full w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent group-hover:animate-shine"></span>
                                 </span>
                               </button>
-                              
+
                               {/* Add keyframes for animations */}
-                              <style dangerouslySetInnerHTML={{
-                                __html: `
+                              <style
+                                dangerouslySetInnerHTML={{
+                                  __html: `
                                   @keyframes float {
                                     0% { transform: translateY(0) translateX(0) scale(1); opacity: 0.8; }
                                     50% { transform: translateY(-15px) translateX(5px) scale(1.1); opacity: 1; }
@@ -1804,8 +1834,9 @@ export function PatientTable() {
                                       left: 200%;
                                     }
                                   }
-                                `
-                              }} />
+                                `,
+                                }}
+                              />
                             </TableCell>
                             <TableCell className="text-right p-2">
                               <div className="flex justify-end gap-1">
@@ -1865,71 +1896,120 @@ export function PatientTable() {
                                     <DropdownMenuLabel>
                                       Actions
                                     </DropdownMenuLabel>
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        setSelectedPatient(patient);
-                                        setIsViewDrawerOpen(true);
-                                      }}
+
+                                    <div
+                                      className="hidden"
+                                      onClick={(e) => e.stopPropagation()}
                                     >
-                                      <View className="mr-2 h-4 w-4" />
-                                      View Details
-                                    </DropdownMenuItem>
+                                      <AddPrescriptionButton
+                                        id={`prescription-btn-${patient._id}`}
+                                        patientId={patient._id}
+                                        patientName={
+                                          patient.personalDetails.name
+                                        }
+                                        patientData={{
+                                          contactNumber:
+                                            patient.personalDetails
+                                              .contactNumber,
+                                          emailAddress:
+                                            patient.personalDetails
+                                              .emailAddress,
+                                          age: patient.personalDetails.age,
+                                          gender:
+                                            patient.personalDetails.gender,
+                                          address:
+                                            patient.personalDetails.address,
+                                        }}
+                                        isAdmin={true}
+                                        variant="outline"
+                                        size="sm"
+                                      />
+                                      <PatientDocumentUploadButton
+                                        id={`upload-docs-btn-${patient._id}`}
+                                        patientId={patient._id}
+                                        medicalDetailId={
+                                          patient.medicalDetails?.[0]?._id || ""
+                                        }
+                                        onSuccess={() => {
+                                          fetchPatient(
+                                            currentPage,
+                                            itemsPerPage,
+                                            searchQuery
+                                          );
+                                        }}
+                                      />
+                                      <ProfilePhotoUploadButton
+                                        id={`profile-photo-btn-${patient._id}`}
+                                        patientId={patient._id}
+                                        patientName={
+                                          patient.personalDetails.name
+                                        }
+                                        currentPhotoUrl={
+                                          patient.personalDetails.profilePhoto
+                                            ?.url
+                                        }
+                                        onSuccess={() => {
+                                          fetchPatient(
+                                            currentPage,
+                                            itemsPerPage,
+                                            searchQuery
+                                          );
+                                        }}
+                                      />
+                                    </div>
+
+                                    {/* upload photo */}
                                     <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleGenerateReport(patient);
+                                        e.preventDefault();
+                                        // Add a delay to prevent the parent view drawer from opening
+                                        setTimeout(() => {
+                                          document
+                                            .getElementById(
+                                              `profile-photo-btn-${patient._id}`
+                                            )
+                                            ?.click();
+                                        }, 100);
                                       }}
-                                      disabled={isGeneratingReport && selectedPatient?._id === patient._id}
-                                      className="relative overflow-hidden group"
+                                      className="gap-2"
                                     >
-                                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-10 transition-opacity duration-200"></div>
-                                      <div className="relative flex items-center">
-                                        <Zap className="mr-2 h-4 w-4 text-purple-400 group-hover:text-purple-300 transition-colors" />
-                                        <span className="font-medium">
-                                          {isGeneratingReport && selectedPatient?._id === patient._id ? (
-                                            <span className="flex items-center">
-                                              <span className="w-1.5 h-1.5 bg-purple-400 rounded-full mr-1.5 animate-pulse"></span>
-                                              <span className="w-1.5 h-1.5 bg-purple-400 rounded-full mr-1.5 animate-pulse delay-100"></span>
-                                              <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse delay-200"></span>
-                                            </span>
-                                          ) : 'Generate AI Report'}
-                                        </span>
-                                      </div>
+                                      <UserCircle className="h-4 w-4" /> Upload
+                                      Photo
                                     </DropdownMenuItem>
+
+                                    {/* upload documents  */}
                                     <DropdownMenuItem
-                                      onClick={() => {
-                                        setSelectedPatient(patient);
-                                        setIsUpdateModalOpen(true);
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        setTimeout(() => {
+                                          document
+                                            .getElementById(
+                                              `upload-docs-btn-${patient._id}`
+                                            )
+                                            ?.click();
+                                        }, 100);
                                       }}
+                                      className="gap-2"
                                     >
-                                      <Edit className="mr-2 h-4 w-4" />
-                                      Edit
+                                      <FileUp className="h-4 w-4" /> Upload
+                                      Documents
                                     </DropdownMenuItem>
+
+                                    {/* edit payment */}
                                     <DropdownMenuItem
-                                      onClick={() => {
-                                        setPatientToDelete(patient);
-                                        setIsDeleteDialogOpen(true);
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditPayment(patient);
                                       }}
+                                      className="gap-2"
                                     >
-                                      <Trash className="mr-2 h-4 w-4" />
-                                      Delete
+                                      <CreditCard className="h-4 w-4" /> Edit
+                                      Payment
                                     </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => handleSendEmail(patient)}
-                                    >
-                                      <Mail className="mr-2 h-4 w-4" />
-                                      Send Email
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        setPaymentPatient(patient);
-                                        setIsPaymentDialogOpen(true);
-                                      }}
-                                    >
-                                      <CreditCard className="mr-2 h-4 w-4" />
-                                      Payment History
-                                    </DropdownMenuItem>
+
+                                    {/* add service payment */}
                                     <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -1940,6 +2020,43 @@ export function PatientTable() {
                                       <CreditCard className="h-4 w-4" /> Add
                                       Service Payment
                                     </DropdownMenuItem>
+
+                                    <DropdownMenuSeparator />
+
+                                    {/* send email */}
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSendEmail(patient);
+                                      }}
+                                      className="gap-2"
+                                      disabled={
+                                        !patient.personalDetails.emailAddress
+                                      }
+                                    >
+                                      <Mail className="h-4 w-4" /> Send Email
+                                    </DropdownMenuItem>
+
+                                    {/* add prescription */}
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        setTimeout(() => {
+                                          document
+                                            .getElementById(
+                                              `prescription-btn-${patient._id}`
+                                            )
+                                            ?.click();
+                                        }, 100);
+                                      }}
+                                      className="gap-2"
+                                    >
+                                      <FilePlus className="h-4 w-4" /> Add
+                                      Prescription
+                                    </DropdownMenuItem>
+
+                                    {/* add xray plan */}
                                     <DropdownMenuItem
                                       onClick={() => {
                                         setXRayPlanPatient(patient);
@@ -1949,12 +2066,57 @@ export function PatientTable() {
                                       <FileSpreadsheet className="mr-2 h-4 w-4" />
                                       Add X-Ray Plan
                                     </DropdownMenuItem>
+
+                                    {/* send sms */}
                                     <DropdownMenuItem
-                                      onClick={() => handleQRCodeClick(patient)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const phoneNumber =
+                                          patient.personalDetails.contactNumber;
+                                        if (phoneNumber) {
+                                          let formattedNumber =
+                                            phoneNumber.replace(/\s/g, "");
+                                          if (
+                                            !formattedNumber.startsWith("+")
+                                          ) {
+                                            formattedNumber = `+977${formattedNumber}`;
+                                          }
+                                          window.open(
+                                            `https://wa.me/${formattedNumber}`,
+                                            "_blank"
+                                          );
+                                        } else {
+                                          toast.error(
+                                            "No contact number available for this patient"
+                                          );
+                                        }
+                                      }}
+                                      className="gap-2"
+                                      disabled={
+                                        !patient.personalDetails.contactNumber
+                                      }
                                     >
-                                      <QrCode className="mr-2 h-4 w-4" />
-                                      Generate QR Code
+                                      <MessageSquare
+                                        className="h-4 w-4 text-green-500"
+                                        fill="green"
+                                      />{" "}
+                                      WhatsApp
                                     </DropdownMenuItem>
+
+                                    {/* delete */}
+                                    {adminDetails.role === "admin" ||
+                                      (adminDetails.role === "superadmin" && (
+                                        <DropdownMenuItem
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPatientToDelete(patient);
+                                            setIsDeleteDialogOpen(true);
+                                          }}
+                                          className="gap-2 text-red-600 hover:text-red-700 focus:text-red-700"
+                                        >
+                                          <Trash className="h-4 w-4" /> Delete
+                                        </DropdownMenuItem>
+                                      ))}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
@@ -2243,7 +2405,9 @@ export function PatientTable() {
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="flex items-center gap-2">
               <Calendar className="h-2 w-2" />
-              <span className="text-xs">Follow-up: {getFollowUpFilterLabel()}</span>
+              <span className="text-xs">
+                Follow-up: {getFollowUpFilterLabel()}
+              </span>
             </Button>
           </DropdownMenuTrigger>
           <AnimatePresence>
@@ -2411,7 +2575,10 @@ export function PatientTable() {
                   onValueChange={handleDoctorChange}
                 >
                   <SelectTrigger className="w-[130px]">
-                    <SelectValue placeholder="Select Doctor" className="text-xs" />
+                    <SelectValue
+                      placeholder="Select Doctor"
+                      className="text-xs"
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Doctors</SelectItem>
@@ -2557,14 +2724,14 @@ export function PatientTable() {
                 </div>
 
                 <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsExportDialogOpen(true)}
-                className="gap-2"
-              >
-                <FileSpreadsheet className="h-4 w-4" />
-                Export
-              </Button>
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsExportDialogOpen(true)}
+                  className="gap-2"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Export
+                </Button>
               </div>
               <Button
                 variant="outline"
@@ -2575,7 +2742,6 @@ export function PatientTable() {
                 <QrCode className="h-4 w-4" />
                 Scan Patient
               </Button>
-              
             </div>
             {loading ? (
               <div>
@@ -2895,33 +3061,41 @@ export function PatientTable() {
                 </DialogTitle>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-foreground">
                   {selectedPatient?.personalDetails?.name && (
-                    <span className="font-medium text-foreground">{selectedPatient.personalDetails.name}</span>
+                    <span className="font-medium text-foreground">
+                      {selectedPatient.personalDetails.name}
+                    </span>
                   )}
                   {selectedPatient?.personalDetails?.age && (
-                    <span className="hidden md:inline-block text-foreground">•</span>
+                    <span className="hidden md:inline-block text-foreground">
+                      •
+                    </span>
                   )}
                   {selectedPatient?.personalDetails?.age && (
                     <span>{selectedPatient.personalDetails.age} years</span>
                   )}
                   {selectedPatient?.personalDetails?.gender && (
-                    <span className="hidden md:inline-block text-foreground">•</span>
+                    <span className="hidden md:inline-block text-foreground">
+                      •
+                    </span>
                   )}
                   {selectedPatient?.personalDetails?.gender && (
-                    <span className="capitalize">{selectedPatient.personalDetails.gender}</span>
+                    <span className="capitalize">
+                      {selectedPatient.personalDetails.gender}
+                    </span>
                   )}
                 </div>
               </div>
               <div className="flex items-center justify-between md:justify-end gap-3">
                 <span className="text-xs md:text-sm text-foreground whitespace-nowrap">
-                  {new Date().toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
+                  {new Date().toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
                   })}
                 </span>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="md:hidden h-8 w-8"
                   onClick={() => setIsReportModalOpen(false)}
                 >
@@ -2931,36 +3105,63 @@ export function PatientTable() {
               </div>
             </div>
           </div>
-          
+
           {/* Content Area with Better Overflow Handling */}
-          <ScrollArea 
+          <ScrollArea
             className="flex-1 p-4 md:p-6 overflow-auto"
-            style={{ scrollbarGutter: 'stable' }}
+            style={{ scrollbarGutter: "stable" }}
           >
             {isGeneratingReport ? (
               <div className="flex flex-col items-center justify-center h-[50vh] text-center p-6">
                 <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                <p className="text-lg font-medium text-foreground">Generating your report</p>
+                <p className="text-lg font-medium text-foreground">
+                  Generating your report
+                </p>
                 <p className="text-sm text-foreground mt-2 max-w-md">
-                  Analyzing patient data and creating a comprehensive report. This may take a moment...
+                  Analyzing patient data and creating a comprehensive report.
+                  This may take a moment...
                 </p>
               </div>
             ) : (
               <div className="prose prose-sm sm:prose max-w-none text-foreground">
-                <div 
+                <div
                   className="markdown-content break-words"
-                  dangerouslySetInnerHTML={{ 
+                  dangerouslySetInnerHTML={{
                     __html: reportContent
-                      .replace(/\n/g, '<br />')
-                      .replace(/^# (.*$)/gm, '<h1 class="text-lg font-semibold text-card-foreground   mt-8 mb-4 pb-2 border-b border-gray-200">$1</h1>')
-                      .replace(/^## (.*$)/gm, '<h2 class="text-md font-normal text-card-foreground mt-8 mb-3">$1</h2>')
-                      .replace(/^### (.*$)/gm, '<h3 class="text-sm font-normal text-card-foreground mt-6 mb-2">$1</h3>')
-                      .replace(/^#### (.*$)/gm, '<h4 class="text-base font-normal text-card-foreground mt-4 mb-2">$1</h4>')
-                      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+                      .replace(/\n/g, "<br />")
+                      .replace(
+                        /^# (.*$)/gm,
+                        '<h1 class="text-lg font-semibold text-card-foreground   mt-8 mb-4 pb-2 border-b border-gray-200">$1</h1>'
+                      )
+                      .replace(
+                        /^## (.*$)/gm,
+                        '<h2 class="text-md font-normal text-card-foreground mt-8 mb-3">$1</h2>'
+                      )
+                      .replace(
+                        /^### (.*$)/gm,
+                        '<h3 class="text-sm font-normal text-card-foreground mt-6 mb-2">$1</h3>'
+                      )
+                      .replace(
+                        /^#### (.*$)/gm,
+                        '<h4 class="text-base font-normal text-card-foreground mt-4 mb-2">$1</h4>'
+                      )
+                      .replace(
+                        /\*\*(.*?)\*\*/g,
+                        '<strong class="font-semibold">$1</strong>'
+                      )
                       .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
-                      .replace(/`(.*?)`/g, '<code class="bg-card px-1.5 py-0.5 rounded text-xs font-mono">$1</code>')
-                      .replace(/^- (.*$)/gm, '<li class="ml-4 mb-1.5 pl-1">$1</li>')
-                      .replace(/\d+\. (.*$)/gm, '<li class="ml-4 mb-1.5 pl-1 list-decimal">$1</li>')
+                      .replace(
+                        /`(.*?)`/g,
+                        '<code class="bg-card px-1.5 py-0.5 rounded text-xs font-mono">$1</code>'
+                      )
+                      .replace(
+                        /^- (.*$)/gm,
+                        '<li class="ml-4 mb-1.5 pl-1">$1</li>'
+                      )
+                      .replace(
+                        /\d+\. (.*$)/gm,
+                        '<li class="ml-4 mb-1.5 pl-1 list-decimal">$1</li>'
+                      )
                       // Handle tables with better responsiveness
                       .replace(/\|(.*?)\|(.*?)\|/g, (_, p1, p2) => {
                         return `
@@ -2975,43 +3176,50 @@ export function PatientTable() {
                               <tbody class="divide-y divide-card">`;
                       })
                       .replace(/<tr>/g, '<tr class="hover:bg-card">')
-                      .replace(/<td>/g, '<td class="border px-4 py-2 text-sm text-card-foreground">')
-                      .replace(/<\/table>/g, '</tbody></table></div>')
+                      .replace(
+                        /<td>/g,
+                        '<td class="border px-4 py-2 text-sm text-card-foreground">'
+                      )
+                      .replace(/<\/table>/g, "</tbody></table></div>")
                       // Clean up any remaining table syntax
-                      .replace(/\|:---\|:---\|/g, '')
-                      .replace(/\|:---\|/g, '')
-                      .replace(/\|:-\|-:/g, '')
+                      .replace(/\|:---\|:---\|/g, "")
+                      .replace(/\|:---\|/g, "")
+                      .replace(/\|:-\|-:/g, "")
                       // Add responsive container for code blocks
-                      .replace(/```([\s\S]*?)```/g, (_, code) => 
-                        `<div class="my-4 overflow-x-auto">
+                      .replace(
+                        /```([\s\S]*?)```/g,
+                        (_, code) =>
+                          `<div class="my-4 overflow-x-auto">
                           <pre class="bg-card p-4 rounded-md overflow-auto text-sm">
                             <code>${code.trim()}</code>
                           </pre>
                         </div>`
-                      )
-                  }} 
+                      ),
+                  }}
                 />
               </div>
             )}
           </ScrollArea>
-          
+
           {/* Sticky Footer with Actions */}
           <div className="sticky bottom-0 bg-card border-t p-3 md:px-6">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
               <div className="text-xs text-foreground self-start sm:self-center">
                 <p>Generated on {new Date().toLocaleString()}</p>
                 {selectedPatient?.personalDetails?.sn && (
-                  <p className="font-mono">ID: {selectedPatient.personalDetails.sn}</p>
+                  <p className="font-mono">
+                    ID: {selectedPatient.personalDetails.sn}
+                  </p>
                 )}
               </div>
-              
+
               <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => {
                     navigator.clipboard.writeText(reportContent);
-                    toast.success('Report copied to clipboard');
+                    toast.success("Report copied to clipboard");
                   }}
                   disabled={!reportContent || isGeneratingReport}
                   className="flex-1 sm:flex-none items-center gap-1.5"
@@ -3019,18 +3227,18 @@ export function PatientTable() {
                   <FileText className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Copy</span>
                 </Button>
-                
-                <Button 
-                  variant="outline" 
+
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => {
-                    const printWindow = window.open('', '_blank');
+                    const printWindow = window.open("", "_blank");
                     if (printWindow) {
                       printWindow.document.write(`
                         <!DOCTYPE html>
                         <html>
                           <head>
-                            <title>Dental Report - ${selectedPatient?.personalDetails?.name || 'Patient'}</title>
+                            <title>Dental Report - ${selectedPatient?.personalDetails?.name || "Patient"}</title>
                             <meta name="viewport" content="width=device-width, initial-scale=1.0">
                             <style>
                               @page { size: A4; margin: 1cm; }
@@ -3104,14 +3312,14 @@ export function PatientTable() {
                           <body>
                             <div class="header">
                               <h1>Dental Health Report</h1>
-                              <p><strong>Patient:</strong> ${selectedPatient?.personalDetails?.name || 'N/A'}</p>
+                              <p><strong>Patient:</strong> ${selectedPatient?.personalDetails?.name || "N/A"}</p>
                               <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
-                              ${selectedPatient?.personalDetails?.age ? `<p><strong>Age:</strong> ${selectedPatient.personalDetails.age} years</p>` : ''}
-                              ${selectedPatient?.personalDetails?.gender ? `<p><strong>Gender:</strong> ${selectedPatient.personalDetails.gender}</p>` : ''}
-                              ${selectedPatient?.personalDetails?.sn ? `<p><strong>Patient ID:</strong> ${selectedPatient.personalDetails.sn}</p>` : ''}
+                              ${selectedPatient?.personalDetails?.age ? `<p><strong>Age:</strong> ${selectedPatient.personalDetails.age} years</p>` : ""}
+                              ${selectedPatient?.personalDetails?.gender ? `<p><strong>Gender:</strong> ${selectedPatient.personalDetails.gender}</p>` : ""}
+                              ${selectedPatient?.personalDetails?.sn ? `<p><strong>Patient ID:</strong> ${selectedPatient.personalDetails.sn}</p>` : ""}
                             </div>
                             <div class="content">
-                              ${reportContent.replace(/\n/g, '<br />')}
+                              ${reportContent.replace(/\n/g, "<br />")}
                             </div>
                             <div class="footer">
                               <p>Generated by Shree Nagar Dental Clinic • ${new Date().toLocaleString()}</p>
@@ -3137,8 +3345,8 @@ export function PatientTable() {
                   <Printer className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Print/PDF</span>
                 </Button>
-                
-                <Button 
+
+                <Button
                   onClick={() => setIsReportModalOpen(false)}
                   className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700"
                 >

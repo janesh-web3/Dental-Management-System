@@ -11,6 +11,7 @@ const { initSocket, getIO } = require('./socket');
 const userRouter = require("./routes/userRoute.js");
 const patientRouter = require("./routes/patientRoute.js");
 const patientAuthRouter = require("./routes/patientAuthRoutes.js");
+const publicPatientRouter = require("./routes/publicPatientRoute.js");
 const appointmentRouter = require("./routes/appointmentRoute.js");
 const doctorRouter = require("./routes/doctorRoute.js");
 const doctorAdminRouter = require("./routes/doctorAdminRoute.js");
@@ -67,6 +68,7 @@ app.get("/", (req, res) => {
 app.use("/api/user", userRouter);
 app.use("/api/patient", patientRouter);
 app.use("/api/patient", patientAuthRouter); // Patient authentication routes
+app.use("/api/patients", publicPatientRouter); // Public patient routes (for QR code)
 app.use("/api/appointment", appointmentRouter);
 app.use("/api/doctor", doctorRouter);
 app.use("/api/doctor-admin", doctorAdminRouter);

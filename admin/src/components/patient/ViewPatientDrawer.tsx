@@ -645,9 +645,8 @@ export function ViewPatientDrawer({
       // toast.error("Failed to generate PDF. Please try again.");
     }
   };
-
   return (
-    <Drawer open={isOpen} onOpenChange={onClose}>
+    <Drawer open={isOpen} onOpenChange={() => onClose()}>
       <DrawerContent className="h-[98vh] sm:h-[95vh] max-h-[98vh] sm:max-h-[95vh]">
         <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-950">
           <DrawerHeader className="border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm p-3 sm:p-4">

@@ -3383,9 +3383,7 @@ const getSimplifiedDashboardMetrics = async (req, res) => {
     res.status(200).json(responseData);
   } catch (error) {
     console.error("Error in simplified dashboard metrics:", error);
-    console.error("Error stack:", error.stack);
-
-    res.status(500).json({
+    console.error("Error stack:", error.stack);    res.status(500).json({
       message: "Failed to get simplified dashboard metrics",
       error: error.message,
       stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
@@ -3393,11 +3391,50 @@ const getSimplifiedDashboardMetrics = async (req, res) => {
   }
 };
 
+// Public endpoint to get patient by ID (for QR code access)
+const getPatientById = async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    // Validate the patient ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid patient ID format" 
+      });
+    }
+
+    // Find the patient without authentication requirement
+    const patient = await Patient.findById(id)
+      .select("-password") // Exclude sensitive information
+      .lean(); // Convert to plain JS object for better performance
+
+    if (!patient) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Patient not found" 
+      });
+    }
+
+    // Return patient data
+    return res.status(200).json({
+      success: true,
+      patient,
+    });
+  } catch (error) {
+    console.error("Error fetching patient by ID:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 // Export the new function
 module.exports = {
   addPatient,
-  deletePatient,
-  getPatient,
+  deletePatient,  getPatient,
   updatePatient,
   getSinglePatient,
   getPaginatedPatient,
@@ -3414,4 +3451,5 @@ module.exports = {
   getTreatmentPlans,
   addTreatmentPlan,
   updateTreatmentPlan,
+  getPatientById,
 };

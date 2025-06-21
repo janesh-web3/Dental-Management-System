@@ -18,6 +18,7 @@ import TermsOfServicePage from "@/pages/legal/terms";
 import PrivacyPolicyPage from "@/pages/legal/privacy";
 import SMS from "@/pages/SMS";
 import { ScanPatient } from "@/pages/patient/ScanPatient";
+import PatientView from "@/pages/public/PatientView";
 
 // Finance pages
 import IncomePage from "@/pages/finance/income";
@@ -220,12 +221,12 @@ const AppRouter: React.FC = () => {
       ],
     },
   ];
-
   const publicRoutes = [
     { path: "/home", element: <LandingPage />, index: true },
     { path: "/login", element: <SignInPage /> },
     { path: "/terms", element: <TermsOfServicePage /> },
     { path: "/privacy", element: <PrivacyPolicyPage /> },
+    { path: "/patient/:patientId", element: <PatientView /> },
     { path: "/404", element: <NotFound /> },
     { path: "*", element: <Navigate to="/404" replace /> },
   ];

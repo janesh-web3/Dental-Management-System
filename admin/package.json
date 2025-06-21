@@ -45,7 +45,7 @@
     "@types/jquery": "^3.5.32",
     "axios": "^1.6.8",
     "chart.js": "^4.4.9",
-    "class-variance-authority": "^0.7.0",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.0",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",

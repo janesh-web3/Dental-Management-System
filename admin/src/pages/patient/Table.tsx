@@ -1723,7 +1723,7 @@ export function PatientTable() {
                             <TableCell>{patient.personalDetails.age}</TableCell>
                             <TableCell>
                               <Badge
-                                variant="outline"
+                                variant="glass"
                                 className={
                                   patient.personalDetails.gender === "Male"
                                     ? "bg-blue-50 text-blue-700 border-blue-200"
@@ -1842,11 +1842,12 @@ export function PatientTable() {
                               />
                             </TableCell>
                             <TableCell className="text-right p-2">
-                              <div className="flex justify-end gap-1">
+                              <div className="flex justify-end gap-1 items-center">
+                                {/* View Button */}
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                  className="h-8 w-8 text-blue-600 hover:bg-green-200 hover:text-blue-700"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedPatient(patient);
@@ -1856,8 +1857,10 @@ export function PatientTable() {
                                 >
                                   <View className="h-4 w-4" />
                                 </Button>
+
                                 {!isCompactView && (
                                   <>
+                                    {/* Edit Button */}
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -1871,6 +1874,8 @@ export function PatientTable() {
                                     >
                                       <Edit className="h-4 w-4" />
                                     </Button>
+
+                                    {/* QR Code */}
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -1885,122 +1890,83 @@ export function PatientTable() {
                                     </Button>
                                   </>
                                 )}
+
+                                {/* Dropdown Menu */}
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button
                                       variant="ghost"
+                                      size="icon"
                                       className="h-8 w-8 p-0"
                                     >
                                       <span className="sr-only">Open menu</span>
                                       <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="overflow-auto">
+
+                                  <DropdownMenuContent
+                                    align="end"
+                                    className="overflow-auto min-w-[220px]"
+                                  >
                                     <DropdownMenuLabel>
                                       Actions
                                     </DropdownMenuLabel>
 
-                                    <div
-                                      className="hidden"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <AddPrescriptionButton
-                                        id={`prescription-btn-${patient._id}`}
-                                        patientId={patient._id}
-                                        patientName={
-                                          patient.personalDetails.name
-                                        }
-                                        patientData={{
-                                          contactNumber:
-                                            patient.personalDetails
-                                              .contactNumber,
-                                          emailAddress:
-                                            patient.personalDetails
-                                              .emailAddress,
-                                          age: patient.personalDetails.age,
-                                          gender:
-                                            patient.personalDetails.gender,
-                                          address:
-                                            patient.personalDetails.address,
-                                        }}
-                                        isAdmin={true}
-                                        variant="outline"
-                                        size="sm"
-                                      />
-                                      <PatientDocumentUploadButton
-                                        id={`upload-docs-btn-${patient._id}`}
-                                        patientId={patient._id}
-                                        medicalDetailId={
-                                          patient.medicalDetails?.[0]?._id || ""
-                                        }
-                                        onSuccess={() => {
-                                          fetchPatient(
-                                            currentPage,
-                                            itemsPerPage,
-                                            searchQuery
-                                          );
-                                        }}
-                                      />
-                                      <ProfilePhotoUploadButton
-                                        id={`profile-photo-btn-${patient._id}`}
-                                        patientId={patient._id}
-                                        patientName={
-                                          patient.personalDetails.name
-                                        }
-                                        currentPhotoUrl={
-                                          patient.personalDetails.profilePhoto
-                                            ?.url
-                                        }
-                                        onSuccess={() => {
-                                          fetchPatient(
-                                            currentPage,
-                                            itemsPerPage,
-                                            searchQuery
-                                          );
-                                        }}
-                                      />
-                                    </div>
-
-                                    {/* upload photo */}
+                                    {/* Upload Photo */}
                                     <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        e.preventDefault();
-                                        // Add a delay to prevent the parent view drawer from opening
-                                        setTimeout(() => {
+                                        requestAnimationFrame(() => {
                                           document
                                             .getElementById(
                                               `profile-photo-btn-${patient._id}`
                                             )
                                             ?.click();
-                                        }, 100);
+                                        });
                                       }}
                                       className="gap-2"
                                     >
-                                      <UserCircle className="h-4 w-4" /> Upload
-                                      Photo
+                                      <UserCircle className="h-4 w-4" />
+                                      Upload Photo
                                     </DropdownMenuItem>
 
-                                    {/* upload documents  */}
+                                    {/* Upload Documents */}
                                     <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        e.preventDefault();
-                                        setTimeout(() => {
+                                        requestAnimationFrame(() => {
                                           document
                                             .getElementById(
                                               `upload-docs-btn-${patient._id}`
                                             )
                                             ?.click();
-                                        }, 100);
+                                        });
                                       }}
                                       className="gap-2"
                                     >
-                                      <FileUp className="h-4 w-4" /> Upload
-                                      Documents
+                                      <FileUp className="h-4 w-4" />
+                                      Upload Documents
                                     </DropdownMenuItem>
 
-                                    {/* edit payment */}
+                                    {/* Add Prescription */}
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        requestAnimationFrame(() => {
+                                          document
+                                            .getElementById(
+                                              `prescription-btn-${patient._id}`
+                                            )
+                                            ?.click();
+                                        });
+                                      }}
+                                      className="gap-2"
+                                    >
+                                      <FilePlus className="h-4 w-4" />
+                                      Add Prescription
+                                    </DropdownMenuItem>
+
+                                    {/* Edit Payment */}
                                     <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -2008,11 +1974,11 @@ export function PatientTable() {
                                       }}
                                       className="gap-2"
                                     >
-                                      <CreditCard className="h-4 w-4" /> Edit
-                                      Payment
+                                      <CreditCard className="h-4 w-4" />
+                                      Edit Payment
                                     </DropdownMenuItem>
 
-                                    {/* add service payment */}
+                                    {/* Add Service Payment */}
                                     <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -2020,13 +1986,13 @@ export function PatientTable() {
                                       }}
                                       className="gap-2"
                                     >
-                                      <CreditCard className="h-4 w-4" /> Add
-                                      Service Payment
+                                      <CreditCard className="h-4 w-4" />
+                                      Add Service Payment
                                     </DropdownMenuItem>
 
                                     <DropdownMenuSeparator />
 
-                                    {/* send email */}
+                                    {/* Send Email */}
                                     <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -2037,60 +2003,29 @@ export function PatientTable() {
                                         !patient.personalDetails.emailAddress
                                       }
                                     >
-                                      <Mail className="h-4 w-4" /> Send Email
+                                      <Mail className="h-4 w-4" />
+                                      Send Email
                                     </DropdownMenuItem>
 
-                                    {/* add prescription */}
+                                    {/* WhatsApp */}
                                     <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        e.preventDefault();
-                                        setTimeout(() => {
-                                          document
-                                            .getElementById(
-                                              `prescription-btn-${patient._id}`
-                                            )
-                                            ?.click();
-                                        }, 100);
-                                      }}
-                                      className="gap-2"
-                                    >
-                                      <FilePlus className="h-4 w-4" /> Add
-                                      Prescription
-                                    </DropdownMenuItem>
-
-                                    {/* add xray plan */}
-                                    {/* <DropdownMenuItem
-                                      onClick={() => {
-                                        setXRayPlanPatient(patient);
-                                        setIsXRayPlanModalOpen(true);
-                                      }}
-                                    >
-                                      <FileSpreadsheet className="mr-2 h-4 w-4" />
-                                      Add X-Ray Plan
-                                    </DropdownMenuItem> */}
-
-                                    {/* send sms */}
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const phoneNumber =
+                                        const phone =
                                           patient.personalDetails.contactNumber;
-                                        if (phoneNumber) {
-                                          let formattedNumber =
-                                            phoneNumber.replace(/\s/g, "");
-                                          if (
-                                            !formattedNumber.startsWith("+")
-                                          ) {
-                                            formattedNumber = `+977${formattedNumber}`;
-                                          }
+                                        if (phone) {
+                                          const formatted = phone.startsWith(
+                                            "+"
+                                          )
+                                            ? phone.replace(/\s/g, "")
+                                            : `+977${phone.replace(/\s/g, "")}`;
                                           window.open(
-                                            `https://wa.me/${formattedNumber}`,
+                                            `https://wa.me/${formatted}`,
                                             "_blank"
                                           );
                                         } else {
                                           toast.error(
-                                            "No contact number available for this patient"
+                                            "No contact number available"
                                           );
                                         }
                                       }}
@@ -2102,25 +2037,77 @@ export function PatientTable() {
                                       <MessageSquare
                                         className="h-4 w-4 text-green-500"
                                         fill="green"
-                                      />{" "}
+                                      />
                                       WhatsApp
                                     </DropdownMenuItem>
 
-                                    {/* delete */}
-                                    {(adminDetails.role === "admin" || adminDetails.role === "superadmin") && (
-                                        <DropdownMenuItem
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setPatientToDelete(patient);
-                                            setIsDeleteDialogOpen(true);
-                                          }}
-                                          className="gap-2 text-red-600 hover:text-red-700 focus:text-red-700"
-                                        >
-                                          <Trash className="h-4 w-4" /> Delete
-                                        </DropdownMenuItem>
-                                      )}
+                                    {/* Delete */}
+                                    {(adminDetails.role === "admin" ||
+                                      adminDetails.role === "superadmin") && (
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setPatientToDelete(patient);
+                                          setIsDeleteDialogOpen(true);
+                                        }}
+                                        className="gap-2 text-red-600 hover:text-red-700"
+                                      >
+                                        <Trash className="h-4 w-4" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
+
+                                {/* Hidden Action Buttons (for programmatic clicks) */}
+                                <div className="hidden">
+                                  <AddPrescriptionButton
+                                    id={`prescription-btn-${patient._id}`}
+                                    patientId={patient._id}
+                                    patientName={patient.personalDetails.name}
+                                    patientData={{
+                                      contactNumber:
+                                        patient.personalDetails.contactNumber,
+                                      emailAddress:
+                                        patient.personalDetails.emailAddress,
+                                      age: patient.personalDetails.age,
+                                      gender: patient.personalDetails.gender,
+                                      address: patient.personalDetails.address,
+                                    }}
+                                    isAdmin
+                                    variant="outline"
+                                    size="sm"
+                                  />
+                                  <PatientDocumentUploadButton
+                                    id={`upload-docs-btn-${patient._id}`}
+                                    patientId={patient._id}
+                                    medicalDetailId={
+                                      patient.medicalDetails?.[0]?._id || ""
+                                    }
+                                    onSuccess={() =>
+                                      fetchPatient(
+                                        currentPage,
+                                        itemsPerPage,
+                                        searchQuery
+                                      )
+                                    }
+                                  />
+                                  <ProfilePhotoUploadButton
+                                    id={`profile-photo-btn-${patient._id}`}
+                                    patientId={patient._id}
+                                    patientName={patient.personalDetails.name}
+                                    currentPhotoUrl={
+                                      patient.personalDetails.profilePhoto?.url
+                                    }
+                                    onSuccess={() =>
+                                      fetchPatient(
+                                        currentPage,
+                                        itemsPerPage,
+                                        searchQuery
+                                      )
+                                    }
+                                  />
+                                </div>
                               </div>
                             </TableCell>
                           </motion.tr>
@@ -2542,6 +2529,7 @@ export function PatientTable() {
 
           <div className="flex items-center w-full sm:w-auto justify-end mt-2 sm:mt-0">
             <PopupModal
+              buttonVariant="ai"
               text="Add Patient"
               icon={<Plus className="w-4 h-4 mr-2" />}
               renderModal={(onClose) => <AddPatient modalClose={onClose} />}
@@ -2552,18 +2540,18 @@ export function PatientTable() {
           <Tabs
             defaultValue="all"
             value={selectedTab}
-            className="p-2"
+            className="px-2"
             onValueChange={(value) => setSelectedTab(value)}
           >
             {" "}
-            <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-between">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2 md:gap-4 justify-between">
               <TabsList className="mb-2 sm:mb-0">
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="male">Male</TabsTrigger>
                 <TabsTrigger value="female">Female</TabsTrigger>
                 <TabsTrigger value="other">Other</TabsTrigger>
               </TabsList>{" "}
-              <div className="px-2 sm:px-6 flex flex-wrap gap-3 items-center overflow-x-auto justify-center">
+              <div className="px-2 sm:px-6 flex flex-row flex-wrap gap-3 items-center overflow-x-auto justify-center">
                 <div className="flex items-center gap-2 mr-4">
                   <Filter className="h-4 w-4 text-muted-foreground" />
                   <span className="text-xs font-medium">Filter by:</span>
@@ -2634,9 +2622,20 @@ export function PatientTable() {
                   </PopoverContent>
                 </Popover>
 
+                <Button
+                  variant="ai"
+                  size="sm"
+                  onClick={() => setIsExportDialogOpen(true)}
+                  className="gap-2"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Export
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-1 ml-2">
                 {isFilteringEnabled && (
                   <Button
-                    variant="ghost"
+                    variant="link"
                     size="sm"
                     onClick={() => {
                       clearFilters();
@@ -2654,10 +2653,7 @@ export function PatientTable() {
                 )}
 
                 {dateFilter !== "all" && dateFilter !== "custom" && (
-                  <Badge
-                    variant="secondary"
-                    className="flex items-center gap-1"
-                  >
+                  <Badge variant="ai" className="flex items-center gap-1">
                     Date:{" "}
                     {dateFilter === "today"
                       ? "Today"
@@ -2675,10 +2671,7 @@ export function PatientTable() {
                 )}
 
                 {followUpFilter !== "all" && followUpFilter !== "custom" && (
-                  <Badge
-                    variant="secondary"
-                    className="flex items-center gap-1"
-                  >
+                  <Badge variant="ai" className="flex items-center gap-1">
                     Follow-up:{" "}
                     {followUpFilter === "today"
                       ? "Today"
@@ -2694,46 +2687,30 @@ export function PatientTable() {
                     />
                   </Badge>
                 )}
-
-                <div className="flex flex-wrap gap-1 ml-2">
-                  {selectedDoctor !== "all" &&
-                    doctors.find((d) => d._id === selectedDoctor) && (
-                      <Badge
-                        variant="secondary"
-                        className="flex items-center gap-1"
-                      >
-                        Doctor:{" "}
-                        {doctors.find((d) => d._id === selectedDoctor)?.name}
-                        <X
-                          className="h-3 w-3 cursor-pointer"
-                          onClick={() => setSelectedDoctor("all")}
-                        />
-                      </Badge>
-                    )}
-                  {selectedProcedures.map((proc) => (
-                    <Badge
-                      key={proc}
-                      variant="secondary"
-                      className="flex items-center gap-1"
-                    >
-                      {proc}
+                {selectedDoctor !== "all" &&
+                  doctors.find((d) => d._id === selectedDoctor) && (
+                    <Badge variant="ai" className="flex items-center gap-1">
+                      Doctor:{" "}
+                      {doctors.find((d) => d._id === selectedDoctor)?.name}
                       <X
                         className="h-3 w-3 cursor-pointer"
-                        onClick={() => handleProcedureToggle(proc)}
+                        onClick={() => setSelectedDoctor("all")}
                       />
                     </Badge>
-                  ))}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsExportDialogOpen(true)}
-                  className="gap-2"
-                >
-                  <FileSpreadsheet className="h-4 w-4" />
-                  Export
-                </Button>
+                  )}
+                {selectedProcedures.map((proc) => (
+                  <Badge
+                    key={proc}
+                    variant="ai"
+                    className="flex items-center gap-1"
+                  >
+                    {proc}
+                    <X
+                      className="h-3 w-3 cursor-pointer"
+                      onClick={() => handleProcedureToggle(proc)}
+                    />
+                  </Badge>
+                ))}
               </div>
               <Button
                 variant="outline"
@@ -2900,8 +2877,8 @@ export function PatientTable() {
                     </div>
                     <div className="bg-gray-100 p-3 text-center text-gray-600 text-sm">
                       <p>
-                        {new Date().getFullYear()} ${dentalName}.
-                        All rights reserved.
+                        {new Date().getFullYear()} ${dentalName}. All rights
+                        reserved.
                       </p>
                     </div>
                   </div>
@@ -2925,7 +2902,7 @@ export function PatientTable() {
 
           <DialogFooter>
             <Button
-              variant="outline"
+              variant="destructive"
               onClick={() => setIsEmailDialogOpen(false)}
             >
               Cancel
@@ -2936,6 +2913,7 @@ export function PatientTable() {
                 disabled={
                   isSendingEmail || !emailSubject.trim() || !emailBody.trim()
                 }
+                variant={"ai"}
               >
                 {isSendingEmail ? (
                   <>

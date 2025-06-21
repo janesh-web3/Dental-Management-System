@@ -34,7 +34,7 @@ export function QRCodeModal({ isOpen, onClose, patient }: QRCodeModalProps) {
     contentRef: printRef,
   });
 
-  const qrValue = `${window.location.origin}/patient/${patient._id}`;
+  const qrValue = `${window.location.origin}/#/patient/${patient._id}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

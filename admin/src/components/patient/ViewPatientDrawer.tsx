@@ -2429,18 +2429,17 @@ export function ViewPatientDrawer({
                                 (sum, payment) => sum + payment.amount,
                                 0
                               );
-                              
-                              // Count by service type
+                                // Count by service type
                               const serviceTypeCounts = servicePayments.reduce((acc, payment) => {
                                 acc[payment.serviceType] = (acc[payment.serviceType] || 0) + 1;
                                 return acc;
                               }, {} as Record<string, number>);
                               
-                              // Count by payment method
-                              const paymentMethodCounts = servicePayments.reduce((acc, payment) => {
+                              // Count payment methods but not using this yet - keeping for future use
+                              /* const paymentMethodCounts = servicePayments.reduce((acc, payment) => {
                                 acc[payment.paymentMethod] = (acc[payment.paymentMethod] || 0) + 1;
                                 return acc;
-                              }, {} as Record<string, number>);
+                              }, {} as Record<string, number>); */
 
                               return (
                                 <>

@@ -1,7 +1,6 @@
-import * as React from 'react';
-import * as TabsPrimitive from '@radix-ui/react-tabs';
-
-import { cn } from '@/lib/utils';
+import * as React from "react";
+import * as TabsPrimitive from "@radix-ui/react-tabs";
+import { cn } from "@/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
 
@@ -12,7 +11,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      'inline-flex h-8 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground mt-2',
+      "mt-2 inline-flex w-auto flex-wrap justify-start gap-1 md:gap-2 rounded-xl bg-muted/70 p-1 md:p-2 shadow-sm backdrop-blur-sm dark:bg-muted/50",
       className
     )}
     {...props}
@@ -27,8 +26,13 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-md font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow',
-     `data-[state=active]:bg-primary data-[state=active]:text-foreground`, className
+      "rounded-lg px-3 py-1 md:py-2 text-sm font-medium transition-all duration-300 ease-in-out",
+      "bg-transparent hover:bg-accent hover:text-accent-foreground",
+      "data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/80 data-[state=active]:to-primary/60",
+      "data-[state=active]:text-white data-[state=active]:shadow-lg",
+      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background",
+      "disabled:opacity-50 disabled:pointer-events-none",
+      className
     )}
     {...props}
   />
@@ -42,7 +46,7 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      'mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+      "mt-2 w-full rounded-xl border border-border bg-background p-2 shadow-md transition-all duration-300 ease-in-out",
       className
     )}
     {...props}

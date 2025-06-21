@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
-import { PlusCircle, Trash2, Edit, Loader2, Filter } from "lucide-react";
+import { PlusCircle, Trash2, Edit, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ServicePaymentForm } from "@/components/finance/ServicePaymentForm";
 import { DateRangeFilter } from "@/components/finance/DateRangeFilter";
 import {

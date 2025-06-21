@@ -1,6 +1,10 @@
 import * as React from 'react';
-import { ChevronRightIcon, DotsHorizontalIcon } from '@radix-ui/react-icons';
+import {
+  ChevronRightIcon,
+  DotsHorizontalIcon,
+} from '@radix-ui/react-icons';
 import { Slot } from '@radix-ui/react-slot';
+import { motion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
 
@@ -9,7 +13,14 @@ const Breadcrumb = React.forwardRef<
   React.ComponentPropsWithoutRef<'nav'> & {
     separator?: React.ReactNode;
   }
->(({ ...props }, ref) => <nav ref={ref} aria-label="breadcrumb" {...props} />);
+>(({ className, ...props }, ref) => (
+  <nav
+    ref={ref}
+    aria-label="breadcrumb"
+    className={cn('w-full', className)}
+    {...props}
+  />
+));
 Breadcrumb.displayName = 'Breadcrumb';
 
 const BreadcrumbList = React.forwardRef<
@@ -19,7 +30,7 @@ const BreadcrumbList = React.forwardRef<
   <ol
     ref={ref}
     className={cn(
-      'flex flex-wrap items-center gap-1.5 break-words text-sm text-muted-foreground sm:gap-2.5',
+      'flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground sm:gap-2.5',
       className
     )}
     {...props}
@@ -33,7 +44,7 @@ const BreadcrumbItem = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <li
     ref={ref}
-    className={cn('inline-flex items-center gap-1.5', className)}
+    className={cn('inline-flex items-center gap-1.5 max-w-[200px] truncate', className)}
     {...props}
   />
 ));
@@ -50,23 +61,31 @@ const BreadcrumbLink = React.forwardRef<
   return (
     <Comp
       ref={ref}
-      className={cn('transition-colors hover:text-foreground', className)}
+      className={cn(
+        'transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm',
+        className
+      )}
       {...props}
     />
   );
 });
 BreadcrumbLink.displayName = 'BreadcrumbLink';
 
+import type { HTMLMotionProps } from 'framer-motion';
+
 const BreadcrumbPage = React.forwardRef<
   HTMLSpanElement,
-  React.ComponentPropsWithoutRef<'span'>
+  HTMLMotionProps<'span'>
 >(({ className, ...props }, ref) => (
-  <span
+  <motion.span
     ref={ref}
     role="link"
     aria-disabled="true"
     aria-current="page"
-    className={cn('font-normal text-foreground', className)}
+    initial={{ opacity: 0, x: 5 }}
+    animate={{ opacity: 1, x: 0 }}
+    transition={{ duration: 0.25 }}
+    className={cn('font-medium text-foreground', className)}
     {...props}
   />
 ));
@@ -80,7 +99,7 @@ const BreadcrumbSeparator = ({
   <li
     role="presentation"
     aria-hidden="true"
-    className={cn('[&>svg]:size-3.5', className)}
+    className={cn('text-muted-foreground [&>svg]:size-3.5', className)}
     {...props}
   >
     {children ?? <ChevronRightIcon />}
@@ -95,14 +114,17 @@ const BreadcrumbEllipsis = ({
   <span
     role="presentation"
     aria-hidden="true"
-    className={cn('flex h-9 w-9 items-center justify-center', className)}
+    className={cn(
+      'flex h-9 w-9 items-center justify-center text-muted-foreground hover:text-foreground',
+      className
+    )}
     {...props}
   >
     <DotsHorizontalIcon className="h-4 w-4" />
     <span className="sr-only">More</span>
   </span>
 );
-BreadcrumbEllipsis.displayName = 'BreadcrumbElipssis';
+BreadcrumbEllipsis.displayName = 'BreadcrumbEllipsis';
 
 export {
   Breadcrumb,
@@ -111,5 +133,5 @@ export {
   BreadcrumbLink,
   BreadcrumbPage,
   BreadcrumbSeparator,
-  BreadcrumbEllipsis
+  BreadcrumbEllipsis,
 };

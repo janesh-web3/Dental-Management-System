@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "react-toastify";
 import { crudRequest } from "@/lib/api";
 import { format } from "date-fns";
-import {  Trash2, PlusCircle } from "lucide-react";
+import {  Trash2 } from "lucide-react";
 import DentalChart from "@/components/DentalChart";
 import SelectedTeethList from "@/components/SelectedTeethList";
 import { getToothPosition, getToothSide } from "@/helper/PatientHelper";
@@ -398,18 +398,18 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     }
 
     // Validate that at least one tooth is selected if treatment plans exist
-    if (formData.treatmentPlans.length > 0) {
-      let hasSelectedTeeth = false;
-      Object.values(selectedTeethMaps).forEach((teethMap) => {
-        if (Object.keys(teethMap).length > 0) {
-          hasSelectedTeeth = true;
-        }
-      });
+    // if (formData.treatmentPlans.length > 0) {
+    //   let hasSelectedTeeth = false;
+    //   Object.values(selectedTeethMaps).forEach((teethMap) => {
+    //     if (Object.keys(teethMap).length > 0) {
+    //       hasSelectedTeeth = true;
+    //     }
+    //   });
 
-      if (!hasSelectedTeeth && activeTab === "dental") {
-        errors.push("Please select at least one tooth for treatment");
-      }
-    }
+    //   if (!hasSelectedTeeth && activeTab === "dental") {
+    //     errors.push("Please select at least one tooth for treatment");
+    //   }
+    // }
 
     if (errors.length > 0) {
       errors.forEach((error) => toast.error(error));
@@ -424,9 +424,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     if (!validateForm()) return;
 
     try {
-      setIsSubmitting(true);
-      const formattedData = formatDataForBackend(formData);
-      const response = await crudRequest("POST", "/patient/add-patient", formattedData);
+      setIsSubmitting(true);      const formattedData = formatDataForBackend(formData);
+      const response = await crudRequest<{data?: {_id: string}, _id?: string}>("POST", "/patient/add-patient", formattedData);
 
       toast.success("Patient added successfully");
       

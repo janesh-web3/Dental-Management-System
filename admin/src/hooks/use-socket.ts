@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { useSocket } from '../contexts/socketContext';
+import { useSocket } from '../contexts/SocketContext';
 import type { Socket as BaseSocket } from 'socket.io-client';
 
 // Type definition for event handlers

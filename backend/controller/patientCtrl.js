@@ -16,7 +16,6 @@ const mongoose = require("mongoose");
 // Helper utility functions for date filtering
 const getDateFilter = (filter, startDate, endDate) => {
   const now = new Date();
-  console.log(`Creating date filter for '${filter}' (current time: ${now.toISOString()})`);
   
   switch (filter) {
     case 'today': {
@@ -848,9 +847,9 @@ const getFilteredPatients = async (req, res) => {
       
       if (followUpDateCriteria) {
         console.log("Applying follow-up date filter criteria:", JSON.stringify(followUpDateCriteria));
-        // Filter on medical details follow-up date
-        query["medicalDetails.followUpDate"] = followUpDateCriteria;
-        console.log("Follow-up date filter will be applied to 'medicalDetails.followUpDate' field");
+        // Filter on treatment planning follow-up date
+        query["medicalDetails.treatmentPlanning.followUpDate"] = followUpDateCriteria;
+        console.log("Follow-up date filter will be applied to 'medicalDetails.treatmentPlanning.followUpDate' field");
       }
     }
 

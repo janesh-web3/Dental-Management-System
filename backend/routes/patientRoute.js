@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { upload, deleteFile } = require("../middleware/multer");
+const { protectAdminRoute } = require("../middleware/adminAuthMiddleware");
 const {
   addPatient,
   deletePatient,
@@ -27,7 +28,7 @@ const Patient = require("../model/Patient");
 const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 
-router.post("/add-patient", addPatient);
+router.post("/add-patient", protectAdminRoute, addPatient);
 router.put("/update-patient/:id", updatePatient); // Update route
 router.delete("/delete-patient/:id", deletePatient); // Update route
 router.get("/get-patient", getPatient);

@@ -6,7 +6,7 @@ let io;
 const initSocket = (server) => {
   io = socketIO(server, {
     cors: {
-      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+      origin: 'http://localhost:5173',
       methods: ['GET', 'POST'],
       credentials: true
     }
@@ -65,14 +65,18 @@ const initSocket = (server) => {
       }
     });
 
-    // New patient registered
+    // New patient registered - Just broadcast the event, notifications are handled in the controller
     socket.on('patient:registered', (data) => {
       broadcastNotification('patient:added', data);
-      notifyRoles(['admin', 'doctor'], 'New Patient Registered', 
-        `Patient ${data.name} was registered`, 'success', {
-          sourceType: 'Patient',
-          sourceId: data.id
-        });
+      
+      // No need to create notifications here as they are already handled in the patient controller
+      console.log('Patient registered event received, notifications handled by controller');
+      
+      // Play notification sound for admins and doctors
+      if (data.soundEnabled !== false) {
+        io.to('admin').emit('notification:sound', { type: 'success' });
+        io.to('doctor').emit('notification:sound', { type: 'info' });
+      }
     });
 
     // Appointment events
@@ -208,49 +212,131 @@ const broadcastNotification = (type, data) => {
 const notifyRoles = (roles, title, message, type = 'info', additionalData = {}) => {
   if (!io) return;
   
-  const notificationData = {
-    title,
-    description: message,
-    type,
-    createdAt: new Date(),
-    ...additionalData
-  };
-  
-  roles.forEach(role => {
-    io.to(role).emit('notification', notificationData);
-  });
-  
-  // Save to database if needed
-  const { createAndEmitNotification } = require('./controller/notificationCtrl');
-  
-  // For each role, we need to emit to all users of that role
-  // This requires saving the notification in the database multiple times
-  // We'll leave this to be handled by specific controllers
+  try {
+    // Validate inputs
+    if (!roles || !Array.isArray(roles) || !title || !message) {
+      console.error('Invalid parameters for notifyRoles:', { roles, title, message, type });
+      return;
+    }
+    
+    const notificationData = {
+      title,
+      description: message,
+      type,
+      createdAt: new Date().toISOString(),
+      isRead: false,
+      ...additionalData
+    };
+    
+    // Emit to each role
+    roles.forEach(role => {
+      io.to(role).emit('notification', notificationData);
+    });
+    
+    // Save to database for each role's users
+    const { createAndEmitNotification } = require('./controller/notificationCtrl');
+    const User = require('./model/User');
+    const Doctor = require('./model/Doctor');
+    
+    // Process each role
+    roles.forEach(role => {
+      if (role === 'admin' || role === 'superadmin') {
+        // Find all admin users
+        User.find({ role: { $in: ['admin', 'superadmin'] } })
+          .select('_id')
+          .then(admins => {
+            admins.forEach(admin => {
+              createAndEmitNotification({
+                userId: admin._id,
+                userType: 'User',
+                title,
+                message,
+                type,
+                ...additionalData,
+                targetRoles: [role]
+              }).catch(err => console.error(`Error creating notification for admin ${admin._id}:`, err));
+            });
+          })
+          .catch(err => console.error('Error finding admins for role notifications:', err));
+      } else if (role === 'doctor') {
+        // Find all doctors
+        Doctor.find({})
+          .select('_id')
+          .then(doctors => {
+            doctors.forEach(doctor => {
+              createAndEmitNotification({
+                userId: doctor._id,
+                userType: 'Doctor',
+                title,
+                message,
+                type,
+                ...additionalData,
+                targetRoles: [role]
+              }).catch(err => console.error(`Error creating notification for doctor ${doctor._id}:`, err));
+            });
+          })
+          .catch(err => console.error('Error finding doctors for role notifications:', err));
+      } else if (role === 'patient') {
+        // For patient role notifications, we typically need specific patient IDs
+        // This would be handled by direct patient notifications in most cases
+        console.log('Sending notification to all patients is not implemented.');
+      }
+    });
+    
+    // Play notification sound based on type
+    if (additionalData.soundEnabled !== false) {
+      roles.forEach(role => {
+        io.to(role).emit('notification:sound', { type });
+      });
+    }
+  } catch (error) {
+    console.error('Error in notifyRoles:', error);
+  }
 };
 
 // Helper function to notify a specific user
 const notifyUser = (userId, userType, event, data) => {
   if (!io) return;
   
-  const channel = `${userType}:${userId}`;
-  io.to(channel).emit(event, data);
-  
-  // Also send as a general notification
-  io.to(channel).emit('notification', {
-    ...data,
-    notificationType: event
-  });
-  
-  // Save to database if needed
-  const { createNotification } = require('./controller/notificationCtrl');
-  createNotification(userId, userType, {
-    title: data.title,
-    message: data.description || data.message,
-    type: data.type || 'info',
-    sourceId: data.sourceId,
-    sourceType: data.sourceType,
-    link: data.link
-  });
+  try {
+    // Validate inputs
+    if (!userId || !userType || !event || !data) {
+      console.error('Invalid parameters for notifyUser:', { userId, userType, event, data });
+      return;
+    }
+    
+    const channel = `${userType}:${userId}`;
+    io.to(channel).emit(event, data);
+    
+    // Also send as a general notification
+    io.to(channel).emit('notification', {
+      ...data,
+      notificationType: event,
+      isRead: false,
+      createdAt: new Date().toISOString()
+    });
+    
+    // Save to database
+    const { createNotification } = require('./controller/notificationCtrl');
+    createNotification(userId, userType, {
+      title: data.title,
+      message: data.description || data.message,
+      type: data.type || 'info',
+      sourceId: data.sourceId,
+      sourceType: data.sourceType,
+      link: data.link,
+      read: false,
+      soundEnabled: data.soundEnabled !== false
+    }).then(notification => {
+      if (notification) {
+        console.log(`Notification saved to database for ${userType} ${userId}`);
+      }
+    }).catch(err => {
+      console.error(`Error saving notification to database for ${userType} ${userId}:`, err);
+    });
+  } catch (error) {
+    console.error('Error in notifyUser:', error);
+  }
 };
 
 const getIO = () => {

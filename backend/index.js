@@ -5,7 +5,7 @@ const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const { initSocket, getIO } = require('./socket');
+const { initSocket } = require('./socket');
 
 // Import routes
 const userRouter = require("./routes/userRoute.js");

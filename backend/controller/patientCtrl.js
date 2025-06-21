@@ -2,9 +2,7 @@ const Patient = require("../model/Patient.js");
 const PatientAuth = require("../model/PatientAuth");
 const cloudinary = require("../config/cloudinary");
 const { deleteFile } = require("../middleware/multer");
-const User = require("../model/User.js");
 const Appointment = require("../model/Appointment.js");
-const Doctor = require("../model/Doctor.js");
 const ServicePayment = require("../model/ServicePayment");
 const Income = require("../model/Income");
 const {
@@ -12,6 +10,9 @@ const {
   sendPatientCredentials,
 } = require("../utils/emailService");
 const mongoose = require("mongoose");
+const { createAndEmitNotification } = require("./notificationCtrl");
+const User = require("../model/User");
+const Doctor = require("../model/Doctor");
 
 // Helper utility functions for date filtering
 const getDateFilter = (filter, startDate, endDate) => {
@@ -219,7 +220,6 @@ const addPatient = async (req, res) => {
       // Create service payment record
       const servicePayment = await ServicePayment.create(servicePaymentData);
       
-      console.log("Service payment created:", servicePayment._id, "with patient:", servicePayment.patient);
       
       // Also record this as income for financial tracking
       await Income.create({
@@ -232,6 +232,55 @@ const addPatient = async (req, res) => {
         notes: description || `Service payment for ${serviceType}`,
         createdBy: req.admin.id,
       });
+    }
+
+    // Send notifications after successful patient creation
+    try {
+      // First, handle admin notifications
+      const admins = await User.find({ role: { $in: ['admin', 'superadmin'] } });
+      console.log(`Found ${admins.length} admins to notify`);
+      
+      // Create a notification for all admins
+      console.log('Creating admin notification...');
+      const adminNotification = await createAndEmitNotification({
+        title: 'New Patient Registered',
+        message: `New patient ${personalDetails.name} has been registered`,
+        type: 'success',
+        sourceId: patient._id,
+        sourceType: 'Patient',
+        link: `/patients/${patient._id}`,
+        targetRoles: ['admin', 'superadmin']
+      });
+      console.log('Admin notification created:', adminNotification ? 'success' : 'failed');
+
+      // If patient has an assigned doctor, notify them individually
+      if (req.body.assignedDoctor) {
+        console.log(`Notifying assigned doctor: ${req.body.assignedDoctor}`);
+        try {
+          const doctor = await Doctor.findById(req.body.assignedDoctor);
+          if (doctor) {
+            console.log('Creating doctor notification...');
+            const doctorNotification = await createAndEmitNotification({
+              title: 'New Patient Assigned',
+              message: `Patient ${personalDetails.name} has been assigned to you`,
+              type: 'info',
+              sourceId: patient._id,
+              sourceType: 'Patient',
+              link: `/patients/${patient._id}`,
+              userId: doctor._id,
+              userType: 'Doctor'
+            });
+            console.log('Doctor notification created:', doctorNotification ? 'success' : 'failed');
+          } else {
+            console.log('Doctor not found:', req.body.assignedDoctor);
+          }
+        } catch (doctorError) {
+          console.error('Error notifying doctor:', doctorError);
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending notifications:', notificationError);
+      // Don't fail the request if notifications fail
     }
 
     res.status(201).json({

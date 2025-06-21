@@ -6,6 +6,7 @@ import { useAdminContext } from './adminContext';
 import { useDoctorAuthContext } from './doctorAuthContext';
 import { usePatientAuthContext } from './patientAuthContext';
 import { toast } from 'react-toastify';
+import { socket } from '@/server';
 
 // Types
 export type NotificationType = 'success' | 'error' | 'info' | 'warning';
@@ -74,7 +75,7 @@ const defaultSettings: NotificationSettings = {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_URL = socket;
 
 const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // State
@@ -198,7 +199,7 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       let token = '';
       if (userType === 'User') {
-        token = sessionStorage.getItem('adminToken') || '';
+        token = sessionStorage.getItem('token') || '';
       } else if (userType === 'Doctor') {
         token = sessionStorage.getItem('doctorToken') || '';
       } else if (userType === 'Patient') {
@@ -232,7 +233,7 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       let token = '';
       if (userType === 'User') {
-        token = sessionStorage.getItem('adminToken') || '';
+        token = sessionStorage.getItem('token') || '';
       } else if (userType === 'Doctor') {
         token = sessionStorage.getItem('doctorToken') || '';
       } else if (userType === 'Patient') {
@@ -260,7 +261,7 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       let token = '';
       if (userType === 'User') {
-        token = sessionStorage.getItem('adminToken') || '';
+        token = sessionStorage.getItem('token') || '';
       } else if (userType === 'Doctor') {
         token = sessionStorage.getItem('doctorToken') || '';
       } else if (userType === 'Patient') {
@@ -297,7 +298,7 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       let token = '';
       if (userType === 'User') {
-        token = sessionStorage.getItem('adminToken') || '';
+        token = sessionStorage.getItem('token') || '';
       } else if (userType === 'Doctor') {
         token = sessionStorage.getItem('doctorToken') || '';
       } else if (userType === 'Patient') {
@@ -332,7 +333,7 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const { userType } = getUserInfo();
       
       if (userType === 'User') {
-        token = sessionStorage.getItem('adminToken') || '';
+        token = sessionStorage.getItem('token') || '';
       } else if (userType === 'Doctor') {
         token = sessionStorage.getItem('doctorToken') || '';
       } else if (userType === 'Patient') {
@@ -369,7 +370,7 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       let token = '';
       if (userType === 'User') {
-        token = sessionStorage.getItem('adminToken') || '';
+        token = sessionStorage.getItem('token') || '';
       } else if (userType === 'Doctor') {
         token = sessionStorage.getItem('doctorToken') || '';
       } else if (userType === 'Patient') {

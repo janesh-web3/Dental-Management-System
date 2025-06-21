@@ -605,7 +605,7 @@ const Dashboard = () => {
         />
         <StatCard
           title={t("Total Income")}
-          value={`₹${(revenueData?.financialAnalysis?.total || 0) + (financialSummary?.summary.income || 0)}`}
+          value={`रु${(revenueData?.financialAnalysis?.total || 0) + (financialSummary?.summary.income || 0)}`}
           description={t("Total income ")}
           icon={
             <TrendingUp className="h-4 w-4 md:h-8 md:w-8 text-emerald-200" />
@@ -614,7 +614,7 @@ const Dashboard = () => {
         />
         <StatCard
           title={t("Total Expense")}
-          value={`₹${financialSummary?.summary.expense.toLocaleString() || 0}`}
+          value={`रु${financialSummary?.summary.expense.toLocaleString() || 0}`}
           description={t("Total expenses")}
           icon={
             <TrendingDown className="h-4 w-4 md:h-8 md:w-8 text-rose-200" />
@@ -623,7 +623,7 @@ const Dashboard = () => {
         />
         <StatCard
           title={t("Net Balance")}
-          value={`₹${((revenueData?.financialAnalysis?.total || 0) + (financialSummary?.summary.income || 0) - (financialSummary?.summary.expense || 0)).toLocaleString()}`}
+          value={`रु${((revenueData?.financialAnalysis?.total || 0) + (financialSummary?.summary.income || 0) - (financialSummary?.summary.expense || 0)).toLocaleString()}`}
           description={t("Total balance after expenses")}
           icon={
             <Wallet className="h-4 w-4 md:h-8 md:w-8 text-blue-200 dark:text-blue-400" />
@@ -666,7 +666,7 @@ const Dashboard = () => {
                 <div className="grid gap-2 md:gap-4 grid-cols-2 lg:grid-cols-4">
                   <StatCard
                     title={t("Daily Revenue")}
-                    value={`₹${revenueData?.financialAnalysis.daily.toLocaleString()}`}
+                    value={`रु${revenueData?.financialAnalysis.daily.toLocaleString()}`}
                     description={t("Daily revenue")}
                     icon={
                       <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
@@ -675,7 +675,7 @@ const Dashboard = () => {
                   />
                   <StatCard
                     title={t("Weekly Revenue")}
-                    value={`₹${revenueData?.financialAnalysis.weekly.toLocaleString()}`}
+                    value={`रु${revenueData?.financialAnalysis.weekly.toLocaleString()}`}
                     description={t("Weekly revenue")}
                     icon={
                       <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
@@ -684,7 +684,7 @@ const Dashboard = () => {
                   />
                   <StatCard
                     title={t("Monthly Revenue")}
-                    value={`₹${revenueData?.financialAnalysis.monthly.toLocaleString()}`}
+                    value={`रु${revenueData?.financialAnalysis.monthly.toLocaleString()}`}
                     description={t("Monthly revenue")}
                     icon={
                       <TrendingUpIcon className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
@@ -693,7 +693,7 @@ const Dashboard = () => {
                   />
                   <StatCard
                     title={t("Total Revenue")}
-                    value={`₹${revenueData?.financialAnalysis.total.toLocaleString()}`}
+                    value={`रु${revenueData?.financialAnalysis.total.toLocaleString()}`}
                     description={t("Total revenue")}
                     icon={
                       <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
@@ -975,7 +975,7 @@ const Dashboard = () => {
                                 className="font-medium dark:text-[hsl(12,80%,80%)]"
                                 style={{ color: "hsl(12, 50%, 25%)" }}
                               >
-                                ₹{treatment.treatmentAmount}
+                                रु{treatment.treatmentAmount}
                               </p>
                             )}
                             {treatment.treatment !== "General Documents" && (

@@ -199,7 +199,7 @@ export function FinancialInsights() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{financialData?.daily.toLocaleString("en-IN") || 0}
+                रु {financialData?.daily.toLocaleString("en-IN") || 0}
               </div>
               <p className="text-xs text-muted-foreground">
                 {financialData?.daily && financialData?.weekly ? (
@@ -225,7 +225,7 @@ export function FinancialInsights() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{financialData?.weekly.toLocaleString("en-IN") || 0}
+                रु {financialData?.weekly.toLocaleString("en-IN") || 0}
               </div>
               <p className="text-xs text-muted-foreground">
                 {financialData?.weekly && financialData?.monthly ? (
@@ -251,7 +251,7 @@ export function FinancialInsights() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{financialData?.monthly.toLocaleString("en-IN") || 0}
+                रु {financialData?.monthly.toLocaleString("en-IN") || 0}
               </div>
               <p className="text-xs text-muted-foreground">
                 {financialData?.monthly && financialData?.total ? (
@@ -277,7 +277,7 @@ export function FinancialInsights() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{financialData?.total.toLocaleString("en-IN") || 0}
+                रु {financialData?.total.toLocaleString("en-IN") || 0}
               </div>
               <p className="text-xs text-muted-foreground">
                 <span className="flex items-center">
@@ -311,7 +311,7 @@ export function FinancialInsights() {
                   />
                   <YAxis />
                   <Tooltip 
-                    formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, "Revenue"]}
+                    formatter={(value: number) => [`रु ${value.toLocaleString("en-IN")}`, "Revenue"]}
                     labelFormatter={(value) => format(new Date(value), "MMM d, yyyy")}
                   />
                   <Legend />
@@ -343,7 +343,7 @@ export function FinancialInsights() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="doctorName" />
                   <YAxis />
-                  <Tooltip formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, "Revenue"]} />
+                  <Tooltip formatter={(value: number) => [`रु ${value.toLocaleString("en-IN")}`, "Revenue"]} />
                   <Legend />
                   <Bar dataKey="revenue" fill="#8884d8" name="Revenue" />
                 </BarChart>
@@ -375,7 +375,7 @@ export function FinancialInsights() {
                       />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, "Revenue"]} />
+                  <Tooltip formatter={(value: number) => [`रु ${value.toLocaleString("en-IN")}`, "Revenue"]} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -406,7 +406,7 @@ export function FinancialInsights() {
                       />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, "Amount"]} />
+                  <Tooltip formatter={(value: number) => [`रु ${value.toLocaleString("en-IN")}`, "Amount"]} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>

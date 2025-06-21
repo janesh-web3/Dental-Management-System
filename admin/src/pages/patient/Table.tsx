@@ -198,6 +198,8 @@ export function PatientTable() {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const { adminDetails } = useAdminContext();
 
+  console.log("Admin Details:", adminDetails);
+
   // Handle report generation
   const handleGenerateReport = async (patient: Patient) => {
     try {
@@ -1893,7 +1895,7 @@ export function PatientTable() {
                                       <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
+                                  <DropdownMenuContent align="end" className="overflow-auto">
                                     <DropdownMenuLabel>
                                       Actions
                                     </DropdownMenuLabel>
@@ -2058,7 +2060,7 @@ export function PatientTable() {
                                     </DropdownMenuItem>
 
                                     {/* add xray plan */}
-                                    <DropdownMenuItem
+                                    {/* <DropdownMenuItem
                                       onClick={() => {
                                         setXRayPlanPatient(patient);
                                         setIsXRayPlanModalOpen(true);
@@ -2066,7 +2068,7 @@ export function PatientTable() {
                                     >
                                       <FileSpreadsheet className="mr-2 h-4 w-4" />
                                       Add X-Ray Plan
-                                    </DropdownMenuItem>
+                                    </DropdownMenuItem> */}
 
                                     {/* send sms */}
                                     <DropdownMenuItem
@@ -2105,8 +2107,7 @@ export function PatientTable() {
                                     </DropdownMenuItem>
 
                                     {/* delete */}
-                                    {adminDetails.role === "admin" ||
-                                      (adminDetails.role === "superadmin" && (
+                                    {(adminDetails.role === "admin" || adminDetails.role === "superadmin") && (
                                         <DropdownMenuItem
                                           onClick={(e) => {
                                             e.stopPropagation();
@@ -2117,7 +2118,7 @@ export function PatientTable() {
                                         >
                                           <Trash className="h-4 w-4" /> Delete
                                         </DropdownMenuItem>
-                                      ))}
+                                      )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>

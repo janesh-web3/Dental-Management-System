@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAdminContext } from "@/contexts";
+import AdminProvider from "@/contexts/adminContext";
 import PageTitle from "@/components/shared/page-title";
 import {
   Card,
@@ -64,6 +65,15 @@ import {
 } from "@/services/notificationService";
 
 export default function NotificationsPage() {
+  return (
+    <AdminProvider>
+      <NotificationsContent />
+    </AdminProvider>
+  );
+}
+
+// Separate component that uses the context
+function NotificationsContent() {
   const { adminDetails } = useAdminContext();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
@@ -282,7 +292,6 @@ export default function NotificationsPage() {
       fetchNotifications();
     }
   }, [adminDetails?._id, typeFilter, isReadFilter, searchQuery, date]);
-
   return (
     <div className="container mx-auto py-6">
       <PageTitle

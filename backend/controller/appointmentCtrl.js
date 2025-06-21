@@ -4,7 +4,7 @@ const Doctor = require("../model/Doctor.js");
 const addAppointment = async (req, res) => {
   try {
     const newAppointment = new Appointment(req.body);
-    const { doctor } = req.body;
+    const { doctor, patientName, date, time, service } = req.body;
 
     const savedAppointment = await newAppointment.save();
     const foundDoctor = await Doctor.findById(doctor);
@@ -16,6 +16,23 @@ const addAppointment = async (req, res) => {
     }
     foundDoctor.appointments.push(savedAppointment._id);
     await foundDoctor.save();
+
+    // Send notification to the doctor
+    await sendNotification({
+      title: 'New Appointment Scheduled',
+      message: `New appointment with ${patientName} for ${service} on ${date} at ${time}`,
+      type: 'info',
+      userId: doctor,
+      userType: 'Doctor',
+      data: {
+        appointmentId: savedAppointment._id,
+        patientName,
+        service,
+        date,
+        time
+      },
+      eventType: 'appointment_notification'
+    });
 
     res.status(201).json({
       success: true,
@@ -34,7 +51,6 @@ const addAppointment = async (req, res) => {
 const getAllAppointment = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = "" , status="All"} = req.query;
-    console.log(req.query)
     const query = search
       ? { firstName: { $regex: search, $options: "i" }, isDeleted: false ,lastName: { $regex: search, $options: "i" } }
       : {};
@@ -78,7 +94,7 @@ const updateAppointmentStatus = async (req, res) => {
       req.params.id,
       { status },
       { new: true, runValidators: true }
-    );
+    ).populate('doctor').populate('patient');
 
     if (!appointment) {
       return res.status(404).json({
@@ -86,6 +102,44 @@ const updateAppointmentStatus = async (req, res) => {
         message: "Appointment not found",
       });
     }
+
+    // Get doctor and patient information
+    const doctorId = appointment.doctor?._id || appointment.doctor;
+    const patientId = appointment.patient?._id || appointment.patient;
+    const patientName = appointment.patient?.firstName 
+      ? `${appointment.patient.firstName} ${appointment.patient.lastName}`
+      : appointment.patientName || 'Patient';
+    
+    // Send notification to the patient about status update
+    if (patientId) {
+      await sendNotification({
+        title: 'Appointment Status Updated',
+        message: `Your appointment on ${appointment.date} at ${appointment.time} has been ${status.toLowerCase()}`,
+        type: status === 'Confirmed' ? 'success' : status === 'Cancelled' ? 'error' : 'info',
+        userId: patientId,
+        userType: 'Patient',
+        data: {
+          appointmentId: appointment._id,
+          status
+        },
+        eventType: 'appointment_notification'
+      });
+    }
+    
+    // Send notification to admin
+    await sendNotification({
+      title: 'Appointment Status Updated',
+      message: `Appointment for ${patientName} on ${appointment.date} at ${appointment.time} has been ${status.toLowerCase()}`,
+      type: status === 'Confirmed' ? 'success' : status === 'Cancelled' ? 'error' : 'info',
+      userId: process.env.ADMIN_ID || '000000000000000000000000',
+      userType: 'User',
+      data: {
+        appointmentId: appointment._id,
+        patientName,
+        status
+      },
+      eventType: 'appointment_notification'
+    });
 
     res.status(200).json({
       success: true,
@@ -176,6 +230,8 @@ const updateAppointment = async (req, res) => {
     });
   }
 };
+
+const { sendNotification } = require('../utils/notificationHelper');
 
 module.exports = {
   addAppointment,

@@ -8,16 +8,6 @@ const Appointment = require("../model/Appointment");
 const patientLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log(`Patient login attempt for email: ${email}`);
-
-    // Validate input
-    if (!email || !password) {
-      console.log("Login failed: Email and password are required");
-      return res.status(400).json({
-        success: false,
-        message: "Email and password are required",
-      });
-    }
 
     // Find all patients with this email - since we now allow multiple patients with same email
     const patients = await Patient.find({
@@ -25,15 +15,12 @@ const patientLogin = async (req, res) => {
     });
 
     if (patients.length === 0) {
-      console.log(`Login failed: No patient found with email ${email}`);
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
       });
     }
 
-    console.log(`Found ${patients.length} patients with email ${email}`);
-    
     // Try to authenticate with each patient record
     let authenticatedPatient = null;
     let authenticatedPatientAuth = null;
@@ -43,23 +30,18 @@ const patientLogin = async (req, res) => {
       if (patient.password) {
         const isPasswordValid = await bcrypt.compare(password, patient.password);
         if (isPasswordValid) {
-          console.log(`Password validation successful for patient ID: ${patient._id}`);
           authenticatedPatient = patient;
           
           // Look for existing PatientAuth record or create one
           let patientAuth = await PatientAuth.findOne({ patientId: patient._id });
           
           if (!patientAuth) {
-            console.log("Creating new PatientAuth record for patient");
             patientAuth = new PatientAuth({
               email: patient.personalDetails.emailAddress,
               password: patient.password, // Already hashed
               patientId: patient._id,
             });
             await patientAuth.save();
-            console.log(`Created PatientAuth with ID: ${patientAuth._id}`);
-          } else {
-            console.log(`Found existing PatientAuth with ID: ${patientAuth._id}`);
           }
           
           authenticatedPatientAuth = patientAuth;
@@ -70,8 +52,6 @@ const patientLogin = async (req, res) => {
     
     // If no authentication yet, try PatientAuth records
     if (!authenticatedPatient) {
-      console.log("No password match in Patient models, trying PatientAuth records");
-      
       // Check all possible PatientAuth records for these patients
       for (const patient of patients) {
         const patientAuth = await PatientAuth.findOne({ patientId: patient._id });
@@ -79,8 +59,7 @@ const patientLogin = async (req, res) => {
         if (patientAuth) {
           const isPasswordValid = await patientAuth.comparePassword(password);
           if (isPasswordValid) {
-            console.log(`Password validation successful with PatientAuth for patient ID: ${patient._id}`);
-            authenticatedPatient = patient;
+              authenticatedPatient = patient;
             authenticatedPatientAuth = patientAuth;
             break;
           }
@@ -90,7 +69,6 @@ const patientLogin = async (req, res) => {
     
     // If still no authentication, return error
     if (!authenticatedPatient || !authenticatedPatientAuth) {
-      console.log("Password validation failed for all patients with this email");
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
@@ -100,7 +78,6 @@ const patientLogin = async (req, res) => {
     // Update last login time
     authenticatedPatientAuth.lastLogin = new Date();
     await authenticatedPatientAuth.save();
-    console.log("Updated last login time");
 
     // Generate JWT token
     const token = jwt.sign(
@@ -108,7 +85,6 @@ const patientLogin = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "30d" }
     );
-    console.log(`Generated token for PatientAuth ID: ${authenticatedPatientAuth._id}`);
 
     // Return success with token and patient details
     res.status(200).json({
@@ -125,7 +101,6 @@ const patientLogin = async (req, res) => {
         role: "patient",
       },
     });
-    console.log("Login successful, response sent");
   } catch (error) {
     console.error("Patient login error:", error);
     res.status(500).json({

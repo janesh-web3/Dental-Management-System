@@ -31,7 +31,6 @@ const geminiPhotoRequest = async (req, res) => {
 const geminiFileRequest = async (req, res) => {
   const file = req.file;
   const { prompt } = req.body;
-  console.log(file, prompt);
   if (!file) {
     console.error("File not found");
   }

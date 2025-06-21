@@ -5,7 +5,6 @@ const jwt = require("jsonwebtoken");
 const doctorLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
-console.log(req.body)
     // Validate input
     if (!email || !password) {
       return res.status(400).json({

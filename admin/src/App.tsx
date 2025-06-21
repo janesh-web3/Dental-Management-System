@@ -1,8 +1,10 @@
-import { AdminProvider, DoctorAuthProvider, DoctorProvider, PatientAuthProvider, SocketProvider } from "./contexts";
+import { AdminProvider, DoctorAuthProvider, DoctorProvider, PatientAuthProvider, SocketProvider, NotificationProvider } from "./contexts";
 import AppProvider from "./providers";
 import AppRouter from "./routes";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { NotificationCenter } from "./components/notifications/NotificationCenter";
+import { Toaster } from "./components/ui/toaster";
 
 export default function App() {
   return (
@@ -11,21 +13,25 @@ export default function App() {
         <PatientAuthProvider>
           <AdminProvider>
             <DoctorProvider>
-              <SocketProvider>
-                <ToastContainer
-                  position="top-right"
-                  autoClose={3000}
-                  hideProgressBar={false}
-                  newestOnTop={true}
-                  closeOnClick
-                  rtl={false}
-                  pauseOnFocusLoss
-                  draggable
-                  pauseOnHover
-                  theme="light"
-                />
-                <AppRouter />
-              </SocketProvider>
+              <NotificationProvider>
+                <SocketProvider>
+                  <ToastContainer
+                    position="top-right"
+                    autoClose={3000}
+                    hideProgressBar={false}
+                    newestOnTop={true}
+                    closeOnClick
+                    rtl={false}
+                    pauseOnFocusLoss
+                    draggable
+                    pauseOnHover
+                    theme="light"
+                  />
+                  <AppRouter />
+                  <NotificationCenter />
+                  <Toaster />
+                </SocketProvider>
+              </NotificationProvider>
             </DoctorProvider>
           </AdminProvider>
         </PatientAuthProvider>

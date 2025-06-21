@@ -5,7 +5,6 @@ const { deleteFile } = require("../middleware/multer.js");
 const addDoctor = async (req, res) => {
   try {
     let doctorData = {};
-    console.log(req.body);
 
     // Validate required fields
     if (!req.body.email || !req.body.password) {
@@ -123,11 +122,9 @@ const deleteDoctor = async (req, res) => {
 
 const updateDoctor = async (req, res) => {
   try {
-    console.log(req.body);
     const { id } = req.params;
     const doctorData = req.body;
     let updateData = { ...doctorData };
-    console.log(req.file);
     if (req.file) {
       // Delete old image if exists
       if (updateData.image) {

@@ -1,10 +1,11 @@
 const mongoose = require("mongoose");
-
+const http = require('http');
 const express = require("express");
 const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const { initSocket, getIO } = require('./socket');
 
 // Import routes
 const userRouter = require("./routes/userRoute.js");
@@ -21,6 +22,7 @@ const smsRouter = require("./routes/smsRoutes.js");
 const financeRouter = require("./routes/financeRoutes.js");
 const servicePaymentRouter = require("./routes/servicePaymentRoutes.js");
 const geminiRouter = require("./routes/geminiRoute.js");
+const notificationRouter = require("./routes/notificationRoutes.js");
 
 // Import utilities
 const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
@@ -28,7 +30,11 @@ const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
 // Import multer error handling middleware
 const { handleMulterError } = require('./middleware/multer');
 
-const app = express();  
+const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const io = initSocket(server);
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -72,12 +78,15 @@ app.use("/api/sms", smsRouter);
 app.use("/api/finance", financeRouter); // Finance management routes
 app.use("/api/service-payment", servicePaymentRouter); // Service payment routes
 app.use("/api/gemini", geminiRouter);
+app.use("/api/notifications", notificationRouter);
 
 const port = process.env.PORT || 8080;
 
-app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+server.listen(process.env.PORT, () => {
+  console.log(`Server is running on port ${process.env.PORT}`);
   
+  // Make io accessible in other files
+  app.set('io', io);  
   // Schedule automatic updates of doctor patient counts
   // Update every 30 minutes by default
   scheduleDoctorPatientCountUpdates(30);

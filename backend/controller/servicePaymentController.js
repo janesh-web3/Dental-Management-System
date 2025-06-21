@@ -2,6 +2,7 @@ const ServicePayment = require("../model/ServicePayment");
 const Patient = require("../model/Patient");
 const Income = require("../model/Income");
 const { default: mongoose } = require("mongoose");
+const { sendNotification, sendRoleNotification } = require("../utils/notificationHelper");
 
 // Helper function to get date filter
 const getDateFilter = (startDate, endDate) => {
@@ -50,8 +51,6 @@ const addServicePayment = async (req, res) => {
       servicePaymentData.isWalkIn = true;
     }
     
-    // Log the data being saved
-    console.log("Creating service payment with data:", JSON.stringify(servicePaymentData));
     
     // Create new service payment
     const servicePayment = await ServicePayment.create(servicePaymentData);
@@ -67,12 +66,44 @@ const addServicePayment = async (req, res) => {
       notes: description || `Service payment for ${serviceType}`,
       createdBy: req.admin.id,
     });
-    
-    res.status(201).json({
+      res.status(201).json({
       success: true,
       data: servicePayment,
       message: "Service payment added successfully",
     });
+    
+    // Send notification to admins
+    await sendRoleNotification({
+      title: 'New Payment Received',
+      message: `${amount} received from ${patientName} for ${serviceType}`,
+      type: 'success',
+      targetRoles: ['admin', 'superadmin'],
+      data: {
+        paymentId: servicePayment._id,
+        patientName,
+        amount,
+        serviceType
+      },
+      eventType: 'payment_received'
+    });
+    
+    // If this is for a registered patient, also send them a notification
+    if (patient && patient !== 'null' && patient !== '') {
+      await sendNotification({
+        title: 'Payment Recorded',
+        message: `Your payment of ${amount} for ${serviceType} has been recorded`,
+        type: 'success',
+        userId: patient,
+        userType: 'Patient',
+        data: {
+          paymentId: servicePayment._id,
+          amount,
+          serviceType
+        },
+        eventType: 'payment_received'
+      });
+    }
+    
   } catch (error) {
     console.error("Error adding service payment:", error);
     res.status(500).json({

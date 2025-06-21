@@ -6,7 +6,6 @@ const addTestimonial = async (req, res) => {
     try {
 
         let testimonialData = {};
-console.log(req.file);
         if(req.file){
             const cloudinaryResponse = await cloudinary.uploader.upload(req.file.path);
             if(cloudinaryResponse){

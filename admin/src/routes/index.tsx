@@ -24,6 +24,8 @@ import IncomePage from "@/pages/finance/income";
 import ExpensePage from "@/pages/finance/expense";
 import FinanceSummary from "@/pages/finance/summary";
 
+import DebugPage from "@/pages/debug";
+
 // Lazy-loaded components
 const DashboardLayout = lazy(
   () => import("@/components/layout/dashboard-layout")
@@ -63,10 +65,10 @@ const AppRouter: React.FC = () => {
         { path: "/contacts", element: <Contacts /> },
         { path: "/sms", element: <SMS /> },
         { path: "/notifications", element: <NotificationsPage /> },
-        // Finance routes
-        { path: "/finance/income", element: <IncomePage /> },
+        // Finance routes        { path: "/finance/income", element: <IncomePage /> },
         { path: "/finance/expense", element: <ExpensePage /> },
         { path: "/finance/summary", element: <FinanceSummary /> },
+        { path: "/debug", element: <DebugPage /> },
         { 
           path: "/finance/service-payment", 
           element: (
@@ -198,10 +200,13 @@ const AppRouter: React.FC = () => {
         { 
           path: "profile", 
           element: <PatientProfile /> 
-        },
-        { 
+        },        { 
           path: "messages", 
           element: <PatientMessages /> 
+        },
+        { 
+          path: "notifications", 
+          element: <NotificationsPage /> 
         },
       ],
     },

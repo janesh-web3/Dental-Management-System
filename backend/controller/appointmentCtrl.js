@@ -1,38 +1,69 @@
 const Appointment = require("../model/Appointment.js");
 const Doctor = require("../model/Doctor.js");
+const { createAndEmitNotification } = require("./notificationCtrl.js");
+const { getIO, notifyUser, notifyRoles } = require("../socket.js");
 
 const addAppointment = async (req, res) => {
   try {
     const newAppointment = new Appointment(req.body);
-    const { doctor, patientName, date, time, service } = req.body;
-
     const savedAppointment = await newAppointment.save();
-    const foundDoctor = await Doctor.findById(doctor);
-    if (!foundDoctor) {
-      return res.status(404).json({
-        success: false,
-        message: "Doctor not found",
+    
+    // If a doctor is specified, add the appointment to their list
+    if (req.body.doctor) {
+      const foundDoctor = await Doctor.findById(req.body.doctor);
+      if (foundDoctor) {
+        foundDoctor.appointments.push(savedAppointment._id);
+        await foundDoctor.save();
+      }
+    }
+
+    // Prepare the doctor notification
+    if (req.body.doctor) {
+      // Create notification for the specific doctor
+      await createAndEmitNotification({
+        userId: req.body.doctor,
+        userType: 'Doctor',
+        title: 'New Appointment Scheduled',
+        message: `New appointment with ${req.body.firstName} ${req.body.lastName} on ${req.body.appointmentDate} at ${req.body.appointmentTime}`,
+        type: 'info',
+        sourceId: savedAppointment._id,
+        sourceType: 'Appointment',
+        soundEnabled: true
       });
     }
-    foundDoctor.appointments.push(savedAppointment._id);
-    await foundDoctor.save();
 
-    // Send notification to the doctor
-    await sendNotification({
-      title: 'New Appointment Scheduled',
-      message: `New appointment with ${patientName} for ${service} on ${date} at ${time}`,
+    // Create notification for all admins
+    await createAndEmitNotification({
+      targetRoles: ['admin', 'superadmin'],
+      title: 'New Appointment Created',
+      message: `New appointment with ${req.body.firstName} ${req.body.lastName} on ${req.body.appointmentDate} at ${req.body.appointmentTime}`,
       type: 'info',
-      userId: doctor,
-      userType: 'Doctor',
-      data: {
-        appointmentId: savedAppointment._id,
-        patientName,
-        service,
-        date,
-        time
-      },
-      eventType: 'appointment_notification'
+      sourceId: savedAppointment._id,
+      sourceType: 'Appointment',
+      soundEnabled: true
     });
+
+    // Emit socket event for real-time updates
+    const io = getIO();
+    if (io) {
+      const appointmentData = {
+        id: savedAppointment._id,
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        appointmentDate: req.body.appointmentDate,
+        appointmentTime: req.body.appointmentTime,
+        doctorId: req.body.doctor,
+        subject: req.body.subject
+      };
+
+      io.emit('appointment:created', appointmentData);
+      
+      // Play notification sound
+      io.to('admin').emit('notification:sound', { type: 'info' });
+      if (req.body.doctor) {
+        io.to(`Doctor:${req.body.doctor}`).emit('notification:sound', { type: 'info' });
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -40,10 +71,11 @@ const addAppointment = async (req, res) => {
       appointment: savedAppointment,
     });
   } catch (error) {
+    console.error("Error creating appointment:", error);
     res.status(400).json({
       success: false,
       message: "Failed to create appointment",
-      error,
+      error: error.message,
     });
   }
 };

@@ -103,25 +103,25 @@ const initSocket = (server) => {
 
     // Appointment events
     socket.on('appointment:created', (data) => {
+      console.log('Appointment created event received:', data);
       broadcastNotification('appointment:added', data);
       
-      // Notify doctor
+      // Play notification sound for admins and doctors
+      if (data.soundEnabled !== false) {
+        io.to('admin').emit('notification:sound', { type: 'info' });
+        
+        // If a doctor is assigned, play notification sound for them too
+        if (data.doctorId) {
+          io.to(`Doctor:${data.doctorId}`).emit('notification:sound', { type: 'info' });
+        }
+      }
+      
+      // Notify doctor (notification object is created in the controller)
       if (data.doctorId) {
         notifyUser(data.doctorId, 'Doctor', 'appointment:added', {
           title: 'New Appointment Scheduled',
-          description: `Appointment scheduled for ${data.patientName} on ${new Date(data.date).toLocaleDateString()}`,
+          description: `Appointment scheduled for ${data.firstName} ${data.lastName} on ${data.appointmentDate}`,
           type: 'info',
-          sourceType: 'Appointment',
-          sourceId: data.id
-        });
-      }
-      
-      // Notify patient
-      if (data.patientId) {
-        notifyUser(data.patientId, 'Patient', 'appointment:added', {
-          title: 'Appointment Confirmed',
-          description: `Your appointment with Dr. ${data.doctorName} on ${new Date(data.date).toLocaleDateString()} is confirmed`,
-          type: 'success',
           sourceType: 'Appointment',
           sourceId: data.id
         });

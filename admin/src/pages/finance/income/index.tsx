@@ -300,7 +300,7 @@ export default function IncomePage() {
                     <TableCell>{income.category}</TableCell>
                     <TableCell>{formatDate(income.date)}</TableCell>
                     <TableCell className="text-right font-medium">
-                      ${income.amount.toFixed(2)}
+                      Rs.{income.amount.toFixed(2)}
                     </TableCell>
                     <TableCell className="flex justify-end space-x-2">
                       <Dialog open={isEditDialogOpen && selectedIncome?._id === income._id} onOpenChange={(open) => {
@@ -407,7 +407,7 @@ export default function IncomePage() {
         <div className="mt-6 p-4 bg-muted rounded-lg">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="font-medium">Total Income:</p>
-            <p className="text-2xl font-bold text-emerald-600">${totalIncome.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-emerald-600">Rs.{totalIncome.toFixed(2)}</p>
           </div>
         </div>
       </div>

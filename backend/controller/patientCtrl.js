@@ -276,8 +276,7 @@ const addPatient = async (req, res) => {
         console.log(`Notifying assigned doctor: ${req.body.assignedDoctor}`);
         try {
           const doctor = await Doctor.findById(req.body.assignedDoctor);
-          if (doctor) {
-            console.log('Creating doctor notification...');
+          if (doctor) {            console.log('Creating doctor notification...');
             const doctorNotification = await createAndEmitNotification({
               title: 'New Patient Assigned',
               message: `Patient ${personalDetails.name} has been assigned to you`,
@@ -286,7 +285,8 @@ const addPatient = async (req, res) => {
               sourceType: 'Patient',
               link: `/patients/${patient._id}`,
               userId: doctor._id,
-              userType: 'Doctor'
+              userType: 'Doctor',
+              targetRoles: ['doctor']
             });            console.log('Doctor notification created:', doctorNotification ? 'success' : 'failed');
           } else {
             console.log('Doctor not found:', req.body.assignedDoctor);
@@ -378,13 +378,13 @@ const deletePatient = async (req, res) => {
         if (patient.assignedDoctor) {
           try {
             const doctor = await Doctor.findById(patient.assignedDoctor);
-            if (doctor) {
-              await createAndEmitNotification({
+            if (doctor) {              await createAndEmitNotification({
                 title: 'Patient Deleted',
                 message: `Patient ${patient.personalDetails.name} has been deleted from the system`,
                 type: 'warning',
                 userId: doctor._id,
-                userType: 'Doctor'
+                userType: 'Doctor',
+                targetRoles: ['doctor']
               });
             }
           } catch (doctorError) {

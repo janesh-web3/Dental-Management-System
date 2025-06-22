@@ -22,7 +22,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -45,13 +44,14 @@ import {
 } from "@/components/ui/select";
 
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Plus, Search, Edit2, X, Filter, Eye } from "lucide-react";
+import { Loader2, Search, Edit2, X, Filter, Eye } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useDoctorAuthContext } from "@/contexts/doctorAuthContext";
 import AppointmentDetailsDialog from "./components/AppointmentDetailsDialog";
 import { crudRequest } from "@/lib/api";
+import AppointmentForm from "@/components/appointments/AppointmentForm";
 
 // Removed unused interface
 
@@ -117,7 +117,7 @@ const Appointments: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState<boolean>(false);
+  // const [isCreateDialogOpen, setIsCreateDialogOpen] = useState<boolean>(false); // Removed as we're using the AppointmentForm component
   const [isEditDialogOpen, setIsEditDialogOpen] = useState<boolean>(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] =
     useState<boolean>(false);
@@ -125,23 +125,8 @@ const Appointments: React.FC = () => {
     useState<Appointment | null>(null);
   const { toast } = useToast();
 
-  const form = useForm<AppointmentFormValues>({
-    resolver: zodResolver(appointmentFormSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      age: "",
-      address: "",
-      phoneNumber: "",
-      gender: "Male",
-      appointmentDate: new Date(),
-      appointmentTime: "",
-      subject: "",
-      reason: "",
-      comments: "",
-    },
-  });
-
+  // Removed the form since we're using the AppointmentForm component
+  
   const editForm = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentFormSchema),
     defaultValues: {
@@ -162,25 +147,6 @@ const Appointments: React.FC = () => {
   useEffect(() => {
     fetchAppointments();
   }, [doctorId, currentPage, searchTerm, statusFilter]);
-
-  // Initialize the create appointment form when dialog is opened
-  useEffect(() => {
-    if (isCreateDialogOpen) {
-      form.reset({
-        firstName: "",
-        lastName: "",
-        age: "",
-        address: "",
-        phoneNumber: "",
-        gender: "Male",
-        appointmentDate: new Date(),
-        appointmentTime: "",
-        subject: "",
-        reason: "",
-        comments: "",
-      });
-    }
-  }, [isCreateDialogOpen, form]);
 
   // Response type is inferred from crudRequest
 
@@ -236,7 +202,6 @@ const Appointments: React.FC = () => {
           },
         }
       );
-      console.log(response);
 
       if (response.success && response.data) {
         try {
@@ -302,44 +267,7 @@ const Appointments: React.FC = () => {
     }
   };
 
-  const handleCreateAppointment = async (values: AppointmentFormValues) => {
-    try {
-      setLoading(true);
-      const formattedValues = {
-        ...values,
-        appointmentDate: format(values.appointmentDate, "yyyy-MM-dd"),
-      };
-
-      const response = await crudRequest<{
-        success: boolean;
-        message?: string;
-      }>("POST", `/doctor-admin/appointments/${doctorId}`, {
-        data: formattedValues,
-      });
-
-      if (response.success) {
-        toast({
-          title: "Success",
-          description: "Appointment created successfully",
-        });
-
-        setIsCreateDialogOpen(false);
-        form.reset();
-        fetchAppointments();
-      } else {
-        throw new Error(response.message || "Failed to create appointment");
-      }
-    } catch (error) {
-      console.error("Error creating appointment:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to create appointment",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Clean up any old code that's no longer needed
 
   const handleEditAppointment = async (values: AppointmentFormValues) => {
     if (!currentAppointment) return;
@@ -457,254 +385,11 @@ const Appointments: React.FC = () => {
                 Manage your patient appointments
               </CardDescription>
             </div>
-            <Dialog
-              open={isCreateDialogOpen}
-              onOpenChange={(open) => {
-                setIsCreateDialogOpen(open);
-                if (!open) {
-                  // Reset form when dialog is closed
-                  form.reset({
-                    firstName: "",
-                    lastName: "",
-                    age: "",
-                    address: "",
-                    phoneNumber: "",
-                    gender: "Male",
-                    appointmentDate: new Date(),
-                    appointmentTime: "",
-                    subject: "",
-                    reason: "",
-                    comments: "",
-                  });
-                }
-              }}
-            >
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Appointment
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Create New Appointment</DialogTitle>
-                  <DialogDescription>
-                    Fill in the details to schedule a new appointment
-                  </DialogDescription>
-                </DialogHeader>
-
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(handleCreateAppointment)}
-                    className="space-y-4"
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="firstName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>First Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="First Name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="lastName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Last Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Last Name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="age"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Age</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Age" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="gender"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Gender</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select gender" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="Male">Male</SelectItem>
-                                <SelectItem value="Female">Female</SelectItem>
-                                <SelectItem value="Other">Other</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="phoneNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone Number</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Phone Number" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="address"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Address</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Address" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="appointmentDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Appointment Date</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="date"
-                                {...field}
-                                value={
-                                  field.value
-                                    ? format(field.value, "yyyy-MM-dd")
-                                    : ""
-                                }
-                                onChange={(e) => {
-                                  const date = e.target.value
-                                    ? new Date(e.target.value)
-                                    : null;
-                                  field.onChange(date);
-                                }}
-                                min={format(new Date(), "yyyy-MM-dd")}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="appointmentTime"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Appointment Time</FormLabel>
-                            <FormControl>
-                              <Input type="time" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="subject"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Subject</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Subject" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="reason"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Reason</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Reason for appointment"
-                              className="resize-none"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="comments"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Comments (Optional)</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Additional comments"
-                              className="resize-none"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <DialogFooter>
-                      <Button type="submit" disabled={loading}>
-                        {loading && (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        )}
-                        Create Appointment
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
+            <AppointmentForm 
+              onAppointmentCreated={fetchAppointments}
+              doctorId={doctorId}
+              isAdmin={false}
+            />
           </div>
         </CardHeader>
         <CardContent>

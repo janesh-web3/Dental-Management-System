@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { crudRequest } from "@/lib/api";
 import { Link } from "react-router-dom";
-import { File, Search } from "lucide-react";
+import { File, Plus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Error from "../not-found/error";
@@ -56,6 +56,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import AppointmentForm from "@/components/appointments/AppointmentForm";
 
 type Doctor = {
   _id: string;
@@ -472,10 +473,23 @@ const AppointmentTable = () => {
                           </div>
                         </div>
                       </div>
-                    </DrawerDescription>
-                    <DrawerFooter>
+                    </DrawerDescription>                    <DrawerFooter className="flex flex-row justify-between items-center">
                       <DrawerClose>
                         <Button variant="outline">Cancel</Button>
+                      </DrawerClose>
+                      <DrawerClose>                        <AppointmentForm 
+                          onAppointmentCreated={() => {
+                            setCurrentPage(1);
+                            fetchAppointment(1, itemsPerPage, searchQuery);
+                          }}
+                          isAdmin={true}
+                          triggerButton={
+                            <Button variant="default">
+                              <Plus className="mr-1 h-3.5 w-3.5" />
+                              New Appointment
+                            </Button>
+                          }
+                        />
                       </DrawerClose>
                     </DrawerFooter>
                   </DrawerContent>
@@ -551,8 +565,7 @@ const AppointmentTable = () => {
                   <SelectItem value="Rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="flex flex-wrap items-center gap-2 ml-auto">
-                <DropdownMenu>
+              <div className="flex flex-wrap items-center gap-2 ml-auto">                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       size="sm"
@@ -655,17 +668,26 @@ const AppointmentTable = () => {
                       Status
                     </DropdownMenuCheckboxItem>
                   </DropdownMenuContent>
-                </DropdownMenu>
-
-                <Button
+                </DropdownMenu>                <Button
                   size="sm"
                   variant="outline"
                   className="h-8 gap-1"
                   onClick={exportToCSV}
                 >
                   <File className="h-3.5 w-3.5" />
-                  <span>Export</span>
-                </Button>
+                  <span>Export</span>                </Button>                <AppointmentForm 
+                  onAppointmentCreated={() => {
+                    setCurrentPage(1);
+                    fetchAppointment(1, itemsPerPage, searchQuery);
+                  }}
+                  isAdmin={true}
+                  triggerButton={
+                    <Button size="sm" variant="default" className="h-8 md:h-9">
+                      <Plus className="mr-1 h-3.5 w-3.5" />
+                      New Appointment
+                    </Button>
+                  }
+                />
               </div>
             </div>
 

@@ -1,6 +1,8 @@
 const Income = require("../model/Income");
 const Expense = require("../model/Expense");
 const ServicePayment = require("../model/ServicePayment");
+const { createAndEmitNotification } = require("./notificationCtrl");
+const { getIO } = require("../socket");
 
 // Helper function to get date filter
 const getDateFilter = (startDate, endDate) => {
@@ -82,8 +84,7 @@ const addIncome = async (req, res) => {
         message: "Title, amount, and category are required",
       });
     }
-    
-    // Create new income
+      // Create new income
     const income = await Income.create({
       title,
       amount,
@@ -92,6 +93,37 @@ const addIncome = async (req, res) => {
       notes,
       createdBy: req.admin.id,
     });
+    
+    // Create notification for all admin users
+    await createAndEmitNotification({
+      title: "New Income Added",
+      message: `${title} - ${amount} was added as income in category ${category}`,
+      type: "success",
+      sourceId: income._id.toString(),
+      sourceType: "Income",
+      targetRoles: ["admin", "superadmin"],
+      createdBy: req.admin.id,
+      createdByType: "User",
+      link: `/finance/income/${income._id}`,
+      soundEnabled: true
+    });
+    
+    // Also emit notification sound directly
+    const io = getIO();
+    if (io) {
+      // Emit notification sound event
+      io.to('admin').emit('notification:sound', { type: 'success' });
+      
+      // Also emit the income:added event
+      io.emit('income:added', {
+        id: income._id,
+        title,
+        amount,
+        category,
+        timestamp: new Date(),
+        soundEnabled: true
+      });
+    }
     
     res.status(201).json({
       success: true,
@@ -308,8 +340,7 @@ const addExpense = async (req, res) => {
         message: "Title, amount, and category are required",
       });
     }
-    
-    // Create new expense
+      // Create new expense
     const expense = await Expense.create({
       title,
       amount,
@@ -318,6 +349,37 @@ const addExpense = async (req, res) => {
       notes,
       createdBy: req.admin.id,
     });
+    
+    // Create notification for all admin users
+    await createAndEmitNotification({
+      title: "New Expense Added",
+      message: `${title} - ${amount} was added as expense in category ${category}`,
+      type: "info",
+      sourceId: expense._id.toString(),
+      sourceType: "Expense",
+      targetRoles: ["admin", "superadmin"],
+      createdBy: req.admin.id,
+      createdByType: "User",
+      link: `/finance/expense/${expense._id}`,
+      soundEnabled: true
+    });
+    
+    // Also emit notification sound directly
+    const io = getIO();
+    if (io) {
+      // Emit notification sound event
+      io.to('admin').emit('notification:sound', { type: 'info' });
+      
+      // Also emit the expense:added event
+      io.emit('expense:added', {
+        id: expense._id,
+        title,
+        amount,
+        category,
+        timestamp: new Date(),
+        soundEnabled: true
+      });
+    }
     
     res.status(201).json({
       success: true,

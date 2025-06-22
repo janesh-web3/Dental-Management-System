@@ -12,15 +12,60 @@ exports.getNotifications = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid user ID' });
     }
     
-    const query = { 
-      userId: new mongoose.Types.ObjectId(userId),
-      userType: userType || 'User' // Default to 'User' if not specified
+    // Build a more flexible query that checks both direct assignment and role-based targeting
+    let query = {
+      $or: [
+        // Direct user targeting
+        {
+          userId: new mongoose.Types.ObjectId(userId),
+          userType: userType || 'User' // Default to 'User' if not specified
+        }
+      ]
     };
+    
+    // For doctor users, also check notifications that target the 'doctor' role
+    if (userType === 'Doctor') {
+      // Check for role-based notifications targeting doctors
+      query.$or.push({
+        targetRoles: 'doctor'
+      });
+      
+      // Also check if there are any notifications targeting all doctors
+      query.$or.push({
+        targetRoles: { $in: ['doctor'] }
+      });
+      
+      // Also check if there are any notifications targeting this specific doctor by ID
+      // This is for backwards compatibility with older notifications
+      query.$or.push({
+        userId: new mongoose.Types.ObjectId(userId),
+        userType: 'Doctor'
+      });
+    }
+    
+    // For admin users, also check notifications that target admin/superadmin roles
+    if (userType === 'User') {
+      const user = await mongoose.model('User').findById(userId);
+      if (user && user.role) {
+        query.$or.push({
+          targetRoles: user.role
+        });
+        
+        // If user is admin, also check for superadmin notifications
+        if (user.role === 'admin') {
+          query.$or.push({
+            targetRoles: 'superadmin'
+          });
+        }
+      }
+    }
     
     // Add isRead filter if provided
     if (isRead !== undefined) {
       query.read = isRead === 'true';
     }
+    
+    console.log('Notification query:', JSON.stringify(query));
     
     const [notifications, total] = await Promise.all([
       Notification.find(query)
@@ -53,11 +98,59 @@ exports.getUnreadCount = async (req, res) => {
   try {
     const { userId, userType = 'User' } = req.query;
     
-    const count = await Notification.countDocuments({
-      userId: new mongoose.Types.ObjectId(userId),
-      userType,
-      read: false
-    });
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: 'Invalid user ID' });
+    }
+    
+    // Build a more flexible query that checks both direct assignment and role-based targeting
+    let query = {
+      $or: [
+        // Direct user targeting
+        {
+          userId: new mongoose.Types.ObjectId(userId),
+          userType: userType,
+          read: false
+        }
+      ]
+    };
+    
+    // For doctor users, also check notifications that target the 'doctor' role
+    if (userType === 'Doctor') {
+      // Check for role-based notifications targeting doctors
+      query.$or.push({
+        targetRoles: 'doctor',
+        read: false
+      });
+      
+      // Also check if there are any notifications targeting all doctors
+      query.$or.push({
+        targetRoles: { $in: ['doctor'] },
+        read: false
+      });
+    }
+    
+    // For admin users, also check notifications that target admin/superadmin roles
+    if (userType === 'User') {
+      const user = await mongoose.model('User').findById(userId);
+      if (user && user.role) {
+        query.$or.push({
+          targetRoles: user.role,
+          read: false
+        });
+        
+        // If user is admin, also check for superadmin notifications
+        if (user.role === 'admin') {
+          query.$or.push({
+            targetRoles: 'superadmin',
+            read: false
+          });
+        }
+      }
+    }
+    
+    console.log('Unread count query:', JSON.stringify(query));
+    
+    const count = await Notification.countDocuments(query);
     
     res.json({ success: true, count });
   } catch (error) {
@@ -115,12 +208,56 @@ exports.markAllAsRead = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid user ID' });
     }
     
-    const result = await Notification.updateMany(
-      { 
-        userId: new mongoose.Types.ObjectId(userId),
-        userType: userType || 'User',
+    // Build a more flexible query that checks both direct assignment and role-based targeting
+    let query = {
+      $or: [
+        // Direct user targeting
+        {
+          userId: new mongoose.Types.ObjectId(userId),
+          userType: userType || 'User',
+          read: false
+        }
+      ]
+    };
+    
+    // For doctor users, also check notifications that target the 'doctor' role
+    if (userType === 'Doctor') {
+      // Check for role-based notifications targeting doctors
+      query.$or.push({
+        targetRoles: 'doctor',
         read: false
-      },
+      });
+      
+      // Also check if there are any notifications targeting all doctors
+      query.$or.push({
+        targetRoles: { $in: ['doctor'] },
+        read: false
+      });
+    }
+    
+    // For admin users, also check notifications that target admin/superadmin roles
+    if (userType === 'User') {
+      const user = await mongoose.model('User').findById(userId);
+      if (user && user.role) {
+        query.$or.push({
+          targetRoles: user.role,
+          read: false
+        });
+        
+        // If user is admin, also check for superadmin notifications
+        if (user.role === 'admin') {
+          query.$or.push({
+            targetRoles: 'superadmin',
+            read: false
+          });
+        }
+      }
+    }
+    
+    console.log('Mark all as read query:', JSON.stringify(query));
+    
+    const result = await Notification.updateMany(
+      query,
       { 
         read: true,
         readAt: new Date()
@@ -227,24 +364,6 @@ exports.createAndEmitNotification = async (data) => {
     console.error('Invalid notification data: either userId or targetRoles must be provided');
     return null;
   }
-  console.log('=== Starting createAndEmitNotification ===');
-  console.log('Input data:', JSON.stringify({
-    title: data.title,
-    userId: data.userId,
-    userType: data.userType,
-    targetRoles: data.targetRoles,
-    sourceType: data.sourceType,
-    sourceId: data.sourceId
-  }, null, 2));
-  console.log('=== Creating notification ===');
-  console.log('Notification data:', JSON.stringify({
-    userId: data.userId,
-    userType: data.userType,
-    title: data.title,
-    targetRoles: data.targetRoles,
-    sourceType: data.sourceType,
-    sourceId: data.sourceId
-  }, null, 2));
   try {
     const { 
       userId, 
@@ -303,7 +422,8 @@ exports.createAndEmitNotification = async (data) => {
           createdBy: createdBy || admin._id,  // Use admin's ID or provided createdBy
           createdByType: createdByType || 'User',
           read: false,
-          targetRoles: []  // Don't use targetRoles when sending to specific users
+          targetRoles: targetRoles,  // Preserve the original targetRoles
+          soundEnabled: data.soundEnabled
         };
         
         console.log(`Creating notification for user ${admin._id}`);
@@ -348,7 +468,9 @@ exports.createAndEmitNotification = async (data) => {
         link,
         createdBy: createdBy || userId,
         createdByType: createdByType || userType,
-        read: false
+        read: false,
+        targetRoles: targetRoles || [], // Preserve the targetRoles for user-specific notifications
+        soundEnabled: data.soundEnabled
       };
       
       console.log('Creating direct notification for user:', userId);
@@ -374,54 +496,9 @@ exports.createAndEmitNotification = async (data) => {
       return notification;
     }
     
-    throw new Error('Either userId or targetRoles must be provided');
-    
-    console.log('Saving notification to database...');
-    await notification.save();
-    console.log('Notification saved with ID:', notification._id);
-    
-    // Get socket.io instance
-    console.log('Getting socket.io instance...');
-    const { getIO, notifyUser, broadcastNotification } = require('../socket');
-    const io = getIO();
-    
-    if (!io) {
-      console.error('ERROR: Socket.io not initialized');
-      return notification;
-    }
-    console.log('Socket.io instance obtained');
-    
-    // Format notification for frontend
-    const notificationForClient = {
-      _id: notification._id,
-      title: notification.title,
-      description: notification.message,
-      type: notification.type,
-      isRead: notification.read,
-      createdAt: notification.createdAt,
-      link: notification.link,
-      sourceType: notification.sourceType,
-      sourceId: notification.sourceId
-    };
-    
-    // Handle notifications
-    if (targetRoles && targetRoles.length > 0) {
-      console.log(`Sending notification to roles: ${targetRoles.join(', ')}`);
-      // If we have target roles, emit to those roles
-      targetRoles.forEach(role => {
-        console.log(`Emitting to role: ${role}`);
-        io.to(role).emit('notification', notificationForClient);
-      });
-    }
-    
-    // If we have a specific user and they weren't already notified via roles
-    if (userId) {
-      console.log(`Sending direct notification to user: ${userId}`);
-      // Use a different event name to prevent duplication
-      io.to(`${userType}:${userId}`).emit('direct_notification', notificationForClient);
-    }
-    
-    return notification;
+    // If we get here, neither userId nor targetRoles were provided
+    console.error('Invalid notification data: either userId or targetRoles must be provided');
+    return null;
   } catch (error) {
     console.error('Error creating and emitting notification:', error);
     return null;

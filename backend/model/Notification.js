@@ -38,7 +38,7 @@ const notificationSchema = new mongoose.Schema({
   },
   sourceType: {
     type: String,
-    enum: ['Appointment', 'Payment', 'Patient', 'Treatment', 'XRay', null],
+    enum: ['Appointment', 'Payment', 'Patient', 'Treatment', 'XRay', 'Income', 'Expense', null],
     default: null
   },
   link: {

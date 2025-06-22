@@ -610,6 +610,8 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     socket.on('treatment:updated', handleNotification);
     socket.on('payment:received', handleNotification);
     socket.on('xray:uploaded', handleNotification);
+    socket.on('income:added', handleNotification);
+    socket.on('expense:added', handleNotification);
     
     // Handle explicit notification sound events
     socket.on('notification:sound', (data) => {
@@ -630,6 +632,8 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         socket.off('treatment:updated', handleNotification);
         socket.off('payment:received', handleNotification);
         socket.off('xray:uploaded', handleNotification);
+        socket.off('income:added', handleNotification);
+        socket.off('expense:added', handleNotification);
         socket.off('notification:sound');
       }
     };

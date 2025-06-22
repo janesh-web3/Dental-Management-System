@@ -302,7 +302,7 @@ export default function ExpensePage() {
                     <TableCell>{expense.category}</TableCell>
                     <TableCell>{formatDate(expense.date)}</TableCell>
                     <TableCell className="text-right font-medium">
-                      ${expense.amount.toFixed(2)}
+                      Rs.{expense.amount.toFixed(2)}
                     </TableCell>
                     <TableCell className="flex justify-end space-x-2">
                       <Dialog open={isEditDialogOpen && selectedExpense?._id === expense._id} onOpenChange={(open) => {
@@ -409,7 +409,7 @@ export default function ExpensePage() {
         <div className="mt-6 p-4 bg-muted rounded-lg">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="font-medium">Total Expenses:</p>
-            <p className="text-2xl font-bold text-rose-600">${totalExpense.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-rose-600">Rs.{totalExpense.toFixed(2)}</p>
           </div>
         </div>
       </div>

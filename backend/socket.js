@@ -198,6 +198,25 @@ const initSocket = (server) => {
         });
       }
     });
+    
+    // Finance events
+    socket.on('income:added', (data) => {
+      console.log('Income added event received:', data);
+      
+      // Play notification sound for admins
+      if (data.soundEnabled !== false) {
+        io.to('admin').emit('notification:sound', { type: 'success' });
+      }
+    });
+    
+    socket.on('expense:added', (data) => {
+      console.log('Expense added event received:', data);
+      
+      // Play notification sound for admins
+      if (data.soundEnabled !== false) {
+        io.to('admin').emit('notification:sound', { type: 'info' });
+      }
+    });
 
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);

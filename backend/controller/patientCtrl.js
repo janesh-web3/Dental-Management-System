@@ -167,7 +167,6 @@ const addPatient = async (req, res) => {
     // Emit the patient:added event right after creation
     const io = getIO();
     if (io) {
-      console.log('Emitting patient:added event immediately after creation...');
       io.emit('patient:added', {
         id: patient._id,
         name: personalDetails.name,
@@ -182,7 +181,6 @@ const addPatient = async (req, res) => {
         io.to('doctor').emit('notification:sound', { type: 'info' });
       }
       
-      console.log('Immediate socket event emitted successfully');
     } else {
       console.error('Socket IO instance not available for immediate notification');
     }
@@ -345,10 +343,61 @@ const deletePatient = async (req, res) => {
     } catch (authError) {
       console.error("Error deleting PatientAuth record:", authError);
       // Continue with patient deletion even if auth deletion fails
-    }
-
-    // Delete the patient
+    }    // Delete the patient
     await Patient.findByIdAndDelete(req.params.id);
+
+    // Send notification about patient deletion
+    try {
+      const io = getIO();
+      if (io) {
+        console.log('Emitting patient:deleted event...');
+        
+        // Prepare notification data
+        const patientData = {
+          id: patient._id,
+          name: patient.personalDetails.name,
+          assignedDoctor: patient.assignedDoctor,
+          timestamp: new Date()
+        };
+        
+        // Emit the event
+        io.emit('patient:deleted', patientData);
+        
+        // Create notifications in database for admins
+        const admins = await User.find({ role: { $in: ['admin', 'superadmin'] } });
+        console.log(`Found ${admins.length} admins to notify about patient deletion`);
+        
+        await createAndEmitNotification({
+          title: 'Patient Deleted',
+          message: `Patient ${patient.personalDetails.name} has been deleted from the system`,
+          type: 'warning',
+          targetRoles: ['admin', 'superadmin']
+        });
+        
+        // If patient had an assigned doctor, notify them too
+        if (patient.assignedDoctor) {
+          try {
+            const doctor = await Doctor.findById(patient.assignedDoctor);
+            if (doctor) {
+              await createAndEmitNotification({
+                title: 'Patient Deleted',
+                message: `Patient ${patient.personalDetails.name} has been deleted from the system`,
+                type: 'warning',
+                userId: doctor._id,
+                userType: 'Doctor'
+              });
+            }
+          } catch (doctorError) {
+            console.error('Error notifying doctor about patient deletion:', doctorError);
+          }
+        }
+      } else {
+        console.error('Socket IO instance not available for patient deletion notification');
+      }
+    } catch (notificationError) {
+      console.error('Error sending patient deletion notifications:', notificationError);
+      // Don't fail the request if notifications fail
+    }
 
     res.status(200).json({
       success: true,

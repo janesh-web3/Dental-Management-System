@@ -82,8 +82,23 @@ const initSocket = (server) => {
     
     // Direct handler for patient:added event
     socket.on('patient:added', (data) => {
-      console.log('Direct patient:added event received:', data);
       broadcastNotification('patient:added', data);
+    });
+    
+    // Direct handler for patient:deleted event
+    socket.on('patient:deleted', (data) => {
+      console.log('Patient deleted event received:', data);
+      broadcastNotification('patient:deleted', data);
+      
+      // Play notification sound for admins
+      if (data.soundEnabled !== false) {
+        io.to('admin').emit('notification:sound', { type: 'warning' });
+        
+        // If the patient had an assigned doctor, notify them too
+        if (data.assignedDoctor) {
+          io.to('doctor').emit('notification:sound', { type: 'warning' });
+        }
+      }
     });
 
     // Appointment events
@@ -207,8 +222,6 @@ const broadcastNotification = (type, data) => {
     console.error('IO instance not available for broadcast:', type);
     return;
   }
-  
-  console.log(`Broadcasting notification of type ${type}:`, data);
   
   // Emit to all connected clients under the specific event type
   io.emit(type, data);

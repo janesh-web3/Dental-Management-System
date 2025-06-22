@@ -592,6 +592,19 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         sourceId: data.id
       });
     });
+    
+    socket.on('patient:deleted', (data) => {
+      console.log('patient:deleted event received in NotificationContext:', data);
+      handleNotification({
+        title: 'Patient Deleted',
+        description: `${data.name} has been deleted from the system`,
+        type: 'warning',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        sourceType: 'Patient',
+        sourceId: data.id
+      });
+    });
     socket.on('appointment:added', handleNotification);
     socket.on('appointment:cancelled', handleNotification);
     socket.on('treatment:updated', handleNotification);
@@ -611,6 +624,7 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         // Cleanup listeners
         socket.off('notification', handleNotification);
         socket.off('patient:added');
+        socket.off('patient:deleted');
         socket.off('appointment:added', handleNotification);
         socket.off('appointment:cancelled', handleNotification);
         socket.off('treatment:updated', handleNotification);

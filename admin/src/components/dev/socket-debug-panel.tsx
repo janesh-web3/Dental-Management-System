@@ -34,8 +34,7 @@ export function SocketDebugPanel() {
         timestamp: new Date()
       }]);
     };
-    
-    const handleNotification = (data: any) => {
+      const handleNotification = (data: any) => {
       console.log('Socket notification received:', data);
       setEvents(prev => [...prev, {
         event: 'notification',
@@ -44,12 +43,22 @@ export function SocketDebugPanel() {
       }]);
     };
     
+    const handlePatientDeleted = (data: any) => {
+      console.log('Socket patient:deleted event received:', data);
+      setEvents(prev => [...prev, {
+        event: 'patient:deleted',
+        data,
+        timestamp: new Date()
+      }]);
+    };
+    
     socket.on('test-event', handleEvent);
     socket.on('notification', handleNotification);
-    
-    return () => {
+    socket.on('patient:deleted', handlePatientDeleted);
+      return () => {
       socket.off('test-event', handleEvent);
       socket.off('notification', handleNotification);
+      socket.off('patient:deleted', handlePatientDeleted);
     };
   }, [socket]);
   

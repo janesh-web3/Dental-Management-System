@@ -220,12 +220,23 @@ const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         autoClose: 5000,
       });
     };
+    
+    const handlePatientDeleted = (data: PatientEvent) => {
+      console.log("Patient deleted event received:", data);
+      addNotification({
+        type: "warning",
+        title: "Patient Deleted",
+        message: `${data.name} has been deleted from the system`,
+        autoClose: 5000,
+      });
+    };
 
     // Set up event listeners
     socketInstance.on("connect", onConnect);
     socketInstance.on("disconnect", onDisconnect);
     socketInstance.on("connect_error", onConnectError);
     socketInstance.on("patient:added", handlePatientAdded);
+    socketInstance.on("patient:deleted", handlePatientDeleted);
 
     // Cleanup function
     return () => {
@@ -234,6 +245,7 @@ const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       socketInstance.off("disconnect", onDisconnect);
       socketInstance.off("connect_error", onConnectError);
       socketInstance.off("patient:added", handlePatientAdded);
+      socketInstance.off("patient:deleted", handlePatientDeleted);
       socketInstance.disconnect();
     };
   }, [

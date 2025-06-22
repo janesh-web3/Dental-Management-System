@@ -9,8 +9,7 @@ import { Notification } from '@/types/notification';
  */
 export const ToastNotifications: React.FC = () => {
   const { socket } = useSocketIO();
-  
-  useEffect(() => {
+    useEffect(() => {
     if (!socket) return;
     
     const handleNotification = (notification: Notification) => {
@@ -60,13 +59,25 @@ export const ToastNotifications: React.FC = () => {
           break;
       }
     };
+      // Handle notification sound events
+    const handleNotificationSound = (data: any) => {
+      console.log('Notification sound event received:', data);
+      const audioElement = document.getElementById('notification-sound') as HTMLAudioElement;
+      if (audioElement) {
+        audioElement.play().catch(err => {
+          console.warn('Could not play notification sound:', err);
+        });
+      }
+    };
     
-    // Listen for notifications
+    // Listen for events
     socket.on('notification', handleNotification);
+    socket.on('notification:sound', handleNotificationSound);
     
     // Clean up on unmount
     return () => {
       socket.off('notification', handleNotification);
+      socket.off('notification:sound', handleNotificationSound);
     };
   }, [socket]);
   

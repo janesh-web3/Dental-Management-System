@@ -13,12 +13,13 @@ const mongoose = require("mongoose");
 const { createAndEmitNotification } = require("./notificationCtrl");
 const User = require("../model/User");
 const Doctor = require("../model/Doctor");
+const { getIO } = require("../socket");
 
 // Helper utility functions for date filtering
 const getDateFilter = (filter, startDate, endDate) => {
   const now = new Date();
   
-  switch (filter) {
+  switch (filter) { 
     case 'today': {
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const tomorrow = new Date(today);
@@ -160,10 +161,31 @@ const addPatient = async (req, res) => {
       req.body.password = generatedPassword;
     }
 
-    // Email is handled as a simple string field - no special validation or handling needed
-
-    // Create patient
+    // Email is handled as a simple string field - no special validation or handling needed    // Create patient
     const patient = await Patient.create(req.body);
+    
+    // Emit the patient:added event right after creation
+    const io = getIO();
+    if (io) {
+      console.log('Emitting patient:added event immediately after creation...');
+      io.emit('patient:added', {
+        id: patient._id,
+        name: personalDetails.name,
+        phone: personalDetails.contactNumber || '',
+        email: personalDetails.emailAddress || '',
+        timestamp: new Date()
+      });
+      
+      // Also emit notification sound
+      io.to('admin').emit('notification:sound', { type: 'success' });
+      if (req.body.assignedDoctor) {
+        io.to('doctor').emit('notification:sound', { type: 'info' });
+      }
+      
+      console.log('Immediate socket event emitted successfully');
+    } else {
+      console.error('Socket IO instance not available for immediate notification');
+    }
 
     // Create patient auth record only if email is provided and not empty
     const email = personalDetails.emailAddress;
@@ -232,9 +254,7 @@ const addPatient = async (req, res) => {
         notes: description || `Service payment for ${serviceType}`,
         createdBy: req.admin.id,
       });
-    }
-
-    // Send notifications after successful patient creation
+    }    // Send notifications after successful patient creation
     try {
       // First, handle admin notifications
       const admins = await User.find({ role: { $in: ['admin', 'superadmin'] } });
@@ -269,8 +289,7 @@ const addPatient = async (req, res) => {
               link: `/patients/${patient._id}`,
               userId: doctor._id,
               userType: 'Doctor'
-            });
-            console.log('Doctor notification created:', doctorNotification ? 'success' : 'failed');
+            });            console.log('Doctor notification created:', doctorNotification ? 'success' : 'failed');
           } else {
             console.log('Doctor not found:', req.body.assignedDoctor);
           }
@@ -288,7 +307,7 @@ const addPatient = async (req, res) => {
       data: patient,
     });
   } catch (error) {
-    // Handle mongoose validation errors
+    // Handle mongoose validation errorsj
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map((err) => err.message);
       return res.status(400).json({

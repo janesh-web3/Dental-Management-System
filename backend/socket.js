@@ -67,6 +67,7 @@ const initSocket = (server) => {
 
     // New patient registered - Just broadcast the event, notifications are handled in the controller
     socket.on('patient:registered', (data) => {
+      console.log('Patient registered event received:', data);
       broadcastNotification('patient:added', data);
       
       // No need to create notifications here as they are already handled in the patient controller
@@ -77,6 +78,12 @@ const initSocket = (server) => {
         io.to('admin').emit('notification:sound', { type: 'success' });
         io.to('doctor').emit('notification:sound', { type: 'info' });
       }
+    });
+    
+    // Direct handler for patient:added event
+    socket.on('patient:added', (data) => {
+      console.log('Direct patient:added event received:', data);
+      broadcastNotification('patient:added', data);
     });
 
     // Appointment events
@@ -196,7 +203,12 @@ const notifyAdmins = (event, data) => {
 
 // Helper function to broadcast notifications by type
 const broadcastNotification = (type, data) => {
-  if (!io) return;
+  if (!io) {
+    console.error('IO instance not available for broadcast:', type);
+    return;
+  }
+  
+  console.log(`Broadcasting notification of type ${type}:`, data);
   
   // Emit to all connected clients under the specific event type
   io.emit(type, data);

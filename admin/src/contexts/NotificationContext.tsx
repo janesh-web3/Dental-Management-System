@@ -89,15 +89,132 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return savedSettings ? JSON.parse(savedSettings) : defaultSettings;
   });
   
-  // Audio element for notification sound
-  const [audioElement] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const audio = new Audio('/notification-sound.mp3');
-      audio.volume = 0.5;
-      return audio;
+  // Audio context and buffer for notification sound
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+  const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
+  const [audioInitialized, setAudioInitialized] = useState(false);
+  
+  // Initialize audio context and load sound
+  useEffect(() => {
+    // Only run in browser
+    if (typeof window === 'undefined') return;
+    
+    // Create audio context on user interaction
+    const initAudio = async () => {
+      try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        const context = new AudioContext();
+        
+        // Load the sound file
+        const response = await fetch('/notification-sound.wav');
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = await context.decodeAudioData(arrayBuffer);
+        
+        setAudioContext(context);
+        setAudioBuffer(buffer);
+        setAudioInitialized(true);
+        console.log('Audio initialized successfully');
+      } catch (error) {
+        console.error('Error initializing audio:', error);
+      }
+    };
+    
+    // Initialize on first user interaction
+    const handleFirstInteraction = () => {
+      initAudio();
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+    };
+    
+    document.addEventListener('click', handleFirstInteraction, { once: true });
+    document.addEventListener('keydown', handleFirstInteraction, { once: true });
+    
+    return () => {
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+    };
+  }, []);
+  
+  // Function to play notification sound
+  const playNotificationSound = useCallback(() => {
+    console.log('=== playNotificationSound called ===');
+    
+    // Only play sound if enabled in settings
+    if (!settings.soundEnabled) {
+      console.log('Sound disabled in settings');
+      return;
     }
-    return null;
-  });
+    
+    // Try Web Audio API first
+    if (audioContext && audioBuffer) {
+      try {
+        // Resume audio context if suspended
+        if (audioContext.state === 'suspended') {
+          console.log('Resuming suspended audio context...');
+          audioContext.resume().then(() => {
+            console.log('Audio context resumed, playing sound...');
+            playSound();
+          }).catch(console.error);
+          return;
+        }
+        
+        // If context is already running, play sound directly
+        playSound();
+      } catch (error) {
+        console.error('Error with Web Audio API:', error);
+        // Fallback to HTML5 Audio
+        playFallbackSound();
+      }
+    } else {
+      // Fallback to HTML5 Audio if Web Audio API not available
+      playFallbackSound();
+    }
+    
+    function playSound() {
+      try {
+        const source = audioContext!.createBufferSource();
+        source.buffer = audioBuffer!;
+        source.connect(audioContext!.destination);
+        
+        source.onended = () => {
+          source.disconnect();
+          console.log('Notification sound played successfully');
+        };
+        
+        source.start(0);
+      } catch (error) {
+        console.error('Error playing sound with Web Audio API:', error);
+        playFallbackSound();
+      }
+    }
+    
+    function playFallbackSound() {
+      try {
+        console.log('Trying HTML5 Audio fallback...');
+        const audio = new Audio('/notification-sound.wav');
+        audio.volume = 1;
+        
+        // Try to play the sound
+        const playPromise = audio.play();
+        
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => console.log('HTML5 Audio fallback: Sound played successfully'))
+            .catch(error => {
+              console.error('HTML5 Audio play error:', error);
+              // Show message to user if autoplay was prevented
+              if (error.name === 'NotAllowedError') {
+                toast.info('Click anywhere to enable notification sounds', {
+                  autoClose: 3000,
+                });
+              }
+            });
+        }
+      } catch (error) {
+        console.error('Error in HTML5 Audio fallback:', error);
+      }
+    }
+  }, [settings.soundEnabled, audioInitialized, audioContext, audioBuffer]);
   
   // Get user context and socket
   const { socket, isConnected } = useSocket();
@@ -120,11 +237,7 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [adminDetails, doctorDetails, patientDetails]);
   
   // Helpers
-  const playNotificationSound = useCallback(() => {
-    if (settings.soundEnabled && audioElement) {
-      audioElement.play().catch(err => console.error('Error playing notification sound:', err));
-    }
-  }, [settings.soundEnabled, audioElement]);
+  // playNotificationSound is now defined above
   
   const showDesktopNotification = useCallback((title: string, body: string) => {
     if (!settings.desktopNotifications || !('Notification' in window)) return;
@@ -398,49 +511,113 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Listen to socket notifications
   useEffect(() => {
     if (!socket || !isConnected) return;
+    
+    // Log socket connection status for troubleshooting
+    if (socket) {
+      console.log('Socket in NotificationContext:', {
+        id: socket.id,
+        connected: socket.connected,
+        disconnected: socket.disconnected
+      });
+    }
+    
+    // Request notification permission if not already granted/denied
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        console.log('Notification permission:', permission);
+      });
+    }
+    
+    // Cleanup function for event listeners
+    const cleanup = () => {
+      // No need to clean up once: true event listeners
+    };
 
     const handleNotification = (data: any) => {
-      console.log('Received notification via socket:', data);
+      console.log('=== NOTIFICATION RECEIVED ===', data);
       
-      // Add to in-memory notifications
-      addNotification({
+      // Add to in-memory notifications first for immediate UI update
+      const newNotification = {
+        _id: data._id || `temp-${Date.now()}`,
         title: data.title,
-        message: data.description || data.message || '',
+        description: data.description || data.message || '',
         type: data.type || 'info',
-        autoClose: 5000,
-        showCloseButton: true,
         isRead: false,
-        createdAt: data.createdAt || new Date(),
+        createdAt: data.createdAt || new Date().toISOString(),
         link: data.link,
         sourceType: data.sourceType,
         sourceId: data.sourceId
-      });
+      };
       
-      // Update unread count
+      console.log('Adding notification to UI:', newNotification);
+      
+      // Update state to show notification immediately
+      setDbNotifications(prev => [newNotification, ...prev]);
       setUnreadCount(prev => prev + 1);
       
-      // Refresh the DB notifications list if it's open
+      // Play notification sound
+      console.log('Playing notification sound...');
+      playNotificationSound();
+      
+      // Show desktop notification if enabled
+      if (settings.desktopNotifications && Notification.permission === 'granted') {
+        const notification = new Notification(data.title, {
+          body: data.description || data.message,
+          icon: '/favicon.ico'
+        });
+        
+        notification.onclick = () => {
+          if (data.link) {
+            window.focus();
+            window.location.href = data.link;
+          }
+        };
+      }
+      
+      // Refresh the DB notifications to ensure consistency
       fetchNotifications();
     };
 
     // Register listeners for all notification types
     socket.on('notification', handleNotification);
-    socket.on('patient:added', handleNotification);
+    socket.on('patient:added', (data) => {
+      console.log('patient:added event received in NotificationContext:', data);
+      handleNotification({
+        title: 'New Patient Added',
+        description: `${data.name} has been added to the system`,
+        type: 'success',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        sourceType: 'Patient',
+        sourceId: data.id
+      });
+    });
     socket.on('appointment:added', handleNotification);
     socket.on('appointment:cancelled', handleNotification);
     socket.on('treatment:updated', handleNotification);
     socket.on('payment:received', handleNotification);
     socket.on('xray:uploaded', handleNotification);
+    
+    // Handle explicit notification sound events
+    socket.on('notification:sound', (data) => {
+      console.log('notification:sound event received:', data);
+      playNotificationSound();
+    });
 
+    // Cleanup function
     return () => {
-      // Cleanup listeners
-      socket.off('notification', handleNotification);
-      socket.off('patient:added', handleNotification);
-      socket.off('appointment:added', handleNotification);
-      socket.off('appointment:cancelled', handleNotification);
-      socket.off('treatment:updated', handleNotification);
-      socket.off('payment:received', handleNotification);
-      socket.off('xray:uploaded', handleNotification);
+      cleanup();
+      if (socket) {
+        // Cleanup listeners
+        socket.off('notification', handleNotification);
+        socket.off('patient:added');
+        socket.off('appointment:added', handleNotification);
+        socket.off('appointment:cancelled', handleNotification);
+        socket.off('treatment:updated', handleNotification);
+        socket.off('payment:received', handleNotification);
+        socket.off('xray:uploaded', handleNotification);
+        socket.off('notification:sound');
+      }
     };
   }, [socket, isConnected, addNotification, fetchNotifications]);
 

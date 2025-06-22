@@ -188,7 +188,7 @@ const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
     // Connection error handler
     const onConnectError = (error: Error) => {
-      console.error("Socket connection error:", error);
+      console.error("Socket connection error:", error.message);
       setIsConnected(false);
 
       // Increment connection attempts counter
@@ -198,11 +198,11 @@ const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         // Show toast notification on connection error
         if (newAttempts >= MAX_RECONNECTION_ATTEMPTS) {
           toast.error(
-            "Failed to connect to the server. Please check your internet connection and refresh the page."
+            `Failed to connect to the server: ${error.message}. Please check your internet connection and refresh the page.`
           );
         } else {
           toast.warning(
-            `Connection attempt ${newAttempts}/${MAX_RECONNECTION_ATTEMPTS}...`
+            `Connection attempt ${newAttempts}/${MAX_RECONNECTION_ATTEMPTS}... Error: ${error.message}`
           );
         }
 
@@ -212,7 +212,7 @@ const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
     // Patient event handlers
     const handlePatientAdded = (data: PatientEvent) => {
-      console.log("New patient added:", data);
+      console.log("New patient added event received:", data);
       addNotification({
         type: "success",
         title: "New Patient Added",
@@ -233,7 +233,7 @@ const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       socketInstance.off("connect", onConnect);
       socketInstance.off("disconnect", onDisconnect);
       socketInstance.off("connect_error", onConnectError);
-      socketInstance.off("patient:added");
+      socketInstance.off("patient:added", handlePatientAdded);
       socketInstance.disconnect();
     };
   }, [

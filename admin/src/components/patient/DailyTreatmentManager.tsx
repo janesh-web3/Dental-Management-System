@@ -393,7 +393,7 @@ export function DailyTreatmentManager({
                 <Button
                   onClick={handleAddTreatment}
                   className="w-full"
-                  disabled={!newTreatment.date || !newTreatment.treatmentAmount}
+                  disabled={!newTreatment.date}
                 >
                   <Plus className="mr-2 h-4 w-4" /> Add Treatment Entry
                 </Button>

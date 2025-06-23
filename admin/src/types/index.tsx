@@ -8,6 +8,7 @@ export interface NavItem {
   icon?: keyof typeof Icons;
   label?: string;
   description?: string;
+  notificationEnabled?: boolean; // Whether notifications are enabled for this feature
 }
 
 export interface NavItemWithChildren extends NavItem {

@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Bell, Volume2, Calendar, User, Activity, CreditCard, FileX } from "lucide-react";
 import { toast } from "react-toastify";
 import { crudRequest } from "@/lib/api";
+import { NavItem } from "@/types";
+import { getFeatureNotificationSettings, updateFeatureNotificationSettings } from "@/utils/notificationSettings";
+import { saveNotificationPreferences } from "@/utils/doctorNotifications";
 
 interface NotificationPreferences {
   desktopNotifications: boolean;
@@ -16,6 +19,13 @@ interface NotificationPreferences {
   treatmentNotifications: boolean;
   paymentNotifications: boolean;
   xrayNotifications: boolean;
+  doctorNotifications: boolean;
+  doctorAddedNotification: boolean;
+  doctorUpdatedNotification: boolean;
+  doctorDeletedNotification: boolean;
+  featureNotifications?: {
+    [featureTitle: string]: boolean;
+  };
 }
 
 interface NotificationSettingsProps {
@@ -39,6 +49,10 @@ export function NotificationSettings({
     treatmentNotifications: true,
     paymentNotifications: true,
     xrayNotifications: true,
+    doctorNotifications: true,
+    doctorAddedNotification: true,
+    doctorUpdatedNotification: true,
+    doctorDeletedNotification: true,
     ...initialPreferences
   });
   
@@ -101,9 +115,7 @@ export function NotificationSettings({
     } else {
       toast.warning("Desktop notifications are not enabled. Please enable them first.");
     }
-  };
-  
-  // Save preferences
+  };  // Save preferences
   const savePreferences = async () => {
     setSaving(true);
     try {
@@ -112,6 +124,21 @@ export function NotificationSettings({
         : `/doctor/notification-preferences/${userId}`;
       
       const response = await crudRequest("PUT", endpoint, { notificationPreferences: preferences });
+      
+      // Save feature notification settings
+      if (preferences.featureNotifications) {
+        updateFeatureNotificationSettings(preferences.featureNotifications);
+      }
+      
+      // Save doctor notification settings to localStorage
+      saveNotificationPreferences({
+        desktopNotifications: preferences.desktopNotifications,
+        soundAlerts: preferences.soundAlerts,
+        doctorNotifications: preferences.doctorNotifications,
+        doctorAddedNotification: preferences.doctorAddedNotification,
+        doctorUpdatedNotification: preferences.doctorUpdatedNotification,
+        doctorDeletedNotification: preferences.doctorDeletedNotification
+      });
       
       if (response) {
         toast.success("Notification preferences saved successfully");
@@ -126,6 +153,25 @@ export function NotificationSettings({
       setSaving(false);
     }
   };
+    // Load nav items for feature notifications
+  const [navigationItems, setNavigationItems] = useState<NavItem[]>([]);
+  
+  useEffect(() => {
+    // Import nav items
+    import('@/constants/data').then(module => {
+      setNavigationItems(module.navItems);
+      
+      // Initialize feature notifications if not set
+      if (!preferences.featureNotifications) {
+        const featureNotifs = getFeatureNotificationSettings();
+        
+        setPreferences(prev => ({
+          ...prev,
+          featureNotifications: featureNotifs
+        }));
+      }
+    });
+  }, []);
   
   return (
     <Card>
@@ -282,8 +328,113 @@ export function NotificationSettings({
               onCheckedChange={(checked) => 
                 setPreferences({ ...preferences, xrayNotifications: checked })
               }
+            />          </div>
+        </div>
+        
+        <Separator />
+        
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Doctor Notifications</h3>
+          <p className="text-sm text-muted-foreground">
+            Control notifications related to doctor management
+          </p>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="doctor-notifications">
+                Doctor Notifications
+              </Label>
+            </div>
+            <Switch
+              id="doctor-notifications"
+              checked={preferences.doctorNotifications}
+              onCheckedChange={(checked) => 
+                setPreferences({ ...preferences, doctorNotifications: checked })
+              }
             />
           </div>
+          
+          {preferences.doctorNotifications && (
+            <div className="ml-6 space-y-3 border-l-2 pl-4 border-muted">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="doctor-added-notifications">
+                  Doctor Added Notifications
+                </Label>
+                <Switch
+                  id="doctor-added-notifications"
+                  checked={preferences.doctorAddedNotification}
+                  onCheckedChange={(checked) => 
+                    setPreferences({ ...preferences, doctorAddedNotification: checked })
+                  }
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <Label htmlFor="doctor-updated-notifications">
+                  Doctor Updated Notifications
+                </Label>
+                <Switch
+                  id="doctor-updated-notifications"
+                  checked={preferences.doctorUpdatedNotification}
+                  onCheckedChange={(checked) => 
+                    setPreferences({ ...preferences, doctorUpdatedNotification: checked })
+                  }
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <Label htmlFor="doctor-deleted-notifications">
+                  Doctor Deleted Notifications
+                </Label>
+                <Switch
+                  id="doctor-deleted-notifications"
+                  checked={preferences.doctorDeletedNotification}
+                  onCheckedChange={(checked) => 
+                    setPreferences({ ...preferences, doctorDeletedNotification: checked })
+                  }
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <Separator />
+        
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Feature-Specific Notifications</h3>
+          <p className="text-sm text-muted-foreground">
+            Control notifications for each feature in the system
+          </p>
+          
+          {navigationItems.filter(item => !item.disabled && item.title !== "Notifications").map((item) => (
+            <div key={item.title} className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                {item.icon && (
+                  <div className="h-4 w-4 text-muted-foreground">
+                    {/* We can't directly use the icon from the item, so just show a generic icon */}
+                    <Bell className="h-4 w-4" />
+                  </div>
+                )}
+                <Label htmlFor={`feature-${item.title.toLowerCase()}`}>
+                  {item.title} Notifications
+                </Label>
+              </div>
+              <Switch
+                id={`feature-${item.title.toLowerCase()}`}
+                checked={preferences.featureNotifications?.[item.title] ?? true}
+                onCheckedChange={(checked) => 
+                  setPreferences({
+                    ...preferences,
+                    featureNotifications: {
+                      ...(preferences.featureNotifications || {}),
+                      [item.title]: checked
+                    }
+                  })
+                }
+              />
+            </div>
+          ))}
         </div>
         
         <div className="flex justify-between pt-4">
@@ -294,7 +445,7 @@ export function NotificationSettings({
           >
             Test Notification
           </Button>
-          <Button 
+          <Button
             onClick={savePreferences}
             disabled={saving}
           >

@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "react-toastify";
 import { crudRequest } from "@/lib/api";
 import { format } from "date-fns";
-import {  Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import DentalChart from "@/components/DentalChart";
 import SelectedTeethList from "@/components/SelectedTeethList";
 import { getToothPosition, getToothSide } from "@/helper/PatientHelper";
@@ -29,8 +29,10 @@ import {
 import { ServiceType, PaymentMethod } from "@/types/finance";
 import ChildDentalChart from "@/components/ChildDentalChart";
 import { useDoctorContext } from "@/contexts/DoctorContext";
+import { useVoiceInput } from "@/contexts/VoiceInputContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NepaliDatePickerComponent } from "@/components/ui/nepali-date-picker";
+import VoiceInputButton from "@/components/shared/VoiceInputButton";
 
 type AddPatientProps = {
   modalClose: () => void;
@@ -38,6 +40,7 @@ type AddPatientProps = {
 
 const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
   const { doctors } = useDoctorContext();
+  const { isVoiceInputEnabled } = useVoiceInput();
   const [activeTab, setActiveTab] = useState("personal");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<FormData>({
@@ -276,7 +279,11 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
   };
 
   // Update the handleTreatmentPlanChange function
-  const handleTreatmentPlanChange = (index: number, field: string, value: any) => {
+  const handleTreatmentPlanChange = (
+    index: number,
+    field: string,
+    value: any
+  ) => {
     setFormData((prev) => {
       const newTreatmentPlans = [...prev.treatmentPlans];
       newTreatmentPlans[index] = {
@@ -424,23 +431,33 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     if (!validateForm()) return;
 
     try {
-      setIsSubmitting(true);      const formattedData = formatDataForBackend(formData);
-      const response = await crudRequest<{data?: {_id: string}, _id?: string}>("POST", "/patient/add-patient", formattedData);
+      setIsSubmitting(true);
+      const formattedData = formatDataForBackend(formData);
+      const response = await crudRequest<{
+        data?: { _id: string };
+        _id?: string;
+      }>("POST", "/patient/add-patient", formattedData);
 
       toast.success("Patient added successfully");
-      
+
       // If service payment is included, add it
-      if (includeServicePayment && servicePayment.amount && parseFloat(servicePayment.amount) > 0) {
+      if (
+        includeServicePayment &&
+        servicePayment.amount &&
+        parseFloat(servicePayment.amount) > 0
+      ) {
         try {
           // Make sure we have a valid patient ID from the response
           const patientId = response.data?._id || response._id;
-          
+
           if (!patientId) {
             console.error("No patient ID returned from patient creation");
-            toast.error("Patient added but failed to add service payment: Missing patient ID");
+            toast.error(
+              "Patient added but failed to add service payment: Missing patient ID"
+            );
             return;
           }
-          
+
           const servicePaymentData = {
             patientName: formData.personalDetails.name,
             contactNumber: formData.personalDetails.contactNumber,
@@ -450,10 +467,9 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
             paymentMethod: servicePayment.paymentMethod,
             date: format(new Date(), "yyyy-MM-dd"),
             patient: patientId,
-            isWalkIn: false
+            isWalkIn: false,
           };
 
-          console.log("Creating service payment with data:", servicePaymentData);
           await crudRequest("POST", "/service-payment", servicePaymentData);
           toast.success("Service payment added successfully");
         } catch (error: any) {
@@ -461,9 +477,11 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
           toast.error("Patient added but failed to add service payment");
         }
       }
-      
+
       modalClose();
-      window.location.reload();
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.error || "Failed to add patient";
@@ -659,18 +677,18 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                   }
                 />
               </div>
-
               <div className="space-y-3">
                 <Label htmlFor="checkUpDateNp" className="text-sm font-medium">
                   Check-up Date (Nepali)
                 </Label>
                 <NepaliDatePickerComponent
                   value={formData.personalDetails.checkUpDateNp}
-                  onChange={(date) => handlePersonalChange("checkUpDateNp", date)}
+                  onChange={(date) =>
+                    handlePersonalChange("checkUpDateNp", date)
+                  }
                   placeholder="Select Nepali date"
                 />
               </div>
-
               <div className="space-y-1">
                 <Label htmlFor="sn">S.N (Auto-generated)</Label>
                 <Input
@@ -682,96 +700,254 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                   readOnly
                   className={`bg-muted/50 ${isLoadingSN ? "animate-pulse" : ""}`}
                 />
-              </div>
-
-              <div className="space-y-1">
+              </div>{" "}              <div className="space-y-1">
                 <Label htmlFor="name">Full Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.personalDetails.name}
-                  onChange={(e) => handlePersonalChange("name", e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
+                {isVoiceInputEnabled ? (
+                  <div className="flex space-x-2">
+                    <Input
+                      id="name"
+                      value={formData.personalDetails.name}
+                      onChange={(e) =>
+                        handlePersonalChange("name", e.target.value)
+                      }
+                      required
+                      className="flex-1"
+                    />{" "}
+                    <VoiceInputButton
+                      fieldId="name"
+                      onTranscriptReceived={(transcript) =>
+                        handlePersonalChange("name", transcript)
+                      }
+                      listenMode="single"
+                      fieldLabel="Full Name"
+                    />
+                  </div>
+                ) : (
+                  <Input
+                    id="name"
+                    value={formData.personalDetails.name}
+                    onChange={(e) =>
+                      handlePersonalChange("name", e.target.value)
+                    }
+                    required
+                  />
+                )}
+              </div>              <div className="space-y-1">
                 <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={formData.personalDetails.address}
-                  onChange={(e) =>
-                    handlePersonalChange("address", e.target.value)
-                  }
-                />
-              </div>
-
-              <div className="space-y-1">
+                {isVoiceInputEnabled ? (
+                  <div className="flex space-x-2">
+                    <Input
+                      id="address"
+                      value={formData.personalDetails.address}
+                      onChange={(e) =>
+                        handlePersonalChange("address", e.target.value)
+                      }
+                      className="flex-1"
+                    />{" "}
+                    <VoiceInputButton
+                      fieldId="address"
+                      onTranscriptReceived={(transcript) =>
+                        handlePersonalChange("address", transcript)
+                      }
+                      listenMode="single"
+                      fieldLabel="Address"
+                    />
+                  </div>
+                ) : (
+                  <Input
+                    id="address"
+                    value={formData.personalDetails.address}
+                    onChange={(e) =>
+                      handlePersonalChange("address", e.target.value)
+                    }
+                  />
+                )}
+              </div>{" "}              <div className="space-y-1">
                 <Label htmlFor="age">Age</Label>
-                <Input
-                  id="age"
-                  type="text"
-                  value={formData.personalDetails.age}
-                  onChange={(e) => handlePersonalChange("age", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-1">
+                {isVoiceInputEnabled ? (
+                  <div className="flex space-x-2">
+                    <Input
+                      id="age"
+                      type="text"
+                      value={formData.personalDetails.age}
+                      onChange={(e) =>
+                        handlePersonalChange("age", e.target.value)
+                      }
+                      className="flex-1"
+                    />{" "}
+                    <VoiceInputButton
+                      fieldId="age"
+                      onTranscriptReceived={(transcript) => {
+                        // Extract just the number from the spoken text
+                        const ageMatch = transcript.match(/\d+/);
+                        if (ageMatch) {
+                          handlePersonalChange("age", ageMatch[0]);
+                        }
+                      }}
+                      listenMode="single"
+                      fieldLabel="Age"
+                    />
+                  </div>
+                ) : (
+                  <Input
+                    id="age"
+                    type="text"
+                    value={formData.personalDetails.age}
+                    onChange={(e) =>
+                      handlePersonalChange("age", e.target.value)
+                    }
+                  />
+                )}
+              </div>              <div className="space-y-1">
                 <Label htmlFor="gender">Gender *</Label>
-                <Select
-                  value={formData.personalDetails.gender}
-                  onValueChange={(value) =>
-                    handlePersonalChange("gender", value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select gender" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Male">Male</SelectItem>
-                    <SelectItem value="Female">Female</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                {isVoiceInputEnabled ? (
+                  <div className="flex space-x-2">
+                    <Select
+                      value={formData.personalDetails.gender}
+                      onValueChange={(value) =>
+                        handlePersonalChange("gender", value)
+                      }
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>{" "}
+                    <VoiceInputButton
+                      fieldId="gender"
+                      onTranscriptReceived={(transcript) => {
+                        const normalizedTranscript = transcript
+                          .toLowerCase()
+                          .trim();
 
-              <div className="space-y-1">
+                        if (
+                          normalizedTranscript.includes("male") &&
+                          !normalizedTranscript.includes("female")
+                        ) {
+                          handlePersonalChange("gender", "Male");
+                        } else if (normalizedTranscript.includes("female")) {
+                          handlePersonalChange("gender", "Female");
+                        } else if (normalizedTranscript.includes("other")) {
+                          handlePersonalChange("gender", "Other");
+                        }
+                      }}
+                      listenMode="single"
+                      fieldLabel="Gender"
+                    />
+                  </div>
+                ) : (
+                  <Select
+                    value={formData.personalDetails.gender}
+                    onValueChange={(value) =>
+                      handlePersonalChange("gender", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Male">Male</SelectItem>
+                      <SelectItem value="Female">Female</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>{" "}              <div className="space-y-1">
                 <Label htmlFor="contactNumber">Contact Number</Label>
-                <Input
-                  id="contactNumber"
-                  value={formData.personalDetails.contactNumber}
-                  onChange={(e) =>
-                    handlePersonalChange("contactNumber", e.target.value)
-                  }
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
+                {isVoiceInputEnabled ? (
+                  <div className="flex space-x-2">
+                    <Input
+                      id="contactNumber"
+                      value={formData.personalDetails.contactNumber}
+                      onChange={(e) =>
+                        handlePersonalChange("contactNumber", e.target.value)
+                      }
+                      required
+                      className="flex-1"
+                    />{" "}
+                    <VoiceInputButton
+                      fieldId="contactNumber"
+                      onTranscriptReceived={(transcript) => {
+                        // Clean up the transcript to only include numbers
+                        const numbersOnly = transcript.replace(/\D/g, "");
+                        handlePersonalChange("contactNumber", numbersOnly);
+                      }}
+                      listenMode="single"
+                      fieldLabel="Contact Number"
+                    />
+                  </div>
+                ) : (
+                  <Input
+                    id="contactNumber"
+                    value={formData.personalDetails.contactNumber}
+                    onChange={(e) =>
+                      handlePersonalChange("contactNumber", e.target.value)
+                    }
+                    required
+                  />
+                )}
+              </div>{" "}              <div className="space-y-1">
                 <Label htmlFor="emailAddress">Email Address</Label>
-                <Input
-                  id="emailAddress"
-                  type="email"
-                  value={formData.personalDetails.emailAddress}
-                  onChange={(e) =>
-                    handlePersonalChange("emailAddress", e.target.value)
-                  }
-                />
+                {isVoiceInputEnabled ? (
+                  <div className="flex space-x-2">
+                    <Input
+                      id="emailAddress"
+                      type="email"
+                      value={formData.personalDetails.emailAddress}
+                      onChange={(e) =>
+                        handlePersonalChange("emailAddress", e.target.value)
+                      }
+                      className="flex-1"
+                    />{" "}
+                    <VoiceInputButton
+                      fieldId="emailAddress"
+                      onTranscriptReceived={(transcript) => {
+                        // Format the transcript as an email address
+                        // Remove spaces and convert to lowercase
+                        const formattedEmail = transcript
+                          .toLowerCase()
+                          .replace(/\s+/g, "");
+                        handlePersonalChange("emailAddress", formattedEmail);
+                      }}
+                      listenMode="single"
+                      fieldLabel="Email Address"
+                    />
+                  </div>
+                ) : (
+                  <Input
+                    id="emailAddress"
+                    type="email"
+                    value={formData.personalDetails.emailAddress}
+                    onChange={(e) =>
+                      handlePersonalChange("emailAddress", e.target.value)
+                    }
+                  />
+                )}
               </div>
             </div>
 
             <div className="mt-6">
               <Card className="mb-6 p-4 border border-dashed">
                 <div className="flex items-center space-x-2 mb-4">
-                  <Checkbox 
-                    id="includeServicePayment" 
-                    checked={includeServicePayment} 
-                    onCheckedChange={() => setIncludeServicePayment(!includeServicePayment)} 
+                  <Checkbox
+                    id="includeServicePayment"
+                    checked={includeServicePayment}
+                    onCheckedChange={() =>
+                      setIncludeServicePayment(!includeServicePayment)
+                    }
                   />
-                  <Label htmlFor="includeServicePayment" className="font-medium">
+                  <Label
+                    htmlFor="includeServicePayment"
+                    className="font-medium"
+                  >
                     Add Service Payment
                   </Label>
                 </div>
-                
+
                 {includeServicePayment && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -779,14 +955,18 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                         <Label htmlFor="serviceType">Service Type</Label>
                         <Select
                           value={servicePayment.serviceType}
-                          onValueChange={(value) => handleServicePaymentChange("serviceType", value)}
+                          onValueChange={(value) =>
+                            handleServicePaymentChange("serviceType", value)
+                          }
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select service type" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="X-Ray">X-Ray</SelectItem>
-                            <SelectItem value="Consultation">Consultation</SelectItem>
+                            <SelectItem value="Consultation">
+                              Consultation
+                            </SelectItem>
                             <SelectItem value="Medicine">Medicine</SelectItem>
                             <SelectItem value="Lab Test">Lab Test</SelectItem>
                             <SelectItem value="Cleaning">Cleaning</SelectItem>
@@ -794,7 +974,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                           </SelectContent>
                         </Select>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="amount">Amount (Rs)</Label>
                         <Input
@@ -802,39 +982,56 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                           type="number"
                           min="0"
                           value={servicePayment.amount}
-                          onChange={(e) => handleServicePaymentChange("amount", e.target.value)}
+                          onChange={(e) =>
+                            handleServicePaymentChange("amount", e.target.value)
+                          }
                           placeholder="Enter amount"
                         />
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="paymentMethod">Payment Method</Label>
                         <Select
                           value={servicePayment.paymentMethod}
-                          onValueChange={(value) => handleServicePaymentChange("paymentMethod", value)}
+                          onValueChange={(value) =>
+                            handleServicePaymentChange("paymentMethod", value)
+                          }
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select payment method" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Cash">Cash</SelectItem>
-                            <SelectItem value="Credit Card">Credit Card</SelectItem>
-                            <SelectItem value="Debit Card">Debit Card</SelectItem>
+                            <SelectItem value="Credit Card">
+                              Credit Card
+                            </SelectItem>
+                            <SelectItem value="Debit Card">
+                              Debit Card
+                            </SelectItem>
                             <SelectItem value="Insurance">Insurance</SelectItem>
-                            <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                            <SelectItem value="Bank Transfer">
+                              Bank Transfer
+                            </SelectItem>
                             <SelectItem value="Other">Other</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                      
+
                       <div className="space-y-2">
-                        <Label htmlFor="description">Description (Optional)</Label>
+                        <Label htmlFor="description">
+                          Description (Optional)
+                        </Label>
                         <Input
                           id="description"
                           value={servicePayment.description}
-                          onChange={(e) => handleServicePaymentChange("description", e.target.value)}
+                          onChange={(e) =>
+                            handleServicePaymentChange(
+                              "description",
+                              e.target.value
+                            )
+                          }
                           placeholder="Enter description"
                         />
                       </div>
@@ -842,7 +1039,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                   </div>
                 )}
               </Card>
-              
+
               <div className="flex justify-end">
                 <Button onClick={() => setActiveTab("complaint")}>
                   Next: Chief Complaint
@@ -857,18 +1054,37 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
             <div className="space-y-4">
               <h3 className="text-base md:text-lg font-semibold">
                 Patient's Chief Complaint
-              </h3>
-              <div className="space-y-2">
+              </h3>{" "}              <div className="space-y-2">
                 <Label htmlFor="chiefComplaint">
                   What brought the patient in today?
                 </Label>
-                <Textarea
-                  id="chiefComplaint"
-                  placeholder="Enter patient's main concern or complaint"
-                  className="min-h-[150px]"
-                  value={formData.medicalDetails.chiefComplaint}
-                  onChange={(e) => handleChiefComplaintChange(e.target.value)}
-                />
+                {isVoiceInputEnabled ? (
+                  <div className="flex space-x-2 items-start">
+                    <Textarea
+                      id="chiefComplaint"
+                      placeholder="Enter patient's main concern or complaint"
+                      className="min-h-[150px] flex-1"
+                      value={formData.medicalDetails.chiefComplaint}
+                      onChange={(e) => handleChiefComplaintChange(e.target.value)}
+                    />{" "}
+                    <VoiceInputButton
+                      fieldId="chiefComplaint"
+                      onTranscriptReceived={(transcript) => {
+                        handleChiefComplaintChange(transcript);
+                      }}
+                      className="mt-1"
+                      fieldLabel="Chief Complaint"
+                    />
+                  </div>
+                ) : (
+                  <Textarea
+                    id="chiefComplaint"
+                    placeholder="Enter patient's main concern or complaint"
+                    className="min-h-[150px]"
+                    value={formData.medicalDetails.chiefComplaint}
+                    onChange={(e) => handleChiefComplaintChange(e.target.value)}
+                  />
+                )}
               </div>
             </div>
             <div className="mt-4 md:mt-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-4">
@@ -958,23 +1174,43 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                     placeholder="e.g. 120/80"
                     className="h-9 md:h-10" // Slightly smaller input height on mobile
                   />
-                </div>
-
-                <div className="space-y-1">
+                </div>{" "}                <div className="space-y-1">
                   <Label htmlFor="allergies" className="text-xs md:text-sm">
                     Allergies
                   </Label>
-                  <Input
-                    id="allergies"
-                    value={formData.medicalDetails.medicalHistory.allergies}
-                    onChange={(e) =>
-                      handleMedicalHistoryChange("allergies", e.target.value)
-                    }
-                    placeholder="List any allergies"
-                    className="h-9 md:h-10"
-                  />
+                  {isVoiceInputEnabled ? (
+                    <div className="flex space-x-2">
+                      <Input
+                        id="allergies"
+                        value={formData.medicalDetails.medicalHistory.allergies}
+                        onChange={(e) =>
+                          handleMedicalHistoryChange("allergies", e.target.value)
+                        }
+                        placeholder="List any allergies"
+                        className="h-9 md:h-10 flex-1"
+                      />{" "}
+                      <VoiceInputButton
+                        fieldId="allergies"
+                        onTranscriptReceived={(transcript) => {
+                          handleMedicalHistoryChange("allergies", transcript);
+                        }}
+                        listenMode="single"
+                        className="h-9 md:h-10"
+                        fieldLabel="Allergies"
+                      />
+                    </div>
+                  ) : (
+                    <Input
+                      id="allergies"
+                      value={formData.medicalDetails.medicalHistory.allergies}
+                      onChange={(e) =>
+                        handleMedicalHistoryChange("allergies", e.target.value)
+                      }
+                      placeholder="List any allergies"
+                      className="h-9 md:h-10"
+                    />
+                  )}
                 </div>
-
                 {/* Medical conditions checkboxes - Make more mobile-friendly */}
                 <div className="col-span-1 md:col-span-2">
                   <Label className="text-xs md:text-sm block mb-2">
@@ -1077,29 +1313,58 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                     </div>
                   </div>
                 </div>
-
-                {/* Other conditions - Full width on all screens */}
-                <div className="col-span-1 md:col-span-2 mt-2">
+                {/* Other conditions - Full width on all screens */}                <div className="col-span-1 md:col-span-2 mt-2">
+                  {" "}
                   <Label
                     htmlFor="otherConditions"
                     className="text-xs md:text-sm"
                   >
                     Other Medical Conditions
                   </Label>
-                  <Textarea
-                    id="otherConditions"
-                    value={
-                      formData.medicalDetails.medicalHistory.otherConditions
-                    }
-                    onChange={(e) =>
-                      handleMedicalHistoryChange(
-                        "otherConditions",
-                        e.target.value
-                      )
-                    }
-                    placeholder="Describe any other medical conditions"
-                    className="min-h-[80px] md:min-h-[120px]" // Shorter on mobile
-                  />
+                  {isVoiceInputEnabled ? (
+                    <div className="flex space-x-2 items-start">
+                      <Textarea
+                        id="otherConditions"
+                        value={
+                          formData.medicalDetails.medicalHistory.otherConditions
+                        }
+                        onChange={(e) =>
+                          handleMedicalHistoryChange(
+                            "otherConditions",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Describe any other medical conditions"
+                        className="min-h-[80px] md:min-h-[120px] flex-1" // Shorter on mobile
+                      />{" "}
+                      <VoiceInputButton
+                        fieldId="otherConditions"
+                        onTranscriptReceived={(transcript) => {
+                          handleMedicalHistoryChange(
+                            "otherConditions",
+                            transcript
+                          );
+                        }}
+                        className="mt-1"
+                        fieldLabel="Other Medical Conditions"
+                      />
+                    </div>
+                  ) : (
+                    <Textarea
+                      id="otherConditions"
+                      value={
+                        formData.medicalDetails.medicalHistory.otherConditions
+                      }
+                      onChange={(e) =>
+                        handleMedicalHistoryChange(
+                          "otherConditions",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Describe any other medical conditions"
+                      className="min-h-[80px] md:min-h-[120px]" // Shorter on mobile
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -1226,7 +1491,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                                 onToothSelect={(toothNumber) =>
                                   handleToothSelect(index, toothNumber)
                                 }
-                                 readOnly={false}
+                                readOnly={false}
                               />
                             ) : (
                               <ChildDentalChart
@@ -1234,7 +1499,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                                 onToothSelect={(toothNumber) =>
                                   handleToothSelect(index, toothNumber)
                                 }
-                                 readOnly={false}
+                                readOnly={false}
                               />
                             )}
                           </div>
@@ -1283,12 +1548,21 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                         </div>
 
                         <div className="space-y-3">
-                          <Label htmlFor="treatmentDateNp" className="text-sm font-medium">
+                          <Label
+                            htmlFor="treatmentDateNp"
+                            className="text-sm font-medium"
+                          >
                             Treatment Date (Nepali)
                           </Label>
                           <NepaliDatePickerComponent
                             value={plan.treatmentDateNp}
-                            onChange={(date) => handleTreatmentPlanChange(index, "treatmentDateNp", date)}
+                            onChange={(date) =>
+                              handleTreatmentPlanChange(
+                                index,
+                                "treatmentDateNp",
+                                date
+                              )
+                            }
                             placeholder="Select Nepali date"
                           />
                         </div>
@@ -1404,7 +1678,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                         </div>
 
                         <div className="space-y-1 col-span-3 md:col-span-1">
-                          <Label>Treatment Procedure</Label>
+                          <Label>Treatment Procedure</Label>{" "}
                           <Textarea
                             value={plan.treatmentFindings}
                             onChange={(e) =>
@@ -1448,12 +1722,21 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                         </div>
 
                         <div className="space-y-3">
-                          <Label htmlFor="followUpDateNp" className="text-sm font-medium">
+                          <Label
+                            htmlFor="followUpDateNp"
+                            className="text-sm font-medium"
+                          >
                             Follow-up Date (Nepali)
                           </Label>
                           <NepaliDatePickerComponent
                             value={plan.followUpDateNp}
-                            onChange={(date) => handleTreatmentPlanChange(index, "followUpDateNp", date)}
+                            onChange={(date) =>
+                              handleTreatmentPlanChange(
+                                index,
+                                "followUpDateNp",
+                                date
+                              )
+                            }
                             placeholder="Select Nepali date"
                           />
                         </div>
@@ -1474,12 +1757,21 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                         </div>
 
                         <div className="space-y-3">
-                          <Label htmlFor="completionDateNp" className="text-sm font-medium">
+                          <Label
+                            htmlFor="completionDateNp"
+                            className="text-sm font-medium"
+                          >
                             Completion Date (Nepali)
                           </Label>
                           <NepaliDatePickerComponent
                             value={plan.completionDateNp}
-                            onChange={(date) => handleTreatmentPlanChange(index, "completionDateNp", date)}
+                            onChange={(date) =>
+                              handleTreatmentPlanChange(
+                                index,
+                                "completionDateNp",
+                                date
+                              )
+                            }
                             placeholder="Select Nepali date"
                           />
                         </div>

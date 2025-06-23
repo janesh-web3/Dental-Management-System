@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Doctor } from "@/types/doctor";
 import { useAdminContext } from "@/contexts/adminContext";
+import { showDoctorDeletedNotification } from "@/utils/doctorNotifications";
 
 export function DoctorTable() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -74,10 +75,13 @@ export function DoctorTable() {
     setSearchQuery(e.target.value);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, doctorName: string) => {
     try {
       await crudRequest("DELETE", `/doctor/delete-doctor/${id}`);
       setDoctors((prev) => prev.filter((doctor) => doctor._id !== id));
+      
+      // Show notification
+      showDoctorDeletedNotification(doctorName);
     } catch (error) {
       console.error("Error deleting doctor:", error);
     }
@@ -90,7 +94,7 @@ export function DoctorTable() {
 
   const confirmDelete = async () => {
     if (doctorToDelete) {
-      await handleDelete(doctorToDelete._id);
+      await handleDelete(doctorToDelete._id, doctorToDelete.name);
       setDeleteDialogOpen(false);
       setDoctorToDelete(null);
     }

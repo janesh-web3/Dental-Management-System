@@ -8,6 +8,20 @@ import {
 import { NotificationSettings } from "@/components/shared/NotificationSettings";
 import { Doctor } from "@/types/doctor";
 
+interface NotificationPreferences {
+  desktopNotifications: boolean;
+  soundAlerts: boolean;
+  appointmentNotifications: boolean;
+  patientNotifications: boolean;
+  treatmentNotifications: boolean;
+  xrayNotifications: boolean;
+  paymentNotifications: boolean;
+  doctorNotifications: boolean;
+  doctorAddedNotification: boolean;
+  doctorUpdatedNotification: boolean;
+  doctorDeletedNotification: boolean;
+}
+
 interface NotificationPreferencesModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -15,12 +29,9 @@ interface NotificationPreferencesModalProps {
   onSaved?: (preferences: any) => void;
 }
 
-const NotificationPreferencesModal: React.FC<NotificationPreferencesModalProps> = ({
-  isOpen,
-  onClose,
-  doctor,
-  onSaved
-}) => {
+const NotificationPreferencesModal: React.FC<
+  NotificationPreferencesModalProps
+> = ({ isOpen, onClose, doctor, onSaved }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl">
@@ -30,15 +41,22 @@ const NotificationPreferencesModal: React.FC<NotificationPreferencesModalProps> 
         <NotificationSettings
           userId={doctor._id}
           userType="Doctor"
-          initialPreferences={doctor.notificationPreferences || {
-            desktopNotifications: true,
-            soundAlerts: true,
-            appointmentNotifications: true,
-            patientNotifications: true,
-            treatmentNotifications: true,
-            xrayNotifications: true,
-            paymentNotifications: true
-          }}
+          // Option 1: Use type assertion to tell TypeScript you know what you're doing
+          initialPreferences={
+            (doctor.notificationPreferences as NotificationPreferences) || {
+              desktopNotifications: true,
+              soundAlerts: true,
+              appointmentNotifications: true,
+              patientNotifications: true,
+              treatmentNotifications: true,
+              xrayNotifications: true,
+              paymentNotifications: true,
+              doctorNotifications: true,
+              doctorAddedNotification: true,
+              doctorUpdatedNotification: true,
+              doctorDeletedNotification: true,
+            }
+          }
           onSaved={(prefs) => {
             if (onSaved) {
               onSaved(prefs);

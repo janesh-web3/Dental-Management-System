@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-// const { protectAdminRoute } = require("../middleware/adminAuthMiddleware");
+const { protectAdminRoute } = require("../middleware/adminAuthMiddleware");
 const {
   addServicePayment,
   getServicePayments,
@@ -12,7 +12,7 @@ const {
 } = require("../controller/servicePaymentController");
 
 // Protected routes - require admin authentication
-// router.use(protectAdminRoute);
+router.use(protectAdminRoute);
 
 // Service payment routes
 router.post("/", addServicePayment);

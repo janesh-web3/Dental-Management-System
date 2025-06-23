@@ -666,7 +666,7 @@ const Dashboard = () => {
                 <div className="grid gap-2 md:gap-4 grid-cols-2 lg:grid-cols-4">
                   <StatCard
                     title={t("Daily Revenue")}
-                    value={`रु${revenueData?.financialAnalysis.daily.toLocaleString()}`}
+                    value={`रु${revenueData?.financialAnalysis?.daily.toLocaleString()}`}
                     description={t("Daily revenue")}
                     icon={
                       <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
@@ -675,7 +675,7 @@ const Dashboard = () => {
                   />
                   <StatCard
                     title={t("Weekly Revenue")}
-                    value={`रु${revenueData?.financialAnalysis.weekly.toLocaleString()}`}
+                    value={`रु${revenueData?.financialAnalysis?.weekly.toLocaleString()}`}
                     description={t("Weekly revenue")}
                     icon={
                       <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
@@ -684,7 +684,7 @@ const Dashboard = () => {
                   />
                   <StatCard
                     title={t("Monthly Revenue")}
-                    value={`रु${revenueData?.financialAnalysis.monthly.toLocaleString()}`}
+                    value={`रु${revenueData?.financialAnalysis?.monthly.toLocaleString()}`}
                     description={t("Monthly revenue")}
                     icon={
                       <TrendingUpIcon className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
@@ -693,7 +693,7 @@ const Dashboard = () => {
                   />
                   <StatCard
                     title={t("Total Revenue")}
-                    value={`रु${revenueData?.financialAnalysis.total.toLocaleString()}`}
+                    value={`रु${revenueData?.financialAnalysis?.total.toLocaleString()}`}
                     description={t("Total revenue")}
                     icon={
                       <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />

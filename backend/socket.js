@@ -6,7 +6,13 @@ let io;
 const initSocket = (server) => {
   io = socketIO(server, {
     cors: {
-      origin: 'http://localhost:5173',
+      origin: [
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'https://dms.crownagi.com',
+        'https://admin.om-shreenagar-dental-clinic.com',
+        'https://om-shreenagar-dental-clinic.com'
+      ],
       methods: ['GET', 'POST'],
       credentials: true
     }

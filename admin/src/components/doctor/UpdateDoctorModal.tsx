@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "react-toastify";
 import { crudRequest } from "@/lib/api";
 import { Doctor } from "@/types/doctor";
+import { showDoctorUpdatedNotification } from "@/utils/doctorNotifications";
 
 interface UpdateDoctorModalProps {
   isOpen: boolean;
@@ -46,7 +47,6 @@ const UpdateDoctorModal: React.FC<UpdateDoctorModalProps> = ({
       setImagePreview({ url: URL.createObjectURL(e.target.files[0]) });
     }
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
   setIsSubmitting(true);
@@ -57,6 +57,10 @@ const UpdateDoctorModal: React.FC<UpdateDoctorModalProps> = ({
         },
       });
       toast.success("Doctor updated successfully");
+      
+      // Show notification
+      showDoctorUpdatedNotification(formData.name);
+      
       onClose();
       window.location.reload();
     } catch (error) {

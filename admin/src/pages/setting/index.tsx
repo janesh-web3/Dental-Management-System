@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NotificationSettings } from "@/components/shared/NotificationSettings";
+import { VoiceInputSettings } from "@/components/shared/VoiceInputSettings";
 
 interface UserData {
   _id: string;
@@ -56,17 +57,38 @@ const Setting = () => {
   });
   
   // Add state for notification preferences
-  const [notificationPreferences, setNotificationPreferences] = useState(
-    adminDetails.notificationPreferences || {
-      desktopNotifications: true,
-      soundAlerts: true,
-      appointmentNotifications: true,
-      patientNotifications: true,
-      treatmentNotifications: true,
-      paymentNotifications: true,
-      xrayNotifications: true,
-    }
-  );
+  interface NotificationPreferences {
+    desktopNotifications: boolean;
+    soundAlerts: boolean;
+    appointmentNotifications: boolean;
+    patientNotifications: boolean;
+    treatmentNotifications: boolean;
+    paymentNotifications: boolean;
+    xrayNotifications: boolean;
+    doctorNotifications: boolean;
+    doctorAddedNotification?: boolean;
+    doctorUpdatedNotification?: boolean;
+    doctorDeletedNotification?: boolean;
+  }
+  // Extend the type of notificationPreferences in adminDetails to include the optional doctor notification fields
+  type AdminDetailsWithNotifications = typeof adminDetails & {
+    notificationPreferences?: NotificationPreferences;
+  };
+  const adminDetailsWithNotifications = adminDetails as AdminDetailsWithNotifications;
+
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({
+    desktopNotifications: adminDetailsWithNotifications.notificationPreferences?.desktopNotifications ?? true,
+    soundAlerts: adminDetailsWithNotifications.notificationPreferences?.soundAlerts ?? true,
+    appointmentNotifications: adminDetailsWithNotifications.notificationPreferences?.appointmentNotifications ?? true,
+    patientNotifications: adminDetailsWithNotifications.notificationPreferences?.patientNotifications ?? true,
+    treatmentNotifications: adminDetailsWithNotifications.notificationPreferences?.treatmentNotifications ?? true,
+    paymentNotifications: adminDetailsWithNotifications.notificationPreferences?.paymentNotifications ?? true,
+    xrayNotifications: adminDetailsWithNotifications.notificationPreferences?.xrayNotifications ?? true,
+    doctorNotifications: adminDetailsWithNotifications.notificationPreferences?.doctorNotifications ?? true,
+    doctorAddedNotification: adminDetailsWithNotifications.notificationPreferences?.doctorAddedNotification ?? true,
+    doctorUpdatedNotification: adminDetailsWithNotifications.notificationPreferences?.doctorUpdatedNotification ?? true,
+    doctorDeletedNotification: adminDetailsWithNotifications.notificationPreferences?.doctorDeletedNotification ?? true,
+  });
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<UserData>(userData);
@@ -311,11 +333,12 @@ const Setting = () => {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="profile" className="w-full mb-6">
-        <TabsList>
+      <Tabs defaultValue="profile" className="w-full mb-6">        <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="advanced">Advanced</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="recycle-bin">Recycle Bin</TabsTrigger>
         </TabsList>
         
         <TabsContent value="profile" className="mt-4">
@@ -461,14 +484,24 @@ const Setting = () => {
       </Card>
 
       </TabsContent>
-        
-      <TabsContent value="notifications" className="mt-4">
+          <TabsContent value="notifications" className="mt-4">
         <NotificationSettings 
           userId={adminDetails._id} 
           userType="User"
-          initialPreferences={notificationPreferences}
+          initialPreferences={{
+            ...notificationPreferences,
+            doctorAddedNotification: notificationPreferences.doctorAddedNotification ?? false,
+            doctorUpdatedNotification: notificationPreferences.doctorUpdatedNotification ?? false,
+            doctorDeletedNotification: notificationPreferences.doctorDeletedNotification ?? false,
+          }}
           onSaved={(prefs) => setNotificationPreferences(prefs)}
         />
+      </TabsContent>
+      
+      <TabsContent value="advanced" className="mt-4">
+        <div className="space-y-4">
+          <VoiceInputSettings />
+        </div>
       </TabsContent>
       
       <TabsContent value="users" className="mt-4">
@@ -543,6 +576,17 @@ const Setting = () => {
                 ))}
               </TableBody>
             </Table>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="recycle-bin" className="mt-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recycle Bin</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>This feature is under development.</p>
           </CardContent>
         </Card>
       </TabsContent>

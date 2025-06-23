@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { crudRequest } from "@/lib/api";
 import { toast } from "react-toastify";
 import { Textarea } from "@/components/ui/textarea";
+import { showDoctorAddedNotification } from "@/utils/doctorNotifications";
 
 const convertTo12Hour = (time24: string) => {
   if (!time24) return '';
@@ -193,6 +194,10 @@ const AddDoctor: React.FC<AddDoctorProps> = ({ modalClose }) => {
         },
       });
       toast.success("Doctor added successfully");
+      
+      // Show notification
+      showDoctorAddedNotification(formData.name);
+      
       window.location.reload();
       modalClose();
     } catch (error) {

@@ -390,7 +390,6 @@ export function ViewPatientDrawer({
       .toUpperCase()
       .substring(0, 2);
   };
-
   // Add this function to generate PDF
   const exportPatientPDF = () => {
     try {
@@ -405,15 +404,17 @@ export function ViewPatientDrawer({
 
       doc.setFontSize(12);
       doc.setTextColor(100);
-      doc.text("Patient Details", 105, 30, { align: "center" });
-
-      // Patient info section
+      doc.text("Patient Details", 105, 30, { align: "center" });      // Patient info section
       doc.setFontSize(14);
       doc.setTextColor(0);
-      doc.text("Patient Information", 14, 45);
-
+      doc.text("Personal Information", 14, 45);
+        // Add space between section title and content
+      const startYPersonal = 50;
+      
       // Personal details table - improved spacing and formatted data
       doc.setFontSize(10);
+      // Fix spacing issue in the header text
+      // Fix spacing issue in the header text
       const personalData = [
         ["Name", localPatient.personalDetails.name || "-"],
         [
@@ -429,45 +430,56 @@ export function ViewPatientDrawer({
           "Check-up Date",
           formatSafeDate(localPatient.personalDetails.checkUpDate || ""),
         ],
-      ];
-
-      // Use autoTable with improved styling and cell sizes
+      ];      // Use autoTable with improved styling and cell sizes
       autoTable(doc, {
-        startY: 50,
+        startY: startYPersonal,
         head: [],
         body: personalData,
         theme: "striped",
-        styles: { cellPadding: 3, overflow: "linebreak", fontSize: 10 },
+        styles: { 
+          cellPadding: 3, 
+          overflow: "linebreak", 
+          fontSize: 9,
+          minCellHeight: 8,
+          halign: 'left',
+          valign: 'middle'
+        },
         headStyles: { fillColor: [41, 128, 185] },
         columnStyles: {
-          0: { cellWidth: 45, fontStyle: "bold" },
-          1: { cellWidth: "auto", overflow: "linebreak" },
+          0: { cellWidth: 40, fontStyle: "bold" },
+          1: { cellWidth: 'auto', overflow: "linebreak" },
         },
         margin: { left: 14, right: 14 },
+        tableWidth: 'auto',
+        didParseCell: function(data) {
+          // Ensure text fits by adjusting font size if needed
+          if (data.cell.text.length > 50) {
+            data.cell.styles.fontSize = 8;
+          }
+        }
       });
 
       // Track vertical position with added space for separation
       let currentY = doc.previousAutoTable?.finalY || 50;
-      currentY += 25; // Add more space between sections
+      currentY += 15; // Add space between sections
 
-      // Medical details section with better spacing
-      if (
-        localPatient.medicalDetails &&
-        localPatient.medicalDetails.length > 0
-      ) {
-        const medicalDetails = localPatient.medicalDetails[0];
-
-        // Check if we need a page break before medical history
+      // Medical History Section
+      if (localPatient.medicalDetails && localPatient.medicalDetails.length > 0) {
+        // Check if we need a page break
         if (currentY > 220) {
           doc.addPage();
-          currentY = 20;
-        }
-
-        // Medical history header
+          currentY = 20;        }        // Medical history header
         doc.setFontSize(14);
-        // doc.text("Medical History", 14, currentY);
-        currentY += 8; // Add space after header
+        doc.setTextColor(0);
+        
+        // Add background for the title
+        doc.setFillColor(240, 240, 240); // Light gray background
+        doc.rect(10, currentY - 5, 190, 10, 'F'); // x, y, width, height, 'F' = Fill
+        
+        doc.text("Medical History", 14, currentY);
+        currentY += 20; // Significantly increased spacing between title and content
 
+        const medicalDetails = localPatient.medicalDetails[0];
         const medicalHistory = medicalDetails.medicalHistory || {};
         const medicalConditions = [];
 
@@ -482,7 +494,8 @@ export function ViewPatientDrawer({
             medicalConditions.push(["Bleeding Disorder", "Yes"]);
           if (medicalHistory.pregnancy)
             medicalConditions.push(["Pregnancy", "Yes"]);
-          if (medicalHistory.asthma) medicalConditions.push(["Asthma", "Yes"]);
+          if (medicalHistory.asthma) 
+            medicalConditions.push(["Asthma", "Yes"]);
           if (medicalHistory.bloodPressure)
             medicalConditions.push([
               "Blood Pressure",
@@ -495,133 +508,499 @@ export function ViewPatientDrawer({
               "Other Conditions",
               medicalHistory.otherConditions,
             ]);
-        }
-
-        if (medicalConditions.length > 0) {
-          autoTable(doc, {
-            startY: currentY,
-            head: [],
-            body: medicalConditions,
-            theme: "striped",
-            styles: { cellPadding: 3, overflow: "linebreak", fontSize: 10 },
-            headStyles: { fillColor: [41, 128, 185] },
-            columnStyles: {
-              0: { cellWidth: 45, fontStyle: "bold" },
-              1: { cellWidth: "auto", overflow: "linebreak" },
-            },
-            margin: { left: 14, right: 14 },
-          });
+        }          if (medicalConditions.length > 0) {
+            autoTable(doc, {
+              startY: currentY,
+              head: [],
+              body: medicalConditions,
+              theme: "striped",
+              styles: { 
+                cellPadding: 3, 
+                overflow: "linebreak", 
+                fontSize: 9,
+                minCellHeight: 8,
+                halign: 'left',
+                valign: 'middle'
+              },
+              headStyles: { fillColor: [41, 128, 185] },
+              columnStyles: {
+                0: { cellWidth: 40, fontStyle: "bold" },
+                1: { cellWidth: 'auto', overflow: "linebreak" },
+              },
+              margin: { left: 14, right: 14 },
+              tableWidth: 'auto',
+              didParseCell: function(data) {
+                // Ensure text fits by adjusting font size if needed
+                if (data.cell.text.length > 40) {
+                  data.cell.styles.fontSize = 8;
+                }
+              }
+            });
 
           currentY = doc.previousAutoTable?.finalY || currentY;
-          currentY += 25; // Add space after table
+          currentY += 15;
         } else {
           currentY += 10;
         }
 
-        // Check for page break before clinical information
+        // Chief Complaint and Diagnosis Section
         if (currentY > 220) {
           doc.addPage();
-          currentY = 20;
-        }
+          currentY = 20;        }        doc.setFontSize(14);
+        doc.setTextColor(0);
+        
+        // Add background for the title
+        doc.setFillColor(240, 240, 240); // Light gray background
+        doc.rect(10, currentY - 5, 190, 10, 'F'); // x, y, width, height, 'F' = Fill
+        
+        doc.text("Clinical Information", 14, currentY);
+        currentY += 20; // Significantly increased spacing between title and content
 
-        // Clinical information section
-        doc.setFontSize(14);
-        // doc.text("Clinical Information", 14, currentY);
-        currentY += 8; // Add space after header
-
-        const clinicalData = [
-          ["Chief Complaint", medicalDetails.chiefComplaint || "-"],
-          ["Diagnosis", medicalDetails.diagnosis || "-"],
-        ];
-
-        autoTable(doc, {
-          startY: currentY,
-          head: [],
-          body: clinicalData,
-          theme: "striped",
-          styles: { cellPadding: 3, overflow: "linebreak", fontSize: 10 },
-          headStyles: { fillColor: [41, 128, 185] },
-          columnStyles: {
-            0: { cellWidth: 45, fontStyle: "bold" },
-            1: { cellWidth: "auto", overflow: "linebreak" },
-          },
-          margin: { left: 14, right: 14 },
-        });
+        const clinicalData = localPatient.medicalDetails.map((record, index) => [
+          `Record #${index + 1}`,
+          `Date: ${formatSafeDate(record.checkUpDate || "")}`,
+        ]);          autoTable(doc, {
+            startY: currentY,
+            head: [],
+            body: clinicalData,
+            theme: "striped",
+            styles: { 
+              cellPadding: 3, 
+              overflow: "linebreak", 
+              fontSize: 9,
+              minCellHeight: 8,
+              halign: 'left',
+              valign: 'middle'
+            },
+            headStyles: { fillColor: [41, 128, 185] },
+            columnStyles: {
+              0: { cellWidth: 40, fontStyle: "bold" },
+              1: { cellWidth: 'auto', overflow: "linebreak" },
+            },
+            margin: { left: 14, right: 14 },
+            tableWidth: 'auto'
+          });
 
         currentY = doc.previousAutoTable?.finalY || currentY;
-        currentY += 25; // Add space after table
-
-        // Treatment plans with proper page breaks
-        if (
-          medicalDetails.treatmentPlanning &&
-          medicalDetails.treatmentPlanning.length > 0
-        ) {
-          // Check if need a new page for treatments
-          if (currentY > 200) {
+        currentY += 10;          // Add each medical record's chief complaint and diagnosis
+        localPatient.medicalDetails.forEach((record, index) => {
+          if (currentY > 220) {
             doc.addPage();
             currentY = 20;
           }
 
-          doc.setFontSize(14);
-          doc.text("Treatment Plans", 14, currentY);
-          currentY += 10;
+          const recordData = [
+            ["Chief Complaint", record.chiefComplaint || "-"],
+            ["Diagnosis", record.diagnosis || "-"],
+            ["Investigation", typeof record.investigation === 'string' ? record.investigation : "-"],          ];          doc.setFontSize(12);
+          doc.setTextColor(41, 128, 185);
+          
+          // Add light background for subtitle
+          doc.setFillColor(245, 245, 250); // Very light blue-gray
+          doc.rect(10, currentY - 4, 100, 8, 'F');
+          
+          doc.text(`Record #${index + 1} Details`, 14, currentY);
+          currentY += 15; // Increased spacing between title and content
+          
+          autoTable(doc, {
+              startY: currentY,
+              head: [],
+              body: recordData,
+              theme: "striped",
+              styles: { 
+                cellPadding: 3, 
+                overflow: "linebreak", 
+                fontSize: 9,
+                minCellHeight: 8,
+                halign: 'left',
+                valign: 'middle'
+              },
+              headStyles: { fillColor: [41, 128, 185] },
+              columnStyles: {
+                0: { cellWidth: 40, fontStyle: "bold" },
+                1: { cellWidth: 'auto', overflow: "linebreak" },
+              },
+              margin: { left: 14, right: 14 },
+              tableWidth: 'auto',
+              didParseCell: function(data) {
+                // Ensure text fits by adjusting font size if needed
+                if (data.cell.text.length > 60) {
+                  data.cell.styles.fontSize = 8;
+                }
+              }
+            });
 
-          medicalDetails.treatmentPlanning.forEach((plan, index) => {
-            // Check if we need a new page
-            if (currentY > 220) {
-              doc.addPage();
-              currentY = 20;
-            }
+          currentY = doc.previousAutoTable?.finalY || currentY;
+          currentY += 15;
+        });
 
-            // Treatment plan header
-            doc.setFontSize(12);
-            doc.setTextColor(41, 128, 185);
-            doc.text(
-              `Plan ${index + 1}: ${plan.treatmentDetails || "Treatment Plan"}`,
-              14,
-              currentY
-            );
-            doc.setTextColor(0);
-            currentY += 8;
+        // Treatment Plans Section
+        if (currentY > 200) {
+          doc.addPage();
+          currentY = 20;        }        doc.setFontSize(14);
+        doc.setTextColor(0);
+        
+        // Add background for the title
+        doc.setFillColor(240, 240, 240); // Light gray background
+        doc.rect(10, currentY - 5, 190, 10, 'F'); // x, y, width, height, 'F' = Fill
+        
+        doc.text("Treatment Plans", 14, currentY);
+        currentY += 20; // Significantly increased spacing between title and content
 
-            // Treatment details table
-            const treatmentData = [
-              ["Date", formatSafeDate(plan.treatmentDate || "")],
-              ["Amount", `Rs. ${plan.totalPlanAmount || 0}`],
-              ["Paid", `Rs. ${plan.totalPaidAmount || 0}`],
-              ["Balance", `Rs. ${plan.totalRemainingAmount || 0}`],
-              ["Status", plan.isCompleted ? "Completed" : "In Progress"],
-            ];
+        // Collect all treatment plans across all medical records
+        const allTreatmentPlans = localPatient.medicalDetails.flatMap(
+          (record, recordIndex) => 
+            record.treatmentPlanning.map((plan, planIndex) => ({
+              ...plan,
+              recordIndex,
+              planIndex,
+            }))
+        );
 
-            // Add selected teeth information if available
-            if (
-              plan.selectedTeethDetails &&
-              plan.selectedTeethDetails.length > 0
-            ) {
-              treatmentData.push([
-                "Selected Teeth",
-                plan.selectedTeethDetails.map((t) => t.number).join(", "),
-              ]);
-            }
+        // Add each treatment plan details
+        allTreatmentPlans.forEach((plan, index) => {
+          if (currentY > 220) {
+            doc.addPage();
+            currentY = 20;
+          }          doc.setFontSize(12);
+          doc.setTextColor(41, 128, 185);
+          
+          // Add light background for subtitle
+          doc.setFillColor(245, 245, 250); // Very light blue-gray
+          doc.rect(10, currentY - 4, 160, 8, 'F');
+          
+          doc.text(
+            `Plan ${index + 1}: ${plan.treatmentDetails || "Treatment Plan"}`,
+            14,
+            currentY
+          );
+          doc.setTextColor(0);
+          currentY += 12;
 
-            autoTable(doc, {
+          const treatmentData = [
+            ["Date", formatSafeDate(plan.treatmentDate || "")],
+            ["Follow-up Date", formatSafeDate(plan.followUpDate || "")],
+            ["Amount", `Rs. ${plan.totalPlanAmount || 0}`],
+            ["Paid", `Rs. ${plan.totalPaidAmount || 0}`],
+            ["Balance", `Rs. ${plan.totalRemainingAmount || 0}`],
+            ["Status", plan.isCompleted ? "Completed" : "In Progress"],
+          ];
+
+          // Add selected teeth information if available
+          if (
+            plan.selectedTeethDetails &&
+            plan.selectedTeethDetails.length > 0
+          ) {
+            treatmentData.push([
+              "Selected Teeth",
+              plan.selectedTeethDetails.map((t) => t.number).join(", "),
+            ]);
+          }            autoTable(doc, {
               startY: currentY,
               head: [],
               body: treatmentData,
               theme: "striped",
-              styles: { cellPadding: 3, overflow: "linebreak", fontSize: 10 },
+              styles: { 
+                cellPadding: 3, 
+                overflow: "linebreak", 
+                fontSize: 9,
+                minCellHeight: 8,
+                halign: 'left',
+                valign: 'middle'
+              },
+              headStyles: { fillColor: [41, 128, 185] },
               columnStyles: {
-                0: { cellWidth: 45, fontStyle: "bold" },
-                1: { cellWidth: "auto", overflow: "linebreak" },
+                0: { cellWidth: 40, fontStyle: "bold" },
+                1: { cellWidth: 'auto', overflow: "linebreak" },
               },
               margin: { left: 14, right: 14 },
+              tableWidth: 'auto',
+              didParseCell: function(data) {
+                // Ensure text fits by adjusting font size if needed
+                if (data.cell.text && data.cell.text.length > 40) {
+                  data.cell.styles.fontSize = 8;
+                }
+              }
             });
 
-            currentY = doc.previousAutoTable?.finalY || currentY;
-            currentY += 15; // Add space between treatment plans
-          });
-        }
+          currentY = doc.previousAutoTable?.finalY || currentY;
+          currentY += 15;
+
+          // Daily treatments table (if available)
+          if (plan.selectedTeethDetails && plan.selectedTeethDetails.length > 0) {
+            const dailyTreatments = plan.selectedTeethDetails.flatMap(
+              (tooth) => (tooth.dailyTreatments || []) as DailyTreatment[]
+            );
+
+            if (dailyTreatments.length > 0) {
+              if (currentY > 220) {
+                doc.addPage();
+                currentY = 20;              }              doc.setFontSize(11);
+              doc.setTextColor(0);
+              
+              // Add light background for subtitle
+              doc.setFillColor(245, 247, 250); // Very light blue-gray
+              doc.rect(10, currentY - 4, 120, 8, 'F');
+              
+              doc.text(`Daily Treatments for Plan ${index + 1}:`, 14, currentY);
+              currentY += 15; // Increased spacing between title and content
+              
+              const dailyTreatmentData = dailyTreatments.map((dt) => [
+                formatSafeDate(dt.date || ""),
+                dt.procedure || "-",
+                `Rs. ${dt.treatmentAmount || 0}`,
+                `Rs. ${dt.paidAmount || 0}`,
+                dt.notes || "-",
+              ]);                autoTable(doc, {
+                  startY: currentY,
+                  head: [["Date", "Procedure", "Amount", "Paid", "Notes"]],
+                  body: dailyTreatmentData,
+                  theme: "striped",
+                  styles: { 
+                    cellPadding: 2, 
+                    overflow: "linebreak", 
+                    fontSize: 8,
+                    minCellHeight: 7,
+                    halign: 'left',
+                    valign: 'middle'
+                  },
+                  headStyles: { 
+                    fillColor: [41, 128, 185],
+                    fontSize: 8,
+                    fontStyle: 'bold',
+                    halign: 'center'
+                  },
+                  columnStyles: {
+                    0: { cellWidth: 30 }, // Date
+                    1: { cellWidth: 50, overflow: "linebreak" }, // Procedure
+                    2: { cellWidth: 25, halign: 'right' }, // Amount
+                    3: { cellWidth: 25, halign: 'right' }, // Paid
+                    4: { cellWidth: 'auto', overflow: "linebreak" }, // Notes
+                  },
+                  margin: { left: 14, right: 14 },
+                  tableWidth: 'auto',
+                  didParseCell: function(data) {
+                    // Ensure text fits by adjusting font size if needed
+                    if (data.column.index === 4 && data.cell.text && data.cell.text.length > 30) {
+                      data.cell.styles.fontSize = 7;
+                    }
+                  }
+                });
+
+              currentY = doc.previousAutoTable?.finalY || currentY;
+              currentY += 15;
+            }
+          }
+        });
       }
+
+      // Service Payments Section
+      if (servicePayments && servicePayments.length > 0) {
+        if (currentY > 200) {
+          doc.addPage();
+          currentY = 20;        }        doc.setFontSize(14);
+        doc.setTextColor(0);
+        
+        // Add background for the title
+        doc.setFillColor(240, 240, 240); // Light gray background
+        doc.rect(10, currentY - 5, 190, 10, 'F'); // x, y, width, height, 'F' = Fill
+        
+        doc.text("Service Payments", 14, currentY);
+        currentY += 20; // Significantly increased spacing between title and content
+        
+        const servicePaymentData = servicePayments.map((payment) => [
+          formatSafeDate(payment.date || ""),
+          payment.serviceType || "-",
+          `Rs. ${payment.amount || 0}`,
+          payment.paymentMethod || "-",
+          payment.description || "-",
+        ]);          autoTable(doc, {
+            startY: currentY,
+            head: [["Date", "Service", "Amount", "Payment Method", "Notes"]],
+            body: servicePaymentData,
+            theme: "striped",
+            styles: { 
+              cellPadding: 2, 
+              overflow: "linebreak", 
+              fontSize: 8,
+              minCellHeight: 7,
+              halign: 'left',
+              valign: 'middle'
+            },
+            headStyles: { 
+              fillColor: [41, 128, 185],
+              fontSize: 8,
+              fontStyle: 'bold',
+              halign: 'center'
+            },
+            columnStyles: {
+              0: { cellWidth: 25 }, // Date
+              1: { cellWidth: 30, overflow: "linebreak" }, // Service Type
+              2: { cellWidth: 25, halign: 'right' }, // Amount
+              3: { cellWidth: 30 }, // Payment Method
+              4: { cellWidth: 'auto', overflow: "linebreak" }, // Description
+            },
+            margin: { left: 14, right: 14 },
+            tableWidth: 'auto'
+          });
+
+        currentY = doc.previousAutoTable?.finalY || currentY;
+        currentY += 15;
+      }
+
+      // Prescriptions Section
+      if (prescriptions && prescriptions.length > 0) {
+        if (currentY > 200) {
+          doc.addPage();
+          currentY = 20;        }        doc.setFontSize(14);
+        doc.setTextColor(0);
+        
+        // Add background for the title
+        doc.setFillColor(240, 240, 240); // Light gray background
+        doc.rect(10, currentY - 5, 190, 10, 'F'); // x, y, width, height, 'F' = Fill
+        
+        doc.text("Prescriptions", 14, currentY);
+        currentY += 20; // Significantly increased spacing between title and content
+
+        const prescriptionData = prescriptions.map((prescription) => [
+          formatSafeDate(prescription.date || ""),
+          prescription.diagnosis || "-",
+          prescription.doctor?.name || "-",
+        ]);          autoTable(doc, {
+            startY: currentY,
+            head: [["Date", "Diagnosis", "Doctor"]],
+            body: prescriptionData,
+            theme: "striped",
+            styles: { 
+              cellPadding: 2, 
+              overflow: "linebreak", 
+              fontSize: 8,
+              minCellHeight: 7,
+              halign: 'left',
+              valign: 'middle'
+            },
+            headStyles: { 
+              fillColor: [41, 128, 185],
+              fontSize: 8,
+              fontStyle: 'bold',
+              halign: 'center'
+            },
+            columnStyles: {
+              0: { cellWidth: 25 }, // Date
+              1: { cellWidth: 'auto', overflow: "linebreak" }, // Diagnosis
+              2: { cellWidth: 40 }, // Doctor
+            },
+            margin: { left: 14, right: 14 },
+            tableWidth: 'auto'
+          });
+
+        currentY = doc.previousAutoTable?.finalY || currentY;
+        currentY += 15;
+
+        // Detailed prescriptions with medications
+        prescriptions.forEach((prescription, index) => {
+          if (currentY > 220) {
+            doc.addPage();
+            currentY = 20;
+          }          if (prescription.medications && prescription.medications.length > 0) {            doc.setFontSize(12);
+            doc.setTextColor(41, 128, 185);
+            
+            // Add light background for subtitle
+            doc.setFillColor(245, 245, 250); // Very light blue-gray
+            doc.rect(10, currentY - 4, 150, 8, 'F');
+            
+            doc.text(`Prescription #${index + 1} Medications:`, 14, currentY);
+            currentY += 15; // Increased spacing between title and content
+            
+            const medicationData = prescription.medications.map((med: any) => [
+              med.name || "-",
+              med.dosage || "-",
+              med.frequency || "-",
+              med.duration || "-",
+              med.instructions || "-",
+            ]);              autoTable(doc, {
+                startY: currentY,
+                head: [["Medication", "Dosage", "Frequency", "Duration", "Instructions"]],
+                body: medicationData,
+                theme: "striped",
+                styles: { 
+                  cellPadding: 2, 
+                  overflow: "linebreak", 
+                  fontSize: 8,
+                  minCellHeight: 7,
+                  halign: 'left',
+                  valign: 'middle'
+                },
+                headStyles: { 
+                  fillColor: [41, 128, 185],
+                  fontSize: 8,
+                  fontStyle: 'bold',
+                  halign: 'center'
+                },
+                columnStyles: {
+                  0: { cellWidth: 35 }, // Medication
+                  1: { cellWidth: 25 }, // Dosage
+                  2: { cellWidth: 25 }, // Frequency
+                  3: { cellWidth: 25 }, // Duration
+                  4: { cellWidth: 'auto', overflow: "linebreak" }, // Instructions
+                },
+                margin: { left: 14, right: 14 },
+                tableWidth: 'auto'
+              });
+
+            currentY = doc.previousAutoTable?.finalY || currentY;
+            currentY += 15;
+          }
+        });
+      }
+
+      // Financial Summary Section
+      if (currentY > 200) {
+        doc.addPage();
+        currentY = 20;      }      doc.setFontSize(14);
+      doc.setTextColor(0);
+      
+      // Add background for the title
+      doc.setFillColor(240, 240, 240); // Light gray background
+      doc.rect(10, currentY - 5, 190, 10, 'F'); // x, y, width, height, 'F' = Fill
+      
+      doc.text("Financial Summary", 14, currentY);
+      currentY += 20; // Significantly increased spacing between title and content
+
+      // Calculate service payments total
+      const servicePaymentsTotal = servicePayments.reduce(
+        (sum, payment) => sum + (payment.amount || 0),
+        0
+      );
+
+      const financialData = [
+        ["Treatment Total", `Rs. ${totalAmount || 0}`],
+        ["Treatment Paid", `Rs. ${paidAmount || 0}`],
+        ["Treatment Balance", `Rs. ${remainingAmount || 0}`],
+        ["Service Payments", `Rs. ${servicePaymentsTotal || 0}`],        ["Total Paid", `Rs. ${(paidAmount + servicePaymentsTotal) || 0}`],
+      ];
+      
+      autoTable(doc, {
+          startY: currentY,
+          head: [],
+          body: financialData,
+          theme: "striped",
+          styles: { 
+            cellPadding: 3, 
+            overflow: "linebreak", 
+            fontSize: 9,
+            minCellHeight: 8,
+            halign: 'left',
+            valign: 'middle'
+          },
+          headStyles: { fillColor: [41, 128, 185] },
+          columnStyles: {
+            0: { cellWidth: 40, fontStyle: "bold" },
+            1: { cellWidth: 'auto', fontStyle: "bold", halign: 'right' },
+          },
+          margin: { left: 14, right: 14 },
+          tableWidth: 'auto'
+        });
 
       // Footer on each page
       const pageCount = doc.getNumberOfPages();
@@ -638,11 +1017,9 @@ export function ViewPatientDrawer({
       }
 
       // Save the PDF with a proper filename
-      doc.save(`${localPatient.personalDetails.name}_medical_record.pdf`);
-    } catch (error) {
+      doc.save(`${localPatient.personalDetails.name}_medical_record.pdf`);    } catch (error) {
       console.error("Error generating PDF:", error);
-      // Uncomment and add toast if you want to show user feedback
-      // toast.error("Failed to generate PDF. Please try again.");
+      toast.error("Failed to generate PDF. Please try again.");
     }
   };
   return (

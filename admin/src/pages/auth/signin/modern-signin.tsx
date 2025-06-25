@@ -117,7 +117,7 @@ export default function ModernSignInPage() {
               >
                 <div className="h-20 w-20 rounded-full bg-primary/20 flex items-center justify-center">
                   <img
-                    src="/TLogoNew.png"
+                    src="/logoT.png"
                     alt="Crown Dental"
                     className="h-16 w-16 object-cover"
                     onError={(e) => {

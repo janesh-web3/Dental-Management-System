@@ -113,6 +113,7 @@ type FormData = {
       xray: string;
     };
     patientType: "Child" | "Adult";
+    group?: "Ortho" | "Endo" | "Perio" | "Prostho" | "Surgery" | "General" | "Other";
     medicalHistory: MedicalHistory;
     treatmentPlanning: TreatmentPlan[];
     chiefComplaint?: string;
@@ -168,6 +169,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
         xray: "",
       },
       patientType: "Adult",
+      group: "General",
       medicalHistory: {
         bloodPressure: "",
         diabetes: false,
@@ -209,6 +211,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
             xray: patient.medicalDetails[0]?.investigation?.xray || "",
           },
           patientType: patient.medicalDetails[0]?.patientType || "Adult",
+          group: patient.medicalDetails[0]?.group || "General",
           medicalHistory: patient.medicalDetails[0]?.medicalHistory || {
             bloodPressure: "",
             diabetes: false,
@@ -428,6 +431,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
             xray: formData.medicalDetails.investigation.xray,
           },
           patientType: data.medicalDetails.patientType,
+          group: data.medicalDetails.group,
           medicalHistory: data.medicalDetails.medicalHistory,
           followUpDate: data.medicalDetails.followUpDate
             ? formatSafeDate(data.medicalDetails.followUpDate)
@@ -1341,6 +1345,29 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                               <SelectContent>
                                 <SelectItem value="Adult">Adult</SelectItem>
                                 <SelectItem value="Child">Child</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Patient Group</Label>
+                            <Select
+                              value={formData.medicalDetails.group}
+                              onValueChange={(value) =>
+                                handleMedicalChange("group", value)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select group" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="General">General</SelectItem>
+                                <SelectItem value="Ortho">Ortho</SelectItem>
+                                <SelectItem value="Endo">Endo</SelectItem>
+                                <SelectItem value="Perio">Perio</SelectItem>
+                                <SelectItem value="Prostho">Prostho</SelectItem>
+                                <SelectItem value="Surgery">Surgery</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>

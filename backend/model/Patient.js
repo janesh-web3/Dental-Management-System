@@ -162,6 +162,11 @@ const medicalDetailsSchema = new mongoose.Schema({
     enum: ["Adult", "Child"],
     default: "Adult",
   },
+  group: {
+    type: String,
+    enum: ["Ortho", "Endo", "Perio", "Prostho", "Surgery", "General", "Other"],
+    default: "General"
+  },
   treatmentPlanning: [treatmentPlanningSchema],
   followUpDate: { type: Date },
 });

@@ -77,6 +77,7 @@ export type MedicalDetails = {
     [key: string]: any; // Allow additional properties
   };
   patientType: "Child" | "Adult";
+  group?: "Ortho" | "Endo" | "Perio" | "Prostho" | "Surgery" | "General" | "Other";
   medicalHistory: {
     additionalNotes: any;
     bloodPressure: string;
@@ -145,6 +146,7 @@ export type FormData = {
       blood: string;
       xray: string;
     };
+    group: string;
     medicalHistory: {
       bloodPressure: string;
       diabetes: boolean;

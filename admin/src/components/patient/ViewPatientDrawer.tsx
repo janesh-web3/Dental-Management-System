@@ -1474,6 +1474,26 @@ export function ViewPatientDrawer({
                                 color="text-blue-500"
                               />
 
+                              <motion.div 
+                                className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                whileHover={{ scale: 1.01 }}
+                                transition={{ duration: 0.3 }}
+                              >
+                                <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                                  <User className="w-4 h-4" />
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                    Patient Group
+                                  </h4>
+                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                    {record.group || "General"}
+                                  </p>
+                                </div>
+                              </motion.div>
+                              
                               <DateDisplay
                                 englishDate={record.treatmentPlanning[0]?.followUpDate}
                                 nepaliDate={record.treatmentPlanning[0]?.followUpDateNp}
@@ -1483,13 +1503,12 @@ export function ViewPatientDrawer({
                               />
                             </motion.div>
 
-                            {/* Chief Complaint & Diagnosis */}
                             <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3 sm:gap-4">
                               <motion.div
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ duration: 0.3, delay: 0.1 }}
-                                className=" group border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800/50 p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 "
+                                className="group border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800/50 p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300"
                               >
                                 <div className="flex items-start gap-3">
                                   <div className="p-2 rounded-full bg-yellow-100 text-yellow-600">

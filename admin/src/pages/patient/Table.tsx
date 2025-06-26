@@ -152,6 +152,7 @@ const defaultColumns: ColumnConfig[] = [
   { id: "gender", label: "Gender", enabled: true },
   { id: "address", label: "Address", enabled: true },
   { id: "age", label: "Age", enabled: true },
+  { id: "group", label: "Group", enabled: true },
   { id: "checkupDate", label: "Check-up Date", enabled: true },
   { id: "totalAmount", label: "Total Amount", enabled: true },
   { id: "paidAmount", label: "Paid Amount", enabled: true },

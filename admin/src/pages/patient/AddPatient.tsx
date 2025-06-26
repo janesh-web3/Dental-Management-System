@@ -64,6 +64,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
         blood: "",
         xray: "",
       },
+      group: "General",
       medicalHistory: {
         bloodPressure: "",
         diabetes: false,
@@ -383,6 +384,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
             blood: data.medicalDetails.investigation.blood,
             xray: data.medicalDetails.investigation.xray,
           },
+          group: data.medicalDetails.group,
           medicalHistory: data.medicalDetails.medicalHistory,
           treatmentPlanning: treatmentPlansWithTeeth,
         },
@@ -700,7 +702,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                   readOnly
                   className={`bg-muted/50 ${isLoadingSN ? "animate-pulse" : ""}`}
                 />
-              </div>{" "}              <div className="space-y-1">
+              </div>{" "}
+              <div className="space-y-1">
                 <Label htmlFor="name">Full Name *</Label>
                 {isVoiceInputEnabled ? (
                   <div className="flex space-x-2">
@@ -732,7 +735,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                     required
                   />
                 )}
-              </div>              <div className="space-y-1">
+              </div>{" "}
+              <div className="space-y-1">
                 <Label htmlFor="address">Address</Label>
                 {isVoiceInputEnabled ? (
                   <div className="flex space-x-2">
@@ -762,7 +766,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                     }
                   />
                 )}
-              </div>{" "}              <div className="space-y-1">
+              </div>{" "}
+              <div className="space-y-1">
                 <Label htmlFor="age">Age</Label>
                 {isVoiceInputEnabled ? (
                   <div className="flex space-x-2">
@@ -798,7 +803,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                     }
                   />
                 )}
-              </div>              <div className="space-y-1">
+              </div>{" "}
+              <div className="space-y-1">
                 <Label htmlFor="gender">Gender *</Label>
                 {isVoiceInputEnabled ? (
                   <div className="flex space-x-2">
@@ -856,7 +862,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                     </SelectContent>
                   </Select>
                 )}
-              </div>{" "}              <div className="space-y-1">
+              </div>{" "}
+              <div className="space-y-1">
                 <Label htmlFor="contactNumber">Contact Number</Label>
                 {isVoiceInputEnabled ? (
                   <div className="flex space-x-2">
@@ -890,7 +897,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                     required
                   />
                 )}
-              </div>{" "}              <div className="space-y-1">
+              </div>{" "}
+              <div className="space-y-1">
                 <Label htmlFor="emailAddress">Email Address</Label>
                 {isVoiceInputEnabled ? (
                   <div className="flex space-x-2">
@@ -1054,7 +1062,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
             <div className="space-y-4">
               <h3 className="text-base md:text-lg font-semibold">
                 Patient's Chief Complaint
-              </h3>{" "}              <div className="space-y-2">
+              </h3>{" "}
+              <div className="space-y-2">
                 <Label htmlFor="chiefComplaint">
                   What brought the patient in today?
                 </Label>
@@ -1065,7 +1074,9 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                       placeholder="Enter patient's main concern or complaint"
                       className="min-h-[150px] flex-1"
                       value={formData.medicalDetails.chiefComplaint}
-                      onChange={(e) => handleChiefComplaintChange(e.target.value)}
+                      onChange={(e) =>
+                        handleChiefComplaintChange(e.target.value)
+                      }
                     />{" "}
                     <VoiceInputButton
                       fieldId="chiefComplaint"
@@ -1174,7 +1185,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                     placeholder="e.g. 120/80"
                     className="h-9 md:h-10" // Slightly smaller input height on mobile
                   />
-                </div>{" "}                <div className="space-y-1">
+                </div>{" "}
+                <div className="space-y-1">
                   <Label htmlFor="allergies" className="text-xs md:text-sm">
                     Allergies
                   </Label>
@@ -1184,7 +1196,10 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                         id="allergies"
                         value={formData.medicalDetails.medicalHistory.allergies}
                         onChange={(e) =>
-                          handleMedicalHistoryChange("allergies", e.target.value)
+                          handleMedicalHistoryChange(
+                            "allergies",
+                            e.target.value
+                          )
                         }
                         placeholder="List any allergies"
                         className="h-9 md:h-10 flex-1"
@@ -1313,7 +1328,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                     </div>
                   </div>
                 </div>
-                {/* Other conditions - Full width on all screens */}                <div className="col-span-1 md:col-span-2 mt-2">
+                {/* Other conditions - Full width on all screens */}{" "}
+                <div className="col-span-1 md:col-span-2 mt-2">
                   {" "}
                   <Label
                     htmlFor="otherConditions"
@@ -1391,7 +1407,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
         <TabsContent value="dental">
           <Card className="p-2 md:p-4">
             <div className="space-y-2 md:space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-4 mb-6">
                 <div className="space-y-1">
                   <Label htmlFor="patientType">Patient Type *</Label>
                   <Select
@@ -1404,6 +1420,29 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                     <SelectContent>
                       <SelectItem value="Child">Child</SelectItem>
                       <SelectItem value="Adult">Adult</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="group">Patient Treatment Group</Label>
+                  <Select
+                    value={formData.medicalDetails.group}
+                    onValueChange={(value) =>
+                      handleMedicalChange("group", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="General">General</SelectItem>
+                      <SelectItem value="Ortho">Ortho</SelectItem>
+                      <SelectItem value="Endo">Endo</SelectItem>
+                      <SelectItem value="Perio">Perio</SelectItem>
+                      <SelectItem value="Prostho">Prostho</SelectItem>
+                      <SelectItem value="Surgery">Surgery</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

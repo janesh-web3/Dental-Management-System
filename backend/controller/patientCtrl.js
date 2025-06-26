@@ -895,6 +895,7 @@ const getFilteredPatients = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const search = req.query.search || "";
     const doctorId = req.query.doctorId || "";
+    const group = req.query.group || "";
     const procedures = req.query.procedures
       ? req.query.procedures.split(",")
       : [];
@@ -908,6 +909,7 @@ const getFilteredPatients = async (req, res) => {
       startDate, 
       endDate,
       doctorId,
+      group,
       procedures: procedures.length > 0 ? procedures : "none",
       followUpFilter // Log the follow-up filter
     });
@@ -937,6 +939,11 @@ const getFilteredPatients = async (req, res) => {
           error: err.message,
         });
       }
+    }
+
+    // Add group filter if provided
+    if (group && group !== "all") {
+      query["medicalDetails.group"] = group;
     }
 
     // Add procedure filter if provided

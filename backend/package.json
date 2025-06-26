@@ -4,13 +4,15 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "sms-scheduler": "node smsScheduler.js"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "axios": "^1.6.7",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
     "cloudinary": "^2.5.1",
@@ -22,6 +24,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.7.3",
     "multer": "^1.4.5-lts.1",
+    "node-cron": "^3.0.3",
     "node-schedule": "^2.1.1",
     "nodemailer": "^6.10.1",
     "socket.io": "^4.8.1",

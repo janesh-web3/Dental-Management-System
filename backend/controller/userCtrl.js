@@ -34,22 +34,65 @@ const addUser = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { contact, password } = req.body;
-    const user = await User.findOne({ contact: parseInt(contact) });
-
-    if (user) {
-      const match = await bcrypt.compare(password, user.password);
-      if (match) {
-        const token = generateToken(user._id);
-        res.json({ message: "Logged in successfully", token: token });
-      } else {
-        res.json({ message: "Incorrect password" });
-      }
+    console.log("Login attempt for:", contact);
+    
+    if (!contact || !password) {
+      console.log("Missing credentials:", { contact: !!contact, password: !!password });
+      return res.status(400).json({ message: "Contact and password are required" });
+    }
+    
+    // Attempt to find the user without any type conversion first
+    let user = await User.findOne({ contact });
+    
+    // If user not found, try with string contact
+    if (!user && typeof contact === 'number') {
+      user = await User.findOne({ contact: contact.toString() });
+    }
+    
+    // If still not found, try with different formats
+    if (!user) {
+      const contactStr = contact.toString().trim();
+      console.log("Trying alternate formats for:", contactStr);
+      user = await User.findOne({ 
+        $or: [
+          { contact: contactStr },
+          { contact: contactStr.replace(/^0+/, '') } // Remove leading zeros
+        ]
+      });
+    }
+    
+    console.log("User found:", user ? "Yes" : "No");
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    console.log("Verifying password for user:", user._id);
+    const match = await bcrypt.compare(password, user.password);
+    
+    if (match) {
+      const token = generateToken(user._id);
+      console.log("Login successful for:", user._id);
+      return res.status(200).json({ 
+        message: "Logged in successfully", 
+        token, 
+        user: {
+          _id: user._id,
+          name: user.name,
+          role: user.role,
+          email: user.email
+        }
+      });
     } else {
-      res.json({ message: "User not found" });
+      console.log("Password mismatch for user:", user._id);
+      return res.status(401).json({ message: "Incorrect password" });
     }
   } catch (error) {
-    console.log(error);
-    res.json({ error: error });
+    console.error("Login error:", error);
+    return res.status(500).json({ 
+      error: "An error occurred during login", 
+      details: error.message 
+    });
   }
 };
 

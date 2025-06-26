@@ -57,6 +57,7 @@ router.get("/ensure-dentist-exists", async (req, res) => {
 
 router.post("/add-user", addUser);
 router.post("/login-user", loginUser);
+router.post("/auth-user", loginUser); // Alternative endpoint to bypass ad blockers
 router.get("/dashboard", dashboard);
 router.get("/get-role", authMiddleware, getRole);
 router.put("/update-user/:id", updateUser);

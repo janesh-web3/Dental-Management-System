@@ -3,6 +3,7 @@ const twilio = require('twilio');
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
+const statusCallbackUrl = process.env.TWILIO_STATUS_CALLBACK_URL || 'https://your-domain.com/api/sms/status-callback';
 
 if (!accountSid || !authToken) {
     console.error('TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be set in environment variables');
@@ -20,14 +21,21 @@ async function initializeMessagingService() {
         
         if (existingService) {
             console.log('Using existing messaging service:', existingService.sid);
+            
+            // Update the service with the latest callback URL
+            await client.messaging.v1.services(existingService.sid)
+                .update({
+                    statusCallback: statusCallbackUrl
+                });
+                
             return existingService.sid;
         }
 
         // Create new service if none exists
         const service = await client.messaging.v1.services.create({
             friendlyName: 'DMS Messaging Service',
-            inboundRequestUrl: 'https://your-domain.com/sms/inbound', // Update this with your domain
-            statusCallback: 'https://your-domain.com/sms/status' // Update this with your domain
+            inboundRequestUrl: process.env.TWILIO_INBOUND_URL || 'https://your-domain.com/api/sms/inbound',
+            statusCallback: statusCallbackUrl
         });
         
         console.log('Created new messaging service:', service.sid);
@@ -44,8 +52,8 @@ const twilioConfig = {
     accountSid,
     authToken,
     messagingServiceSid: null, // Will be set after initialization
-    // Add your Twilio phone number here
-    fromNumber: process.env.TWILIO_PHONE_NUMBER || '+14155238886' // Default to a Twilio number
+    fromNumber: process.env.TWILIO_PHONE_NUMBER || '+14155238886', // Default to a Twilio number
+    statusCallbackUrl
 };
 
 // Initialize messaging service and update config
@@ -56,7 +64,8 @@ initializeMessagingService()
     })
     .catch(error => {
         console.error('Failed to initialize Twilio configuration:', error);
-        process.exit(1);
+        // Don't exit the process, just log the error
+        console.log('Will continue without messaging service. Using direct phone number instead.');
     });
 
 module.exports = twilioConfig; 

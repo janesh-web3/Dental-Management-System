@@ -181,6 +181,7 @@ export function PatientTable() {
   const [viewMode, _setViewMode] = useState<"table" | "grid" | "list">("table");
 
   const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
+  const [selectedGroup, setSelectedGroup] = useState<string>("all");
   const [availableProcedures, setAvailableProcedures] = useState<string[]>([]);
   const [selectedProcedures, setSelectedProcedures] = useState<string[]>([]);
   const [isFilteringEnabled, setIsFilteringEnabled] = useState<boolean>(false);
@@ -718,11 +719,14 @@ export function PatientTable() {
 
       if (
         isFilteringEnabled &&
-        (selectedDoctor !== "all" || selectedProcedures.length > 0)
+        (selectedDoctor !== "all" || selectedProcedures.length > 0 || selectedGroup !== "all")
       ) {
         endpoint = "/patient/get-filtered-patients";
         if (selectedDoctor !== "all") {
           queryParams += `&doctorId=${selectedDoctor}`;
+        }
+        if (selectedGroup !== "all") {
+          queryParams += `&group=${selectedGroup}`;
         }
         if (selectedProcedures.length > 0) {
           queryParams += `&procedures=${selectedProcedures.join(",")}`;
@@ -757,6 +761,7 @@ export function PatientTable() {
     searchQuery,
     isFilteringEnabled,
     selectedDoctor,
+    selectedGroup,
     selectedProcedures,
     dateFilter,
     dateRange,
@@ -786,6 +791,11 @@ export function PatientTable() {
     setIsFilteringEnabled(true);
   };
 
+  const handleGroupChange = (value: string) => {
+    setSelectedGroup(value);
+    setIsFilteringEnabled(true);
+  };
+
   const handleProcedureToggle = (procedure: string) => {
     setSelectedProcedures((prev) => {
       if (prev.includes(procedure)) {
@@ -799,6 +809,7 @@ export function PatientTable() {
 
   const clearFilters = () => {
     setSelectedDoctor("all");
+    setSelectedGroup("all");
     setSelectedProcedures([]);
     setDateFilter("all");
     setDateRange(undefined);
@@ -2553,13 +2564,30 @@ export function PatientTable() {
                 <TabsTrigger value="other">Other</TabsTrigger>
               </TabsList>{" "}
               <div className="px-2 sm:px-6 flex flex-row flex-wrap gap-3 items-center overflow-x-auto justify-center">
-                <div className="flex items-center gap-2 mr-4">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs font-medium">Filter by:</span>
-                </div>
-
                 {renderDateFilter()}
                 {renderFollowUpFilter()}
+
+                <Select
+                  value={selectedGroup}
+                  onValueChange={handleGroupChange}
+                >
+                  <SelectTrigger className="w-[130px]">
+                    <SelectValue
+                      placeholder="Select Group"
+                      className="text-xs"
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Groups</SelectItem>
+                    <SelectItem value="General">General</SelectItem>
+                    <SelectItem value="Ortho">Ortho</SelectItem>
+                    <SelectItem value="Endo">Endo</SelectItem>
+                    <SelectItem value="Perio">Perio</SelectItem>
+                    <SelectItem value="Prostho">Prostho</SelectItem>
+                    <SelectItem value="Surgery">Surgery</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 <Select
                   value={selectedDoctor}
@@ -2683,6 +2711,18 @@ export function PatientTable() {
                       className="h-3 w-3 cursor-pointer"
                       onClick={() => {
                         setFollowUpFilter("all");
+                        fetchPatient(currentPage, itemsPerPage, searchQuery);
+                      }}
+                    />
+                  </Badge>
+                )}
+                {selectedGroup !== "all" && (
+                  <Badge variant="ai" className="flex items-center gap-1">
+                    Group: {selectedGroup}
+                    <X
+                      className="h-3 w-3 cursor-pointer"
+                      onClick={() => {
+                        setSelectedGroup("all");
                         fetchPatient(currentPage, itemsPerPage, searchQuery);
                       }}
                     />

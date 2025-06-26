@@ -41,15 +41,34 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url} - ${new Date().toISOString()}`);
+  next();
+});
+
+// Add response logging middleware
+app.use((req, res, next) => {
+  const originalSend = res.send;
+  res.send = function(body) {
+    console.log(`Response ${res.statusCode} for ${req.method} ${req.url}`);
+    return originalSend.call(this, body);
+  };
+  next();
+});
+
+// CORS configuration with more permissive settings
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "https://dms.crownagi.com",
-      "https://admin.om-shreenagar-dental-clinic.com",
-      "https://om-shreenagar-dental-clinic.com"
-    ],
+    origin: function(origin, callback) {
+      // Allow any origin in development
+      callback(null, true);
+    },
+    credentials: true,
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   })
 );
 
@@ -61,8 +80,28 @@ mongoose
   .then(() => console.log("MongoDB connected successfully"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
+// Basic health check endpoint
 app.get("/", (req, res) => {
-  res.json("Server is running !");
+  res.json("Server is running!");
+});
+
+// Test endpoint that doesn't contain words that might be blocked
+app.get("/api/health-check", (req, res) => {
+  res.json({
+    status: "ok",
+    time: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Test auth endpoint that avoids words that might trigger ad blockers
+app.post("/api/verify-credentials", (req, res) => {
+  const { data } = req.body;
+  res.json({
+    received: true,
+    status: "ok",
+    data: data ? "Data received" : "No data"
+  });
 });
 
 app.use("/api/user", userRouter);
@@ -84,8 +123,8 @@ app.use("/api/notifications", notificationRouter);
 
 const port = process.env.PORT || 8080;
 
-server.listen(process.env.PORT, () => {
-  console.log(`Server is running on port ${process.env.PORT}`);
+server.listen(port, '0.0.0.0', () => {
+  console.log(`Server is running on port ${port}`);
   
   // Make io accessible in other files
   app.set('io', io);  

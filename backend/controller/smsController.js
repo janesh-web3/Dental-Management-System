@@ -255,15 +255,42 @@ const sendBulkSMS = async (req, res) => {
 
         // Add additional filters if provided
         if (filters) {
-            if (filters.group) {
-                query['medicalDetails.group'] = filters.group;
+            // Group filter
+            if (filters.group && filters.group !== "all") {
+                query["medicalDetails.group"] = filters.group;
             }
             
-            if (filters.doctor) {
-                query['medicalDetails.doctor'] = new mongoose.Types.ObjectId(filters.doctor);
+            // Doctor filter
+            if (filters.doctor && filters.doctor !== "all") {
+                query["medicalDetails.treatmentPlanning.treatedByDoctor"] = new mongoose.Types.ObjectId(filters.doctor);
             }
 
-            // Add more filters as needed
+            // Gender filter
+            if (filters.gender && filters.gender !== "all") {
+                query["personalDetails.gender"] = filters.gender;
+            }
+
+            // Treatment completion status filter
+            if (filters.completionStatus && filters.completionStatus !== "all") {
+                query["medicalDetails.treatmentPlanning.isCompleted"] = filters.completionStatus === "completed";
+            }
+
+            // Procedure filter
+            if (filters.procedure && filters.procedure !== "all") {
+                query["medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.procedure"] = filters.procedure;
+            }
+
+            // Registration date filter
+            if (filters.registrationDateStart && filters.registrationDateEnd) {
+                query["createdAt"] = { 
+                    $gte: new Date(filters.registrationDateStart), 
+                    $lte: new Date(filters.registrationDateEnd) 
+                };
+            } else if (filters.registrationDateStart) {
+                query["createdAt"] = { $gte: new Date(filters.registrationDateStart) };
+            } else if (filters.registrationDateEnd) {
+                query["createdAt"] = { $lte: new Date(filters.registrationDateEnd) };
+            }
         }
 
         // Get patients matching the query
@@ -921,6 +948,210 @@ const getSMSReport = async (req, res) => {
     }
 };
 
+// Send follow-up reminder SMS to a patient
+const sendFollowUpReminder = async (req, res) => {
+    try {
+        const { patientId } = req.params;
+        
+        // Check if followupSMS is enabled
+        const settings = await require('../model/SMSSettings').getSettings();
+        if (!settings.followupSMS) {
+            return res.status(403).json({
+                success: false,
+                message: 'Follow-up SMS feature is currently disabled'
+            });
+        }
+        
+        // Get patient
+        const patient = await require('../model/Patient').findById(patientId);
+        if (!patient) {
+            return res.status(404).json({
+                success: false,
+                message: 'Patient not found'
+            });
+        }
+        
+        // Check if patient has a contact number
+        if (!patient.personalDetails?.contactNumber) {
+            return res.status(400).json({
+                success: false,
+                message: 'Patient does not have a contact number'
+            });
+        }
+        
+        // Find the latest treatment with a follow-up date
+        let followUpDate = null;
+        let latestTreatment = null;
+        
+        if (patient.medicalDetails && patient.medicalDetails.length > 0) {
+            for (const medicalDetail of patient.medicalDetails) {
+                if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
+                    for (const treatment of medicalDetail.treatmentPlanning) {
+                        if (treatment.followUpDate) {
+                            const treatmentDate = new Date(treatment.followUpDate);
+                            
+                            if (!followUpDate || treatmentDate > followUpDate) {
+                                followUpDate = treatmentDate;
+                                latestTreatment = treatment;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (!followUpDate) {
+            return res.status(400).json({
+                success: false,
+                message: 'Patient does not have any follow-up appointments'
+            });
+        }
+        
+        // Send follow-up SMS
+        const aakashSmsUtils = require('../utils/aakashSmsUtils');
+        const result = await aakashSmsUtils.sendFollowUpSMS(
+            patient.personalDetails.contactNumber,
+            followUpDate,
+            patient.personalDetails.name,
+            settings.clinicName
+        );
+        
+        if (!result.success) {
+            return res.status(400).json({
+                success: false,
+                message: 'Failed to send follow-up SMS',
+                error: result.error
+            });
+        }
+        
+        // Save to SMS history
+        await require('../model/SMSHistory').create({
+            recipient: patient.personalDetails.contactNumber,
+            message: result.message || `Follow-up reminder for appointment on ${followUpDate.toLocaleDateString()}`,
+            status: result.status || 'sent',
+            messageId: result.messageId,
+            networkProvider: result.network,
+            credit: result.credit,
+            sentBy: req.admin?.id,
+            patient: patientId,
+            isBulk: false
+        });
+        
+        res.status(200).json({
+            success: true,
+            message: 'Follow-up reminder SMS sent successfully',
+            data: result
+        });
+    } catch (error) {
+        console.error('Error sending follow-up reminder SMS:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to send follow-up reminder SMS',
+            error: error.message
+        });
+    }
+};
+
+// Send payment reminder SMS to a patient
+const sendPaymentReminder = async (req, res) => {
+    try {
+        const { patientId } = req.params;
+        
+        // Check if paymentSMS is enabled
+        const settings = await require('../model/SMSSettings').getSettings();
+        if (!settings.paymentSMS) {
+            return res.status(403).json({
+                success: false,
+                message: 'Payment reminder SMS feature is currently disabled'
+            });
+        }
+        
+        // Get patient
+        const patient = await require('../model/Patient').findById(patientId);
+        if (!patient) {
+            return res.status(404).json({
+                success: false,
+                message: 'Patient not found'
+            });
+        }
+        
+        // Check if patient has a contact number
+        if (!patient.personalDetails?.contactNumber) {
+            return res.status(400).json({
+                success: false,
+                message: 'Patient does not have a contact number'
+            });
+        }
+        
+        // Calculate total due amount
+        let totalDue = 0;
+        
+        if (patient.medicalDetails && patient.medicalDetails.length > 0) {
+            for (const medicalDetail of patient.medicalDetails) {
+                if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
+                    for (const treatment of medicalDetail.treatmentPlanning) {
+                        if (treatment.selectedTeethDetails && treatment.selectedTeethDetails.length > 0) {
+                            for (const tooth of treatment.selectedTeethDetails) {
+                                totalDue += (tooth.totalTreatmentAmount || 0) - (tooth.totalPaidAmount || 0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (totalDue <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Patient does not have any pending payments'
+            });
+        }
+        
+        // Send payment reminder SMS
+        const aakashSmsUtils = require('../utils/aakashSmsUtils');
+        const result = await aakashSmsUtils.sendPaymentReminderSMS(
+            patient.personalDetails.contactNumber,
+            patient.personalDetails.name,
+            totalDue,
+            settings.clinicName
+        );
+        
+        if (!result.success) {
+            return res.status(400).json({
+                success: false,
+                message: 'Failed to send payment reminder SMS',
+                error: result.error
+            });
+        }
+        
+        // Save to SMS history
+        await require('../model/SMSHistory').create({
+            recipient: patient.personalDetails.contactNumber,
+            message: result.message || `Payment reminder for amount Rs ${totalDue}`,
+            status: result.status || 'sent',
+            messageId: result.messageId,
+            networkProvider: result.network,
+            credit: result.credit,
+            sentBy: req.admin?.id,
+            patient: patientId,
+            isBulk: false
+        });
+        
+        res.status(200).json({
+            success: true,
+            message: 'Payment reminder SMS sent successfully',
+            data: result
+        });
+    } catch (error) {
+        console.error('Error sending payment reminder SMS:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to send payment reminder SMS',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     sendSingleSMS,
     sendBulkSMS,
@@ -933,5 +1164,7 @@ module.exports = {
     smsStatusCallback,
     checkSMSCredit,
     getDetailedSMSCredit,
-    getSMSReport
+    getSMSReport,
+    sendFollowUpReminder,
+    sendPaymentReminder
 };

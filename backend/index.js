@@ -10,7 +10,7 @@ const { initSocket } = require('./socket');
 // Import routes
 const userRouter = require("./routes/userRoute.js");
 const patientRouter = require("./routes/patientRoute.js");
-const patientAuthRouter = require("./routes/patientAuthRoutes.js");
+const patientAuthRouter = require("./routes/patientRoutes.js"); // Updated import
 const publicPatientRouter = require("./routes/publicPatientRoute.js");
 const appointmentRouter = require("./routes/appointmentRoute.js");
 const doctorRouter = require("./routes/doctorRoute.js");
@@ -23,7 +23,6 @@ const smsRouter = require("./routes/smsRoutes.js");
 const financeRouter = require("./routes/financeRoutes.js");
 const servicePaymentRouter = require("./routes/servicePaymentRoutes.js");
 const geminiRouter = require("./routes/geminiRoute.js");
-const notificationRouter = require("./routes/notificationRoutes.js");
 
 // Import utilities
 const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
@@ -41,34 +40,18 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-// Add request logging middleware
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url} - ${new Date().toISOString()}`);
-  next();
-});
-
-// Add response logging middleware
-app.use((req, res, next) => {
-  const originalSend = res.send;
-  res.send = function(body) {
-    console.log(`Response ${res.statusCode} for ${req.method} ${req.url}`);
-    return originalSend.call(this, body);
-  };
-  next();
-});
-
-// CORS configuration with more permissive settings
 app.use(
   cors({
-    origin: function(origin, callback) {
-      // Allow any origin in development
-      callback(null, true);
-    },
-    credentials: true,
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-    preflightContinue: false,
-    optionsSuccessStatus: 204
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://192.168.1.75:5173",
+      "http://192.168.1.75:5174",
+      "https://dms.crownagi.com",
+      "https://admin.om-shreenagar-dental-clinic.com",
+      "https://om-shreenagar-dental-clinic.com"
+    ],
+    credentials: true
   })
 );
 
@@ -80,33 +63,13 @@ mongoose
   .then(() => console.log("MongoDB connected successfully"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Basic health check endpoint
 app.get("/", (req, res) => {
-  res.json("Server is running!");
-});
-
-// Test endpoint that doesn't contain words that might be blocked
-app.get("/api/health-check", (req, res) => {
-  res.json({
-    status: "ok",
-    time: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
-
-// Test auth endpoint that avoids words that might trigger ad blockers
-app.post("/api/verify-credentials", (req, res) => {
-  const { data } = req.body;
-  res.json({
-    received: true,
-    status: "ok",
-    data: data ? "Data received" : "No data"
-  });
+  res.json("Server is running !");
 });
 
 app.use("/api/user", userRouter);
 app.use("/api/patient", patientRouter);
-app.use("/api/patient", patientAuthRouter); // Patient authentication routes
+app.use("/api/patient", patientAuthRouter); // Mount patient auth routes at /api/patient
 app.use("/api/patients", publicPatientRouter); // Public patient routes (for QR code)
 app.use("/api/appointment", appointmentRouter);
 app.use("/api/doctor", doctorRouter);
@@ -119,7 +82,6 @@ app.use("/api/sms", smsRouter);
 app.use("/api/finance", financeRouter); // Finance management routes
 app.use("/api/service-payment", servicePaymentRouter); // Service payment routes
 app.use("/api/gemini", geminiRouter);
-app.use("/api/notifications", notificationRouter);
 
 const port = process.env.PORT || 8080;
 

@@ -7,6 +7,8 @@ import { NotificationCenter } from "./components/notifications/NotificationCente
 import { Toaster } from "./components/ui/toaster";
 import { NotificationInitializer } from "./components/shared/NotificationInitializer";
 import { VoiceInputProvider } from "./contexts/VoiceInputContext";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
 
 export default function App() {
   return (
@@ -31,9 +33,11 @@ export default function App() {
                       pauseOnHover
                       theme="light"
                     />
-                    <AppRouter />
-                    <NotificationCenter />
-                    <Toaster />
+                    <TooltipProvider>
+                      <AppRouter />
+                      <NotificationCenter />
+                      <Toaster />
+                    </TooltipProvider>
                   </VoiceInputProvider>
                 </SocketProvider>
               </NotificationProvider>
@@ -44,3 +48,4 @@ export default function App() {
     </AppProvider>
   );
 }
+

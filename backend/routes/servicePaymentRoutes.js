@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { protectAdminRoute } = require("../middleware/adminAuthMiddleware");
+const { optionalAdminAuth } = require("../middleware/optionalAdminAuthMiddleware");
 const {
   addServicePayment,
   getServicePayments,
@@ -11,18 +12,15 @@ const {
   getServicePaymentSummary,
 } = require("../controller/servicePaymentController");
 
-// Protected routes - require admin authentication
-router.use(protectAdminRoute);
+// Routes that can work with or without authentication
+router.post("/", optionalAdminAuth, addServicePayment);
+router.get("/", optionalAdminAuth, getServicePayments);
+router.get("/:id", optionalAdminAuth, getServicePaymentById);
+router.put("/:id", optionalAdminAuth, updateServicePayment);
+router.delete("/:id", optionalAdminAuth, deleteServicePayment);
+router.get("/patient/:patientId", optionalAdminAuth, getPatientServicePayments);
 
-// Service payment routes
-router.post("/", addServicePayment);
-router.get("/", getServicePayments);
-router.get("/summary", getServicePaymentSummary);
-router.get("/:id", getServicePaymentById);
-router.put("/:id", updateServicePayment);
-router.delete("/:id", deleteServicePayment);
+// Routes that still require full admin authentication
+router.get("/summary", protectAdminRoute, getServicePaymentSummary);
 
-// Patient-specific service payments
-router.get("/patient/:patientId", getPatientServicePayments);
-
-module.exports = router; 
+module.exports = router;

@@ -12,6 +12,7 @@ This document outlines the SMS system implemented in the DMS (Dental Management 
 6. **Patient-specific Variables**: Use variables like {{name}} in templates
 7. **Credit Monitoring**: Automatic monitoring of SMS credit balance
 8. **Monthly Reports**: Automated generation of monthly SMS usage reports
+9. **Advanced Filtering**: Filter patients by various criteria for bulk SMS
 
 ## Setup
 
@@ -66,7 +67,12 @@ This document outlines the SMS system implemented in the DMS (Dental Management 
     "patientIds": ["id1", "id2"],
     "filters": {
       "group": "Ortho",
-      "doctor": "doctor_id"
+      "doctor": "doctor_id",
+      "gender": "Male",
+      "completionStatus": "completed",
+      "procedure": "RCT",
+      "registrationDateStart": "2023-01-01",
+      "registrationDateEnd": "2023-12-31"
     },
     "scheduledFor": "2023-06-28T10:00:00Z"
   }
@@ -108,7 +114,12 @@ This document outlines the SMS system implemented in the DMS (Dental Management 
 The SMS system is accessible through the admin panel under the "SMS Management" section. It provides interfaces for:
 
 1. Sending single SMS to specific patients or phone numbers
-2. Sending bulk SMS to groups of patients
+2. Sending bulk SMS to groups of patients with advanced filtering options:
+   - Filter by patient group (Ortho, Endo, etc.)
+   - Filter by gender
+   - Filter by treatment completion status
+   - Filter by dental procedure
+   - Filter by registration date range
 3. Managing SMS templates
 4. Viewing SMS history
 5. Monitoring SMS credit balance

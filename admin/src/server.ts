@@ -8,7 +8,7 @@ export const  dentalName = "Om Shree Nagar Dental Clinic";
 
 export const dentalAddress = "Taranagar, Dhangadhi, Nepal";
 
-// export const socket = "http://localhost:8080";
-export const socket = "https://server.om-shreenagar-dental-clinic.com";
+export const socket = "http://localhost:8080";
+// export const socket = "https://server.om-shreenagar-dental-clinic.com";
 // export const socket = "https://server3.crownagi.com";
 

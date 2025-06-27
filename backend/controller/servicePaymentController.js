@@ -21,7 +21,7 @@ const getDateFilter = (startDate, endDate) => {
 // Add new service payment
 const addServicePayment = async (req, res) => {
   try {
-    const { patientName, contactNumber, serviceType, description, amount, paymentMethod, patient } = req.body;
+    const { patientName, contactNumber, serviceType, description, amount, paymentMethod, patient, createdBy } = req.body;
     
     // Validate required fields
     if (!patientName || !serviceType || !amount) {
@@ -39,9 +39,15 @@ const addServicePayment = async (req, res) => {
       description,
       amount,
       paymentMethod: paymentMethod || "Cash",
-      createdBy: req.admin.id,
       date: new Date()
     };
+    
+    // Set createdBy field if admin is authenticated or provided in request
+    if (req.admin) {
+      servicePaymentData.createdBy = req.admin.id;
+    } else if (createdBy) {
+      servicePaymentData.createdBy = createdBy;
+    }
     
     // Only add patient field if it's provided and not null/empty
     if (patient && patient !== 'null' && patient !== '') {
@@ -51,59 +57,60 @@ const addServicePayment = async (req, res) => {
       servicePaymentData.isWalkIn = true;
     }
     
-    
     // Create new service payment
     const servicePayment = await ServicePayment.create(servicePaymentData);
     
-    // Also record this as income for financial tracking
-    await Income.create({
-      title: `${serviceType} - ${patientName}`,
-      amount,
-      date: new Date(),
-      category: serviceType === "X-Ray" ? "X-ray Fee" : 
-                serviceType === "Medicine" ? "Dental Products" : 
-                serviceType === "Consultation" ? "Consultation Fee" : "Other",
-      notes: description || `Service payment for ${serviceType}`,
-      createdBy: req.admin.id,
-    });
-      res.status(201).json({
-      success: true,
-      data: servicePayment,
-      message: "Service payment added successfully",
-    });
-    
-    // Send notification to admins
-    await sendRoleNotification({
-      title: 'New Payment Received',
-      message: `${amount} received from ${patientName} for ${serviceType}`,
-      type: 'success',
-      targetRoles: ['admin', 'superadmin'],
-      data: {
-        paymentId: servicePayment._id,
-        patientName,
+    // Also record this as income for financial tracking - only if admin is authenticated
+    if (req.admin) {
+      await Income.create({
+        title: `${serviceType} - ${patientName}`,
         amount,
-        serviceType
-      },
-      eventType: 'payment_received'
-    });
-    
-    // If this is for a registered patient, also send them a notification
-    if (patient && patient !== 'null' && patient !== '') {
-      await sendNotification({
-        title: 'Payment Recorded',
-        message: `Your payment of ${amount} for ${serviceType} has been recorded`,
+        date: new Date(),
+        category: serviceType === "X-Ray" ? "X-ray Fee" : 
+                  serviceType === "Medicine" ? "Dental Products" : 
+                  serviceType === "Consultation" ? "Consultation Fee" : "Other",
+        notes: description || `Service payment for ${serviceType}`,
+        createdBy: req.admin.id,
+      });
+      
+      // Send notification to admins - only if admin is authenticated
+      await sendRoleNotification({
+        title: 'New Payment Received',
+        message: `${amount} received from ${patientName} for ${serviceType}`,
         type: 'success',
-        userId: patient,
-        userType: 'Patient',
+        targetRoles: ['admin', 'superadmin'],
         data: {
           paymentId: servicePayment._id,
+          patientName,
           amount,
           serviceType
         },
         eventType: 'payment_received'
       });
+      
+      // If this is for a registered patient, also send them a notification
+      if (patient && patient !== 'null' && patient !== '') {
+        await sendNotification({
+          title: 'Payment Recorded',
+          message: `Your payment of ${amount} for ${serviceType} has been recorded`,
+          type: 'success',
+          userId: patient,
+          userType: 'Patient',
+          data: {
+            paymentId: servicePayment._id,
+            amount,
+            serviceType
+          },
+          eventType: 'payment_received'
+        });
+      }
     }
     
+    res.status(201).json({
+      success: true,
+      data: servicePayment,
+      message: "Service payment added successfully",
+    });
   } catch (error) {
     console.error("Error adding service payment:", error);
     res.status(500).json({
@@ -220,7 +227,7 @@ const getServicePaymentById = async (req, res) => {
 // Update service payment
 const updateServicePayment = async (req, res) => {
   try {
-    const { patientName, contactNumber, serviceType, description, amount, paymentMethod, patient } = req.body;
+    const { patientName, contactNumber, serviceType, description, amount, paymentMethod, patient, createdBy } = req.body;
     
     // Find service payment
     let servicePayment = await ServicePayment.findById(req.params.id);
@@ -232,31 +239,43 @@ const updateServicePayment = async (req, res) => {
       });
     }
     
-    // Only allow admin, superadmin, or the user who created the record to update it
-    if (
-      req.admin.role !== "admin" &&
-      req.admin.role !== "superadmin" &&
-      servicePayment.createdBy.toString() !== req.admin.id
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "You are not authorized to update this record",
-      });
+    // Only check authorization if admin is authenticated
+    if (req.admin) {
+      // Only allow admin, superadmin, or the user who created the record to update it
+      if (
+        req.admin.role !== "admin" &&
+        req.admin.role !== "superadmin" &&
+        servicePayment.createdBy &&
+        servicePayment.createdBy.toString() !== req.admin.id
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not authorized to update this record",
+        });
+      }
+    }
+    
+    // Update data object
+    const updateData = {
+      patientName: patientName || servicePayment.patientName,
+      contactNumber: contactNumber || servicePayment.contactNumber,
+      serviceType: serviceType || servicePayment.serviceType,
+      description: description !== undefined ? description : servicePayment.description,
+      amount: amount || servicePayment.amount,
+      paymentMethod: paymentMethod || servicePayment.paymentMethod,
+      patient: patient || servicePayment.patient,
+      isWalkIn: !patient
+    };
+    
+    // Only update createdBy if explicitly provided and no previous value exists
+    if (createdBy && !servicePayment.createdBy) {
+      updateData.createdBy = createdBy;
     }
     
     // Update service payment
     servicePayment = await ServicePayment.findByIdAndUpdate(
       req.params.id,
-      {
-        patientName: patientName || servicePayment.patientName,
-        contactNumber: contactNumber || servicePayment.contactNumber,
-        serviceType: serviceType || servicePayment.serviceType,
-        description: description !== undefined ? description : servicePayment.description,
-        amount: amount || servicePayment.amount,
-        paymentMethod: paymentMethod || servicePayment.paymentMethod,
-        patient: patient || servicePayment.patient,
-        isWalkIn: !patient
-      },
+      updateData,
       { new: true, runValidators: true }
     );
     
@@ -287,16 +306,19 @@ const deleteServicePayment = async (req, res) => {
       });
     }
     
-    // Only allow admin, superadmin, or the user who created the record to delete it
-    if (
-      req.admin.role !== "admin" &&
-      req.admin.role !== "superadmin" &&
-      servicePayment.createdBy.toString() !== req.admin.id
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "You are not authorized to delete this record",
-      });
+    // Only check authorization if admin is authenticated and there's a createdBy field
+    if (req.admin && servicePayment.createdBy) {
+      // Only allow admin, superadmin, or the user who created the record to delete it
+      if (
+        req.admin.role !== "admin" &&
+        req.admin.role !== "superadmin" &&
+        servicePayment.createdBy.toString() !== req.admin.id
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not authorized to delete this record",
+        });
+      }
     }
     
     await ServicePayment.findByIdAndDelete(req.params.id);
@@ -430,4 +452,4 @@ module.exports = {
   deleteServicePayment,
   getPatientServicePayments,
   getServicePaymentSummary,
-}; 
+};

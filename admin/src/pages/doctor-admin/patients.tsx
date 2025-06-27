@@ -47,10 +47,16 @@ import { useDoctorAuthContext } from "@/contexts/doctorAuthContext";
 import { AddPrescriptionButton } from "@/components/prescription/AddPrescriptionButton";
 import ViewPatientDrawer from "@/components/patient/ViewPatientDrawer";
 import { Patient } from "@/types/patient";
+import { SMSActionButtons } from "@/components/sms/SMSActionButtons";
 
-// Extend the Patient type to ensure createdAt is available
+// Extend the Patient type with additional properties
 interface ExtendedPatient extends Patient {
   createdAt: string;
+  followUpDate?: string;
+  billingDetails?: {
+    totalAmount: number;
+    totalPaid: number;
+  };
 }
 
 const Patients: React.FC = () => {
@@ -465,7 +471,20 @@ const Patients: React.FC = () => {
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
+                              <div className="flex justify-end gap-2 items-center">
+                                <SMSActionButtons 
+                                  patientId={patient._id}
+                                  patientName={patient.personalDetails.name}
+                                  phoneNumber={patient.personalDetails.contactNumber}
+                                  followUpDate={patient.followUpDate}
+                                  hasPaymentDue={patient.billingDetails ? patient.billingDetails.totalAmount > (patient.billingDetails.totalPaid || 0) : false}
+                                  onSuccess={() => {
+                                    toast({
+                                      title: "Success",
+                                      description: "SMS sent successfully",
+                                    });
+                                  }}
+                                />
                                 <AddPrescriptionButton
                                   patientId={patient._id}
                                   patientName={patient.personalDetails.name}

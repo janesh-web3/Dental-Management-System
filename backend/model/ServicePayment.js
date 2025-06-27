@@ -49,7 +49,7 @@ const servicePaymentSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
+      // Modified: removed required: true to make it optional
     },
     date: {
       type: Date,
@@ -77,4 +77,4 @@ servicePaymentSchema.pre('save', function(next) {
   next();
 });
 
-module.exports = mongoose.model("ServicePayment", servicePaymentSchema); 
+module.exports = mongoose.model("ServicePayment", servicePaymentSchema);

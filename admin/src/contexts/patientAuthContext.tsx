@@ -57,40 +57,39 @@ export default function PatientAuthProvider({
 
       if (!storedToken) {
         setIsAuthenticated(false);
+        setIsLoading(false);
         return;
       }
 
       setToken(storedToken);
       const response = await getCurrentPatient(storedToken);
-      try {
-        if (response.success && response.patient) {
-          setPatientDetails(response.patient as PatientDetails);
-          setIsAuthenticated(true);
-          setIsLoading(false);
-          return;
-        } else {
-          if (
-            response.message &&
-            (response.message.includes("expired") ||
-              response.message.includes("invalid") ||
-              response.message.includes("token") ||
-              response.message.includes("Token") ||
-              response.message.includes("unauthorized") ||
-              response.message.includes("Authentication failed"))
-          ) {
-            // localStorage.removeItem("patientToken");
-            setToken(null);
-          } else {
-          }
-        }
-      } catch (apiError) {}
 
-      setIsAuthenticated(false);
-      setIsLoading(false);
+      if (response.success && response.patient) {
+        setPatientDetails(response.patient as PatientDetails);
+        setIsAuthenticated(true);
+      } else {
+        // Handle authentication failure
+        if (
+          response.message &&
+          (response.message.includes("expired") ||
+            response.message.includes("invalid") ||
+            response.message.includes("token") ||
+            response.message.includes("session") ||
+            response.message.includes("authentication"))
+        ) {
+          // Clear the invalid token
+          localStorage.removeItem("patientToken");
+          setToken(null);
+          console.warn("Auth token expired or invalid:", response.message);
+        }
+
+        setIsAuthenticated(false);
+      }
     } catch (error) {
       console.error("Unexpected error in fetchPatientDetails:", error);
       setIsAuthenticated(false);
       setToken(null);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -206,3 +205,4 @@ export const usePatientAuthContext = () => {
   }
   return context;
 };
+

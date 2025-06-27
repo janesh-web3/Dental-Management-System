@@ -36,39 +36,24 @@ export const crudRequest = async <T>(
   config?: AxiosRequestConfig
 ): Promise<T> => {
   try {
-    console.log(`Making ${method} request to ${url}`, data);
-    
-    // Workaround for ad blockers - use a different URL pattern
-    if (url.includes('/login-user')) {
-      console.log('Using auth endpoint workaround');
-      url = url.replace('/login-user', '/auth-user');
-    }
-    
     const response = await axiosInstance.request<T>({
       method,
       url,
       data,
       ...config,
     });
-    
-    console.log(`Response from ${url}:`, response.status);
     return response.data;
   } catch (error: any) {
     // Improved error handling
-    console.error('API request error:', error);
-    
     if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
-      console.error('Error response:', error.response.status, error.response.data);
       throw error.response.data;
     } else if (error.request) {
       // The request was made but no response was received
-      console.error('No response received:', error.request);
       throw new Error('No response received from server');
     } else {
       // Something happened in setting up the request that triggered an Error
-      console.error('Request setup error:', error.message);
       throw new Error(error.message);
     }
   }

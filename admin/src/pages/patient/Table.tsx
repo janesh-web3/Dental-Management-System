@@ -719,7 +719,9 @@ export function PatientTable() {
 
       if (
         isFilteringEnabled &&
-        (selectedDoctor !== "all" || selectedProcedures.length > 0 || selectedGroup !== "all")
+        (selectedDoctor !== "all" ||
+          selectedProcedures.length > 0 ||
+          selectedGroup !== "all")
       ) {
         endpoint = "/patient/get-filtered-patients";
         if (selectedDoctor !== "all") {
@@ -2153,7 +2155,7 @@ export function PatientTable() {
           </div>
 
           <Pagination className="justify-center mt-4 sm:mt-0">
-            <PaginationContent>
+            <PaginationContent >
               <PaginationItem>
                 <PaginationPrevious
                   onClick={(e) => {
@@ -2167,20 +2169,96 @@ export function PatientTable() {
                   }
                 />
               </PaginationItem>
-              {[...Array(totalPages)].map((_, index) => (
-                <PaginationItem key={index}>
-                  <PaginationLink
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handlePageChange(index + 1);
-                    }}
-                    isActive={currentPage === index + 1}
-                    className="cursor-pointer"
-                  >
-                    {index + 1}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
+              
+              {totalPages <= 7 ? (
+                // Show all pages if there are 7 or fewer
+                [...Array(totalPages)].map((_, index) => (
+                  <PaginationItem key={index} className="hidden sm:inline-flex xs:inline-flex">
+                    <PaginationLink
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handlePageChange(index + 1);
+                      }}
+                      isActive={currentPage === index + 1}
+                      className="cursor-pointer"
+                    >
+                      {index + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))
+              ) : (
+                // Show pages with ellipsis for many pages
+                <>
+                  {/* First page always visible */}
+                  <PaginationItem className="hidden sm:inline-flex xs:inline-flex">
+                    <PaginationLink
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handlePageChange(1);
+                      }}
+                      isActive={currentPage === 1}
+                      className="cursor-pointer"
+                    >
+                      1
+                    </PaginationLink>
+                  </PaginationItem>
+                  
+                  {/* Show ellipsis if not in the first part */}
+                  {currentPage > 3 && (
+                    <PaginationItem className="hidden sm:inline-flex xs:inline-flex">
+                      <PaginationLink className="cursor-default">...</PaginationLink>
+                    </PaginationItem>
+                  )}
+                  
+                  {/* Pages around current page */}
+                  {[...Array(totalPages)].map((_, index) => {
+                    const pageNumber = index + 1;
+                    // Show current page and 1 page before/after on mobile
+                    // Show current page and 2 pages before/after on larger screens
+                    return (
+                      (pageNumber === currentPage || 
+                       (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)) && (
+                        <PaginationItem key={index}>
+                          <PaginationLink
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handlePageChange(pageNumber);
+                            }}
+                            isActive={currentPage === pageNumber}
+                            className="cursor-pointer"
+                          >
+                            {pageNumber}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )
+                    );
+                  })}
+                  
+                  {/* Show ellipsis if not in the last part */}
+                  {currentPage < totalPages - 2 && (
+                    <PaginationItem className="hidden sm:inline-flex xs:inline-flex">
+                      <PaginationLink className="cursor-default">...</PaginationLink>
+                    </PaginationItem>
+                  )}
+                  
+                  {/* Last page always visible */}
+                  {totalPages > 1 && (
+                    <PaginationItem className="hidden sm:inline-flex xs:inline-flex">
+                      <PaginationLink
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handlePageChange(totalPages);
+                        }}
+                        isActive={currentPage === totalPages}
+                        className="cursor-pointer"
+                      >
+                        {totalPages}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )}
+                </>
+              )}
+              
               <PaginationItem>
                 <PaginationNext
                   onClick={(e) => {
@@ -2567,10 +2645,7 @@ export function PatientTable() {
                 {renderDateFilter()}
                 {renderFollowUpFilter()}
 
-                <Select
-                  value={selectedGroup}
-                  onValueChange={handleGroupChange}
-                >
+                <Select value={selectedGroup} onValueChange={handleGroupChange}>
                   <SelectTrigger className="w-[130px]">
                     <SelectValue
                       placeholder="Select Group"

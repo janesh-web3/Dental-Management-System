@@ -17,6 +17,8 @@ import LandingPage from "@/pages/landing";
 import TermsOfServicePage from "@/pages/legal/terms";
 import PrivacyPolicyPage from "@/pages/legal/privacy";
 import SMS from "@/pages/SMS";
+import SingleSMS from "@/pages/sms/SingleSMS";
+import BulkSMS from "@/pages/sms/BulkSMS";
 import { ScanPatient } from "@/pages/patient/ScanPatient";
 import PatientView from "@/pages/public/PatientView";
 
@@ -26,6 +28,7 @@ import ExpensePage from "@/pages/finance/expense";
 import FinanceSummary from "@/pages/finance/summary";
 
 import DebugPage from "@/pages/debug";
+import SMSSettings from "@/pages/SMSSettings.tsx";
 
 // Lazy-loaded components
 const DashboardLayout = lazy(
@@ -63,6 +66,8 @@ const AppRouter: React.FC = () => {
         { path: "/settings", element: <Setting /> },        { path: "/testimonials", element: <Testimonials /> },
         { path: "/contacts", element: <Contacts /> },
         { path: "/sms", element: <SMS /> },
+        { path: "/sms/single", element: <SingleSMS /> },
+        { path: "/sms/bulk", element: <BulkSMS /> },
         { 
           path: "/notifications", 
           element: (
@@ -86,6 +91,7 @@ const AppRouter: React.FC = () => {
         // Standalone Income and Expense routes
         { path: "/income", element: <IncomePage /> },
         { path: "/expense", element: <ExpensePage /> },
+        { path: "/settings/sms", element: <SMSSettings /> },
       ],
     },
   ];

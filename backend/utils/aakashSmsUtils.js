@@ -59,7 +59,7 @@ const sendSingleSMS = async (phoneNumber, message) => {
         // Format and validate phone number
         const formattedNumber = verifyPhoneNumber(phoneNumber);
         
-        // Send the message via Aakash SMS v3 API
+        // Send SMS using Aakash SMS v3 API
         const response = await axios.post(aakashSmsConfig.apiUrl, null, {
             params: {
                 auth_token: aakashSmsConfig.authToken,
@@ -68,66 +68,118 @@ const sendSingleSMS = async (phoneNumber, message) => {
             }
         });
         
+        // Check for API error
         if (response.data.error) {
-            throw new Error(response.data.message || 'Failed to send SMS');
+            return {
+                success: false,
+                error: response.data.message || 'Failed to send SMS',
+                code: response.data.code || 'UNKNOWN_ERROR'
+            };
+        }
+        
+        // Extract SMS result
+        const smsResult = response.data.data && response.data.data.valid ? 
+            response.data.data.valid[0] : null;
+        
+        if (!smsResult) {
+            return {
+                success: false,
+                error: 'No valid response from SMS provider',
+                code: 'INVALID_RESPONSE'
+            };
         }
         
         return {
             success: true,
-            messageId: response.data.data.valid[0]?.id,
-            status: response.data.data.valid[0]?.status,
-            credit: response.data.data.valid[0]?.credit,
-            network: response.data.data.valid[0]?.network,
-            message: response.data.message
+            messageId: smsResult.id,
+            status: smsResult.status,
+            recipient: smsResult.mobile,
+            credit: smsResult.credit,
+            network: smsResult.network
         };
     } catch (error) {
+        console.error('Error sending single SMS:', error.message);
         return {
             success: false,
-            error: error.message,
-            details: error.response?.data
+            error: error.response?.data?.message || error.message,
+            code: error.response?.data?.code || 'REQUEST_FAILED'
         };
     }
 };
 
 /**
- * Send bulk SMS using Aakash SMS v4 API
+ * Send bulk SMS using Aakash SMS v4 API (multiple messages to multiple recipients)
  * @param {string[]} phoneNumbers - Array of recipient phone numbers
- * @param {string|string[]} messages - SMS content (single message or array of messages)
+ * @param {string|string[]} messages - Single message for all or array of messages for each recipient
  * @returns {Promise<object>} - Response from Aakash SMS API
  */
 const sendBulkSMS = async (phoneNumbers, messages) => {
     try {
-        // Format and validate all phone numbers
-        const formattedNumbers = phoneNumbers.map(number => {
+        // Validate and format phone numbers
+        const formattedNumbers = [];
+        const validRecipients = [];
+        const invalidRecipients = [];
+        
+        for (let i = 0; i < phoneNumbers.length; i++) {
             try {
-                return verifyPhoneNumber(number);
+                const formattedNumber = formatPhoneNumber(phoneNumbers[i]);
+                // Basic validation for Nepal numbers
+                if (formattedNumber.match(/^9[678]\d{8}$/)) {
+                    formattedNumbers.push(formattedNumber);
+                    validRecipients.push({
+                        originalNumber: phoneNumbers[i],
+                        formattedNumber,
+                        index: i
+                    });
+                } else {
+                    invalidRecipients.push({
+                        originalNumber: phoneNumbers[i],
+                        reason: 'Invalid phone number format'
+                    });
+                }
             } catch (error) {
-                console.warn(`Invalid phone number skipped: ${number}`);
-                return null;
+                invalidRecipients.push({
+                    originalNumber: phoneNumbers[i],
+                    reason: error.message
+                });
             }
-        }).filter(number => number !== null);
+        }
         
+        // If no valid recipients, return error
         if (formattedNumbers.length === 0) {
-            throw new Error('No valid phone numbers provided');
+            return {
+                success: false,
+                error: 'No valid phone numbers provided',
+                code: 'NO_VALID_RECIPIENTS',
+                invalidRecipients
+            };
         }
         
-        // Prepare the text array based on whether we have single or multiple messages
-        let textArray;
-        if (Array.isArray(messages)) {
-            // If messages is an array, use it as is
-            textArray = messages;
-        } else {
-            // If messages is a single string, create an array with just that message
-            textArray = [messages];
+        // Prepare message array if single message is provided
+        const messageArray = Array.isArray(messages) ? messages : formattedNumbers.map(() => messages);
+        
+        // Ensure messageArray matches formattedNumbers length
+        if (Array.isArray(messages) && messageArray.length !== formattedNumbers.length) {
+            // If messages array is shorter, pad with the last message
+            const lastMessage = messageArray[messageArray.length - 1];
+            while (messageArray.length < formattedNumbers.length) {
+                messageArray.push(lastMessage);
+            }
+            // If messages array is longer, truncate
+            if (messageArray.length > formattedNumbers.length) {
+                messageArray.length = formattedNumbers.length;
+            }
         }
         
-        // Send the messages via Aakash SMS v4 API
+        // Send SMS using Aakash SMS v4 API
+        const payload = {
+            to: formattedNumbers,
+            text: messageArray.length === 1 ? messageArray[0] : messageArray
+        };
+        
         const response = await axios.post(
             aakashSmsConfig.apiUrlV4,
-            {
-                to: formattedNumbers,
-                text: textArray
-            },
+            payload,
             {
                 headers: {
                     'auth-token': aakashSmsConfig.authToken,
@@ -136,114 +188,259 @@ const sendBulkSMS = async (phoneNumbers, messages) => {
             }
         );
         
+        // Check for API error
         if (response.data.error) {
-            throw new Error(response.data.message || 'Failed to send bulk SMS');
+            return {
+                success: false,
+                error: response.data.message || 'Failed to send bulk SMS',
+                code: response.data.code || 'UNKNOWN_ERROR',
+                invalidRecipients
+            };
         }
         
-        return {
+        // Process results
+        const results = {
             success: true,
-            responses: response.data.responses,
-            errors: response.data.errors
+            totalSent: 0,
+            totalFailed: 0,
+            validMessages: [],
+            invalidMessages: [],
+            invalidRecipients
         };
+        
+        // Process valid messages
+        if (response.data.data && response.data.data.valid) {
+            results.validMessages = response.data.data.valid.map(result => ({
+                messageId: result.id,
+                status: result.status,
+                recipient: result.mobile,
+                credit: result.credit,
+                network: result.network
+            }));
+            results.totalSent = results.validMessages.length;
+        }
+        
+        // Process invalid messages
+        if (response.data.data && response.data.data.invalid) {
+            results.invalidMessages = response.data.data.invalid.map(result => ({
+                recipient: result.mobile,
+                status: result.status,
+                reason: result.network
+            }));
+            results.totalFailed = results.invalidMessages.length;
+        }
+        
+        return results;
     } catch (error) {
+        console.error('Error sending bulk SMS:', error.message);
         return {
             success: false,
-            error: error.message,
-            details: error.response?.data
+            error: error.response?.data?.message || error.message,
+            code: error.response?.data?.code || 'REQUEST_FAILED'
         };
     }
 };
 
 /**
- * Get SMS sending report for a date range
+ * Check SMS credit balance
+ * @returns {Promise<object>} - Credit balance information
+ */
+const checkCredit = async () => {
+    try {
+        const response = await axios.get(aakashSmsConfig.creditUrl, {
+            headers: {
+                'auth-token': aakashSmsConfig.authToken
+            }
+        });
+        
+        if (response.data && response.data.credit !== undefined) {
+            return {
+                success: true,
+                availableCredit: response.data.credit,
+                message: 'Credit balance retrieved successfully'
+            };
+        } else {
+            return {
+                success: false,
+                availableCredit: 0,
+                error: 'Could not retrieve credit information'
+            };
+        }
+    } catch (error) {
+        console.error('Error checking SMS credit:', error.message);
+        return {
+            success: false,
+            availableCredit: 0,
+            error: error.response?.data?.message || error.message
+        };
+    }
+};
+
+/**
+ * Get detailed credit information
+ * @returns {Promise<object>} - Detailed credit information
+ */
+const getDetailedCredit = async () => {
+    try {
+        const response = await axios.get(aakashSmsConfig.availableCreditUrl, {
+            headers: {
+                'auth-token': aakashSmsConfig.authToken
+            }
+        });
+        
+        return {
+            success: true,
+            data: response.data,
+            message: 'Detailed credit information retrieved successfully'
+        };
+    } catch (error) {
+        console.error('Error getting detailed SMS credit:', error.message);
+        return {
+            success: false,
+            data: null,
+            error: error.response?.data?.message || error.message
+        };
+    }
+};
+
+/**
+ * Get SMS report for a date range
  * @param {string} startDate - Start date in YYYY-MM-DD format
  * @param {string} endDate - End date in YYYY-MM-DD format
- * @returns {Promise<object>} - SMS report data
+ * @returns {Promise<object>} - SMS report
  */
 const getSMSReport = async (startDate, endDate) => {
     try {
         const response = await axios.post(
             aakashSmsConfig.reportApiUrl,
-            { start_date: startDate, end_date: endDate },
-            { 
-                headers: { 'auth-token': aakashSmsConfig.authToken }
+            {
+                start_date: startDate,
+                end_date: endDate
+            },
+            {
+                headers: {
+                    'auth-token': aakashSmsConfig.authToken
+                }
             }
         );
         
         return {
             success: true,
-            data: response.data
+            data: response.data,
+            message: 'SMS report retrieved successfully'
         };
     } catch (error) {
+        console.error('Error getting SMS report:', error.message);
         return {
             success: false,
-            error: error.message,
-            details: error.response?.data
+            data: null,
+            error: error.response?.data?.message || error.message
         };
     }
 };
 
 /**
- * Get paginated SMS reports
- * @param {number} page - Page number (starts from 1)
- * @returns {Promise<object>} - Paginated SMS report data
- */
-const getPaginatedSMSReport = async (page = 1) => {
-    try {
-        const response = await axios.post(
-            aakashSmsConfig.reportApiUrlV1,
-            { 
-                auth_token: aakashSmsConfig.authToken,
-                page: page 
-            }
-        );
-        
-        return {
-            success: true,
-            data: response.data
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message,
-            details: error.response?.data
-        };
-    }
-};
-
-/**
- * Send an interactive SMS (for campaigns)
- * @param {string|string[]} phoneNumbers - Recipient phone numbers
- * @param {string} message - SMS content
- * @param {number} campaignId - Campaign ID from Aakash SMS dashboard
+ * Send interactive SMS (for campaigns, forms, etc.)
+ * @param {object} options - Interactive SMS options
  * @returns {Promise<object>} - Response from Aakash SMS API
  */
-const sendInteractiveSMS = async (phoneNumbers, message, campaignId) => {
+const sendInteractiveSMS = async (options) => {
     try {
-        // Format phone numbers as comma-separated string if it's an array
-        const to = Array.isArray(phoneNumbers) 
-            ? phoneNumbers.map(num => verifyPhoneNumber(num)).join(',')
-            : verifyPhoneNumber(phoneNumbers);
+        const { to, text, replyCallback, expiryTime, campaignId } = options;
         
+        // Format and validate phone number
+        const formattedNumber = verifyPhoneNumber(to);
+        
+        // Send interactive SMS
         const response = await axios.post(
             aakashSmsConfig.interactiveSmsUrl,
             {
-                auth_token: aakashSmsConfig.authToken,
-                campaign_id: campaignId,
-                to: to,
-                text: message
+                to: formattedNumber,
+                text: text,
+                reply_callback: replyCallback,
+                expiry_time: expiryTime || 86400, // Default 24 hours
+                campaign_id: campaignId
+            },
+            {
+                headers: {
+                    'auth-token': aakashSmsConfig.authToken
+                }
             }
         );
         
+        // Check for API error
+        if (response.data.error) {
+            return {
+                success: false,
+                error: response.data.message || 'Failed to send interactive SMS',
+                code: response.data.code || 'UNKNOWN_ERROR'
+            };
+        }
+        
         return {
             success: true,
-            data: response.data
+            data: response.data,
+            message: 'Interactive SMS sent successfully'
         };
     } catch (error) {
+        console.error('Error sending interactive SMS:', error.message);
+        return {
+            success: false,
+            error: error.response?.data?.message || error.message,
+            code: error.response?.data?.code || 'REQUEST_FAILED'
+        };
+    }
+};
+
+/**
+ * Send follow-up SMS to a patient
+ * @param {string} phoneNumber - Patient's phone number
+ * @param {Date} followUpDate - Follow-up appointment date
+ * @param {string} patientName - Patient's name
+ * @param {string} clinicName - Clinic name
+ * @returns {Promise<object>} - Response from SMS API
+ */
+const sendFollowUpSMS = async (phoneNumber, followUpDate, patientName, clinicName) => {
+    try {
+        const formattedDate = new Date(followUpDate).toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        const message = `Dear ${patientName}, this is a reminder about your follow-up dental appointment on ${formattedDate} at ${clinicName}. Please visit on time. Thank you.`;
+        
+        return await sendSingleSMS(phoneNumber, message);
+    } catch (error) {
+        console.error('Error sending follow-up SMS:', error.message);
         return {
             success: false,
             error: error.message,
-            details: error.response?.data
+            code: 'FOLLOWUP_SMS_FAILED'
+        };
+    }
+};
+
+/**
+ * Send payment reminder SMS to a patient
+ * @param {string} phoneNumber - Patient's phone number
+ * @param {string} patientName - Patient's name
+ * @param {number} amountDue - Amount due
+ * @param {string} clinicName - Clinic name
+ * @returns {Promise<object>} - Response from SMS API
+ */
+const sendPaymentReminderSMS = async (phoneNumber, patientName, amountDue, clinicName) => {
+    try {
+        const message = `Dear ${patientName}, you have a pending dental bill of Rs ${amountDue}. Please clear your dues at your earliest convenience. - ${clinicName}`;
+        
+        return await sendSingleSMS(phoneNumber, message);
+    } catch (error) {
+        console.error('Error sending payment reminder SMS:', error.message);
+        return {
+            success: false,
+            error: error.message,
+            code: 'PAYMENT_SMS_FAILED'
         };
     }
 };
@@ -253,9 +450,10 @@ module.exports = {
     verifyPhoneNumber,
     sendSingleSMS,
     sendBulkSMS,
+    checkCredit,
+    getDetailedCredit,
     getSMSReport,
-    getPaginatedSMSReport,
     sendInteractiveSMS,
-    checkCredit: aakashSmsConfig.checkCredit.bind(aakashSmsConfig),
-    getDetailedCredit: aakashSmsConfig.getDetailedCredit.bind(aakashSmsConfig)
+    sendFollowUpSMS,
+    sendPaymentReminderSMS
 };

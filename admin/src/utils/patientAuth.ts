@@ -92,16 +92,16 @@ export const getCurrentPatient = async (token: string): Promise<{ success: boole
     console.error('Get current patient error:', error);
     
     if (error.response) {
-      // Only return session expired message for specific 401 errors related to token
-      if (error.response.status === 401 && 
-          (error.response.data?.message?.includes('token') || 
-           error.response.data?.message?.includes('Token') || 
-           error.response.data?.message?.includes('authentication') || 
-           error.response.data?.message?.includes('Authentication'))) {
-        return { success: false, message: 'Session expired. Please login again.' };
+      // Check for specific authentication errors
+      if (error.response.status === 401) {
+        // Token is invalid or expired
+        return { 
+          success: false, 
+          message: 'Your session has expired. Please login again.' 
+        };
       }
       
-      // For other errors, return the error message but don't indicate session expiry
+      // For other errors, return the error message
       const message = error.response.data?.message || 'Failed to get patient details';
       return { success: false, message };
     } else if (error.request) {

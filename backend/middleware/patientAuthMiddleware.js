@@ -44,8 +44,6 @@ const patientAuthMiddleware = async (req, res, next) => {
       });
     }
     
-    
-    
     // Find patient details
     const patient = await Patient.findById(patientAuth.patientId);
     if (!patient) {
@@ -61,6 +59,8 @@ const patientAuthMiddleware = async (req, res, next) => {
     
     next();
   } catch (error) {
+    console.error("Patient auth middleware error:", error);
+    
     if (error.name === "JsonWebTokenError") {
       return res.status(401).json({
         success: false,

@@ -62,6 +62,7 @@ export default function SingleSMSPage() {
         success: boolean; 
         message?: string 
       }>('POST', '/sms/single', {
+        phoneNumber: selectedPatient.personalDetails.contactNumber,
         patientId: selectedPatient._id,
         message,
       });

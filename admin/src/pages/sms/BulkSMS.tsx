@@ -36,7 +36,7 @@ export default function BulkSMSPage() {
   const { data: procedureGroups = [] } = useQuery<ProcedureGroup[]>({
     queryKey: ['procedureGroups'],
     queryFn: async () => {
-      const response = await crudRequest<{ data: ProcedureGroup[] }>('GET', '/api/procedure-groups');
+      const response = await crudRequest<{ data: ProcedureGroup[] }>('GET', '/procedure-groups');
       return response?.data || [];
     },
   });
@@ -47,7 +47,7 @@ export default function BulkSMSPage() {
       setFilters(appliedFilters);
       
       // Call API to get count of matching patients
-      const response = await crudRequest<{ count: number }>('POST', '/api/patient/count', appliedFilters);
+      const response = await crudRequest<{ count: number }>('POST', '/patient/count', appliedFilters);
       setFilteredCount(response?.count || 0);
       setSelectedPatients([]); // Reset selected patients when filters change
     } catch (error) {
@@ -62,7 +62,7 @@ export default function BulkSMSPage() {
     queryFn: async () => {
       if (Object.keys(filters).length === 0) return [];
       
-      const response = await crudRequest<{ data: any[] }>('POST', '/api/patient', { ...filters, limit: 1000 });
+      const response = await crudRequest<{ data: any[] }>('POST', '/patient', { ...filters, limit: 1000 });
       return response?.data || [];
     },
     enabled: Object.keys(filters).length > 0,
@@ -87,7 +87,7 @@ export default function BulkSMSPage() {
         success: boolean; 
         sentCount: number; 
         message?: string 
-      }>('POST', '/api/sms/bulk', {
+      }>('POST', '/sms/bulk', {
         patientIds: selectedPatients.map(p => p._id),
         message,
       });

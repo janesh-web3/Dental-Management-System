@@ -134,7 +134,7 @@ const sendSingleSMS = async (req, res) => {
                 recipient: formattedNumber,
                 message: messageContent,
                 status: 'scheduled',
-                sentBy: req.user._id,
+                sentBy: req.admin?.id || null,
                 patient: patientId || null,
                 templateUsed,
                 scheduledFor: scheduledDate
@@ -176,7 +176,7 @@ const sendSingleSMS = async (req, res) => {
             messageId: smsResult.id?.toString(),
             networkProvider: smsResult.network,
             credit: smsResult.credit,
-            sentBy: req.user._id,
+            sentBy: req.user?._id || null,
             patient: patientId || null,
             templateUsed
         });

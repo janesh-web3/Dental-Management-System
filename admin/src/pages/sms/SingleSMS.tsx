@@ -33,7 +33,7 @@ export default function SingleSMSPage() {
     queryFn: async () => {
       if (!searchQuery.trim()) return [];
       
-      const response = await crudRequest<{ data: any[] }>('POST', '/api/patient/search', { 
+      const response = await crudRequest<{ data: any[] }>('POST', '/patient/search', { 
         query: searchQuery, 
         limit: 5 
       });
@@ -61,7 +61,7 @@ export default function SingleSMSPage() {
       const response = await crudRequest<{ 
         success: boolean; 
         message?: string 
-      }>('POST', '/api/sms/single', {
+      }>('POST', '/sms/single', {
         patientId: selectedPatient._id,
         message,
       });

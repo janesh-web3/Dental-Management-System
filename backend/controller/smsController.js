@@ -157,8 +157,6 @@ const sendSingleSMS = async (req, res) => {
             }
         });
 
-        console.log('SMS Result:', response.data);
-
         if (response.data.error) {
             // If Aakash SMS returned an error
             return res.status(400).json({

@@ -205,9 +205,9 @@ const sendBulkSMS = async (req, res) => {
         const { 
             message, 
             templateId, 
-            variables,
-            patientIds,
-            filters,
+            variables = {},
+            patientIds = [],
+            filters = {},
             scheduledFor
         } = req.body;
 
@@ -255,39 +255,82 @@ const sendBulkSMS = async (req, res) => {
         if (filters) {
             // Group filter
             if (filters.group && filters.group !== "all") {
-                query["medicalDetails.group"] = filters.group;
+                query["medicalDetails.group"] = { $in: Array.isArray(filters.group) ? filters.group : [filters.group] };
             }
             
             // Doctor filter
             if (filters.doctor && filters.doctor !== "all") {
-                query["medicalDetails.treatmentPlanning.treatedByDoctor"] = new mongoose.Types.ObjectId(filters.doctor);
+                const doctors = Array.isArray(filters.doctor) ? filters.doctor : [filters.doctor];
+                query["medicalDetails.treatmentPlanning.treatedByDoctor"] = {
+                    $in: doctors.map(id => new mongoose.Types.ObjectId(id))
+                };
             }
 
             // Gender filter
             if (filters.gender && filters.gender !== "all") {
-                query["personalDetails.gender"] = filters.gender;
-            }
-
-            // Treatment completion status filter
-            if (filters.completionStatus && filters.completionStatus !== "all") {
-                query["medicalDetails.treatmentPlanning.isCompleted"] = filters.completionStatus === "completed";
-            }
-
-            // Procedure filter
-            if (filters.procedure && filters.procedure !== "all") {
-                query["medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.procedure"] = filters.procedure;
-            }
-
-            // Registration date filter
-            if (filters.registrationDateStart && filters.registrationDateEnd) {
-                query["createdAt"] = { 
-                    $gte: new Date(filters.registrationDateStart), 
-                    $lte: new Date(filters.registrationDateEnd) 
+                query["personalDetails.gender"] = { 
+                    $in: Array.isArray(filters.gender) ? filters.gender : [filters.gender] 
                 };
-            } else if (filters.registrationDateStart) {
-                query["createdAt"] = { $gte: new Date(filters.registrationDateStart) };
-            } else if (filters.registrationDateEnd) {
-                query["createdAt"] = { $lte: new Date(filters.registrationDateEnd) };
+            }
+
+            // Treatment status filter (completed/incomplete)
+            if (filters.treatmentStatus && filters.treatmentStatus !== "all") {
+                const isCompleted = filters.treatmentStatus === "completed";
+                query["medicalDetails.treatmentPlanning.isCompleted"] = isCompleted;
+            }
+
+            // Procedure filter (multiple procedures can be selected)
+            if (filters.procedures && filters.procedures.length > 0) {
+                const procedures = Array.isArray(filters.procedures) ? filters.procedures : [filters.procedures];
+                query["medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.procedure"] = {
+                    $in: procedures
+                };
+            }
+
+            // Date range filter with support for preset ranges (today, this week, this month, etc.)
+            if (filters.dateRange) {
+                const now = new Date();
+                let startDate, endDate;
+
+                switch (filters.dateRange) {
+                    case 'today':
+                        startDate = new Date(now.setHours(0, 0, 0, 0));
+                        endDate = new Date(now.setHours(23, 59, 59, 999));
+                        break;
+                    case 'thisWeek':
+                        startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+                        startDate.setHours(0, 0, 0, 0);
+                        endDate = new Date(now);
+                        endDate.setDate(now.getDate() + (6 - now.getDay()));
+                        endDate.setHours(23, 59, 59, 999);
+                        break;
+                    case 'thisMonth':
+                        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+                        break;
+                    case 'thisYear':
+                        startDate = new Date(now.getFullYear(), 0, 1);
+                        endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+                        break;
+                    case 'custom':
+                        if (filters.registrationDateStart) {
+                            startDate = new Date(filters.registrationDateStart);
+                            startDate.setHours(0, 0, 0, 0);
+                        }
+                        if (filters.registrationDateEnd) {
+                            endDate = new Date(filters.registrationDateEnd);
+                            endDate.setHours(23, 59, 59, 999);
+                        }
+                        break;
+                }
+
+                if (startDate && endDate) {
+                    query.createdAt = { $gte: startDate, $lte: endDate };
+                } else if (startDate) {
+                    query.createdAt = { $gte: startDate };
+                } else if (endDate) {
+                    query.createdAt = { $lte: endDate };
+                }
             }
         }
 
@@ -375,36 +418,80 @@ const sendBulkSMS = async (req, res) => {
                 console.error(`Error processing patient ${patient._id}:`, error.message);
             }
         }
-        
         if (phoneNumbers.length === 0) {
             return res.status(400).json({ error: 'No valid phone numbers found' });
         }
 
+        // Prepare batch of messages to save to history
+        const messagesToSave = [];
+        
+        // First, save all messages to history with 'pending' status
+        for (let i = 0; i < phoneNumbers.length; i++) {
+            const patientIndex = patients.findIndex(p => 
+                formatPhoneNumber(p.personalDetails.contactNumber) === phoneNumbers[i]
+            );
+            const patient = patientIndex !== -1 ? patients[patientIndex] : null;
+            
+            messagesToSave.push({
+                recipient: phoneNumbers[i],
+                message: personalizedMessages[i] || messageContent,
+                status: 'pending',
+                sentBy: req.user?._id,
+                patient: patient?._id,
+                templateUsed,
+                isBulk: true,
+                createdAt: new Date()
+            });
+        }
+        
+        // Save all messages to history first
+        const savedMessages = await SMSHistory.insertMany(messagesToSave);
+        
         // Send the messages using Aakash SMS v4 API
-        const response = await axios.post(
-            aakashSmsConfig.apiUrlV4, 
-            {
-                to: phoneNumbers,
-                text: personalizedMessages.length === 1 ? personalizedMessages : personalizedMessages
-            },
-            {
-                headers: {
-                    'auth-token': aakashSmsConfig.authToken,
-                    'Content-Type': 'application/json'
+        let response;
+        try {
+            response = await axios.post(
+                aakashSmsConfig.apiUrlV4, 
+                {
+                    to: phoneNumbers,
+                    text: personalizedMessages.length === 1 ? personalizedMessages[0] : personalizedMessages
+                },
+                {
+                    headers: {
+                        'auth-token': aakashSmsConfig.authToken,
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 30000 // 30 seconds timeout
                 }
+            );
+
+            console.log('Bulk SMS Result:', response.data);
+
+            if (response.data.error) {
+                throw new Error(response.data.message || 'Failed to send bulk SMS');
             }
-        );
-
-        console.log('Bulk SMS Result:', response.data);
-
-        if (response.data.error) {
-            return res.status(400).json({
+        } catch (error) {
+            console.error('Error sending bulk SMS:', error);
+            
+            // Update all messages in this batch to failed status
+            await SMSHistory.updateMany(
+                { _id: { $in: savedMessages.map(m => m._id) } },
+                { 
+                    $set: { 
+                        status: 'failed',
+                        error: error.response?.data?.message || error.message,
+                        updatedAt: new Date()
+                    } 
+                }
+            );
+            
+            return res.status(500).json({
                 error: 'Failed to send bulk SMS',
-                details: response.data.message,
+                details: error.response?.data?.message || error.message,
             });
         }
 
-        // Process the results and save to history
+        // Process the results and update history
         const results = [];
         let validMessages = [];
         let invalidMessages = [];
@@ -417,35 +504,74 @@ const sendBulkSMS = async (req, res) => {
             invalidMessages = response.data.data.invalid;
         }
         
-        // Save valid messages to history
-        for (let i = 0; i < validMessages.length; i++) {
-            const result = validMessages[i];
-            const patientIndex = phoneNumbers.findIndex(num => num === formatPhoneNumber(result.mobile));
+        // Update valid messages in history
+        const updatePromises = [];
+        
+        // Process valid messages
+        for (const result of validMessages) {
+            const formattedNumber = formatPhoneNumber(result.mobile);
+            const patientIndex = phoneNumbers.findIndex(num => num === formattedNumber);
             const patient = patientIndex !== -1 ? patients[patientIndex] : null;
             
-            // Save to history
-            await saveSMSHistory({
-                recipient: result.mobile,
-                message: personalizedMessages[patientIndex] || messageContent,
-                status: result.status,
-                messageId: result.id?.toString(),
-                networkProvider: result.network,
-                credit: result.credit,
-                sentBy: req.user._id,
-                patient: patient ? patient._id : null,
-                templateUsed,
-                isBulk: true
-            });
+            // Find the corresponding saved message
+            const savedMessage = savedMessages.find(msg => 
+                msg.recipient === formattedNumber
+            );
             
-            results.push({
-                patientId: patient ? patient._id : null,
-                messageId: result.id,
-                status: result.status,
-                to: result.mobile,
-                network: result.network,
-                credit: result.credit
-            });
+            if (savedMessage) {
+                const updateData = {
+                    status: result.status || 'sent',
+                    messageId: result.id?.toString(),
+                    networkProvider: result.network,
+                    credit: result.credit,
+                    updatedAt: new Date()
+                };
+                
+                updatePromises.push(
+                    SMSHistory.findByIdAndUpdate(
+                        savedMessage._id,
+                        { $set: updateData },
+                        { new: true }
+                    )
+                );
+                
+                results.push({
+                    patientId: patient?._id || null,
+                    messageId: result.id,
+                    status: result.status,
+                    to: result.mobile,
+                    network: result.network,
+                    credit: result.credit
+                });
+            }
         }
+        
+        // Process invalid messages
+        for (const invalid of invalidMessages) {
+            const formattedNumber = formatPhoneNumber(invalid.mobile);
+            const savedMessage = savedMessages.find(msg => 
+                msg.recipient === formattedNumber
+            );
+            
+            if (savedMessage) {
+                const updateData = {
+                    status: 'failed',
+                    error: invalid.network || 'Invalid number',
+                    updatedAt: new Date()
+                };
+                
+                updatePromises.push(
+                    SMSHistory.findByIdAndUpdate(
+                        savedMessage._id,
+                        { $set: updateData },
+                        { new: true }
+                    )
+                );
+            }
+        }
+        
+        // Wait for all updates to complete
+        await Promise.all(updatePromises);
 
         res.status(200).json({
             success: true,

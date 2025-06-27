@@ -38,6 +38,7 @@ router.post("/search", searchPatients);
 router.post("/count", getPatientsCount);
 router.get("/get-pagination-patient", getPaginatedPatient);
 router.get("/get-filtered-patients", getFilteredPatients);
+router.post("/", getFilteredPatients);
 router.get("/get-procedure-types", getProcedureTypes);
 router.get("/get-patient/:id", getSinglePatient);
 router.post(

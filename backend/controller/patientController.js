@@ -43,20 +43,21 @@ exports.getFilteredPatients = async (req, res) => {
     } = req.body;
 
     const query = {};
+    const treatmentQuery = {};
 
     // Apply treatment status filter
     if (treatmentStatus) {
-      query['treatments.status'] = treatmentStatus;
+      treatmentQuery['treatments.status'] = treatmentStatus;
     }
 
     // Apply procedures filter
     if (procedures.length > 0) {
-      query['treatments.procedure'] = { $in: procedures };
+      treatmentQuery['treatments.procedure'] = { $in: procedures };
     }
 
     // Apply group filter
     if (group) {
-      query['treatments.group'] = group;
+      treatmentQuery['treatments.group'] = group;
     }
 
     // Apply gender filter
@@ -66,17 +67,68 @@ exports.getFilteredPatients = async (req, res) => {
 
     // Apply date range filter
     if (dateRange.from || dateRange.to) {
-      query['treatments.date'] = {};
+      treatmentQuery['treatments.date'] = {};
       if (dateRange.from) {
-        query['treatments.date'].$gte = new Date(dateRange.from);
+        treatmentQuery['treatments.date'].$gte = new Date(dateRange.from);
       }
       if (dateRange.to) {
-        query['treatments.date'].$lte = new Date(dateRange.to);
+        treatmentQuery['treatments.date'].$lte = new Date(dateRange.to);
       }
     }
 
-    const skip = (Number(page) - 1) * Number(limit);
+    // Only apply treatment query if there are any treatment filters
+    if (Object.keys(treatmentQuery).length > 0) {
+      query.$or = [
+        { 'medicalDetails.treatmentPlanning': { $exists: true, $ne: [] } },
+        { 'treatments': { $exists: true, $ne: [] } }
+      ];
+      
+      // Find patients with matching treatments
+      const patientsWithTreatments = await Patient.aggregate([
+        {
+          $lookup: {
+            from: 'treatments',
+            localField: '_id',
+            foreignField: 'patientId',
+            as: 'treatments'
+          }
+        },
+        { $match: treatmentQuery },
+        { $project: { _id: 1 } }
+      ]);
+      
+      const patientIds = patientsWithTreatments.map(p => p._id);
+      if (patientIds.length > 0) {
+        query._id = { $in: patientIds };
+      } else {
+        // If no patients match the treatment filters, return empty array
+        return res.json({
+          success: true,
+          data: [],
+          total: 0,
+          page: 1,
+          totalPages: 0
+        });
+      }
+    }
 
+    // If limit is 0, return all matching patients without pagination
+    if (limit === 0) {
+      const patients = await Patient.find(query)
+        .select('personalDetails name contactNumber emailAddress lastAppointment')
+        .lean();
+      
+      return res.json({
+        success: true,
+        data: patients,
+        total: patients.length,
+        page: 1,
+        totalPages: 1
+      });
+    }
+
+    // Otherwise, apply pagination
+    const skip = (Number(page) - 1) * Number(limit);
     const [patients, total] = await Promise.all([
       Patient.find(query)
         .skip(skip)

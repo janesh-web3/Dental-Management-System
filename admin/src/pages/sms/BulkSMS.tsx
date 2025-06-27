@@ -12,10 +12,19 @@ import { BulkSMSFilter } from '@/components/sms/BulkSMSFilter';
 
 
 
-type ProcedureGroup = {
-  _id: string;
-  name: string;
-};
+interface DateRange {
+  from?: string;
+  to?: string;
+}
+
+interface Filters {
+  treatmentStatus?: string;
+  procedures?: string[];
+  group?: string;
+  dateRange?: DateRange;
+  gender?: string;
+  [key: string]: any;
+}
 
 interface Patient {
   _id: string;
@@ -23,32 +32,41 @@ interface Patient {
     name: string;
     contactNumber: string;
   };
+  name: string;
+  contactNumber: string;
 }
 
 export default function BulkSMSPage() {
   const [message, setMessage] = useState('');
   const [selectedPatients, setSelectedPatients] = useState<Patient[]>([]);
   const [isSending, setIsSending] = useState(false);
-  const [filters, setFilters] = useState<Record<string, unknown>>({});
+  const [filters, setFilters] = useState<Filters>({});
   const [filteredCount, setFilteredCount] = useState<number | null>(null);
 
-  // Fetch procedure groups for filters
-  const { data: procedureGroups = [] } = useQuery<ProcedureGroup[]>({
-    queryKey: ['procedureGroups'],
-    queryFn: async () => {
-      const response = await crudRequest<{ data: ProcedureGroup[] }>('GET', '/procedure-groups');
-      return response?.data || [];
-    },
-  });
 
-  // Apply filters and get count of matching patients
-  const applyFilters = async (appliedFilters: Record<string, unknown>) => {
+
+  // Apply filters from the filter component
+  const applyFilters = async (appliedFilters: Filters) => {
     try {
-      setFilters(appliedFilters);
-      
-      // Call API to get count of matching patients
-      const response = await crudRequest<{ count: number }>('POST', '/patient/count', appliedFilters);
-      setFilteredCount(response?.count || 0);
+      // Convert filter values to undefined if they are 'all' or empty
+      const cleanFilters = Object.entries(appliedFilters).reduce<Record<string, any>>((acc, [key, value]) => {
+        if (value === 'all' || value === '' || value === null) {
+          return acc; // Skip this filter
+        }
+        
+        // Handle date range filter specifically
+        if (key === 'dateRange' && value && typeof value === 'object' && 'from' in value && 'to' in value) {
+          const dateRange = value as DateRange;
+          if (!dateRange.from && !dateRange.to) {
+            return acc; // Skip empty date range
+          }
+          return { ...acc, [key]: dateRange };
+        }
+        
+        return { ...acc, [key]: value };
+      }, {});
+
+      setFilters(cleanFilters);
       setSelectedPatients([]); // Reset selected patients when filters change
     } catch (error) {
       console.error('Error applying filters:', error);
@@ -60,12 +78,53 @@ export default function BulkSMSPage() {
   const { data: filteredPatients = [], isLoading } = useQuery({
     queryKey: ['filteredPatients', filters],
     queryFn: async () => {
-      if (Object.keys(filters).length === 0) return [];
+      // Convert filters to query parameters
+      const params = new URLSearchParams();
       
-      const response = await crudRequest<{ data: any[] }>('POST', '/patient', { ...filters, limit: 1000 });
-      return response?.data || [];
+      // Add all filters as query parameters
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === '') return;
+        
+        if (key === 'dateRange' && value && typeof value === 'object' && 'from' in value) {
+          const dateRange = value as DateRange;
+          if (dateRange.from) params.append('startDate', dateRange.from);
+          if (dateRange.to) params.append('endDate', dateRange.to);
+          return;
+        }
+        
+        if (Array.isArray(value)) {
+          // Handle array parameters (like procedures)
+          value.forEach(v => v && params.append(key, String(v)));
+        } else {
+          params.append(key, String(value));
+        }
+      });
+      
+      // Set pagination parameters
+      params.append('limit', '10000');
+      params.append('page', '1');
+      
+      const url = `/patient/get-filtered-patients?${params.toString()}`;
+      const response = await crudRequest<{ patients: any[], total?: number }>('GET', url);
+      
+      console.log('Filtered patients response:', response);
+      const patients = response?.patients || [];
+      const total = response?.total || patients.length;
+      
+      // Map the patient data to match the expected format
+      const mappedPatients = patients.map(patient => ({
+        ...patient,
+        personalDetails: {
+          name: patient.personalDetails?.name || 'No Name',
+          contactNumber: patient.personalDetails?.contactNumber || 'No Contact',
+          ...patient.personalDetails
+        }
+      }));
+      
+      setFilteredCount(total);
+      return mappedPatients;
     },
-    enabled: Object.keys(filters).length > 0,
+    enabled: true, // Always enable the query
   });
 
   // Handle sending bulk SMS
@@ -76,26 +135,50 @@ export default function BulkSMSPage() {
     }
 
     if (selectedPatients.length === 0) {
-      toast.error('No recipients selected');
+      toast.error('Please select at least one recipient');
       return;
     }
 
     setIsSending(true);
     
     try {
+      // Prepare the SMS data
+      const smsData = {
+        patientIds: selectedPatients.map(p => p._id),
+        message: message.trim(),
+        // Include any additional metadata you might need
+        sender: 'clinic',
+        type: 'bulk',
+        timestamp: new Date().toISOString()
+      };
+
+      console.log('Sending bulk SMS to patients:', smsData);
+      
       const response = await crudRequest<{ 
         success: boolean; 
         sentCount: number; 
-        message?: string 
-      }>('POST', '/sms/bulk', {
-        patientIds: selectedPatients.map(p => p._id),
-        message,
-      });
+        failedCount: number;
+        message?: string;
+        errors?: Array<{ patientId: string; error: string }>;
+      }>('POST', '/sms/bulk', smsData);
 
       if (response?.success) {
-        toast.success(`SMS sent successfully to ${response.sentCount} recipients`);
-        setMessage('');
-        setSelectedPatients([]);
+        const successMessage = `SMS sent successfully to ${response.sentCount} ${response.sentCount === 1 ? 'recipient' : 'recipients'}`;
+        const failedMessage = response.failedCount > 0 
+          ? ` (${response.failedCount} failed)` 
+          : '';
+        
+        toast.success(successMessage + failedMessage);
+        
+        // Reset the form if everything was successful
+        if (response.failedCount === 0) {
+          setMessage('');
+        }
+        
+        // If there were errors, log them
+        if (response.errors?.length) {
+          console.error('Failed to send SMS to some recipients:', response.errors);
+        }
       } else {
         throw new Error(response?.message || 'Failed to send SMS');
       }
@@ -171,13 +254,12 @@ export default function BulkSMSPage() {
           </CardHeader>
           <CardContent>
             <BulkSMSFilter 
-              onFilter={applyFilters}
+              onFilter={applyFilters} 
               onReset={() => {
                 setFilters({});
                 setFilteredCount(null);
                 setSelectedPatients([]);
               }}
-              procedureGroups={procedureGroups}
               loading={isLoading}
             />
 

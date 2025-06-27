@@ -12,8 +12,8 @@ const SMSHistorySchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['sent', 'delivered', 'failed', 'undelivered', 'scheduled', 'queued', 'aborted'],
-      default: 'sent'
+      enum: ['pending', 'sent', 'delivered', 'failed', 'undelivered', 'scheduled', 'queued', 'aborted'],
+      default: 'pending'
     },
     messageId: {
       type: String

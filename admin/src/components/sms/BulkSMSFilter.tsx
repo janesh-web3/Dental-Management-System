@@ -8,62 +8,106 @@ import { CalendarIcon, Filter, X } from "lucide-react";
 import { format } from 'date-fns';
 import { cn } from "@/lib/utils";
 
-// Define DateRange interface locally since it's not in @/types
-export interface DateRange {
-  from?: Date;
-  to?: Date;
+interface DateRange {
+  from: Date | null;
+  to: Date | null;
 }
 
 interface BulkSMSFilters {
   treatmentStatus: string;
-  procedures: string[];
-  group: string;
-  dateRange: DateRange;
   gender: string;
+  group: string;
+  procedure: string;
+  dateRange: DateRange;
 }
 
 interface BulkSMSFilterProps {
-  onFilter: (filters: Omit<BulkSMSFilters, 'dateRange'> & { dateRange: { from: string; to: string } }) => void;
+  onFilter: (filters: Omit<BulkSMSFilters, 'dateRange'> & { 
+    dateRange: { from: string; to: string } 
+  }) => void;
   onReset: () => void;
-  procedureGroups: Array<{ _id: string; name: string }>;
   loading?: boolean;
 }
 
 export function BulkSMSFilter({ 
   onFilter, 
   onReset, 
-  procedureGroups = [],
   loading = false
 }: BulkSMSFilterProps) {
+  const procedureOptions = [
+    { value: 'all', label: 'All Procedures' },
+    { value: 'RVG X-Ray', label: 'RVG X-Ray' },
+    { value: 'Scaling', label: 'Scaling' },
+    { value: 'GIC', label: 'GIC' },
+    { value: 'Light Cure', label: 'Light Cure' },
+    { value: 'Extraction', label: 'Tooth Extraction' },
+    { value: 'DCM', label: 'DCM' },
+    { value: 'RCT', label: 'RCT' },
+    { value: 'RPD', label: 'RPD' },
+    { value: 'Complete Denture', label: 'Complete Denture' },
+    { value: 'Crown Bridge(Metal)', label: 'Crown Bridge (Metal)' },
+    { value: 'Crown Bridge(Ceramic)', label: 'Crown Bridge (Ceramic)' },
+    { value: 'Crown Bridge(Zirconia)', label: 'Crown Bridge (Zirconia)' },
+    { value: 'Full Mouth Bridge', label: 'Full Mouth Bridge' },
+    { value: 'Implant', label: 'Dental Implant' },
+    { value: 'Orthodontics', label: 'Orthodontic Treatment' },
+    { value: 'IMF', label: 'IMF' },
+    { value: 'L.C', label: 'L.C' },
+    { value: 'Composite Filling', label: 'Composite Filling' },
+    { value: 'Restoration', label: 'Restoration' },
+    { value: 'Pulpectomy', label: 'Pulpectomy' },
+    { value: 'UCC 1', label: 'UCC 1' },
+    { value: 'UCC 2', label: 'UCC 2' },
+    { value: 'UCC 3', label: 'UCC 3' },
+    { value: 'UCC 4', label: 'UCC 4' },
+    { value: 'UCC 5', label: 'UCC 5' },
+    { value: 'UCC 6', label: 'UCC 6' },
+    { value: 'UCC 7', label: 'UCC 7' },
+    { value: 'UCC 8', label: 'UCC 8' },
+  ];
+
   const [filters, setFilters] = useState<BulkSMSFilters>({
-    treatmentStatus: '',
-    procedures: [],
-    group: '',
+    treatmentStatus: 'all',
+    gender: 'all',
+    group: 'all',
+    procedure: 'all',
     dateRange: {
-      from: undefined,
-      to: undefined,
-    },
-    gender: '',
+      from: null,
+      to: null,
+    }
   });
+
+  const handleDateChange = (range: { from?: Date; to?: Date } | undefined) => {
+    if (!range) return;
+    
+    setFilters(prev => ({
+      ...prev,
+      dateRange: {
+        from: range.from || null,
+        to: range.to || null
+      }
+    }));
+  };
 
   const handleFilter = () => {
     const { dateRange, ...restFilters } = filters;
+    
     onFilter({
       ...restFilters,
       dateRange: {
-        from: dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : '',
-        to: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : ''
+        from: dateRange.from ? format(new Date(dateRange.from), 'yyyy-MM-dd') : '',
+        to: dateRange.to ? format(new Date(dateRange.to), 'yyyy-MM-dd') : ''
       }
     });
   };
 
   const handleReset = () => {
     setFilters({
-      treatmentStatus: '',
-      procedures: [],
-      group: '',
-      dateRange: { from: undefined, to: undefined },
-      gender: ''
+      treatmentStatus: 'all',
+      gender: 'all',
+      group: 'all',
+      procedure: 'all',
+      dateRange: { from: null, to: null }
     });
     onReset();
   };
@@ -86,10 +130,10 @@ export function BulkSMSFilter({
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Treatment Status */}
         <div className="space-y-2">
-          <Label htmlFor="treatmentStatus">Treatment Status</Label>
+          <Label>Treatment Status</Label>
           <Select 
             value={filters.treatmentStatus}
             onValueChange={(value) => setFilters({...filters, treatmentStatus: value})}
@@ -99,7 +143,8 @@ export function BulkSMSFilter({
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="complete">Complete</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="incomplete">Incomplete</SelectItem>
             </SelectContent>
           </Select>
@@ -107,7 +152,7 @@ export function BulkSMSFilter({
 
         {/* Gender */}
         <div className="space-y-2">
-          <Label htmlFor="gender">Gender</Label>
+          <Label>Gender</Label>
           <Select 
             value={filters.gender}
             onValueChange={(value) => setFilters({...filters, gender: value})}
@@ -117,6 +162,7 @@ export function BulkSMSFilter({
               <SelectValue placeholder="Select gender" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">All Genders</SelectItem>
               <SelectItem value="male">Male</SelectItem>
               <SelectItem value="female">Female</SelectItem>
               <SelectItem value="other">Other</SelectItem>
@@ -124,21 +170,45 @@ export function BulkSMSFilter({
           </Select>
         </div>
 
-        {/* Procedure Group */}
+        {/* Department Group */}
         <div className="space-y-2">
-          <Label htmlFor="group">Procedure Group</Label>
+          <Label>Department</Label>
           <Select 
             value={filters.group}
             onValueChange={(value) => setFilters({...filters, group: value})}
-            disabled={loading || procedureGroups.length === 0}
+            disabled={loading}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select group" />
+              <SelectValue placeholder="Select department" />
             </SelectTrigger>
             <SelectContent>
-              {procedureGroups.map((group) => (
-                <SelectItem key={group._id} value={group._id}>
-                  {group.name}
+              <SelectItem value="all">All Departments</SelectItem>
+              <SelectItem value="Ortho">Orthodontics</SelectItem>
+              <SelectItem value="Endo">Endodontics</SelectItem>
+              <SelectItem value="Perio">Periodontics</SelectItem>
+              <SelectItem value="Prostho">Prosthodontics</SelectItem>
+              <SelectItem value="Surgery">Oral Surgery</SelectItem>
+              <SelectItem value="General">General Dentistry</SelectItem>
+              <SelectItem value="Other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Procedure */}
+        <div className="space-y-2">
+          <Label>Procedure</Label>
+          <Select 
+            value={filters.procedure}
+            onValueChange={(value) => setFilters({...filters, procedure: value})}
+            disabled={loading}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select procedure" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px] overflow-y-auto">
+              {procedureOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -151,7 +221,6 @@ export function BulkSMSFilter({
           <Popover>
             <PopoverTrigger asChild>
               <Button
-                id="date"
                 variant="outline"
                 className={cn(
                   "w-full justify-start text-left font-normal",
@@ -163,11 +232,11 @@ export function BulkSMSFilter({
                 {filters.dateRange.from ? (
                   filters.dateRange.to ? (
                     <>
-                      {format(filters.dateRange.from, "LLL dd, y")} -{" "}
-                      {format(filters.dateRange.to, "LLL dd, y")}
+                      {format(filters.dateRange.from, "MMM dd, yyyy")} -{" "}
+                      {format(filters.dateRange.to, "MMM dd, yyyy")}
                     </>
                   ) : (
-                    format(filters.dateRange.from, "LLL dd, y")
+                    format(filters.dateRange.from, "MMM dd, yyyy")
                   )
                 ) : (
                   <span>Pick a date range</span>
@@ -178,33 +247,37 @@ export function BulkSMSFilter({
               <Calendar
                 initialFocus
                 mode="range"
-                defaultMonth={filters.dateRange.from}
+                defaultMonth={filters.dateRange?.from || new Date()}
                 selected={{
-                  from: filters.dateRange.from,
-                  to: filters.dateRange.to,
+                  from: filters.dateRange?.from || undefined,
+                  to: filters.dateRange?.to || undefined
                 }}
-                onSelect={(range) => 
-                  setFilters({
-                    ...filters,
-                    dateRange: {
-                      from: range?.from,
-                      to: range?.to
-                    }
-                  })
-                }
+                onSelect={handleDateChange}
                 numberOfMonths={2}
+                disabled={loading}
               />
             </PopoverContent>
           </Popover>
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex items-end gap-2">
         <Button 
-          onClick={handleFilter}
+          variant="outline"
+          onClick={handleReset}
+          className="flex-1"
           disabled={loading}
         >
-          {loading ? 'Applying Filters...' : 'Apply Filters'}
+          <X className="h-4 w-4 mr-2" />
+          Clear All
+        </Button>
+        <Button 
+          onClick={handleFilter} 
+          className="flex-1"
+          disabled={loading}
+        >
+          <Filter className="h-4 w-4 mr-2" />
+          {loading ? 'Applying...' : 'Apply Filters'}
         </Button>
       </div>
     </div>

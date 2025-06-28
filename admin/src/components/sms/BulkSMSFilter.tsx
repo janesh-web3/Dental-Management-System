@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,6 +7,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Filter, X } from "lucide-react";
 import { format } from 'date-fns';
 import { cn } from "@/lib/utils";
+import { useQuery } from '@tanstack/react-query';
+import { crudRequest } from '@/lib/api';
 
 interface DateRange {
   from: Date | null;
@@ -18,15 +20,30 @@ interface BulkSMSFilters {
   gender: string;
   group: string;
   procedure: string;
+  doctor: string;
   dateRange: DateRange;
+  dateRangePreset: string;
+}
+
+interface FilterPayload {
+  treatmentStatus: string;
+  gender: string;
+  group: string;
+  procedure: string;
+  doctor: string;
+  dateRange: { from: string; to: string };
+  dateRangePreset: string;
 }
 
 interface BulkSMSFilterProps {
-  onFilter: (filters: Omit<BulkSMSFilters, 'dateRange'> & { 
-    dateRange: { from: string; to: string } 
-  }) => void;
+  onFilter: (filters: FilterPayload) => void;
   onReset: () => void;
   loading?: boolean;
+}
+
+interface Doctor {
+  _id: string;
+  name: string;
 }
 
 export function BulkSMSFilter({ 
@@ -35,15 +52,14 @@ export function BulkSMSFilter({
   loading = false
 }: BulkSMSFilterProps) {
   const procedureOptions = [
-    { value: 'all', label: 'All Procedures' },
     { value: 'RVG X-Ray', label: 'RVG X-Ray' },
     { value: 'Scaling', label: 'Scaling' },
     { value: 'GIC', label: 'GIC' },
     { value: 'Light Cure', label: 'Light Cure' },
     { value: 'Extraction', label: 'Tooth Extraction' },
     { value: 'DCM', label: 'DCM' },
-    { value: 'RCT', label: 'RCT' },
-    { value: 'RPD', label: 'RPD' },
+    { value: 'RCT', label: 'Root Canal Treatment' },
+    { value: 'RPD', label: 'Removable Partial Denture' },
     { value: 'Complete Denture', label: 'Complete Denture' },
     { value: 'Crown Bridge(Metal)', label: 'Crown Bridge (Metal)' },
     { value: 'Crown Bridge(Ceramic)', label: 'Crown Bridge (Ceramic)' },
@@ -52,7 +68,7 @@ export function BulkSMSFilter({
     { value: 'Implant', label: 'Dental Implant' },
     { value: 'Orthodontics', label: 'Orthodontic Treatment' },
     { value: 'IMF', label: 'IMF' },
-    { value: 'L.C', label: 'L.C' },
+    { value: 'L.C', label: 'Light Cure' },
     { value: 'Composite Filling', label: 'Composite Filling' },
     { value: 'Restoration', label: 'Restoration' },
     { value: 'Pulpectomy', label: 'Pulpectomy' },
@@ -63,52 +79,138 @@ export function BulkSMSFilter({
     { value: 'UCC 5', label: 'UCC 5' },
     { value: 'UCC 6', label: 'UCC 6' },
     { value: 'UCC 7', label: 'UCC 7' },
-    { value: 'UCC 8', label: 'UCC 8' },
+    { value: 'UCC 8', label: 'UCC 8' }
+  ].sort((a, b) => a.label.localeCompare(b.label)); // Sort alphabetically
+
+  // Group options
+  const groupOptions = [
+    { value: 'all', label: 'All Groups' },
+    { value: 'Ortho', label: 'Orthodontics' },
+    { value: 'Endo', label: 'Endodontics' },
+    { value: 'Perio', label: 'Periodontics' },
+    { value: 'Prostho', label: 'Prosthodontics' },
+    { value: 'Surgery', label: 'Surgery' },
+    { value: 'General', label: 'General Dentistry' },
+    { value: 'Other', label: 'Other' }
   ];
+
+  // Gender options
+  const genderOptions = [
+    { value: 'all', label: 'All Genders' },
+    { value: 'Male', label: 'Male' },
+    { value: 'Female', label: 'Female' },
+    { value: 'Other', label: 'Other' }
+  ];
+
+  // Date range presets
+  const dateRangePresets = [
+    { value: 'today', label: 'Today' },
+    { value: 'thisWeek', label: 'This Week' },
+    { value: 'thisMonth', label: 'This Month' },
+    { value: 'thisYear', label: 'This Year' },
+    { value: 'custom', label: 'Custom Range' }
+  ];
+
+  // Fetch doctors for the doctor filter
+  const { data: doctors = [] } = useQuery<Doctor[]>({
+    queryKey: ['doctors'],
+    queryFn: async () => {
+      try {
+        const response = await crudRequest<{ data: Doctor[] }>('GET', '/doctor/get-doctor');
+        return response?.data || [];
+      } catch (error) {
+        console.error('Error fetching doctors:', error);
+        return [];
+      }
+    },
+  });
 
   const [filters, setFilters] = useState<BulkSMSFilters>({
     treatmentStatus: 'all',
     gender: 'all',
     group: 'all',
     procedure: 'all',
+    doctor: 'all',
     dateRange: {
       from: null,
       to: null,
-    }
+    },
+    dateRangePreset: 'all'
   });
 
-  const handleDateChange = (range: { from?: Date; to?: Date } | undefined) => {
+  const handleDateChange = (range: { from?: Date | null; to?: Date | null } | undefined) => {
     if (!range) return;
     
-    setFilters(prev => ({
-      ...prev,
+    setFilters({
+      ...filters,
       dateRange: {
-        from: range.from || null,
-        to: range.to || null
-      }
-    }));
-  };
-
-  const handleFilter = () => {
-    const { dateRange, ...restFilters } = filters;
-    
-    onFilter({
-      ...restFilters,
-      dateRange: {
-        from: dateRange.from ? format(new Date(dateRange.from), 'yyyy-MM-dd') : '',
-        to: dateRange.to ? format(new Date(dateRange.to), 'yyyy-MM-dd') : ''
-      }
+        from: range.from ?? null,
+        to: range.to ?? null
+      },
+      dateRangePreset: 'custom' // Reset to custom when manually selecting dates
     });
   };
 
+  const handleFilter = () => {
+    const { dateRange, dateRangePreset, ...restFilters } = filters;
+    
+    // Handle preset date ranges
+    let from = '';
+    let to = '';
+    
+    if (dateRangePreset === 'custom' || dateRangePreset === 'all') {
+      // For custom or all, use the selected date range or empty
+      from = dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : '';
+      to = dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : '';
+    } else {
+      const now = new Date();
+      
+      switch (dateRangePreset) {
+        case 'today':
+          from = format(now, 'yyyy-MM-dd');
+          to = format(now, 'yyyy-MM-dd');
+          break;
+        case 'thisWeek': {
+          const firstDayOfWeek = new Date(now);
+          firstDayOfWeek.setDate(now.getDate() - now.getDay());
+          const lastDayOfWeek = new Date(now);
+          lastDayOfWeek.setDate(now.getDate() + (6 - now.getDay()));
+          from = format(firstDayOfWeek, 'yyyy-MM-dd');
+          to = format(lastDayOfWeek, 'yyyy-MM-dd');
+          break;
+        }
+        case 'thisMonth':
+          from = format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd');
+          to = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd');
+          break;
+        case 'thisYear':
+          from = format(new Date(now.getFullYear(), 0, 1), 'yyyy-MM-dd');
+          to = format(new Date(now.getFullYear(), 11, 31), 'yyyy-MM-dd');
+          break;
+      }
+    }
+
+    // Create the filter payload with all required fields
+    const filterPayload: FilterPayload = {
+      ...restFilters,
+      dateRange: { from, to },
+      dateRangePreset
+    };
+
+    onFilter(filterPayload);
+  };
+
   const handleReset = () => {
-    setFilters({
+    const resetFilters: BulkSMSFilters = {
       treatmentStatus: 'all',
       gender: 'all',
       group: 'all',
       procedure: 'all',
-      dateRange: { from: null, to: null }
-    });
+      doctor: 'all',
+      dateRange: { from: null, to: null },
+      dateRangePreset: 'all'
+    };
+    setFilters(resetFilters);
     onReset();
   };
 
@@ -131,24 +233,106 @@ export function BulkSMSFilter({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Treatment Status */}
+        {/* Date Range Preset */}
         <div className="space-y-2">
-          <Label>Treatment Status</Label>
+          <Label>Date Range</Label>
           <Select 
-            value={filters.treatmentStatus}
-            onValueChange={(value) => setFilters({...filters, treatmentStatus: value})}
+            value={filters.dateRangePreset}
+            onValueChange={(value) => setFilters({...filters, dateRangePreset: value})}
             disabled={loading}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select status" />
+              <SelectValue placeholder="Select date range" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="incomplete">Incomplete</SelectItem>
+              {dateRangePresets.map((preset) => (
+                <SelectItem key={preset.value} value={preset.value}>
+                  {preset.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
+
+        {/* Custom Date Range */}
+        {filters.dateRangePreset === 'custom' && (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
+              <Label>From</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !filters.dateRange.from && "text-muted-foreground"
+                    )}
+                  >
+                    {filters.dateRange.from ? (
+                      format(new Date(filters.dateRange.from), "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={filters.dateRange.from || undefined}
+                    onSelect={(date) => {
+                      setFilters({
+                        ...filters,
+                        dateRange: {
+                          ...filters.dateRange,
+                          from: date ?? null
+                        }
+                      });
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label>To</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !filters.dateRange.to && "text-muted-foreground"
+                    )}
+                  >
+                    {filters.dateRange.to ? (
+                      format(new Date(filters.dateRange.to), "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={filters.dateRange.to || undefined}
+                    onSelect={(date) => {
+                      setFilters({
+                        ...filters,
+                        dateRange: {
+                          ...filters.dateRange,
+                          to: date ?? null
+                        }
+                      });
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        )}
 
         {/* Gender */}
         <div className="space-y-2">
@@ -163,9 +347,9 @@ export function BulkSMSFilter({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Genders</SelectItem>
-              <SelectItem value="male">Male</SelectItem>
-              <SelectItem value="female">Female</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
+              <SelectItem value="Male">Male</SelectItem>
+              <SelectItem value="Female">Female</SelectItem>
+              <SelectItem value="Other">Other</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -209,6 +393,28 @@ export function BulkSMSFilter({
               {procedureOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Doctor */}
+        <div className="space-y-2">
+          <Label>Doctor</Label>
+          <Select 
+            value={filters.doctor}
+            onValueChange={(value) => setFilters({...filters, doctor: value})}
+            disabled={loading}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select doctor" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px] overflow-y-auto">
+              <SelectItem value="all">All Doctors</SelectItem>
+              {doctors.map((doctor) => (
+                <SelectItem key={doctor._id} value={doctor._id}>
+                  {doctor.name}
                 </SelectItem>
               ))}
             </SelectContent>

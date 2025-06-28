@@ -948,9 +948,44 @@ const getFilteredPatients = async (req, res) => {
 
     // Add procedure filter if provided
     if (procedures.length > 0) {
-      query[
-        "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.procedure"
-      ] = { $in: procedures };
+      query['$or'] = [
+        // Match procedure in selectedTeethDetails array (direct procedure field)
+        {
+          'medicalDetails': {
+            $elemMatch: {
+              'treatmentPlanning': {
+                $elemMatch: {
+                  'selectedTeethDetails': {
+                    $elemMatch: {
+                      'procedure': { $in: procedures }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        // OR match procedure in dailyTreatments array
+        {
+          'medicalDetails': {
+            $elemMatch: {
+              'treatmentPlanning': {
+                $elemMatch: {
+                  'selectedTeethDetails': {
+                    $elemMatch: {
+                      'dailyTreatments': {
+                        $elemMatch: {
+                          'procedure': { $in: procedures }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ];
     }
 
     // Apply date filtering if needed

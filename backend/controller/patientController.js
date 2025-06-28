@@ -32,15 +32,21 @@ exports.searchPatients = async (req, res) => {
 // Get filtered patients
 exports.getFilteredPatients = async (req, res) => {
   try {
+    // Get filters from query parameters
     const { 
       treatmentStatus, 
-      procedures = [], 
+      procedure, 
       group, 
-      dateRange = {},
+      from,
+      to,
       gender,
       limit = 1000,
       page = 1
-    } = req.body;
+    } = req.query;
+    
+    // Convert procedure to array if it exists
+    const procedures = procedure ? [procedure] : [];
+    const dateRange = from || to ? { from, to } : {};
 
     const query = {};
     const treatmentQuery = {};
@@ -50,9 +56,30 @@ exports.getFilteredPatients = async (req, res) => {
       treatmentQuery['treatments.status'] = treatmentStatus;
     }
 
-    // Apply procedures filter
+    // Apply procedures filter - UPDATED LOGIC
     if (procedures.length > 0) {
-      treatmentQuery['treatments.procedure'] = { $in: procedures };
+      query['$or'] = [
+        // Match procedure in dailyTreatments array where procedure field is directly stored
+        {
+          'medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.procedure': { $in: procedures }
+        },
+        // Keep the existing query paths as fallback
+        {
+          'medicalDetails': {
+            $elemMatch: {
+              'treatmentPlanning': {
+                $elemMatch: {
+                  'selectedTeethDetails': {
+                    $elemMatch: {
+                      'procedure': { $in: procedures }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ];
     }
 
     // Apply group filter

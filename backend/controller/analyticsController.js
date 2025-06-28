@@ -152,7 +152,7 @@ const getAppointmentAnalytics = async (req, res) => {
  */
 const getRevenueAnalytics = async (req, res) => {
   try {
-    const { startDate, endDate, period = 'monthly' } = req.query;
+    const { startDate, endDate, period = 'monthly', ...filters } = req.query;
     
     // Parse dates or use defaults (last 12 months)
     const end = endDate ? endOfDay(new Date(endDate)) : endOfDay(new Date());
@@ -362,6 +362,20 @@ const getRevenueAnalytics = async (req, res) => {
         }
       }
     ]);
+    
+    // Add procedure filter if provided
+    if (filters.procedure) {
+      analyticsQuery['$or'] = [
+        // Match procedure directly in dailyTreatments
+        { 
+          "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.procedure": filters.procedure 
+        },
+        // Keep the fallback path
+        { 
+          "medicalDetails.treatmentPlanning.selectedTeethDetails.procedure": filters.procedure 
+        }
+      ];
+    }
     
     res.status(200).json({
       success: true,

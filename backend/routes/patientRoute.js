@@ -37,8 +37,9 @@ router.get("/get-patient", getPatient);
 router.post("/search", searchPatients);
 router.post("/count", getPatientsCount);
 router.get("/get-pagination-patient", getPaginatedPatient);
+// Handle both GET with query params and POST with body for filtered patients
 router.get("/get-filtered-patients", getFilteredPatients);
-router.post("/", getFilteredPatients);
+router.post("/get-filtered-patients", getFilteredPatients);
 router.get("/get-procedure-types", getProcedureTypes);
 router.get("/get-patient/:id", getSinglePatient);
 router.post(

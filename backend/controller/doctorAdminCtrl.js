@@ -295,7 +295,7 @@ const cancelDoctorAppointment = async (req, res) => {
 const getDoctorPatients = async (req, res) => {
   try {
     const { doctorId } = req.params;
-    const { page = 1, limit = 10, search = "", status = "all" } = req.query;
+    const { page = 1, limit = 10, search = "", status = "all", procedure } = req.query;
     
     // Get doctor to access their patients
     const doctor = await Doctor.findById(doctorId);
@@ -324,6 +324,20 @@ const getDoctorPatients = async (req, res) => {
     if (status !== 'all') {
       const isCompleted = status === 'completed';
       patientsQuery['medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.isCompleted'] = isCompleted;
+    }
+    
+    // If we're filtering by procedure, add this new section
+    if (procedure) {
+      patientsQuery['$or'] = [
+        // Match procedure in dailyTreatments array
+        {
+          'medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.procedure': procedure
+        },
+        // Keep the existing path as fallback
+        {
+          'medicalDetails.treatmentPlanning.selectedTeethDetails.procedure': procedure
+        }
+      ];
     }
     
     // Get all patients treated by this doctor

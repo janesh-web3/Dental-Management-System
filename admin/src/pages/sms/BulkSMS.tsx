@@ -10,8 +10,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { crudRequest } from '@/lib/api';
 import { BulkSMSFilter } from '@/components/sms/BulkSMSFilter';
 
-
-
 interface DateRange {
   from?: string;
   to?: string;
@@ -19,10 +17,11 @@ interface DateRange {
 
 interface Filters {
   treatmentStatus?: string;
-  procedures?: string[];
+  procedure?: string;
   group?: string;
   dateRange?: DateRange;
   gender?: string;
+  doctor?: string;
   [key: string]: any;
 }
 
@@ -43,11 +42,11 @@ export default function BulkSMSPage() {
   const [filters, setFilters] = useState<Filters>({});
   const [filteredCount, setFilteredCount] = useState<number | null>(null);
 
-
-
   // Apply filters from the filter component
   const applyFilters = async (appliedFilters: Filters) => {
     try {
+      console.log('Applied filters:', appliedFilters);
+      
       // Convert filter values to undefined if they are 'all' or empty
       const cleanFilters = Object.entries(appliedFilters).reduce<Record<string, any>>((acc, [key, value]) => {
         if (value === 'all' || value === '' || value === null) {
@@ -55,17 +54,23 @@ export default function BulkSMSPage() {
         }
         
         // Handle date range filter specifically
-        if (key === 'dateRange' && value && typeof value === 'object' && 'from' in value && 'to' in value) {
-          const dateRange = value as DateRange;
-          if (!dateRange.from && !dateRange.to) {
-            return acc; // Skip empty date range
+        if (key === 'dateRange' && value && typeof value === 'object') {
+          if ('from' in value || 'to' in value) {
+            const dateRange: any = {};
+            if (value.from) dateRange.from = value.from;
+            if (value.to) dateRange.to = value.to;
+            
+            if (Object.keys(dateRange).length > 0) {
+              acc.dateRange = dateRange;
+            }
+            return acc;
           }
-          return { ...acc, [key]: dateRange };
         }
         
         return { ...acc, [key]: value };
       }, {});
 
+      console.log('Clean filters:', cleanFilters);
       setFilters(cleanFilters);
       setSelectedPatients([]); // Reset selected patients when filters change
     } catch (error) {
@@ -78,53 +83,50 @@ export default function BulkSMSPage() {
   const { data: filteredPatients = [], isLoading } = useQuery({
     queryKey: ['filteredPatients', filters],
     queryFn: async () => {
-      // Convert filters to query parameters
       const params = new URLSearchParams();
       
-      // Add all filters as query parameters
+      // Add filters
       Object.entries(filters).forEach(([key, value]) => {
-        if (value === undefined || value === null || value === '') return;
+        if (value === 'all' || value === undefined || value === null) return;
         
-        if (key === 'dateRange' && value && typeof value === 'object' && 'from' in value) {
-          const dateRange = value as DateRange;
-          if (dateRange.from) params.append('startDate', dateRange.from);
-          if (dateRange.to) params.append('endDate', dateRange.to);
-          return;
-        }
-        
-        if (Array.isArray(value)) {
-          // Handle array parameters (like procedures)
-          value.forEach(v => v && params.append(key, String(v)));
+        if (key === 'dateRange' && value && typeof value === 'object') {
+          if (value.from) params.append('from', value.from);
+          if (value.to) params.append('to', value.to);
         } else {
           params.append(key, String(value));
         }
       });
       
-      // Set pagination parameters
-      params.append('limit', '10000');
-      params.append('page', '1');
-      
       const url = `/patient/get-filtered-patients?${params.toString()}`;
-      const response = await crudRequest<{ patients: any[], total?: number }>('GET', url);
+      const response = await crudRequest<{ patients: any[], totalPatients?: number }>('GET', url);
       
-      console.log('Filtered patients response:', response);
-      const patients = response?.patients || [];
-      const total = response?.total || patients.length;
+      if (!response?.patients) {
+        throw new Error('Failed to fetch patients');
+      }
+      
+      const patients = response.patients;
+      const total = response.totalPatients || patients.length;
       
       // Map the patient data to match the expected format
       const mappedPatients = patients.map(patient => ({
-        ...patient,
+        _id: patient._id,
         personalDetails: {
           name: patient.personalDetails?.name || 'No Name',
           contactNumber: patient.personalDetails?.contactNumber || 'No Contact',
+          gender: patient.personalDetails?.gender || 'Other',
           ...patient.personalDetails
-        }
+        },
+        medicalDetails: {
+          group: patient.medicalDetails?.group || 'General',
+          ...patient.medicalDetails
+        },
+        ...patient
       }));
       
       setFilteredCount(total);
       return mappedPatients;
     },
-    enabled: true, // Always enable the query
+    enabled: Object.keys(filters).length > 0, // Only run query when filters are applied
   });
 
   // Handle sending bulk SMS
@@ -146,38 +148,37 @@ export default function BulkSMSPage() {
       const smsData = {
         patientIds: selectedPatients.map(p => p._id),
         message: message.trim(),
-        // Include any additional metadata you might need
-        sender: 'clinic',
-        type: 'bulk',
-        timestamp: new Date().toISOString()
+        // Include filters for analytics
+        filters: filters
       };
 
       console.log('Sending bulk SMS to patients:', smsData);
       
       const response = await crudRequest<{ 
         success: boolean; 
-        sentCount: number; 
-        failedCount: number;
+        totalSent: number; 
+        totalFailed: number;
         message?: string;
-        errors?: Array<{ patientId: string; error: string }>;
+        invalidMessages?: Array<{ recipient: string; reason: string }>;
       }>('POST', '/sms/bulk', smsData);
 
       if (response?.success) {
-        const successMessage = `SMS sent successfully to ${response.sentCount} ${response.sentCount === 1 ? 'recipient' : 'recipients'}`;
-        const failedMessage = response.failedCount > 0 
-          ? ` (${response.failedCount} failed)` 
+        const successMessage = `SMS sent successfully to ${response.totalSent} ${response.totalSent === 1 ? 'recipient' : 'recipients'}`;
+        const failedMessage = response.totalFailed > 0 
+          ? ` (${response.totalFailed} failed)` 
           : '';
         
         toast.success(successMessage + failedMessage);
         
         // Reset the form if everything was successful
-        if (response.failedCount === 0) {
+        if (response.totalFailed === 0) {
           setMessage('');
+          setSelectedPatients([]);
         }
         
-        // If there were errors, log them
-        if (response.errors?.length) {
-          console.error('Failed to send SMS to some recipients:', response.errors);
+        // If there were invalid messages, log them
+        if (response.invalidMessages?.length) {
+          console.error('Failed to send SMS to some recipients:', response.invalidMessages);
         }
       } else {
         throw new Error(response?.message || 'Failed to send SMS');
@@ -315,6 +316,23 @@ export default function BulkSMSPage() {
                         );
                       })}
                     </div>
+                  </div>
+                )}
+
+                {filteredCount === 0 && (
+                  <div className="mt-4 p-4 text-center bg-muted rounded-md">
+                    <p className="text-muted-foreground">No patients match the selected filters.</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setFilters({});
+                        setFilteredCount(null);
+                      }}
+                      className="mt-2"
+                    >
+                      Clear Filters
+                    </Button>
                   </div>
                 )}
               </div>

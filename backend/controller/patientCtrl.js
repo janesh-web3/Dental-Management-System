@@ -18,61 +18,69 @@ const { getIO } = require("../socket");
 // Helper utility functions for date filtering
 const getDateFilter = (filter, startDate, endDate) => {
   const now = new Date();
-  
-  switch (filter) { 
-    case 'today': {
+
+  switch (filter) {
+    case "today": {
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      console.log(`Today filter: ${today.toISOString()} to ${tomorrow.toISOString()}`);
+
+      console.log(
+        `Today filter: ${today.toISOString()} to ${tomorrow.toISOString()}`
+      );
       return {
         $gte: today,
-        $lt: tomorrow
+        $lt: tomorrow,
       };
     }
-    
-    case 'week': {
+
+    case "week": {
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - now.getDay()); // Start of current week (Sunday)
       startOfWeek.setHours(0, 0, 0, 0);
-      
+
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 7); // End of current week (next Sunday)
-      
-      console.log(`Week filter: ${startOfWeek.toISOString()} to ${endOfWeek.toISOString()}`);
+
+      console.log(
+        `Week filter: ${startOfWeek.toISOString()} to ${endOfWeek.toISOString()}`
+      );
       return {
         $gte: startOfWeek,
-        $lt: endOfWeek
+        $lt: endOfWeek,
       };
     }
-    
-    case 'month': {
+
+    case "month": {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       endOfMonth.setHours(23, 59, 59, 999);
-      
-      console.log(`Month filter: ${startOfMonth.toISOString()} to ${endOfMonth.toISOString()}`);
+
+      console.log(
+        `Month filter: ${startOfMonth.toISOString()} to ${endOfMonth.toISOString()}`
+      );
       return {
         $gte: startOfMonth,
-        $lte: endOfMonth
+        $lte: endOfMonth,
       };
     }
-    
-    case 'custom': {
+
+    case "custom": {
       if (startDate && endDate) {
         try {
           const startDateObj = new Date(startDate);
           const endDateObj = new Date(endDate);
-          
+
           // Set end date to end of day
           endDateObj.setHours(23, 59, 59, 999);
-          
-          console.log(`Custom date range: ${startDateObj.toISOString()} to ${endDateObj.toISOString()}`);
-          
+
+          console.log(
+            `Custom date range: ${startDateObj.toISOString()} to ${endDateObj.toISOString()}`
+          );
+
           return {
             $gte: startDateObj,
-            $lte: endDateObj
+            $lte: endDateObj,
           };
         } catch (error) {
           console.error("Error parsing date range:", error);
@@ -81,7 +89,7 @@ const getDateFilter = (filter, startDate, endDate) => {
       }
       return null;
     }
-    
+
     default:
       console.log("Using default 'all' filter (no date constraints)");
       return null;
@@ -163,26 +171,27 @@ const addPatient = async (req, res) => {
 
     // Email is handled as a simple string field - no special validation or handling needed    // Create patient
     const patient = await Patient.create(req.body);
-    
+
     // Emit the patient:added event right after creation
     const io = getIO();
     if (io) {
-      io.emit('patient:added', {
+      io.emit("patient:added", {
         id: patient._id,
         name: personalDetails.name,
-        phone: personalDetails.contactNumber || '',
-        email: personalDetails.emailAddress || '',
-        timestamp: new Date()
+        phone: personalDetails.contactNumber || "",
+        email: personalDetails.emailAddress || "",
+        timestamp: new Date(),
       });
-      
+
       // Also emit notification sound
-      io.to('admin').emit('notification:sound', { type: 'success' });
+      io.to("admin").emit("notification:sound", { type: "success" });
       if (req.body.assignedDoctor) {
-        io.to('doctor').emit('notification:sound', { type: 'info' });
+        io.to("doctor").emit("notification:sound", { type: "info" });
       }
-      
     } else {
-      console.error('Socket IO instance not available for immediate notification');
+      console.error(
+        "Socket IO instance not available for immediate notification"
+      );
     }
 
     // Create patient auth record only if email is provided and not empty
@@ -217,7 +226,7 @@ const addPatient = async (req, res) => {
     // Check if there are service payments to add
     if (req.body.servicePayment) {
       const { serviceType, amount, description } = req.body.servicePayment;
-      
+
       // Create service payment data object
       const servicePaymentData = {
         patientName: personalDetails.name,
@@ -228,75 +237,92 @@ const addPatient = async (req, res) => {
         paymentMethod: req.body.servicePayment.paymentMethod || "Cash",
         createdBy: req.admin.id,
         date: new Date(),
-        isWalkIn: false
+        isWalkIn: false,
       };
-      
+
       // Explicitly set the patient ID and ensure it's a valid ObjectId
       if (patient && patient._id) {
         servicePaymentData.patient = patient._id;
-        console.log("Setting patient ID in service payment:", patient._id.toString());
+        console.log(
+          "Setting patient ID in service payment:",
+          patient._id.toString()
+        );
       }
-      
+
       // Create service payment record
       const servicePayment = await ServicePayment.create(servicePaymentData);
-      
-      
+
       // Also record this as income for financial tracking
       await Income.create({
         title: `${serviceType} - ${personalDetails.name}`,
         amount,
         date: new Date(),
-        category: serviceType === "X-Ray" ? "X-ray Fee" : 
-                  serviceType === "Medicine" ? "Dental Products" : 
-                  serviceType === "Consultation" ? "Consultation Fee" : "Other",
+        category:
+          serviceType === "X-Ray"
+            ? "X-ray Fee"
+            : serviceType === "Medicine"
+            ? "Dental Products"
+            : serviceType === "Consultation"
+            ? "Consultation Fee"
+            : "Other",
         notes: description || `Service payment for ${serviceType}`,
         createdBy: req.admin.id,
       });
-    }    // Send notifications after successful patient creation
+    } // Send notifications after successful patient creation
     try {
       // First, handle admin notifications
-      const admins = await User.find({ role: { $in: ['admin', 'superadmin'] } });
-      console.log(`Found ${admins.length} admins to notify`);
-      
-      // Create a notification for all admins
-      console.log('Creating admin notification...');
-      const adminNotification = await createAndEmitNotification({
-        title: 'New Patient Registered',
-        message: `New patient ${personalDetails.name} has been registered`,
-        type: 'success',
-        sourceId: patient._id,
-        sourceType: 'Patient',
-        link: `/patients/${patient._id}`,
-        targetRoles: ['admin', 'superadmin']
+      const admins = await User.find({
+        role: { $in: ["admin", "superadmin"] },
       });
-      console.log('Admin notification created:', adminNotification ? 'success' : 'failed');
+      console.log(`Found ${admins.length} admins to notify`);
+
+      // Create a notification for all admins
+      console.log("Creating admin notification...");
+      const adminNotification = await createAndEmitNotification({
+        title: "New Patient Registered",
+        message: `New patient ${personalDetails.name} has been registered`,
+        type: "success",
+        sourceId: patient._id,
+        sourceType: "Patient",
+        link: `/patients/${patient._id}`,
+        targetRoles: ["admin", "superadmin"],
+      });
+      console.log(
+        "Admin notification created:",
+        adminNotification ? "success" : "failed"
+      );
 
       // If patient has an assigned doctor, notify them individually
       if (req.body.assignedDoctor) {
         console.log(`Notifying assigned doctor: ${req.body.assignedDoctor}`);
         try {
           const doctor = await Doctor.findById(req.body.assignedDoctor);
-          if (doctor) {            console.log('Creating doctor notification...');
+          if (doctor) {
+            console.log("Creating doctor notification...");
             const doctorNotification = await createAndEmitNotification({
-              title: 'New Patient Assigned',
+              title: "New Patient Assigned",
               message: `Patient ${personalDetails.name} has been assigned to you`,
-              type: 'info',
+              type: "info",
               sourceId: patient._id,
-              sourceType: 'Patient',
+              sourceType: "Patient",
               link: `/patients/${patient._id}`,
               userId: doctor._id,
-              userType: 'Doctor',
-              targetRoles: ['doctor']
-            });            console.log('Doctor notification created:', doctorNotification ? 'success' : 'failed');
+              userType: "Doctor",
+              targetRoles: ["doctor"],
+            });
+            console.log(
+              "Doctor notification created:",
+              doctorNotification ? "success" : "failed"
+            );
           } else {
-            console.log('Doctor not found:', req.body.assignedDoctor);
+            console.log("Doctor not found:", req.body.assignedDoctor);
           }
         } catch (doctorError) {
-          console.error('Error notifying doctor:', doctorError);
+          console.error("Error notifying doctor:", doctorError);
         }
       }
     } catch (notificationError) {
-      console.error('Error sending notifications:', notificationError);
+      console.error("Error sending notifications:", notificationError);
       // Don't fail the request if notifications fail
     }
 
@@ -343,59 +369,72 @@ const deletePatient = async (req, res) => {
     } catch (authError) {
       console.error("Error deleting PatientAuth record:", authError);
       // Continue with patient deletion even if auth deletion fails
-    }    // Delete the patient
+    } // Delete the patient
     await Patient.findByIdAndDelete(req.params.id);
 
     // Send notification about patient deletion
     try {
       const io = getIO();
       if (io) {
-        console.log('Emitting patient:deleted event...');
-        
+        console.log("Emitting patient:deleted event...");
+
         // Prepare notification data
         const patientData = {
           id: patient._id,
           name: patient.personalDetails.name,
           assignedDoctor: patient.assignedDoctor,
-          timestamp: new Date()
+          timestamp: new Date(),
         };
-        
+
         // Emit the event
-        io.emit('patient:deleted', patientData);
-        
+        io.emit("patient:deleted", patientData);
+
         // Create notifications in database for admins
-        const admins = await User.find({ role: { $in: ['admin', 'superadmin'] } });
-        console.log(`Found ${admins.length} admins to notify about patient deletion`);
-        
-        await createAndEmitNotification({
-          title: 'Patient Deleted',
-          message: `Patient ${patient.personalDetails.name} has been deleted from the system`,
-          type: 'warning',
-          targetRoles: ['admin', 'superadmin']
+        const admins = await User.find({
+          role: { $in: ["admin", "superadmin"] },
         });
-        
+        console.log(
+          `Found ${admins.length} admins to notify about patient deletion`
+        );
+
+        await createAndEmitNotification({
+          title: "Patient Deleted",
+          message: `Patient ${patient.personalDetails.name} has been deleted from the system`,
+          type: "warning",
+          targetRoles: ["admin", "superadmin"],
+        });
+
         // If patient had an assigned doctor, notify them too
         if (patient.assignedDoctor) {
           try {
             const doctor = await Doctor.findById(patient.assignedDoctor);
-            if (doctor) {              await createAndEmitNotification({
-                title: 'Patient Deleted',
+            if (doctor) {
+              await createAndEmitNotification({
+                title: "Patient Deleted",
                 message: `Patient ${patient.personalDetails.name} has been deleted from the system`,
-                type: 'warning',
+                type: "warning",
                 userId: doctor._id,
-                userType: 'Doctor',
-                targetRoles: ['doctor']
+                userType: "Doctor",
+                targetRoles: ["doctor"],
               });
             }
           } catch (doctorError) {
-            console.error('Error notifying doctor about patient deletion:', doctorError);
+            console.error(
+              "Error notifying doctor about patient deletion:",
+              doctorError
+            );
           }
         }
       } else {
-        console.error('Socket IO instance not available for patient deletion notification');
+        console.error(
+          "Socket IO instance not available for patient deletion notification"
+        );
       }
     } catch (notificationError) {
-      console.error('Error sending patient deletion notifications:', notificationError);
+      console.error(
+        "Error sending patient deletion notifications:",
+        notificationError
+      );
       // Don't fail the request if notifications fail
     }
 
@@ -599,9 +638,18 @@ const updatePatient = async (req, res) => {
               ? new Date(treatment.followUpDate)
               : undefined,
             // Explicitly preserve total values from the request or keep existing values
-            totalPlanAmount: Number(treatment.treatmentAmount) || treatment.totalPlanAmount || 0,
-            totalPaidAmount: Number(treatment.advancedAmount) || treatment.totalPaidAmount || 0,
-            totalRemainingAmount: Number(treatment.balanceAmount) || treatment.totalRemainingAmount || 0,
+            totalPlanAmount:
+              Number(treatment.treatmentAmount) ||
+              treatment.totalPlanAmount ||
+              0,
+            totalPaidAmount:
+              Number(treatment.advancedAmount) ||
+              treatment.totalPaidAmount ||
+              0,
+            totalRemainingAmount:
+              Number(treatment.balanceAmount) ||
+              treatment.totalRemainingAmount ||
+              0,
           };
         }) || [],
     };
@@ -786,8 +834,7 @@ const getPaginatedPatient = async (req, res) => {
     const dateFilter = req.query.dateFilter || "all";
     const startDate = req.query.startDate;
     const endDate = req.query.endDate;
-    const followUpFilter = req.query.followUpFilter || ""; 
-
+    const followUpFilter = req.query.followUpFilter || "";
 
     // Base query
     let query = search
@@ -802,7 +849,7 @@ const getPaginatedPatient = async (req, res) => {
     // Apply date filtering if needed
     if (dateFilter && dateFilter !== "all") {
       const dateFilterCriteria = getDateFilter(dateFilter, startDate, endDate);
-      
+
       if (dateFilterCriteria) {
         // Ensure we're explicitly filtering on the patient's creation date, not checkUpDate
         query["createdAt"] = dateFilterCriteria;
@@ -811,10 +858,15 @@ const getPaginatedPatient = async (req, res) => {
 
     // Apply follow-up date filtering if needed
     if (followUpFilter && followUpFilter !== "all") {
-      const followUpDateCriteria = getDateFilter(followUpFilter, startDate, endDate);
-      
+      const followUpDateCriteria = getDateFilter(
+        followUpFilter,
+        startDate,
+        endDate
+      );
+
       if (followUpDateCriteria) {
-        query["medicalDetails.treatmentPlanning.followUpDate"] = followUpDateCriteria;
+        query["medicalDetails.treatmentPlanning.followUpDate"] =
+          followUpDateCriteria;
       }
     }
 
@@ -831,9 +883,15 @@ const getPaginatedPatient = async (req, res) => {
     console.log(`Found ${patients.length} patients. Checking createdAt dates:`);
     // Log some sample createdAt dates to debug
     if (patients.length > 0) {
-      patients.slice(0, Math.min(5, patients.length)).forEach((patient, idx) => {
-        console.log(`Patient ${idx + 1} createdAt: ${patient.createdAt}, personalDetails.createdAt: ${patient.personalDetails?.createdAt}`);
-      });
+      patients
+        .slice(0, Math.min(5, patients.length))
+        .forEach((patient, idx) => {
+          console.log(
+            `Patient ${idx + 1} createdAt: ${
+              patient.createdAt
+            }, personalDetails.createdAt: ${patient.personalDetails?.createdAt}`
+          );
+        });
     }
 
     // Sort medical details and treatment planning for each patient
@@ -870,7 +928,9 @@ const getPaginatedPatient = async (req, res) => {
     const totalPatients = await Patient.countDocuments(query);
     const totalPages = Math.ceil(totalPatients / limit);
 
-    console.log(`Found ${patients.length} patients matching the query criteria`);
+    console.log(
+      `Found ${patients.length} patients matching the query criteria`
+    );
 
     res.status(200).json({
       success: true,
@@ -889,35 +949,21 @@ const getPaginatedPatient = async (req, res) => {
   }
 };
 
+// Patch your existing getFilteredPatients controller with this updated logic
 const getFilteredPatients = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const search = req.query.search || "";
-    const doctorId = req.query.doctorId || "";
     const group = req.query.group || "";
-    const procedures = req.query.procedures
-      ? req.query.procedures.split(",")
-      : [];
-    const dateFilter = req.query.dateFilter || "all";
-    const startDate = req.query.startDate;
-    const endDate = req.query.endDate;
-    const followUpFilter = req.query.followUpFilter || ""; // Add follow-up filter parameter
+    const gender = req.query.gender || "";
+    const procedure = req.query.procedure || "";
+    const doctorId = req.query.doctor || req.query.doctorId || "";
+    const from = req.query.from;
+    const to = req.query.to;
 
-    console.log("Filtered patients request:", { 
-      dateFilter, 
-      startDate, 
-      endDate,
-      doctorId,
-      group,
-      procedures: procedures.length > 0 ? procedures : "none",
-      followUpFilter // Log the follow-up filter
-    });
-
-    // Base query
     let query = {};
 
-    // Add name or SN search if provided
     if (search) {
       query["$or"] = [
         { "personalDetails.name": { $regex: search, $options: "i" } },
@@ -925,7 +971,19 @@ const getFilteredPatients = async (req, res) => {
       ];
     }
 
-    // Add doctor filter if provided
+    if (group && group !== "all") {
+      query["medicalDetails.group"] = group;
+    }
+
+    if (gender && gender !== "all") {
+      query["personalDetails.gender"] = gender;
+    }
+
+    if (procedure && procedure !== "all") {
+      query["medicalDetails.treatmentPlanning.selectedTeethDetails.procedure"] =
+        procedure;
+    }
+
     if (doctorId && doctorId !== "all") {
       try {
         query[
@@ -933,88 +991,22 @@ const getFilteredPatients = async (req, res) => {
         ] = new mongoose.Types.ObjectId(doctorId);
       } catch (err) {
         console.error("Invalid doctor ID format:", err);
-        return res.status(400).json({
-          success: false,
-          message: "Invalid doctor ID format",
-          error: err.message,
-        });
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "Invalid doctor ID format",
+            error: err.message,
+          });
       }
     }
 
-    // Add group filter if provided
-    if (group && group !== "all") {
-      query["medicalDetails.group"] = group;
+    if (from || to) {
+      query["createdAt"] = {};
+      if (from) query["createdAt"].$gte = new Date(from);
+      if (to) query["createdAt"].$lte = new Date(to);
     }
 
-    // Add procedure filter if provided
-    if (procedures.length > 0) {
-      query['$or'] = [
-        // Match procedure in selectedTeethDetails array (direct procedure field)
-        {
-          'medicalDetails': {
-            $elemMatch: {
-              'treatmentPlanning': {
-                $elemMatch: {
-                  'selectedTeethDetails': {
-                    $elemMatch: {
-                      'procedure': { $in: procedures }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        // OR match procedure in dailyTreatments array
-        {
-          'medicalDetails': {
-            $elemMatch: {
-              'treatmentPlanning': {
-                $elemMatch: {
-                  'selectedTeethDetails': {
-                    $elemMatch: {
-                      'dailyTreatments': {
-                        $elemMatch: {
-                          'procedure': { $in: procedures }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      ];
-    }
-
-    // Apply date filtering if needed
-    if (dateFilter && dateFilter !== "all") {
-      const dateFilterCriteria = getDateFilter(dateFilter, startDate, endDate);
-      
-      if (dateFilterCriteria) {
-        console.log("Applying date filter criteria:", JSON.stringify(dateFilterCriteria));
-        // Ensure we're explicitly filtering on the patient's creation date, not checkUpDate
-        query["createdAt"] = dateFilterCriteria;
-        console.log("Date filter will be applied to 'createdAt' field");
-      }
-    }
-
-    // Apply follow-up date filtering if needed
-    if (followUpFilter && followUpFilter !== "all") {
-      const followUpDateCriteria = getDateFilter(followUpFilter, startDate, endDate);
-      
-      if (followUpDateCriteria) {
-        console.log("Applying follow-up date filter criteria:", JSON.stringify(followUpDateCriteria));
-        // Filter on treatment planning follow-up date
-        query["medicalDetails.treatmentPlanning.followUpDate"] = followUpDateCriteria;
-        console.log("Follow-up date filter will be applied to 'medicalDetails.treatmentPlanning.followUpDate' field");
-      }
-    }
-
-    console.log("Final filtered query:", JSON.stringify(query));
-
-    // Get patients sorted by createdAt in descending order
     const patients = await Patient.find(query)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
@@ -1024,55 +1016,14 @@ const getFilteredPatients = async (req, res) => {
         model: "Doctor",
       });
 
-    console.log(`Found ${patients.length} filtered patients. Checking createdAt dates:`);
-    // Log some sample createdAt dates to debug
-    if (patients.length > 0) {
-      patients.slice(0, Math.min(5, patients.length)).forEach((patient, idx) => {
-        console.log(`Filtered patient ${idx + 1} createdAt: ${patient.createdAt}, personalDetails.createdAt: ${patient.personalDetails?.createdAt}`);
-      });
-    }
-
-    // Sort medical details and treatment planning for each patient
-    const sortedPatients = patients.map((patient) => {
-      const patientObj = patient.toObject();
-
-      // Sort medical details by checkUpDate in descending order (newest first)
-      if (patientObj.medicalDetails?.length > 0) {
-        patientObj.medicalDetails.sort((a, b) => {
-          const dateA = a.checkUpDate ? new Date(a.checkUpDate) : new Date(0);
-          const dateB = b.checkUpDate ? new Date(b.checkUpDate) : new Date(0);
-          return dateB - dateA;
-        });
-
-        // Sort treatment planning within each medical detail by treatmentDate
-        patientObj.medicalDetails.forEach((medical) => {
-          if (medical.treatmentPlanning?.length > 0) {
-            medical.treatmentPlanning.sort((a, b) => {
-              const dateA = a.treatmentDate
-                ? new Date(a.treatmentDate)
-                : new Date(0);
-              const dateB = b.treatmentDate
-                ? new Date(b.treatmentDate)
-                : new Date(0);
-              return dateB - dateA;
-            });
-          }
-        });
-      }
-
-      return patientObj;  
-    });
-
     const totalPatients = await Patient.countDocuments(query);
     const totalPages = Math.ceil(totalPatients / limit);
 
-    console.log(`Found ${patients.length} filtered patients matching the criteria`);
-
     res.status(200).json({
       success: true,
-      patients: sortedPatients,
+      patients,
       totalPages,
-      patientsOnPage: sortedPatients.length,
+      patientsOnPage: patients.length,
       totalPatients,
     });
   } catch (error) {
@@ -1416,9 +1367,9 @@ const getNextSerialNumber = async (req, res) => {
   try {
     // Get all patients and find the maximum serial number properly
     const patients = await Patient.find({}, { "personalDetails.sn": 1 });
-    
+
     let maxSN = 0;
-    
+
     // Parse all serial numbers and find the maximum
     for (const patient of patients) {
       if (patient.personalDetails && patient.personalDetails.sn) {
@@ -1428,7 +1379,7 @@ const getNextSerialNumber = async (req, res) => {
         }
       }
     }
-    
+
     const nextSN = maxSN + 1;
 
     res.status(200).json({
@@ -2372,7 +2323,7 @@ const getDashboardMetrics = async (req, res) => {
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      
+
       const result = await ServicePayment.aggregate([
         {
           $match: {
@@ -2389,10 +2340,10 @@ const getDashboardMetrics = async (req, res) => {
           },
         },
       ]);
-      
+
       return result.length > 0 ? result[0].revenue : 0;
     };
-    
+
     const getWeeklyServicePaymentRevenue = async () => {
       const result = await ServicePayment.aggregate([
         {
@@ -2410,10 +2361,10 @@ const getDashboardMetrics = async (req, res) => {
           },
         },
       ]);
-      
+
       return result.length > 0 ? result[0].revenue : 0;
     };
-    
+
     const getMonthlyServicePaymentRevenue = async () => {
       const result = await ServicePayment.aggregate([
         {
@@ -2431,10 +2382,10 @@ const getDashboardMetrics = async (req, res) => {
           },
         },
       ]);
-      
+
       return result.length > 0 ? result[0].revenue : 0;
     };
-    
+
     const getTotalServicePaymentRevenue = async () => {
       const result = await ServicePayment.aggregate([
         {
@@ -2444,7 +2395,7 @@ const getDashboardMetrics = async (req, res) => {
           },
         },
       ]);
-      
+
       return result.length > 0 ? result[0].revenue : 0;
     };
 
@@ -2458,7 +2409,7 @@ const getDashboardMetrics = async (req, res) => {
       dailyServiceRevenue,
       weeklyServiceRevenue,
       monthlyServiceRevenue,
-      totalServiceRevenue
+      totalServiceRevenue,
     ] = await Promise.all([
       getDailyRevenue(),
       getWeeklyRevenue(),
@@ -2468,7 +2419,7 @@ const getDashboardMetrics = async (req, res) => {
       getDailyServicePaymentRevenue(),
       getWeeklyServicePaymentRevenue(),
       getMonthlyServicePaymentRevenue(),
-      getTotalServicePaymentRevenue()
+      getTotalServicePaymentRevenue(),
     ]);
 
     // Calculate derived values
@@ -2703,14 +2654,14 @@ const getDashboardMetrics = async (req, res) => {
             weekly: weeklyRevenue,
             monthly: monthlyRevenue,
             yearly: yearlyRevenue,
-            total: totalRevenue
+            total: totalRevenue,
           },
           serviceRevenue: {
             daily: dailyServiceRevenue,
             weekly: weeklyServiceRevenue,
             monthly: monthlyServiceRevenue,
             yearly: monthlyServiceRevenue * 12,
-            total: totalServiceRevenue
+            total: totalServiceRevenue,
           },
           revenueByDoctor: doctorPerformance.map((doctor) => ({
             doctorName: doctor.doctorName,
@@ -3542,7 +3493,8 @@ const getSimplifiedDashboardMetrics = async (req, res) => {
     res.status(200).json(responseData);
   } catch (error) {
     console.error("Error in simplified dashboard metrics:", error);
-    console.error("Error stack:", error.stack);    res.status(500).json({
+    console.error("Error stack:", error.stack);
+    res.status(500).json({
       message: "Failed to get simplified dashboard metrics",
       error: error.message,
       stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
@@ -3553,13 +3505,13 @@ const getSimplifiedDashboardMetrics = async (req, res) => {
 // Public endpoint to get patient by ID (for QR code access)
 const getPatientById = async (req, res) => {
   const { id } = req.params;
-  
+
   try {
     // Validate the patient ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid patient ID format" 
+      return res.status(400).json({
+        success: false,
+        message: "Invalid patient ID format",
       });
     }
 
@@ -3569,9 +3521,9 @@ const getPatientById = async (req, res) => {
       .lean(); // Convert to plain JS object for better performance
 
     if (!patient) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Patient not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found",
       });
     }
 
@@ -3594,72 +3546,74 @@ const getPatientById = async (req, res) => {
 const searchPatients = async (req, res) => {
   try {
     const { query, limit = 10 } = req.body;
-    
+
     if (!query) {
-      return res.status(400).json({ success: false, message: 'Search query is required' });
+      return res
+        .status(400)
+        .json({ success: false, message: "Search query is required" });
     }
 
-    const searchRegex = new RegExp(query, 'i');
-    
+    const searchRegex = new RegExp(query, "i");
+
     const patients = await Patient.find({
       $or: [
-        { 'personalDetails.name': { $regex: searchRegex } },
-        { 'personalDetails.contactNumber': { $regex: searchRegex } },
-        { 'personalDetails.emailAddress': { $regex: searchRegex } }
-      ]
+        { "personalDetails.name": { $regex: searchRegex } },
+        { "personalDetails.contactNumber": { $regex: searchRegex } },
+        { "personalDetails.emailAddress": { $regex: searchRegex } },
+      ],
     })
-    .limit(Number(limit))
-    .select('personalDetails name contactNumber emailAddress lastAppointment')
-    .lean();
+      .limit(Number(limit))
+      .select("personalDetails name contactNumber emailAddress lastAppointment")
+      .lean();
 
     res.json({ success: true, data: patients });
   } catch (error) {
-    console.error('Error searching patients:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    console.error("Error searching patients:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
 // Get count of filtered patients
 const getPatientsCount = async (req, res) => {
   try {
-    const { 
-      treatmentStatus, 
-      procedures = [], 
-      group, 
+    const {
+      treatmentStatus,
+      procedures = [],
+      group,
       dateRange = {},
-      gender
+      gender,
     } = req.body;
 
     const query = {};
 
     // Apply treatment status filter
     if (treatmentStatus) {
-      query['treatments.status'] = treatmentStatus;
+      query["treatments.status"] = treatmentStatus;
     }
 
     // Apply procedures filter
     if (procedures.length > 0) {
-      query['treatments.procedure'] = { $in: procedures };
+      query["treatments.procedure"] = { $in: procedures };
     }
 
     // Apply group filter
     if (group) {
-      query['treatments.group'] = group;
+      query["treatments.group"] = group;
     }
 
     // Apply gender filter
     if (gender) {
-      query['personalDetails.gender'] = gender;
+      query["personalDetails.gender"] = gender;
     }
 
     // Apply date range filter
     if (dateRange.from || dateRange.to) {
-      query['treatments.date'] = {};
+      query["treatments.date"] = {};
       if (dateRange.from) {
-        query['treatments.date'].$gte = new Date(dateRange.from);
+        query["treatments.date"].$gte = new Date(dateRange.from);
       }
       if (dateRange.to) {
-        query['treatments.date'].$lte = new Date(dateRange.to);
+        query["treatments.date"].$lte = new Date(dateRange.to);
       }
     }
 
@@ -3667,15 +3621,15 @@ const getPatientsCount = async (req, res) => {
 
     res.json({ success: true, count });
   } catch (error) {
-    console.error('Error getting patients count:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    console.error("Error getting patients count:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
 // Export the new function
 module.exports = {
   addPatient,
-  deletePatient,  
+  deletePatient,
   getPatient,
   searchPatients,
   getPatientsCount,

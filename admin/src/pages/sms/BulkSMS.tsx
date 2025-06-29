@@ -111,11 +111,11 @@ export default function BulkSMSPage() {
         }
       });
       
-      // If no filters are active, fetch all patients with a reasonable limit
+      
       const url = isFilterActive 
         ? `/patient/get-filtered-patients?${params.toString()}`
-        : `/patient/get-filtered-patients?limit=100`; // Default limit when no filters
-      
+        : `/patient/get-filtered-patients?limit=100`;
+    
       const response = await crudRequest<{ patients: any[], totalPatients?: number }>('GET', url);
       
       if (!response?.patients) {

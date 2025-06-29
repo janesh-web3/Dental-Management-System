@@ -894,6 +894,7 @@ const getSMSReport = async (req, res) => {
 const sendFollowUpReminder = async (req, res) => {
     try {
         const { patientId } = req.params;
+        const { customMessage } = req.body;
         
         // Check if followupSMS is enabled
         const settings = await require('../model/SMSSettings').getSettings();
@@ -942,20 +943,34 @@ const sendFollowUpReminder = async (req, res) => {
             }
         }
         
-        if (!followUpDate) {
+        // If no follow-up date was found but we have a custom message, we'll still send the SMS
+        if (!followUpDate && !customMessage) {
             return res.status(400).json({
                 success: false,
                 message: 'Patient does not have any follow-up appointments'
             });
         }
         
+        // Use custom message if provided, otherwise generate default
+        let messageToSend;
+        if (customMessage) {
+            messageToSend = customMessage;
+        } else {
+            const formattedDate = followUpDate ? followUpDate.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }) : 'your upcoming';
+            
+            messageToSend = `Dear ${patient.personalDetails.name}, this is a reminder about your follow-up dental appointment on ${formattedDate} at ${settings.clinicName}. Please visit on time. Thank you.`;
+        }
+        
         // Send follow-up SMS
         const aakashSmsUtils = require('../utils/aakashSmsUtils');
-        const result = await aakashSmsUtils.sendFollowUpSMS(
+        const result = await aakashSmsUtils.sendSingleSMS(
             patient.personalDetails.contactNumber,
-            followUpDate,
-            patient.personalDetails.name,
-            settings.clinicName
+            messageToSend
         );
         
         if (!result.success) {
@@ -969,7 +984,7 @@ const sendFollowUpReminder = async (req, res) => {
         // Save to SMS history
         await require('../model/SMSHistory').create({
             recipient: patient.personalDetails.contactNumber,
-            message: result.message || `Follow-up reminder for appointment on ${followUpDate.toLocaleDateString()}`,
+            message: messageToSend,
             status: result.status || 'sent',
             messageId: result.messageId,
             networkProvider: result.network,
@@ -998,6 +1013,7 @@ const sendFollowUpReminder = async (req, res) => {
 const sendPaymentReminder = async (req, res) => {
     try {
         const { patientId } = req.params;
+        const { customMessage } = req.body;
         
         // Check if paymentSMS is enabled
         const settings = await require('../model/SMSSettings').getSettings();
@@ -1042,20 +1058,27 @@ const sendPaymentReminder = async (req, res) => {
             }
         }
         
-        if (totalDue <= 0) {
+        // If no payment due but we have a custom message, we'll still send the SMS
+        if (totalDue <= 0 && !customMessage) {
             return res.status(400).json({
                 success: false,
                 message: 'Patient does not have any pending payments'
             });
         }
         
+        // Use custom message if provided, otherwise generate default
+        let messageToSend;
+        if (customMessage) {
+            messageToSend = customMessage;
+        } else {
+            messageToSend = `Dear ${patient.personalDetails.name}, you have a pending dental bill of Rs ${totalDue}. Please clear your dues at your earliest convenience. - ${settings.clinicName}`;
+        }
+        
         // Send payment reminder SMS
         const aakashSmsUtils = require('../utils/aakashSmsUtils');
-        const result = await aakashSmsUtils.sendPaymentReminderSMS(
+        const result = await aakashSmsUtils.sendSingleSMS(
             patient.personalDetails.contactNumber,
-            patient.personalDetails.name,
-            totalDue,
-            settings.clinicName
+            messageToSend
         );
         
         if (!result.success) {
@@ -1069,7 +1092,7 @@ const sendPaymentReminder = async (req, res) => {
         // Save to SMS history
         await require('../model/SMSHistory').create({
             recipient: patient.personalDetails.contactNumber,
-            message: result.message || `Payment reminder for amount Rs ${totalDue}`,
+            message: messageToSend,
             status: result.status || 'sent',
             messageId: result.messageId,
             networkProvider: result.network,

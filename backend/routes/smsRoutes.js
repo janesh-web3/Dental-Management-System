@@ -13,7 +13,7 @@ console.log('getSMSReport type:', typeof smsController.getSMSReport);
 router.post('/single', protectAdminRoute, (req, res) => smsController.sendSingleSMS(req, res));
 router.post('/bulk', protectAdminRoute, (req, res) => smsController.sendBulkSMS(req, res));
 
-// New endpoints for follow-up and payment reminders
+// New endpoints for follow-up and payment reminders with custom messages
 router.post('/followup/:patientId', protectAdminRoute, (req, res) => smsController.sendFollowUpReminder(req, res));
 router.post('/payment-due/:patientId', protectAdminRoute, (req, res) => smsController.sendPaymentReminder(req, res));
 

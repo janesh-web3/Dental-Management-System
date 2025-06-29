@@ -38,7 +38,9 @@ const updateSMSSettings = async (req, res) => {
       reminderHoursBeforeAppointment,
       dailyLimit,
       clinicName,
-      senderName
+      senderName,
+      defaultPaymentTemplate,
+      defaultFollowupTemplate
     } = req.body;
     
     // Find settings or create if not exists
@@ -57,6 +59,10 @@ const updateSMSSettings = async (req, res) => {
     if (dailyLimit !== undefined) settings.dailyLimit = dailyLimit;
     if (clinicName) settings.clinicName = clinicName;
     if (senderName) settings.senderName = senderName;
+    
+    // Update default message templates
+    if (defaultPaymentTemplate) settings.defaultPaymentTemplate = defaultPaymentTemplate;
+    if (defaultFollowupTemplate) settings.defaultFollowupTemplate = defaultFollowupTemplate;
     
     // Set updatedBy
     settings.updatedBy = req.admin.id;
@@ -79,7 +85,34 @@ const updateSMSSettings = async (req, res) => {
   }
 };
 
+// Get default message templates
+const getDefaultMessageTemplates = async (req, res) => {
+  try {
+    const settings = await SMSSettings.getSettings();
+    
+    const templates = {
+      payment: settings.defaultPaymentTemplate || 
+        "Dear {{name}}, you have a pending dental bill of Rs {{amount}}. Please clear your dues at your earliest convenience. - {{clinic}}",
+      followup: settings.defaultFollowupTemplate || 
+        "Dear {{name}}, this is a reminder about your follow-up dental appointment on {{date}} at {{clinic}}. Please visit on time. Thank you."
+    };
+    
+    res.status(200).json({
+      success: true,
+      data: templates
+    });
+  } catch (error) {
+    console.error('Error getting default message templates:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get default message templates',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getSMSSettings,
-  updateSMSSettings
+  updateSMSSettings,
+  getDefaultMessageTemplates
 };

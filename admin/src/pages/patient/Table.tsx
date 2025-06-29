@@ -133,6 +133,7 @@ import { PatientDocumentUploadButton } from "@/components/patient/PatientDocumen
 import { ProfilePhotoUploadButton } from "@/components/patient/ProfilePhotoUploadButton";
 import { AddPrescriptionButton } from "@/components/prescription";
 import { dentalName } from "@/server";
+import SMSModal from "@/components/patient/SMSModal";
 
 interface ProcedureResponse {
   success: boolean;
@@ -337,7 +338,11 @@ export function PatientTable() {
     useState(false);
 
   const [isQRCodeModalOpen, setIsQRCodeModalOpen] = useState(false);
+  const [isSMSModalOpen, setIsSMSModalOpen] = useState(false);
+
   const [selectedPatientForQR, setSelectedPatientForQR] =
+    useState<Patient | null>(null);
+  const [selectedPatientForSMS, setSelectedPatientForSMS] =
     useState<Patient | null>(null);
 
   const navigate = useNavigate();
@@ -1086,6 +1091,11 @@ export function PatientTable() {
     setIsQRCodeModalOpen(true);
   };
 
+  const handleSMSClick = (patient: Patient) => {
+    setSelectedPatientForSMS(patient);
+    setIsSMSModalOpen(true);
+  };
+
   const renderPatientTable = () => (
     <Card className="transition-all duration-300 hover:shadow-xl border border-foreground/10 rounded-xl overflow-hidden">
       {" "}
@@ -1474,6 +1484,21 @@ export function PatientTable() {
                                       title="QR Code"
                                     >
                                       <QrCode className="h-4 w-4" />
+                                    </Button>
+                                    
+                                    {/* SMS Button */}
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-green-600 hover:bg-green-50 hover:text-green-700"
+                                      title="Send SMS"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSMSClick(patient);
+                                      }}
+                                      disabled={!patient.personalDetails.contactNumber}
+                                    >
+                                      <MessageSquare className="h-4 w-4" />
                                     </Button>
                                   </>
                                 )}
@@ -2712,6 +2737,22 @@ export function PatientTable() {
           patient={selectedPatientForQR}
         />
       )}
+
+
+
+      {
+        selectedPatientForSMS && (
+          <SMSModal
+            isOpen={isSMSModalOpen}
+            onClose={() => {
+              setIsSMSModalOpen(false);
+              setSelectedPatientForSMS(null);
+            }}
+            patient={selectedPatientForSMS}
+          />
+        )
+      }
+
       {renderExportDialog()}
       {renderDateRangePicker()}
       {renderFollowUpDateRangePicker()}

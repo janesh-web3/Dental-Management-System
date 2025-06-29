@@ -23,13 +23,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
 import { crudRequest } from "@/lib/api";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 
 // Interface for the API response
 interface ApiResponse<T> {
@@ -84,8 +77,6 @@ export default function SMSHistoryPage() {
   const [limit, setLimit] = useState(10);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedSMS, setSelectedSMS] = useState<SMSHistory | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const { data, isLoading, isError, error } = useQuery<
     ApiResponse<{ history: SMSHistory[]; total: number }>
@@ -169,11 +160,6 @@ export default function SMSHistoryPage() {
         {status}
       </Badge>
     );
-  };
-
-  const handleViewDetails = (sms: SMSHistory) => {
-    setSelectedSMS(sms);
-    setDetailsOpen(true);
   };
 
   return (
@@ -267,11 +253,7 @@ export default function SMSHistoryPage() {
                 ))
               ) : data?.data?.history && data.data.history.length > 0 ? (
                 data.data.history.map((item: SMSHistory) => (
-                  <TableRow
-                    key={item._id}
-                    onClick={() => handleViewDetails(item)}
-                    className="cursor-pointer hover:bg-muted/50"
-                  >
+                  <TableRow key={item._id}>
                     <TableCell className="font-medium">
                       {item.recipient}
                       {item.patient && (
@@ -359,116 +341,6 @@ export default function SMSHistoryPage() {
           </div>
         </div>
       </div>
-
-      {/* SMS Details Dialog */}
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>SMS Details</DialogTitle>
-          </DialogHeader>
-
-          {selectedSMS && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    Status
-                  </h3>
-                  <div className="mt-1">{getStatusBadge(selectedSMS.status)}</div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    Date
-                  </h3>
-                  <div className="mt-1">{formatDate(selectedSMS.createdAt)}</div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    Recipient
-                  </h3>
-                  <div className="mt-1 font-medium">{selectedSMS.recipient}</div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    Message ID
-                  </h3>
-                  <div className="mt-1">{selectedSMS.messageId || "N/A"}</div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    Network Provider
-                  </h3>
-                  <div className="mt-1">{selectedSMS.networkProvider || "N/A"}</div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    Credits Used
-                  </h3>
-                  <div className="mt-1">{selectedSMS.credit || "N/A"}</div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    Type
-                  </h3>
-                  <div className="mt-1 capitalize">
-                    {selectedSMS.isBulk ? "Bulk" : "Single"}
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    Sent By
-                  </h3>
-                  <div className="mt-1">{selectedSMS.sentBy?.name || "System"}</div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  Message
-                </h3>
-                <div className="p-3 bg-muted rounded-md whitespace-pre-wrap font-mono text-sm">
-                  {selectedSMS.message}
-                </div>
-              </div>
-
-              {selectedSMS.patient && (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    Patient
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">
-                      {selectedSMS.patient.personalDetails?.name || "Unknown"}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {selectedSMS.errorMessage && (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    Error
-                  </h3>
-                  <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">
-                    {selectedSMS.errorMessage}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button onClick={() => setDetailsOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

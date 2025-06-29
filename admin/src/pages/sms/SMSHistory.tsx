@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import React, { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -11,31 +11,25 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
-import { Search } from 'lucide-react';
-
-// Create axios instance with base URL
-const api = {
-  get: async (url: string, config?: any) => {
-    const response = await fetch(`/api${url}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      ...config,
-    });
-    return response.json();
-  },
-};
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Search } from "lucide-react";
+import { crudRequest } from "@/lib/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // Interface for the API response
 interface ApiResponse<T> {
@@ -44,6 +38,7 @@ interface ApiResponse<T> {
   total: number;
   page: number;
   limit: number;
+  pages: number;
   hasMore: boolean;
 }
 
@@ -51,7 +46,15 @@ type SMSHistory = {
   _id: string;
   recipient: string;
   message: string;
-  status: 'pending' | 'sent' | 'delivered' | 'failed' | 'undelivered' | 'scheduled' | 'queued' | 'aborted';
+  status:
+    | "pending"
+    | "sent"
+    | "delivered"
+    | "failed"
+    | "undelivered"
+    | "scheduled"
+    | "queued"
+    | "aborted";
   messageId?: string;
   networkProvider?: string;
   credit?: number;
@@ -79,28 +82,57 @@ type SMSHistory = {
 export default function SMSHistoryPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSMS, setSelectedSMS] = useState<SMSHistory | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
-  const { data, isLoading, isError, error } = useQuery<ApiResponse<{ history: SMSHistory[]; total: number }>>({
-    queryKey: ['smsHistory', { page, limit, status: statusFilter, search: searchQuery }],
+  const { data, isLoading, isError, error } = useQuery<
+    ApiResponse<{ history: SMSHistory[]; total: number }>
+  >({
+    queryKey: [
+      "smsHistory",
+      { page, limit, status: statusFilter, search: searchQuery },
+    ],
     queryFn: async () => {
-      const response = await api.get('/sms/history', {
-        params: {
-          page,
-          limit,
-          ...(statusFilter !== 'all' && { status: statusFilter }),
-          ...(searchQuery && { search: searchQuery })
-        }
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
       });
-      return response;
+
+      if (statusFilter !== "all") {
+        params.append("status", statusFilter);
+      }
+
+      if (searchQuery) {
+        params.append("search", searchQuery);
+      }
+
+      const response = await crudRequest(
+        "GET",
+        `/sms/history?${params.toString()}`
+      );
+      console.log("SMS History Response:", response);
+
+      // Narrow the type of response
+      const typedResponse = response as ApiResponse<{
+        history: SMSHistory[];
+        total: number;
+      }>;
+
+      if (!typedResponse.success) {
+        throw new Error("Failed to fetch SMS history");
+      }
+
+      // Return the response directly since it's already in the right format
+      return typedResponse;
     },
   });
 
   useEffect(() => {
     if (isError) {
-      toast.error('Failed to load SMS history', {
-        description: error?.message || 'Please try again later',
+      toast.error("Failed to load SMS history", {
+        description: error?.message || "Please try again later",
       });
     }
   }, [isError, error]);
@@ -112,29 +144,36 @@ export default function SMSHistoryPage() {
 
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'MMM d, yyyy h:mm a');
+      return format(new Date(dateString), "MMM d, yyyy h:mm a");
     } catch (error) {
-      return 'Invalid date';
+      return "Invalid date";
     }
   };
 
   const getStatusBadge = (status: string) => {
     const statusMap = {
-      sent: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
-      delivered: 'bg-green-100 text-green-800 hover:bg-green-100',
-      failed: 'bg-red-100 text-red-800 hover:bg-red-100',
-      pending: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
-      scheduled: 'bg-purple-100 text-purple-800 hover:bg-purple-100',
-      undelivered: 'bg-orange-100 text-orange-800 hover:bg-orange-100',
-      queued: 'bg-cyan-100 text-cyan-800 hover:bg-cyan-100',
-      aborted: 'bg-gray-100 text-gray-800 hover:bg-gray-100',
+      sent: "bg-blue-100 text-blue-800 hover:bg-blue-100",
+      delivered: "bg-green-100 text-green-800 hover:bg-green-100",
+      failed: "bg-red-100 text-red-800 hover:bg-red-100",
+      pending: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
+      scheduled: "bg-purple-100 text-purple-800 hover:bg-purple-100",
+      undelivered: "bg-orange-100 text-orange-800 hover:bg-orange-100",
+      queued: "bg-cyan-100 text-cyan-800 hover:bg-cyan-100",
+      aborted: "bg-gray-100 text-gray-800 hover:bg-gray-100",
     };
 
     return (
-      <Badge className={`${statusMap[status as keyof typeof statusMap] || 'bg-gray-100'} capitalize`}>
+      <Badge
+        className={`${statusMap[status as keyof typeof statusMap] || "bg-gray-100"} capitalize`}
+      >
         {status}
       </Badge>
     );
+  };
+
+  const handleViewDetails = (sms: SMSHistory) => {
+    setSelectedSMS(sms);
+    setDetailsOpen(true);
   };
 
   return (
@@ -142,7 +181,9 @@ export default function SMSHistoryPage() {
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">SMS History</h1>
-          <p className="text-muted-foreground">View and manage your SMS message history</p>
+          <p className="text-muted-foreground">
+            View and manage your SMS message history
+          </p>
         </div>
       </div>
 
@@ -226,12 +267,16 @@ export default function SMSHistoryPage() {
                 ))
               ) : data?.data?.history && data.data.history.length > 0 ? (
                 data.data.history.map((item: SMSHistory) => (
-                  <TableRow key={item._id}>
+                  <TableRow
+                    key={item._id}
+                    onClick={() => handleViewDetails(item)}
+                    className="cursor-pointer hover:bg-muted/50"
+                  >
                     <TableCell className="font-medium">
                       {item.recipient}
                       {item.patient && (
                         <div className="text-sm text-muted-foreground">
-                          {item.patient.personalDetails?.name || 'N/A'}
+                          {item.patient.personalDetails?.name || "N/A"}
                         </div>
                       )}
                     </TableCell>
@@ -252,24 +297,27 @@ export default function SMSHistoryPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {item.sentBy?.name || 'System'}
+                      {item.sentBy?.name || "System"}
                       <div className="text-xs text-muted-foreground">
                         {formatDate(item.createdAt)}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                    {item.credit ? `${item.credit} credits` : 'N/A'}
-                    {item.isBulk && (
-                      <div className="text-xs text-muted-foreground">
-                        Bulk
-                      </div>
-                    )}
-                  </TableCell>
+                      {item.credit ? `${item.credit} credits` : "N/A"}
+                      {item.isBulk && (
+                        <div className="text-xs text-muted-foreground">
+                          Bulk
+                        </div>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={6}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     No SMS history found
                   </TableCell>
                 </TableRow>
@@ -280,13 +328,16 @@ export default function SMSHistoryPage() {
 
         <div className="flex items-center justify-between px-4 py-3 border-t">
           <div className="text-sm text-muted-foreground">
-            Showing <span className="font-medium">
+            Showing{" "}
+            <span className="font-medium">
               {data?.data ? (page - 1) * limit + 1 : 0}
-            </span> to{' '}
+            </span>{" "}
+            to{" "}
             <span className="font-medium">
               {data?.data ? Math.min(page * limit, data.data.total) : 0}
-            </span>{' '}
-            of <span className="font-medium">{data?.data?.total || 0}</span> messages
+            </span>{" "}
+            of <span className="font-medium">{data?.data?.total || 0}</span>{" "}
+            messages
           </div>
           <div className="flex items-center justify-end space-x-2 px-4 py-3 bg-muted/50">
             <Button
@@ -308,6 +359,116 @@ export default function SMSHistoryPage() {
           </div>
         </div>
       </div>
+
+      {/* SMS Details Dialog */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>SMS Details</DialogTitle>
+          </DialogHeader>
+
+          {selectedSMS && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Status
+                  </h3>
+                  <div className="mt-1">{getStatusBadge(selectedSMS.status)}</div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Date
+                  </h3>
+                  <div className="mt-1">{formatDate(selectedSMS.createdAt)}</div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Recipient
+                  </h3>
+                  <div className="mt-1 font-medium">{selectedSMS.recipient}</div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Message ID
+                  </h3>
+                  <div className="mt-1">{selectedSMS.messageId || "N/A"}</div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Network Provider
+                  </h3>
+                  <div className="mt-1">{selectedSMS.networkProvider || "N/A"}</div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Credits Used
+                  </h3>
+                  <div className="mt-1">{selectedSMS.credit || "N/A"}</div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Type
+                  </h3>
+                  <div className="mt-1 capitalize">
+                    {selectedSMS.isBulk ? "Bulk" : "Single"}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Sent By
+                  </h3>
+                  <div className="mt-1">{selectedSMS.sentBy?.name || "System"}</div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  Message
+                </h3>
+                <div className="p-3 bg-muted rounded-md whitespace-pre-wrap font-mono text-sm">
+                  {selectedSMS.message}
+                </div>
+              </div>
+
+              {selectedSMS.patient && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Patient
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">
+                      {selectedSMS.patient.personalDetails?.name || "Unknown"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {selectedSMS.errorMessage && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Error
+                  </h3>
+                  <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">
+                    {selectedSMS.errorMessage}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setDetailsOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -526,7 +526,7 @@ const deleteTemplate = async (req, res) => {
 // Get SMS history
 const getSMSHistory = async (req, res) => {
     try {
-        const { page = 1, limit = 20, patientId, status } = req.query;
+        const { page = 1, limit = 20, patientId, status, search } = req.query;
         
         const query = {};
         
@@ -538,12 +538,23 @@ const getSMSHistory = async (req, res) => {
             query.status = status;
         }
         
+        // Add search functionality
+        if (search) {
+            query.$or = [
+                { recipient: { $regex: search, $options: 'i' } }, // Search in recipient field
+                { message: { $regex: search, $options: 'i' } },   // Search in message content
+                { messageId: { $regex: search, $options: 'i' } }  // Search in message ID
+            ];
+        }
+        
         const total = await SMSHistory.countDocuments(query);
+        const parsedPage = parseInt(page);
+        const parsedLimit = parseInt(limit);
         
         const history = await SMSHistory.find(query)
             .sort({ createdAt: -1 })
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit))
+            .skip((parsedPage - 1) * parsedLimit)
+            .limit(parsedLimit)
             .populate('patient', 'personalDetails.name')
             .populate('sentBy', 'name email')
             .populate('templateUsed', 'name');
@@ -551,14 +562,19 @@ const getSMSHistory = async (req, res) => {
         res.status(200).json({
             success: true,
             total,
-            page: parseInt(page),
-            limit: parseInt(limit),
-            pages: Math.ceil(total / limit),
-            history
+            page: parsedPage,
+            limit: parsedLimit,
+            pages: Math.ceil(total / parsedLimit),
+            hasMore: parsedPage * parsedLimit < total, // Add hasMore property for frontend pagination
+            data: {
+                history,
+                total
+            }
         });
     } catch (error) {
         console.error('Error getting SMS history:', error);
         res.status(500).json({ 
+            success: false, 
             error: 'Failed to get SMS history', 
             details: error.message 
         });

@@ -3,7 +3,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* basic */
+/* standard */
+
+
+/* 
 @layer base {
   :root {
     --background: 210 20% 98%;
@@ -59,9 +62,9 @@
     --chart-4: 43 96% 56%;
     --chart-5: 0 84% 60%;
   }
-}
+} */
 
-/* premium */
+/* premium looks*/
 
 @layer base {
   :root {

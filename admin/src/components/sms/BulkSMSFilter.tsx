@@ -82,26 +82,6 @@ export function BulkSMSFilter({
     { value: 'UCC 8', label: 'UCC 8' }
   ].sort((a, b) => a.label.localeCompare(b.label)); // Sort alphabetically
 
-  // Group options
-  const groupOptions = [
-    { value: 'all', label: 'All Groups' },
-    { value: 'Ortho', label: 'Orthodontics' },
-    { value: 'Endo', label: 'Endodontics' },
-    { value: 'Perio', label: 'Periodontics' },
-    { value: 'Prostho', label: 'Prosthodontics' },
-    { value: 'Surgery', label: 'Surgery' },
-    { value: 'General', label: 'General Dentistry' },
-    { value: 'Other', label: 'Other' }
-  ];
-
-  // Gender options
-  const genderOptions = [
-    { value: 'all', label: 'All Genders' },
-    { value: 'Male', label: 'Male' },
-    { value: 'Female', label: 'Female' },
-    { value: 'Other', label: 'Other' }
-  ];
-
   // Date range presets
   const dateRangePresets = [
     { value: 'today', label: 'Today' },

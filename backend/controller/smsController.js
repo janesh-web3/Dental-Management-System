@@ -943,11 +943,12 @@ const sendFollowUpReminder = async (req, res) => {
             }
         }
         
-        // If no follow-up date was found but we have a custom message, we'll still send the SMS
-        if (!followUpDate && !customMessage) {
+        // If no follow-up date was found, return an error - even if customMessage is provided
+        // This is a change from previous behavior where we would send a custom message even without a follow-up date
+        if (!followUpDate) {
             return res.status(400).json({
                 success: false,
-                message: 'Patient does not have any follow-up appointments'
+                message: 'Patient does not have any follow-up appointments scheduled. Cannot send follow-up reminder.'
             });
         }
         
@@ -956,12 +957,12 @@ const sendFollowUpReminder = async (req, res) => {
         if (customMessage) {
             messageToSend = customMessage;
         } else {
-            const formattedDate = followUpDate ? followUpDate.toLocaleDateString('en-US', {
+            const formattedDate = followUpDate.toLocaleDateString('en-US', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
-            }) : 'your upcoming';
+            });
             
             messageToSend = `Dear ${patient.personalDetails.name}, this is a reminder about your follow-up dental appointment on ${formattedDate} at ${settings.clinicName}. Please visit on time. Thank you.`;
         }
@@ -1058,11 +1059,11 @@ const sendPaymentReminder = async (req, res) => {
             }
         }
         
-        // If no payment due but we have a custom message, we'll still send the SMS
-        if (totalDue <= 0 && !customMessage) {
+        // Always check for pending payment, even with custom message
+        if (totalDue <= 0) {
             return res.status(400).json({
                 success: false,
-                message: 'Patient does not have any pending payments'
+                message: 'Patient does not have any pending payments. Cannot send payment reminder.'
             });
         }
         
@@ -1117,6 +1118,402 @@ const sendPaymentReminder = async (req, res) => {
     }
 };
 
+// Get patients with follow-up dates - ensure we only return patients with actual follow-up dates
+const getPatientsWithFollowUp = async (req, res) => {
+    try {
+        const { 
+            filter = 'upcoming', // 'today', 'week', 'month', 'upcoming', 'all'
+            page = 1,
+            limit = 20
+        } = req.query;
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Build query based on filter
+        let dateQuery = {};
+        
+        if (filter === 'today') {
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            dateQuery = { 
+                $gte: today, 
+                $lt: tomorrow 
+            };
+        } else if (filter === 'week') {
+            const nextWeek = new Date(today);
+            nextWeek.setDate(nextWeek.getDate() + 7);
+            dateQuery = { 
+                $gte: today, 
+                $lt: nextWeek 
+            };
+        } else if (filter === 'month') {
+            const nextMonth = new Date(today);
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            dateQuery = { 
+                $gte: today, 
+                $lt: nextMonth 
+            };
+        } else if (filter === 'upcoming') {
+            dateQuery = { $gte: today };
+        }
+        // If filter is 'all', we include all dates but still enforce that follow-up date exists
+        
+        // Use aggregation to find patients with follow-up dates
+        const aggregationPipeline = [
+            // Unwind medical details to get individual records
+            { $unwind: { path: '$medicalDetails', preserveNullAndEmptyArrays: false } },
+            
+            // Unwind treatment planning to get individual treatment plans
+            { $unwind: { path: '$medicalDetails.treatmentPlanning', preserveNullAndEmptyArrays: false } },
+            
+            // Match treatments with follow-up dates - ALWAYS ensure follow-up date exists and is not null
+            { 
+                $match: { 
+                    'medicalDetails.treatmentPlanning.followUpDate': { 
+                        $exists: true, 
+                        $ne: null,
+                        // Add date filter if provided
+                        ...(Object.keys(dateQuery).length > 0 ? dateQuery : {})
+                    }
+                } 
+            },
+            
+            // Make sure patient has a contact number
+            { 
+                $match: { 
+                    'personalDetails.contactNumber': { $exists: true, $ne: null, $ne: '' } 
+                } 
+            },
+            
+            // Group by patient to avoid duplicates
+            { 
+                $group: {
+                    _id: '$_id',
+                    name: { $first: '$personalDetails.name' },
+                    contactNumber: { $first: '$personalDetails.contactNumber' },
+                    // Get the earliest follow-up date for this patient
+                    nextFollowUpDate: { $min: '$medicalDetails.treatmentPlanning.followUpDate' },
+                    treatmentDetails: { 
+                        $push: {
+                            medicalDetailId: '$medicalDetails._id',
+                            treatmentId: '$medicalDetails.treatmentPlanning._id',
+                            followUpDate: '$medicalDetails.treatmentPlanning.followUpDate',
+                            treatmentFindings: '$medicalDetails.treatmentPlanning.treatmentFindings',
+                            completed: '$medicalDetails.treatmentPlanning.isCompleted'
+                        }
+                    }
+                }
+            },
+            
+            // Sort by next follow-up date
+            { $sort: { nextFollowUpDate: 1 } },
+            
+            // Add pagination
+            { $skip: (parseInt(page) - 1) * parseInt(limit) },
+            { $limit: parseInt(limit) },
+            
+            // Project final shape
+            {
+                $project: {
+                    _id: 1,
+                    name: 1,
+                    contactNumber: 1,
+                    nextFollowUpDate: 1,
+                    treatmentDetails: 1
+                }
+            }
+        ];
+        
+        // Count total patients matching criteria (for pagination)
+        const countPipeline = [...aggregationPipeline];
+        // Remove skip, limit and project stages for counting
+        countPipeline.splice(-3); // Remove the last 3 stages
+        countPipeline.push({ $count: 'total' });
+        
+        // Execute both queries
+        const [patients, countResult] = await Promise.all([
+            Patient.aggregate(aggregationPipeline),
+            Patient.aggregate(countPipeline)
+        ]);
+        
+        const total = countResult.length > 0 ? countResult[0].total : 0;
+        
+        return res.status(200).json({
+            success: true,
+            data: {
+                patients,
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching patients with follow-up dates:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch patients with follow-up dates',
+            error: error.message
+        });
+    }
+};
+
+// Send bulk follow-up reminders
+const sendBulkFollowUpReminders = async (req, res) => {
+    try {
+        const { patientIds = [], customMessage, scheduleFor } = req.body;
+        
+        if (!patientIds.length) {
+            return res.status(400).json({
+                success: false,
+                message: 'No patient IDs provided'
+            });
+        }
+        
+        // Check if followupSMS is enabled
+        const settings = await require('../model/SMSSettings').getSettings();
+        if (!settings.followupSMS) {
+            return res.status(403).json({
+                success: false,
+                message: 'Follow-up SMS feature is currently disabled'
+            });
+        }
+        
+        // Fetch patients by IDs
+        const patients = await Patient.find({
+            _id: { $in: patientIds },
+            'personalDetails.contactNumber': { $exists: true, $ne: null, $ne: '' }
+        });
+        
+        if (patients.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No valid patients found with contact numbers'
+            });
+        }
+        
+        // Prepare array for bulk SMS
+        const phoneNumbers = [];
+        const messages = [];
+        const patientMap = {};
+        const clinicName = settings.clinicName || 'Dental Clinic';
+        
+        // For each patient, find their follow-up date and prepare message
+        for (const patient of patients) {
+            let followUpDate = null;
+            
+            // Find the earliest upcoming follow-up date
+            if (patient.medicalDetails && patient.medicalDetails.length > 0) {
+                for (const medicalDetail of patient.medicalDetails) {
+                    if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
+                        for (const treatment of medicalDetail.treatmentPlanning) {
+                            if (treatment.followUpDate) {
+                                const treatmentDate = new Date(treatment.followUpDate);
+                                const today = new Date();
+                                
+                                // Only consider upcoming follow-ups (including today)
+                                if (treatmentDate >= today && (!followUpDate || treatmentDate < followUpDate)) {
+                                    followUpDate = treatmentDate;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // If patient has follow-up date, prepare message
+            if (followUpDate) {
+                const formattedDate = followUpDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                const message = customMessage 
+                    ? customMessage.replace('{{name}}', patient.personalDetails.name)
+                                 .replace('{{date}}', formattedDate)
+                                 .replace('{{clinic}}', clinicName)
+                    : `Dear ${patient.personalDetails.name}, this is a reminder about your follow-up dental appointment on ${formattedDate} at ${clinicName}. Please visit on time. Thank you.`;
+                
+                phoneNumbers.push(patient.personalDetails.contactNumber);
+                messages.push(message);
+                patientMap[patient.personalDetails.contactNumber] = patient._id;
+            }
+        }
+        
+        if (phoneNumbers.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No patients with upcoming follow-up dates found'
+            });
+        }
+        
+        // Handle scheduled messages
+        if (scheduleFor) {
+            const scheduledDate = new Date(scheduleFor);
+            
+            if (isNaN(scheduledDate.getTime())) {
+                return res.status(400).json({ 
+                    success: false,
+                    message: 'Invalid date format for scheduling' 
+                });
+            }
+            
+            if (scheduledDate <= new Date()) {
+                return res.status(400).json({ 
+                    success: false,
+                    message: 'Scheduled time must be in the future' 
+                });
+            }
+            
+            // Save each scheduled SMS to history
+            const scheduledMessages = phoneNumbers.map((phone, index) => ({
+                recipient: formatPhoneNumber(phone),
+                message: messages[index],
+                status: 'scheduled',
+                sentBy: req.admin?.id,
+                patient: patientMap[phone],
+                scheduledFor: scheduledDate,
+                isBulk: true
+            }));
+            
+            await SMSHistory.insertMany(scheduledMessages);
+            
+            return res.status(200).json({
+                success: true,
+                scheduled: true,
+                scheduledFor: scheduledDate,
+                totalScheduled: scheduledMessages.length
+            });
+        }
+        
+        // Send messages immediately
+        const result = await aakashSmsUtils.sendBulkSMS(phoneNumbers, messages);
+        
+        if (!result.success) {
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to send bulk follow-up reminders',
+                error: result.error
+            });
+        }
+        
+        // Save successful sends to history
+        if (result.validMessages && result.validMessages.length > 0) {
+            const historyRecords = result.validMessages.map(msg => {
+                const patientId = patientMap[msg.recipient] || null;
+                return {
+                    recipient: msg.recipient,
+                    message: messages[phoneNumbers.indexOf(msg.recipient)],
+                    status: msg.status || 'sent',
+                    messageId: msg.messageId,
+                    networkProvider: msg.network,
+                    credit: msg.credit,
+                    sentBy: req.admin?.id,
+                    patient: patientId,
+                    isBulk: true
+                };
+            });
+            
+            await SMSHistory.insertMany(historyRecords);
+        }
+        
+        return res.status(200).json({
+            success: true,
+            totalSent: result.totalSent,
+            totalFailed: result.totalFailed,
+            message: `Successfully sent ${result.totalSent} follow-up reminders`
+        });
+    } catch (error) {
+        console.error('Error sending bulk follow-up reminders:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to send bulk follow-up reminders',
+            error: error.message
+        });
+    }
+};
+
+// Send custom SMS to a patient
+const sendCustomSMS = async (req, res) => {
+    try {
+        const { patientId } = req.params;
+        const { customMessage } = req.body;
+        
+        // Check if SMS features are enabled
+        const settings = await require('../model/SMSSettings').getSettings();
+        
+        // Get patient
+        const patient = await require('../model/Patient').findById(patientId);
+        if (!patient) {
+            return res.status(404).json({
+                success: false,
+                message: 'Patient not found'
+            });
+        }
+        
+        // Check if patient has a contact number
+        if (!patient.personalDetails?.contactNumber) {
+            return res.status(400).json({
+                success: false,
+                message: 'Patient does not have a contact number'
+            });
+        }
+        
+        // Validate message content
+        if (!customMessage || customMessage.trim().length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Message content cannot be empty'
+            });
+        }
+        
+        // Send custom SMS
+        const aakashSmsUtils = require('../utils/aakashSmsUtils');
+        const result = await aakashSmsUtils.sendSingleSMS(
+            patient.personalDetails.contactNumber,
+            customMessage
+        );
+        
+        if (!result.success) {
+            return res.status(400).json({
+                success: false,
+                message: 'Failed to send custom SMS',
+                error: result.error
+            });
+        }
+        
+        // Save to SMS history
+        await require('../model/SMSHistory').create({
+            recipient: patient.personalDetails.contactNumber,
+            message: customMessage,
+            status: result.status || 'sent',
+            messageId: result.messageId,
+            networkProvider: result.network,
+            credit: result.credit,
+            sentBy: req.admin?.id,
+            patient: patientId,
+            isBulk: false,
+            type: 'custom' // Add a type to distinguish from other SMS types
+        });
+        
+        res.status(200).json({
+            success: true,
+            message: 'Custom SMS sent successfully',
+            data: result
+        });
+    } catch (error) {
+        console.error('Error sending custom SMS:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to send custom SMS',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     sendSingleSMS,
     sendBulkSMS,
@@ -1131,5 +1528,8 @@ module.exports = {
     getDetailedSMSCredit,
     getSMSReport,
     sendFollowUpReminder,
-    sendPaymentReminder
+    sendPaymentReminder,
+    getPatientsWithFollowUp,
+    sendBulkFollowUpReminders,
+    sendCustomSMS // Add the new function to exports
 };

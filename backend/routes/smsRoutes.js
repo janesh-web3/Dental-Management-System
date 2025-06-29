@@ -16,6 +16,9 @@ router.post('/bulk', protectAdminRoute, (req, res) => smsController.sendBulkSMS(
 // New endpoints for follow-up and payment reminders with custom messages
 router.post('/followup/:patientId', protectAdminRoute, (req, res) => smsController.sendFollowUpReminder(req, res));
 router.post('/payment-due/:patientId', protectAdminRoute, (req, res) => smsController.sendPaymentReminder(req, res));
+router.post('/custom/:patientId', protectAdminRoute, (req, res) => smsController.sendCustomSMS(req, res)); // Add this new route
+router.get('/patients-with-followup', protectAdminRoute, (req, res) => smsController.getPatientsWithFollowUp(req, res));
+router.post('/bulk-followup', protectAdminRoute, (req, res) => smsController.sendBulkFollowUpReminders(req, res));
 
 // Template management endpoints - protected by authentication
 router.get('/templates', protectAdminRoute, (req, res) => smsController.getTemplates(req, res));

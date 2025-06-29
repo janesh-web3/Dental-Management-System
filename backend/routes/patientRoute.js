@@ -962,4 +962,134 @@ router.post(
   }
 );
 
+// Get next follow-up date for a patient
+router.get("/:patientId/next-followup", protectAdminRoute, async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    
+    // Validate patient ID
+    if (!mongoose.Types.ObjectId.isValid(patientId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid patient ID format"
+      });
+    }
+
+    // Find the patient
+    const patient = await Patient.findById(patientId);
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found"
+      });
+    }
+
+    // Find the earliest upcoming follow-up date
+    let nextFollowUpDate = null;
+    let hasFollowUp = false;
+    
+    if (patient.medicalDetails && patient.medicalDetails.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      for (const medicalDetail of patient.medicalDetails) {
+        if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
+          for (const treatment of medicalDetail.treatmentPlanning) {
+            if (treatment.followUpDate) {
+              hasFollowUp = true;
+              const followUpDate = new Date(treatment.followUpDate);
+              
+              // Only consider dates that are today or in the future
+              if (followUpDate >= today) {
+                // If we haven't found a date yet or this one is earlier than what we've found
+                if (!nextFollowUpDate || followUpDate < nextFollowUpDate) {
+                  nextFollowUpDate = followUpDate;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        nextFollowUpDate: nextFollowUpDate ? nextFollowUpDate.toISOString() : null,
+        hasFollowUpDate: hasFollowUp
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching patient follow-up date:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch follow-up date",
+      error: error.message
+    });
+  }
+});
+
+// Get patient payment information
+router.get("/:patientId/payment-info", protectAdminRoute, async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    
+    // Validate patient ID
+    if (!mongoose.Types.ObjectId.isValid(patientId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid patient ID format"
+      });
+    }
+
+    // Find the patient
+    const patient = await Patient.findById(patientId);
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found"
+      });
+    }
+
+    // Calculate total remaining amount
+    let totalRemainingAmount = 0;
+    let hasPendingPayment = false;
+    
+    if (patient.medicalDetails && patient.medicalDetails.length > 0) {
+      for (const medicalDetail of patient.medicalDetails) {
+        if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
+          for (const treatment of medicalDetail.treatmentPlanning) {
+            if (treatment.selectedTeethDetails && treatment.selectedTeethDetails.length > 0) {
+              for (const tooth of treatment.selectedTeethDetails) {
+                const remaining = (tooth.totalTreatmentAmount || 0) - (tooth.totalPaidAmount || 0);
+                totalRemainingAmount += remaining;
+                
+                // Set hasPendingPayment to true if any tooth has a remaining amount
+                if (remaining > 0) {
+                  hasPendingPayment = true;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalRemainingAmount,
+        hasPendingPayment
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching patient payment info:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch payment information",
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

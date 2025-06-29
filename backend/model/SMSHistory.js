@@ -45,6 +45,11 @@ const SMSHistorySchema = new mongoose.Schema(
     isBulk: {
       type: Boolean,
       default: false
+    },
+    type: {
+      type: String,
+      enum: ['payment', 'followup', 'custom', 'appointment', 'other'],
+      default: 'other'
     }
   },
   {

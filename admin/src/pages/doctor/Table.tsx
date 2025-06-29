@@ -201,7 +201,7 @@ export function DoctorTable() {
   );
 
   return (
-    <div className="flex flex-col w-full bg-muted/40">
+    <div className="flex flex-col w-full bg-background">
       <div className="flex flex-col sm:gap-4 sm:py-4">
         <header className="sticky top-0 z-30 flex flex-col sm:flex-row items-center gap-4 px-4 py-2 border-b bg-background sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
           <div className="relative flex-1 w-full sm:w-auto sm:max-w-xs">

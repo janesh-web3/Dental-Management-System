@@ -10,7 +10,7 @@ const { initSocket } = require('./socket');
 // Import routes
 const userRouter = require("./routes/userRoute.js");
 const patientRouter = require("./routes/patientRoute.js");
-const patientAuthRouter = require("./routes/patientRoutes.js"); // Updated import
+const patientAuthRouter = require("./routes/patientAuthRoutes.js");
 const publicPatientRouter = require("./routes/publicPatientRoute.js");
 const appointmentRouter = require("./routes/appointmentRoute.js");
 const doctorRouter = require("./routes/doctorRoute.js");
@@ -23,6 +23,7 @@ const smsRouter = require("./routes/smsRoutes.js");
 const financeRouter = require("./routes/financeRoutes.js");
 const servicePaymentRouter = require("./routes/servicePaymentRoutes.js");
 const geminiRouter = require("./routes/geminiRoute.js");
+const notificationRouter = require("./routes/notificationRoutes.js");
 
 // Import utilities
 const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
@@ -45,13 +46,10 @@ app.use(
     origin: [
       "http://localhost:5173",
       "http://localhost:5174",
-      "http://192.168.1.75:5173",
-      "http://192.168.1.75:5174",
       "https://dms.crownagi.com",
       "https://admin.om-shreenagar-dental-clinic.com",
       "https://om-shreenagar-dental-clinic.com"
     ],
-    credentials: true
   })
 );
 
@@ -69,7 +67,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/user", userRouter);
 app.use("/api/patient", patientRouter);
-app.use("/api/patient", patientAuthRouter); // Mount patient auth routes at /api/patient
+app.use("/api/patient", patientAuthRouter); // Patient authentication routes
 app.use("/api/patients", publicPatientRouter); // Public patient routes (for QR code)
 app.use("/api/appointment", appointmentRouter);
 app.use("/api/doctor", doctorRouter);
@@ -82,11 +80,12 @@ app.use("/api/sms", smsRouter);
 app.use("/api/finance", financeRouter); // Finance management routes
 app.use("/api/service-payment", servicePaymentRouter); // Service payment routes
 app.use("/api/gemini", geminiRouter);
+app.use("/api/notifications", notificationRouter);
 
 const port = process.env.PORT || 8080;
 
-server.listen(port, '0.0.0.0', () => {
-  console.log(`Server is running on port ${port}`);
+server.listen(process.env.PORT, () => {
+  console.log(`Server is running on port ${process.env.PORT}`);
   
   // Make io accessible in other files
   app.set('io', io);  

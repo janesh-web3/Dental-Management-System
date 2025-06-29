@@ -666,7 +666,11 @@ const Dashboard = () => {
                 <div className="grid gap-2 md:gap-4 grid-cols-2 lg:grid-cols-4">
                   <StatCard
                     title={t("Daily Revenue")}
-                    value={`रु${revenueData?.financialAnalysis?.daily.toLocaleString()}`}
+                    value={
+                      revenueData?.financialAnalysis
+                        ? `रु${revenueData.financialAnalysis.daily.toLocaleString()}`
+                        : t("....")
+                    }
                     description={t("Daily revenue")}
                     icon={
                       <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
@@ -675,7 +679,11 @@ const Dashboard = () => {
                   />
                   <StatCard
                     title={t("Weekly Revenue")}
-                    value={`रु${revenueData?.financialAnalysis?.weekly.toLocaleString()}`}
+                    value={
+                      revenueData?.financialAnalysis
+                        ? `रु${revenueData.financialAnalysis.weekly.toLocaleString()}`
+                        : t("....")
+                    }
                     description={t("Weekly revenue")}
                     icon={
                       <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
@@ -684,7 +692,11 @@ const Dashboard = () => {
                   />
                   <StatCard
                     title={t("Monthly Revenue")}
-                    value={`रु${revenueData?.financialAnalysis?.monthly.toLocaleString()}`}
+                    value={
+                      revenueData?.financialAnalysis
+                        ? `रु${revenueData.financialAnalysis.monthly.toLocaleString()}`
+                        : t("....")
+                    }
                     description={t("Monthly revenue")}
                     icon={
                       <TrendingUpIcon className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
@@ -693,7 +705,11 @@ const Dashboard = () => {
                   />
                   <StatCard
                     title={t("Total Revenue")}
-                    value={`रु${revenueData?.financialAnalysis?.total.toLocaleString()}`}
+                    value={
+                      revenueData?.financialAnalysis
+                        ? `रु${revenueData.financialAnalysis.total.toLocaleString()}`
+                        : t("....")
+                    }
                     description={t("Total revenue")}
                     icon={
                       <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
@@ -1097,88 +1113,6 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="doctors" className="space-y-4">
-          <Card className="bg-lime-50 dark:bg-lime-950 border-lime-200 dark:border-lime-800 shadow-sm hover:shadow-md transition-all">
-            <CardHeader>
-              <CardTitle className="text-lime-800 dark:text-lime-300">
-                {t("Doctor Progress")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!dashboardData?.doctorPerformance ||
-              dashboardData.doctorPerformance.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-lg text-lime-700 dark:text-lime-400">
-                    No doctor data available
-                  </p>
-                  <p className="text-sm text-lime-600 dark:text-lime-500 mt-2">
-                    Create doctors in the system to view progress data
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {dashboardData.doctorPerformance.map((doctor) => (
-                    <Card
-                      key={doctor._id}
-                      className="bg-white dark:bg-lime-900 border-lime-100 dark:border-lime-700"
-                    >
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="text-lg text-lime-900 dark:text-lime-100">
-                              {doctor.doctorName}
-                            </CardTitle>
-                            <p className="text-sm text-lime-700 dark:text-lime-300">
-                              {doctor.specialization}
-                            </p>
-                          </div>
-                          <Avatar className="bg-lime-100 dark:bg-lime-800">
-                            <User className="h-6 w-6 text-lime-600 dark:text-lime-300" />
-                          </Avatar>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div>
-                            <p className="text-sm font-medium text-lime-700 dark:text-lime-300">
-                              {t("Patients Treated")}
-                            </p>
-                            <p className="text-2xl font-bold text-lime-900 dark:text-lime-50">
-                              {doctor.patientsCount}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-lime-700 dark:text-lime-300">
-                              {t("Treatments Completed")}
-                            </p>
-                            <p className="text-2xl font-bold text-lime-900 dark:text-lime-50">
-                              {doctor.treatmentsCompleted}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-lime-700 dark:text-lime-300">
-                              {t("Performance Rate")}
-                            </p>
-                            <div className="flex items-center gap-2">
-                              <Progress
-                                value={doctor.performanceRate}
-                                className="h-2 bg-lime-200 dark:bg-lime-800"
-                              />
-                              <span className="text-sm font-medium text-lime-900 dark:text-lime-50">
-                                {doctor.performanceRate}%
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent

@@ -50,10 +50,12 @@ exports.getFilteredPatients = async (req, res) => {
 
     const query = {};
     const treatmentQuery = {};
+    let hasFilters = false;
 
     // Apply treatment status filter
     if (treatmentStatus) {
       treatmentQuery['treatments.status'] = treatmentStatus;
+      hasFilters = true;
     }
 
     // Apply procedures filter - UPDATED LOGIC
@@ -80,16 +82,19 @@ exports.getFilteredPatients = async (req, res) => {
           }
         }
       ];
+      hasFilters = true;
     }
 
     // Apply group filter
     if (group) {
-      treatmentQuery['treatments.group'] = group;
+      query['medicalDetails.group'] = group;
+      hasFilters = true;
     }
 
     // Apply gender filter
     if (gender) {
       query['personalDetails.gender'] = gender;
+      hasFilters = true;
     }
 
     // Apply date range filter
@@ -101,6 +106,7 @@ exports.getFilteredPatients = async (req, res) => {
       if (dateRange.to) {
         treatmentQuery['treatments.date'].$lte = new Date(dateRange.to);
       }
+      hasFilters = true;
     }
 
     // Only apply treatment query if there are any treatment filters
@@ -139,6 +145,32 @@ exports.getFilteredPatients = async (req, res) => {
       }
     }
 
+    // If no filters were applied, just return patients with basic information
+    // This enables the "show all patients when no filters" requirement
+    if (!hasFilters) {
+      console.log("No filters applied, returning all patients");
+      const actualLimit = Number(limit) || 100; // Default to 100 if limit is 0 or not specified
+      const skip = (Number(page) - 1) * actualLimit;
+      
+      const [patients, total] = await Promise.all([
+        Patient.find({})
+          .skip(skip)
+          .limit(actualLimit)
+          .select('personalDetails.name personalDetails.contactNumber personalDetails.gender personalDetails.emailAddress lastAppointment')
+          .sort({ 'personalDetails.name': 1 })
+          .lean(),
+        Patient.countDocuments({})
+      ]);
+
+      return res.json({
+        success: true,
+        data: patients,
+        total,
+        page: Number(page),
+        totalPages: Math.ceil(total / actualLimit)
+      });
+    }
+
     // If limit is 0, return all matching patients without pagination
     if (limit === 0) {
       const patients = await Patient.find(query)
@@ -160,7 +192,8 @@ exports.getFilteredPatients = async (req, res) => {
       Patient.find(query)
         .skip(skip)
         .limit(Number(limit))
-        .select('personalDetails name contactNumber emailAddress lastAppointment')
+        .select('personalDetails.name personalDetails.contactNumber personalDetails.emailAddress personalDetails.gender lastAppointment')
+        .sort({ 'personalDetails.name': 1 })
         .lean(),
       Patient.countDocuments(query)
     ]);

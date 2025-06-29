@@ -41,6 +41,7 @@ export default function BulkSMSPage() {
   const [isSending, setIsSending] = useState(false);
   const [filters, setFilters] = useState<Filters>({});
   const [filteredCount, setFilteredCount] = useState<number | null>(null);
+  const [isFilterActive, setIsFilterActive] = useState(false);
 
   // Apply filters from the filter component
   const applyFilters = async (appliedFilters: Filters) => {
@@ -71,6 +72,11 @@ export default function BulkSMSPage() {
       }, {});
 
       console.log('Clean filters:', cleanFilters);
+      
+      // Check if any filters are active
+      const hasActiveFilters = Object.keys(cleanFilters).length > 0;
+      setIsFilterActive(hasActiveFilters);
+      
       setFilters(cleanFilters);
       setSelectedPatients([]); // Reset selected patients when filters change
     } catch (error) {
@@ -79,13 +85,21 @@ export default function BulkSMSPage() {
     }
   };
 
+  // Reset all filters
+  const resetFilters = () => {
+    setFilters({});
+    setFilteredCount(null);
+    setSelectedPatients([]);
+    setIsFilterActive(false);
+  };
+
   // Fetch patients based on filters
   const { data: filteredPatients = [], isLoading } = useQuery({
-    queryKey: ['filteredPatients', filters],
+    queryKey: ['filteredPatients', filters, isFilterActive],
     queryFn: async () => {
       const params = new URLSearchParams();
       
-      // Add filters
+      // Add filters if they exist
       Object.entries(filters).forEach(([key, value]) => {
         if (value === 'all' || value === undefined || value === null) return;
         
@@ -97,7 +111,11 @@ export default function BulkSMSPage() {
         }
       });
       
-      const url = `/patient/get-filtered-patients?${params.toString()}`;
+      // If no filters are active, fetch all patients with a reasonable limit
+      const url = isFilterActive 
+        ? `/patient/get-filtered-patients?${params.toString()}`
+        : `/patient/get-filtered-patients?limit=100`; // Default limit when no filters
+      
       const response = await crudRequest<{ patients: any[], totalPatients?: number }>('GET', url);
       
       if (!response?.patients) {
@@ -126,7 +144,8 @@ export default function BulkSMSPage() {
       setFilteredCount(total);
       return mappedPatients;
     },
-    enabled: Object.keys(filters).length > 0, // Only run query when filters are applied
+    // Always enabled - will fetch all patients when no filters are applied
+    enabled: true,
   });
 
   // Handle sending bulk SMS
@@ -256,87 +275,92 @@ export default function BulkSMSPage() {
           <CardContent>
             <BulkSMSFilter 
               onFilter={applyFilters} 
-              onReset={() => {
-                setFilters({});
-                setFilteredCount(null);
-                setSelectedPatients([]);
-              }}
+              onReset={resetFilters}
               loading={isLoading}
             />
 
-            {filteredCount !== null && (
-              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
+            <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  {isLoading ? (
+                    <span className="font-medium">Loading patients...</span>
+                  ) : (
                     <span className="font-medium">
-                      {filteredCount} {filteredCount === 1 ? 'patient' : 'patients'} found
+                      {filteredCount !== null ? (
+                        <>
+                          {filteredCount} {filteredCount === 1 ? 'patient' : 'patients'} found
+                          {isFilterActive && <span className="ml-1 text-muted-foreground">(filtered)</span>}
+                        </>
+                      ) : (
+                        'No patients loaded'
+                      )}
                     </span>
-                  </div>
-                  {filteredCount > 0 && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={selectAllPatients}
-                    >
-                      {selectedPatients.length === filteredPatients.length ? 'Deselect All' : 'Select All'}
-                    </Button>
                   )}
                 </div>
-
-                {filteredCount > 0 && (
-                  <div className="mt-4 max-h-60 overflow-y-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                      {filteredPatients.map((patient: Patient) => {
-                        const isSelected = selectedPatients.some(p => p._id === patient._id);
-                        return (
-                          <div 
-                            key={patient._id}
-                            className={`p-3 rounded-md border cursor-pointer transition-colors ${
-                              isSelected 
-                                ? 'bg-primary/10 border-primary' 
-                                : 'hover:bg-muted/50'
-                            }`}
-                            onClick={() => togglePatientSelection(patient)}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-medium">{patient.personalDetails.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {patient.personalDetails.contactNumber}
-                                </p>
-                              </div>
-                              {isSelected ? (
-                                <CheckCircle className="h-5 w-5 text-primary" />
-                              ) : (
-                                <div className="h-5 w-5 rounded-full border" />
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {filteredCount === 0 && (
-                  <div className="mt-4 p-4 text-center bg-muted rounded-md">
-                    <p className="text-muted-foreground">No patients match the selected filters.</p>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setFilters({});
-                        setFilteredCount(null);
-                      }}
-                      className="mt-2"
-                    >
-                      Clear Filters
-                    </Button>
-                  </div>
+                {filteredCount !== null && filteredCount > 0 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={selectAllPatients}
+                  >
+                    {selectedPatients.length === filteredPatients.length ? 'Deselect All' : 'Select All'}
+                  </Button>
                 )}
               </div>
-            )}
+
+              {filteredCount !== null && filteredCount > 0 && (
+                <div className="mt-4 max-h-60 overflow-y-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {filteredPatients.map((patient: Patient) => {
+                      const isSelected = selectedPatients.some(p => p._id === patient._id);
+                      return (
+                        <div 
+                          key={patient._id}
+                          className={`p-3 rounded-md border cursor-pointer transition-colors ${
+                            isSelected 
+                              ? 'bg-primary/10 border-primary' 
+                              : 'hover:bg-muted/50'
+                          }`}
+                          onClick={() => togglePatientSelection(patient)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">{patient.personalDetails.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {patient.personalDetails.contactNumber}
+                              </p>
+                            </div>
+                            {isSelected ? (
+                              <CheckCircle className="h-5 w-5 text-primary" />
+                            ) : (
+                              <div className="h-5 w-5 rounded-full border" />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {filteredCount === 0 && (
+                <div className="mt-4 p-4 text-center bg-muted rounded-md">
+                  <p className="text-muted-foreground">No patients match the selected filters.</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setFilters({});
+                      setFilteredCount(null);
+                    }}
+                    className="mt-2"
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 

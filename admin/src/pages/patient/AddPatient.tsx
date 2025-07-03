@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "react-toastify";
 import { crudRequest } from "@/lib/api";
 import { format } from "date-fns";
-import { Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import DentalChart from "@/components/DentalChart";
 import SelectedTeethList from "@/components/SelectedTeethList";
 import { getToothPosition, getToothSide } from "@/helper/PatientHelper";
@@ -33,6 +33,7 @@ import { useVoiceInput } from "@/contexts/VoiceInputContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NepaliDatePickerComponent } from "@/components/ui/nepali-date-picker";
 import VoiceInputButton from "@/components/shared/VoiceInputButton";
+import { v4 as uuidv4 } from "uuid";
 
 type AddPatientProps = {
   modalClose: () => void;
@@ -317,6 +318,198 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     });
   };
 
+  // Add state for group treatment details
+  const [groupTreatmentDetails, setGroupTreatmentDetails] = useState<
+    GroupTreatmentDetail[]
+  >([
+    {
+      id: uuidv4(),
+      procedure: "",
+      totalTreatmentAmount: "",
+      totalPaidAmount: "",
+      totalRemainingAmount: "0",
+      startDate: format(new Date(), "yyyy-MM-dd"),
+      followUpDate: "",
+      completionDate: "",
+      treatedByDoctor: "",
+      isCompleted: false,
+      dailyTreatments: [],
+    },
+  ]);
+
+  // Function to add a new daily treatment to a group treatment
+  const addDailyTreatment = (groupTreatmentId: string) => {
+    setGroupTreatmentDetails((prev) =>
+      prev.map((gt) =>
+        gt.id === groupTreatmentId
+          ? {
+              ...gt,
+              dailyTreatments: [
+                ...gt.dailyTreatments,
+                {
+                  id: uuidv4(),
+                  date: format(new Date(), "yyyy-MM-dd"),
+                  procedure: gt.procedure,
+                  treatmentAmount: "",
+                  paidAmount: "",
+                  remainingAmount: "0",
+                  notes: "",
+                  treatedByDoctor: gt.treatedByDoctor || "",
+                  isCompleted: false,
+                },
+              ],
+            }
+          : gt
+      )
+    );
+  };
+
+  // Function to remove a daily treatment from a group treatment
+  const removeDailyTreatment = (groupTreatmentId: string, dailyTreatmentId: string) => {
+    setGroupTreatmentDetails((prev) =>
+      prev.map((gt) =>
+        gt.id === groupTreatmentId
+          ? {
+              ...gt,
+              dailyTreatments: gt.dailyTreatments.filter(
+                (dt) => dt.id !== dailyTreatmentId
+              ),
+            }
+          : gt
+      )
+    );
+  };
+
+  // Function to update a daily treatment in a group treatment
+  const updateDailyTreatment = (
+    groupTreatmentId: string,
+    dailyTreatmentId: string,
+    field: keyof GroupDailyTreatment,
+    value: any
+  ) => {
+    setGroupTreatmentDetails((prev) =>
+      prev.map((gt) =>
+        gt.id === groupTreatmentId
+          ? {
+              ...gt,
+              dailyTreatments: gt.dailyTreatments.map((dt) =>
+                dt.id === dailyTreatmentId
+                  ? {
+                      ...dt,
+                      [field]: value,
+                      // Auto-calculate remaining amount when treatment amount or paid amount changes
+                      ...(field === "treatmentAmount" || field === "paidAmount"
+                        ? {
+                            remainingAmount: (
+                              parseFloat(
+                                field === "treatmentAmount" ? value : dt.treatmentAmount
+                              ) -
+                              parseFloat(field === "paidAmount" ? value : dt.paidAmount)
+                            ).toString()
+                          }
+                        : {}),
+                    }
+                  : dt
+              ),
+            }
+          : gt
+      )
+    );
+
+    // Update the total amounts in the group treatment
+    calculateGroupTreatmentTotals(groupTreatmentId);
+  };
+
+  // Function to update a group treatment detail
+  const updateGroupTreatment = (
+    groupTreatmentId: string,
+    field: keyof GroupTreatmentDetail,
+    value: any
+  ) => {
+    setGroupTreatmentDetails((prev) =>
+      prev.map((gt) =>
+        gt.id === groupTreatmentId
+          ? {
+              ...gt,
+              [field]: value,
+              // Auto-calculate remaining amount when total treatment amount or total paid amount changes
+              ...(field === "totalTreatmentAmount" || field === "totalPaidAmount"
+                ? {
+                    totalRemainingAmount: (
+                      parseFloat(
+                        field === "totalTreatmentAmount" ? value : gt.totalTreatmentAmount
+                      ) -
+                      parseFloat(field === "totalPaidAmount" ? value : gt.totalPaidAmount)
+                    ).toString()
+                  }
+                : {}),
+            }
+          : gt
+      )
+    );
+  };
+
+  // Function to calculate totals for a group treatment based on daily treatments
+  const calculateGroupTreatmentTotals = (groupTreatmentId: string) => {
+    setGroupTreatmentDetails((prev) => {
+      const updatedDetails = [...prev];
+      const groupIndex = updatedDetails.findIndex(
+        (gt) => gt.id === groupTreatmentId
+      );
+
+      if (groupIndex !== -1) {
+        const group = updatedDetails[groupIndex];
+        const dailyTreatments = group.dailyTreatments;
+
+        // Calculate total treatment amount and total paid amount
+        let totalTreatmentAmount = 0;
+        let totalPaidAmount = 0;
+
+        dailyTreatments.forEach((dt) => {
+          totalTreatmentAmount += parseFloat(dt.treatmentAmount) || 0;
+          totalPaidAmount += parseFloat(dt.paidAmount) || 0;
+        });
+
+        // Update the group treatment
+        updatedDetails[groupIndex] = {
+          ...group,
+          totalTreatmentAmount: totalTreatmentAmount.toString(),
+          totalPaidAmount: totalPaidAmount.toString(),
+          totalRemainingAmount: (totalTreatmentAmount - totalPaidAmount).toString(),
+        };
+      }
+
+      return updatedDetails;
+    });
+  };
+
+  // Function to add a new group treatment
+  const addGroupTreatment = () => {
+    setGroupTreatmentDetails((prev) => [
+      ...prev,
+      {
+        id: uuidv4(),
+        procedure: "",
+        totalTreatmentAmount: "",
+        totalPaidAmount: "",
+        totalRemainingAmount: "0",
+        startDate: format(new Date(), "yyyy-MM-dd"),
+        followUpDate: "",
+        completionDate: "",
+        treatedByDoctor: "",
+        isCompleted: false,
+        dailyTreatments: [],
+      },
+    ]);
+  };
+
+  // Function to remove a group treatment
+  const removeGroupTreatment = (groupTreatmentId: string) => {
+    setGroupTreatmentDetails((prev) =>
+      prev.filter((gt) => gt.id !== groupTreatmentId)
+    );
+  };
+
   const formatDataForBackend = (data: FormData) => {
     const treatmentPlansWithTeeth = data.treatmentPlans.map(
       (plan, planIndex) => {
@@ -346,6 +539,29 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
           isCompleted: false,
         }));
 
+        // Format group treatment details
+        const formattedGroupTreatmentDetails = groupTreatmentDetails.map(groupTreatment => ({
+          procedure: groupTreatment.procedure,
+          totalTreatmentAmount: Number(groupTreatment.totalTreatmentAmount) || 0,
+          totalPaidAmount: Number(groupTreatment.totalPaidAmount) || 0,
+          totalRemainingAmount: Number(groupTreatment.totalRemainingAmount) || 0,
+          startDate: groupTreatment.startDate ? format(new Date(groupTreatment.startDate), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+          followUpDate: groupTreatment.followUpDate ? format(new Date(groupTreatment.followUpDate), "yyyy-MM-dd") : undefined,
+          completionDate: groupTreatment.completionDate ? format(new Date(groupTreatment.completionDate), "yyyy-MM-dd") : undefined,
+          treatedByDoctor: groupTreatment.treatedByDoctor || null,
+          isCompleted: groupTreatment.isCompleted,
+          dailyTreatments: groupTreatment.dailyTreatments.map(treatment => ({
+            date: format(new Date(treatment.date), "yyyy-MM-dd"),
+            treatmentAmount: Number(treatment.treatmentAmount) || 0,
+            paidAmount: Number(treatment.paidAmount) || 0,
+            remainingAmount: Number(treatment.remainingAmount) || 0,
+            procedure: treatment.procedure || "",
+            notes: treatment.notes || "",
+            treatedByDoctor: treatment.treatedByDoctor || null,
+            isCompleted: treatment.isCompleted
+          }))
+        }));
+
         return {
           patientType: plan.patientType,
           isCompleted: false,
@@ -358,6 +574,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
             ? format(new Date(plan.followUpDate), "yyyy-MM-dd")
             : undefined,
           selectedTeethDetails: selectedTeethDetails,
+          // Include group treatment details only for Ortho group
+          groupTreatmentDetails: data.medicalDetails.group === "Ortho" ? formattedGroupTreatmentDetails : [],
           treatmentDocuments: [],
         };
       }
@@ -435,55 +653,55 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     try {
       setIsSubmitting(true);
       const formattedData = formatDataForBackend(formData);
-      const response = await crudRequest<{
-        data?: { _id: string };
-        _id?: string;
-      }>("POST", "/patient/add-patient", formattedData);
+      console.log(formattedData)
+      
+      // const response = await crudRequest<{
+      //   data?: { _id: string };
+      //   _id?: string;
+      // }>("POST", "/patient/add-patient", formattedData);
 
-      toast.success("Patient added successfully");
+      // toast.success("Patient added successfully");
 
-      // If service payment is included, add it
-      if (
-        includeServicePayment &&
-        servicePayment.amount &&
-        parseFloat(servicePayment.amount) > 0
-      ) {
-        try {
-          // Make sure we have a valid patient ID from the response
-          const patientId = response.data?._id || response._id;
+      // if (
+      //   includeServicePayment &&
+      //   servicePayment.amount &&
+      //   parseFloat(servicePayment.amount) > 0
+      // ) {
+      //   try {
+      //     const patientId = response.data?._id || response._id;
 
-          if (!patientId) {
-            console.error("No patient ID returned from patient creation");
-            toast.error(
-              "Patient added but failed to add service payment: Missing patient ID"
-            );
-            return;
-          }
+      //     if (!patientId) {
+      //       console.error("No patient ID returned from patient creation");
+      //       toast.error(
+      //         "Patient added but failed to add service payment: Missing patient ID"
+      //       );
+      //       return;
+      //     }
 
-          const servicePaymentData = {
-            patientName: formData.personalDetails.name,
-            contactNumber: formData.personalDetails.contactNumber,
-            serviceType: servicePayment.serviceType,
-            description: servicePayment.description,
-            amount: parseFloat(servicePayment.amount),
-            paymentMethod: servicePayment.paymentMethod,
-            date: format(new Date(), "yyyy-MM-dd"),
-            patient: patientId,
-            isWalkIn: false,
-          };
+      //     const servicePaymentData = {
+      //       patientName: formData.personalDetails.name,
+      //       contactNumber: formData.personalDetails.contactNumber,
+      //       serviceType: servicePayment.serviceType,
+      //       description: servicePayment.description,
+      //       amount: parseFloat(servicePayment.amount),
+      //       paymentMethod: servicePayment.paymentMethod,
+      //       date: format(new Date(), "yyyy-MM-dd"),
+      //       patient: patientId,
+      //       isWalkIn: false,
+      //     };
 
-          await crudRequest("POST", "/service-payment", servicePaymentData);
-          toast.success("Service payment added successfully");
-        } catch (error: any) {
-          console.error("Error adding service payment:", error);
-          toast.error("Patient added but failed to add service payment");
-        }
-      }
+      //     await crudRequest("POST", "/service-payment", servicePaymentData);
+      //     toast.success("Service payment added successfully");
+      //   } catch (error: any) {
+      //     console.error("Error adding service payment:", error);
+      //     toast.error("Patient added but failed to add service payment");
+      //   }
+      // }
 
-      modalClose();
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      // modalClose();
+      // setTimeout(() => {
+      //   window.location.reload();
+      // }, 1000);
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.error || "Failed to add patient";
@@ -1496,24 +1714,330 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                 </div>
               </div>
 
-              {formData.treatmentPlans.map((plan, index: number) => (
-                <Card
-                  key={index}
-                  className="p-2 md:p-3 border border-foreground/50"
-                >
-                  <div className="space-y-2 md:space-y-3">
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-medium text-primary">
-                        X-Ray Plan {index + 1}
-                      </h4>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeTreatmentPlan(index)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+              {/* Conditional rendering based on group type */}
+              {formData.medicalDetails.group === "Ortho" ? (
+                // Group Treatment UI for Ortho
+                <div className="border rounded-lg p-4 bg-background">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="font-medium text-primary text-lg">Orthodontic Treatment Plan</h4>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={addGroupTreatment}
+                      className="flex items-center gap-1"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add Treatment</span>
+                    </Button>
+                  </div>
+
+                  {/* Group Treatment Cards */}
+                  {groupTreatmentDetails.map((groupTreatment, index) => (
+                    <Card
+                      key={groupTreatment.id}
+                      className="p-4 mb-4 border border-foreground/50"
+                    >
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-start">
+                          <h5 className="font-medium">
+                            Ortho Plan {index + 1}
+                          </h5>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeGroupTreatment(groupTreatment.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor={`procedure-${groupTreatment.id}`}>Procedure</Label>
+                            <Input
+                              id={`procedure-${groupTreatment.id}`}
+                              value={groupTreatment.procedure}
+                              onChange={(e) => updateGroupTreatment(groupTreatment.id, 'procedure', e.target.value)}
+                              placeholder="E.g. Orthodontic Braces, Invisalign"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor={`treatedByDoctor-${groupTreatment.id}`}>Treated By Doctor</Label>
+                            <Select
+                              value={groupTreatment.treatedByDoctor}
+                              onValueChange={(value) => updateGroupTreatment(groupTreatment.id, 'treatedByDoctor', value)}
+                            >
+                              <SelectTrigger id={`treatedByDoctor-${groupTreatment.id}`}>
+                                <SelectValue placeholder="Select doctor" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {doctors.map((doctor) => (
+                                  <SelectItem key={doctor._id} value={doctor._id}>
+                                    {doctor.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor={`startDate-${groupTreatment.id}`}>Start Date</Label>
+                            <Input
+                              id={`startDate-${groupTreatment.id}`}
+                              type="date"
+                              value={groupTreatment.startDate}
+                              onChange={(e) => updateGroupTreatment(groupTreatment.id, 'startDate', e.target.value)}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor={`followUpDate-${groupTreatment.id}`}>Follow-up Date</Label>
+                            <Input
+                              id={`followUpDate-${groupTreatment.id}`}
+                              type="date"
+                              value={groupTreatment.followUpDate}
+                              onChange={(e) => updateGroupTreatment(groupTreatment.id, 'followUpDate', e.target.value)}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor={`totalTreatmentAmount-${groupTreatment.id}`}>Total Treatment Amount</Label>
+                            <Input
+                              id={`totalTreatmentAmount-${groupTreatment.id}`}
+                              type="number"
+                              value={groupTreatment.totalTreatmentAmount}
+                              onChange={(e) => updateGroupTreatment(groupTreatment.id, 'totalTreatmentAmount', e.target.value)}
+                              placeholder="0.00"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor={`totalPaidAmount-${groupTreatment.id}`}>Total Paid Amount</Label>
+                            <Input
+                              id={`totalPaidAmount-${groupTreatment.id}`}
+                              type="number"
+                              value={groupTreatment.totalPaidAmount}
+                              onChange={(e) => updateGroupTreatment(groupTreatment.id, 'totalPaidAmount', e.target.value)}
+                              placeholder="0.00"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor={`totalRemainingAmount-${groupTreatment.id}`}>Remaining Amount</Label>
+                            <Input
+                              id={`totalRemainingAmount-${groupTreatment.id}`}
+                              type="number"
+                              value={groupTreatment.totalRemainingAmount}
+                              readOnly
+                              className="bg-muted/50"
+                            />
+                          </div>
+
+                          <div className="flex items-center space-x-2 pt-7">
+                            <Checkbox
+                              id={`isCompleted-${groupTreatment.id}`}
+                              checked={groupTreatment.isCompleted}
+                              onCheckedChange={(checked) => 
+                                updateGroupTreatment(
+                                  groupTreatment.id, 
+                                  'isCompleted', 
+                                  checked === true
+                                )
+                              }
+                            />
+                            <Label htmlFor={`isCompleted-${groupTreatment.id}`}>Mark as Completed</Label>
+                          </div>
+
+                          {/* Daily Treatment Section */}
+                          <div className="col-span-1 md:col-span-2 mt-2">
+                            <div className="flex justify-between items-center mb-2">
+                              <h6 className="font-medium">Daily Treatments</h6>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => addDailyTreatment(groupTreatment.id)}
+                                className="flex items-center gap-1"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>Add Treatment Entry</span>
+                              </Button>
+                            </div>
+
+                            {/* Daily Treatment Table */}
+                            <div className="border rounded-md overflow-x-auto">
+                              <table className="w-full min-w-[650px]">
+                                <thead className="bg-muted/50">
+                                  <tr>
+                                    <th className="px-3 py-2 text-left text-xs font-medium">Date</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium">Procedure/Notes</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium">Treatment Amount</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium">Paid Amount</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium">Remaining</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium">Doctor</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium">Completed</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {groupTreatment.dailyTreatments.length === 0 ? (
+                                    <tr>
+                                      <td colSpan={8} className="px-3 py-4 text-center text-sm text-muted-foreground">
+                                        No daily treatments added yet. Click "Add Treatment Entry" to add one.
+                                      </td>
+                                    </tr>
+                                  ) : (
+                                    groupTreatment.dailyTreatments.map((treatment) => (
+                                      <tr key={treatment.id} className="border-t">
+                                        <td className="px-3 py-2">
+                                          <Input
+                                            type="date"
+                                            value={treatment.date}
+                                            onChange={(e) => 
+                                              updateDailyTreatment(
+                                                groupTreatment.id, 
+                                                treatment.id, 
+                                                'date', 
+                                                e.target.value
+                                              )
+                                            }
+                                            className="h-8"
+                                          />
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <Input
+                                            value={treatment.notes}
+                                            onChange={(e) => 
+                                              updateDailyTreatment(
+                                                groupTreatment.id, 
+                                                treatment.id, 
+                                                'notes', 
+                                                e.target.value
+                                              )
+                                            }
+                                            placeholder="Notes"
+                                            className="h-8"
+                                          />
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <Input
+                                            type="number"
+                                            value={treatment.treatmentAmount}
+                                            onChange={(e) => 
+                                              updateDailyTreatment(
+                                                groupTreatment.id, 
+                                                treatment.id, 
+                                                'treatmentAmount', 
+                                                e.target.value
+                                              )
+                                            }
+                                            placeholder="0.00"
+                                            className="h-8"
+                                          />
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <Input
+                                            type="number"
+                                            value={treatment.paidAmount}
+                                            onChange={(e) => 
+                                              updateDailyTreatment(
+                                                groupTreatment.id, 
+                                                treatment.id, 
+                                                'paidAmount', 
+                                                e.target.value
+                                              )
+                                            }
+                                            placeholder="0.00"
+                                            className="h-8"
+                                          />
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <Input
+                                            type="number"
+                                            value={treatment.remainingAmount}
+                                            readOnly
+                                            className="h-8 bg-muted/50"
+                                          />
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <Select
+                                            value={treatment.treatedByDoctor}
+                                            onValueChange={(value) => 
+                                              updateDailyTreatment(
+                                                groupTreatment.id, 
+                                                treatment.id, 
+                                                'treatedByDoctor', 
+                                                value
+                                              )
+                                            }
+                                          >
+                                            <SelectTrigger className="h-8">
+                                              <SelectValue placeholder="Doctor" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {doctors.map((doctor) => (
+                                                <SelectItem key={doctor._id} value={doctor._id}>
+                                                  {doctor.name}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <Checkbox
+                                            checked={treatment.isCompleted}
+                                            onCheckedChange={(checked) => 
+                                              updateDailyTreatment(
+                                                groupTreatment.id, 
+                                                treatment.id, 
+                                                'isCompleted', 
+                                                checked === true
+                                              )
+                                            }
+                                          />
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => removeDailyTreatment(groupTreatment.id, treatment.id)}
+                                          >
+                                            <Trash2 className="w-4 h-4 text-destructive" />
+                                          </Button>
+                                        </td>
+                                      </tr>
+                                    ))
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                    ))
+                  }
+                </div>
+              ) : (
+                // Regular Tooth-based Treatment UI
+                formData.treatmentPlans.map((plan, index: number) => (
+                  <Card
+                    key={index}
+                    className="p-2 md:p-3 border border-foreground/50"
+                  >
+                    <div className="space-y-2 md:space-y-3">
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-medium text-primary">
+                          X-Ray Plan {index + 1}
+                        </h4>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeTreatmentPlan(index)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
 
                     <div className="space-y-1">
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -1817,8 +2341,9 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                       </div>
                     </div>
                   </div>
-                </Card>
-              ))}
+                  </Card>
+                ))
+              )}
 
               {/* Diagnosis - Moved to the end */}
               <div className="mt-6">
@@ -1892,3 +2417,33 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
 };
 
 export default AddPatient;
+
+// Types for daily treatment in group treatments
+type GroupDailyTreatment = {
+  id: string;
+  date: string;
+  procedure: string;
+  treatmentAmount: string;
+  paidAmount: string;
+  remainingAmount: string;
+  notes: string;
+  treatedByDoctor: string;
+  isCompleted: boolean;
+};
+
+// Types for group treatment details
+type GroupTreatmentDetail = {
+  id: string;
+  procedure: string;
+  totalTreatmentAmount: string;
+  totalPaidAmount: string;
+  totalRemainingAmount: string;
+  startDate: string;
+  followUpDate: string;
+  completionDate: string;
+  treatedByDoctor: string;
+  isCompleted: boolean;
+  dailyTreatments: GroupDailyTreatment[];
+};
+
+// Include groupTreatmentDetails in FormData type

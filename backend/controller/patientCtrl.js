@@ -100,6 +100,13 @@ const addPatient = async (req, res) => {
   try {
     // Validate required fields
     const { personalDetails } = req.body;
+    const { group, groupTreatmentDetails } = req.body;
+
+    // If group is 'Ortho', allow saving groupTreatmentDetails
+    if (group === "Ortho" && Array.isArray(groupTreatmentDetails)) {
+      req.body.groupTreatmentDetails = groupTreatmentDetails;
+    }
+
     if (!personalDetails) {
       return res.status(400).json({
         success: false,
@@ -991,13 +998,11 @@ const getFilteredPatients = async (req, res) => {
         ] = new mongoose.Types.ObjectId(doctorId);
       } catch (err) {
         console.error("Invalid doctor ID format:", err);
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "Invalid doctor ID format",
-            error: err.message,
-          });
+        return res.status(400).json({
+          success: false,
+          message: "Invalid doctor ID format",
+          error: err.message,
+        });
       }
     }
 

@@ -40,14 +40,25 @@ const groupTreatmentDetailsSchema = new mongoose.Schema({
 groupTreatmentDetailsSchema.pre("save", function (next) {
   if (this.dailyTreatments && this.dailyTreatments.length > 0) {
     // Calculate totals from daily treatments
-    this.totalTreatmentAmount = this.dailyTreatments.reduce(
+    const calculatedTreatmentAmount = this.dailyTreatments.reduce(
       (sum, treatment) => sum + (Number(treatment.treatmentAmount) || 0),
       0
     );
-    this.totalPaidAmount = this.dailyTreatments.reduce(
+    const calculatedPaidAmount = this.dailyTreatments.reduce(
       (sum, treatment) => sum + (Number(treatment.paidAmount) || 0),
       0
     );
+    
+    // Only update totals if they haven't been explicitly set (i.e., they are 0 or undefined)
+    // This preserves the values sent from the frontend
+    if (!this.totalTreatmentAmount || this.totalTreatmentAmount === 0) {
+      this.totalTreatmentAmount = calculatedTreatmentAmount;
+    }
+    if (!this.totalPaidAmount || this.totalPaidAmount === 0) {
+      this.totalPaidAmount = calculatedPaidAmount;
+    }
+    
+    // Always recalculate remaining amount based on current totals
     this.totalRemainingAmount = this.totalTreatmentAmount - this.totalPaidAmount;
 
     // Check if all daily treatments are completed
@@ -169,6 +180,7 @@ treatmentPlanningSchema.methods.calculateTotals = function() {
   // Calculate totals for groupTreatmentDetails
   if (this.groupTreatmentDetails && this.groupTreatmentDetails.length > 0) {
     this.groupTreatmentDetails.forEach(group => {
+      // If group has daily treatments, calculate from them
       if (group.dailyTreatments && group.dailyTreatments.length > 0) {
         const groupTreatmentAmount = group.dailyTreatments.reduce((sum, treatment) => 
           sum + (Number(treatment.treatmentAmount) || 0), 0);
@@ -176,13 +188,21 @@ treatmentPlanningSchema.methods.calculateTotals = function() {
         const groupPaidAmount = group.dailyTreatments.reduce((sum, treatment) => 
           sum + (Number(treatment.paidAmount) || 0), 0);
 
-        group.totalTreatmentAmount = groupTreatmentAmount;
-        group.totalPaidAmount = groupPaidAmount;
-        group.totalRemainingAmount = groupTreatmentAmount - groupPaidAmount;
-
-        totalPlanAmount += groupTreatmentAmount;
-        totalPaidAmount += groupPaidAmount;
+        // Only update if the calculated amount is greater than current amount
+        // This preserves manually set totals from frontend
+        if (groupTreatmentAmount > 0 && (!group.totalTreatmentAmount || group.totalTreatmentAmount === 0)) {
+          group.totalTreatmentAmount = groupTreatmentAmount;
+        }
+        if (groupPaidAmount > 0 && (!group.totalPaidAmount || group.totalPaidAmount === 0)) {
+          group.totalPaidAmount = groupPaidAmount;
+        }
+        
+        group.totalRemainingAmount = group.totalTreatmentAmount - group.totalPaidAmount;
       }
+      
+      // Add to plan totals (use the group's total amounts, not recalculated ones)
+      totalPlanAmount += group.totalTreatmentAmount || 0;
+      totalPaidAmount += group.totalPaidAmount || 0;
     });
   }
 

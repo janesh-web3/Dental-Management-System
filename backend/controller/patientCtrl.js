@@ -176,7 +176,27 @@ const addPatient = async (req, res) => {
       req.body.password = generatedPassword;
     }
 
-    // Email is handled as a simple string field - no special validation or handling needed    // Create patient
+    // Process medical details to set correct groupName for group treatment details
+    if (req.body.medicalDetails && req.body.medicalDetails.length > 0) {
+      req.body.medicalDetails.forEach((medicalDetail) => {
+        if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
+          medicalDetail.treatmentPlanning.forEach((plan) => {
+            if (plan.groupTreatmentDetails && plan.groupTreatmentDetails.length > 0) {
+              plan.groupTreatmentDetails.forEach((groupTreatment) => {
+                // Set the groupName based on the medical details group
+                if (!groupTreatment.groupName || groupTreatment.groupName === "General") {
+                  groupTreatment.groupName = medicalDetail.group || "General";
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+
+    // Email is handled as a simple string field - no special validation or handling needed
+    
+    // Create patient
     const patient = await Patient.create(req.body);
 
     // Emit the patient:added event right after creation
@@ -2045,7 +2065,6 @@ const getDashboardMetrics = async (req, res) => {
         doctorPerformance = doctorsFromDoctorModel.map((doctor) => ({
           _id: doctor._id.toString(),
           doctorName: doctor.name,
-          name: doctor.name,
           specialization: doctor.specialization || "General Dentist",
           totalAppointments: doctor.appointments?.length || 0,
           completedAppointments: 0, // We can't calculate this easily without additional lookups
@@ -2067,7 +2086,6 @@ const getDashboardMetrics = async (req, res) => {
         doctorPerformance = doctorsFromUserModel.map((user) => ({
           _id: user._id.toString(),
           doctorName: user.name,
-          name: user.name,
           specialization: "General Dentist",
           totalAppointments: 0,
           completedAppointments: 0,
@@ -2088,7 +2106,6 @@ const getDashboardMetrics = async (req, res) => {
           {
             _id: "sample-doctor-id",
             doctorName: "Dr. Sample Doctor",
-            name: "Dr. Sample Doctor",
             specialization: "General Dentist",
             totalAppointments: 0,
             completedAppointments: 0,
@@ -2116,7 +2133,6 @@ const getDashboardMetrics = async (req, res) => {
         {
           _id: "error-doctor-id",
           doctorName: "Error retrieving doctors",
-          name: "Error retrieving doctors",
           specialization: "Please check server logs",
           totalAppointments: 0,
           completedAppointments: 0,
@@ -2339,6 +2355,7 @@ const getDashboardMetrics = async (req, res) => {
           },
         },
         {
+         
           $group: {
             _id: null,
             revenue: { $sum: "$amount" },
@@ -2479,8 +2496,7 @@ const getDashboardMetrics = async (req, res) => {
           amount: {
             $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount",
           },
-          status:
-            "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.isCompleted",
+          status: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.isCompleted",
           treatmentPlanningId: "$medicalDetails.treatmentPlanning._id",
           documentCount: {
             $cond: {
@@ -2523,9 +2539,8 @@ const getDashboardMetrics = async (req, res) => {
     let appointmentsByDay = [];
     let appointmentsByTime = [];
 
-    try {
-      // Group appointments by day of week
-      appointmentsByDay = await Appointment.aggregate([
+    // Group appointments by day of week
+    appointmentsByDay = await Appointment.aggregate([
         {
           $match: {
             appointmentDate: {
@@ -2621,12 +2636,6 @@ const getDashboardMetrics = async (req, res) => {
         byDay: appointmentsByDay,
         byTime: appointmentsByTime,
       });
-    } catch (error) {
-      console.error("Error calculating appointment analytics:", error);
-      // Provide empty arrays if there's an error
-      appointmentsByDay = [];
-      appointmentsByTime = [];
-    }
 
     // Format the response to match frontend expectation
     const responseData = {
@@ -2654,20 +2663,6 @@ const getDashboardMetrics = async (req, res) => {
           monthly: monthlyRevenue + monthlyServiceRevenue,
           yearly: (monthlyRevenue + monthlyServiceRevenue) * 12,
           total: totalRevenue + totalServiceRevenue,
-          treatmentRevenue: {
-            daily: dailyRevenue,
-            weekly: weeklyRevenue,
-            monthly: monthlyRevenue,
-            yearly: yearlyRevenue,
-            total: totalRevenue,
-          },
-          serviceRevenue: {
-            daily: dailyServiceRevenue,
-            weekly: weeklyServiceRevenue,
-            monthly: monthlyServiceRevenue,
-            yearly: monthlyServiceRevenue * 12,
-            total: totalServiceRevenue,
-          },
           revenueByDoctor: doctorPerformance.map((doctor) => ({
             doctorName: doctor.doctorName,
             revenue: doctor.revenue || 0,
@@ -2820,7 +2815,7 @@ const getPatientDemographics = async (req, res) => {
       ];
 
       const directAgeDistribution = [
-        { name: "19-35", value: 3 }, // All 3 patients are in this age range
+        { name: "19-35", value: 3 },
       ];
 
       console.log("Direct gender distribution:", directGenderDistribution);
@@ -3614,12 +3609,8 @@ const getPatientsCount = async (req, res) => {
     // Apply date range filter
     if (dateRange.from || dateRange.to) {
       query["treatments.date"] = {};
-      if (dateRange.from) {
-        query["treatments.date"].$gte = new Date(dateRange.from);
-      }
-      if (dateRange.to) {
-        query["treatments.date"].$lte = new Date(dateRange.to);
-      }
+      if (dateRange.from) query["treatments.date"].$gte = new Date(dateRange.from);
+      if (dateRange.to) query["treatments.date"].$lte = new Date(dateRange.to);
     }
 
     const count = await Patient.countDocuments(query);

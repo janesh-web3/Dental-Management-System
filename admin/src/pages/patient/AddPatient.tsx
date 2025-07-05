@@ -698,10 +698,10 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
         }
       }
 
-      modalClose();
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      // modalClose();
+      // setTimeout(() => {
+      //   window.location.reload();
+      // }, 1000);
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.error || "Failed to add patient";

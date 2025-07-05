@@ -655,53 +655,53 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
       const formattedData = formatDataForBackend(formData);
       console.log(formattedData)
       
-      // const response = await crudRequest<{
-      //   data?: { _id: string };
-      //   _id?: string;
-      // }>("POST", "/patient/add-patient", formattedData);
+      const response = await crudRequest<{
+        data?: { _id: string };
+        _id?: string;
+      }>("POST", "/patient/add-patient", formattedData);
 
-      // toast.success("Patient added successfully");
+      toast.success("Patient added successfully");
 
-      // if (
-      //   includeServicePayment &&
-      //   servicePayment.amount &&
-      //   parseFloat(servicePayment.amount) > 0
-      // ) {
-      //   try {
-      //     const patientId = response.data?._id || response._id;
+      if (
+        includeServicePayment &&
+        servicePayment.amount &&
+        parseFloat(servicePayment.amount) > 0
+      ) {
+        try {
+          const patientId = response.data?._id || response._id;
 
-      //     if (!patientId) {
-      //       console.error("No patient ID returned from patient creation");
-      //       toast.error(
-      //         "Patient added but failed to add service payment: Missing patient ID"
-      //       );
-      //       return;
-      //     }
+          if (!patientId) {
+            console.error("No patient ID returned from patient creation");
+            toast.error(
+              "Patient added but failed to add service payment: Missing patient ID"
+            );
+            return;
+          }
 
-      //     const servicePaymentData = {
-      //       patientName: formData.personalDetails.name,
-      //       contactNumber: formData.personalDetails.contactNumber,
-      //       serviceType: servicePayment.serviceType,
-      //       description: servicePayment.description,
-      //       amount: parseFloat(servicePayment.amount),
-      //       paymentMethod: servicePayment.paymentMethod,
-      //       date: format(new Date(), "yyyy-MM-dd"),
-      //       patient: patientId,
-      //       isWalkIn: false,
-      //     };
+          const servicePaymentData = {
+            patientName: formData.personalDetails.name,
+            contactNumber: formData.personalDetails.contactNumber,
+            serviceType: servicePayment.serviceType,
+            description: servicePayment.description,
+            amount: parseFloat(servicePayment.amount),
+            paymentMethod: servicePayment.paymentMethod,
+            date: format(new Date(), "yyyy-MM-dd"),
+            patient: patientId,
+            isWalkIn: false,
+          };
 
-      //     await crudRequest("POST", "/service-payment", servicePaymentData);
-      //     toast.success("Service payment added successfully");
-      //   } catch (error: any) {
-      //     console.error("Error adding service payment:", error);
-      //     toast.error("Patient added but failed to add service payment");
-      //   }
-      // }
+          await crudRequest("POST", "/service-payment", servicePaymentData);
+          toast.success("Service payment added successfully");
+        } catch (error: any) {
+          console.error("Error adding service payment:", error);
+          toast.error("Patient added but failed to add service payment");
+        }
+      }
 
-      // modalClose();
-      // setTimeout(() => {
-      //   window.location.reload();
-      // }, 1000);
+      modalClose();
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.error || "Failed to add patient";

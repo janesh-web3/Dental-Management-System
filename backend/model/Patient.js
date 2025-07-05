@@ -24,6 +24,7 @@ const groupTreatmentDetailsSchema = new mongoose.Schema({
     enum: ["Ortho", "Endo", "Perio", "Prostho", "Surgery", "General", "Other"],
     default: "General",
   },
+  procedure: { type: String }, // Add procedure field
   totalTreatmentAmount: { type: Number, default: 0 },
   totalPaidAmount: { type: Number, default: 0 },
   totalRemainingAmount: { type: Number, default: 0 },
@@ -33,6 +34,30 @@ const groupTreatmentDetailsSchema = new mongoose.Schema({
   treatedByDoctor: { type: mongoose.Schema.Types.ObjectId, ref: "Doctor" },
   isCompleted: { type: Boolean, default: false },
   dailyTreatments: [dailyTreatmentSchema],
+});
+
+// Add pre-save middleware for group treatment calculations
+groupTreatmentDetailsSchema.pre("save", function (next) {
+  if (this.dailyTreatments && this.dailyTreatments.length > 0) {
+    // Calculate totals from daily treatments
+    this.totalTreatmentAmount = this.dailyTreatments.reduce(
+      (sum, treatment) => sum + (Number(treatment.treatmentAmount) || 0),
+      0
+    );
+    this.totalPaidAmount = this.dailyTreatments.reduce(
+      (sum, treatment) => sum + (Number(treatment.paidAmount) || 0),
+      0
+    );
+    this.totalRemainingAmount = this.totalTreatmentAmount - this.totalPaidAmount;
+
+    // Check if all daily treatments are completed
+    const allCompleted = this.dailyTreatments.every(treatment => treatment.isCompleted);
+    if (allCompleted && this.dailyTreatments.length > 0 && !this.isCompleted) {
+      this.isCompleted = true;
+      this.completionDate = new Date();
+    }
+  }
+  next();
 });
 
 // Update the selected tooth schema to include daily treatmentsb
@@ -194,6 +219,11 @@ const medicalDetailsSchema = new mongoose.Schema({
   investigation: {
     blood: { type: String },
     xray: { type: String },
+  },
+  group: { // Add group field
+    type: String,
+    enum: ["General", "Ortho", "Endo", "Perio", "Prostho", "Surgery", "Other"],
+    default: "General",
   },
   medicalHistory: medicalHistorySchema,
   patientType: {

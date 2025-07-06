@@ -25,11 +25,26 @@ export type selectedToothSchema = {
   side: string;
 };
 
+export type groupTreatmentDetailsSchema = {
+  groupName : string;
+  procedure: string;
+  totalTreatmentAmount: number;
+  totalPaidAmount: number;
+  totalRemainingAmount: number;
+  startDate: string;
+  followUpDate?: string;
+  completionDate?: string;
+  treatedByDoctor: Doctor;
+  isCompleted: boolean;
+  dailyTreatments: DailyTreatment[];
+}
+
 export type TreatmentPlanning = {
   _id: string;
   patientType : "Child" | "Adult";
   isCompleted: boolean;
   selectedTeethDetails: selectedToothSchema[];
+  groupTreatmentDetails: groupTreatmentDetailsSchema[],
   teethNumber: string;
   treatmentDate: string;
   treatmentDateNp: string;

@@ -240,6 +240,7 @@ export function ViewPatientDrawer({
   isOpen,
   onClose,
 }: ViewPatientDrawerProps) {
+  console.log("Rendering ViewPatientDrawer for patient:", patient);
   const [localPatient] = useState<Patient>(patient);
   const [_selectedMedicalRecordId, setSelectedMedicalRecordId] = useState<
     string | null
@@ -438,14 +439,14 @@ export function ViewPatientDrawer({
   // Generate speech text from patient details
   const generatePatientSpeechText = (): string => {
     const { personalDetails, medicalDetails } = localPatient;
-    
+
     // Calculate total amounts from treatment plans
     let totalAmount = 0;
     let paidAmount = 0;
     let remainingAmount = 0;
 
-    medicalDetails?.forEach(detail => {
-      detail.treatmentPlanning?.forEach(plan => {
+    medicalDetails?.forEach((detail) => {
+      detail.treatmentPlanning?.forEach((plan) => {
         totalAmount += Number(plan.totalPlanAmount) || 0;
         paidAmount += Number(plan.totalPaidAmount) || 0;
         remainingAmount += Number(plan.totalRemainingAmount) || 0;
@@ -1614,58 +1615,6 @@ export function ViewPatientDrawer({
                             </CardTitle>
                           </CardHeader>
                           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-2 p-3 sm:p-6">
-                            {/* Enhanced Date Information with Nepali Support */}
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ duration: 0.3 }}
-                              className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3 sm:gap-4"
-                            >
-                              <DateDisplay
-                                englishDate={
-                                  record.treatmentPlanning[0]?.followUpDate
-                                }
-                                nepaliDate={
-                                  record.treatmentPlanning[0]?.followUpDateNp
-                                }
-                                label="Check-up Date"
-                                icon={CalendarCheck}
-                                color="text-blue-500"
-                              />
-
-                              <motion.div
-                                className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                whileHover={{ scale: 1.01 }}
-                                transition={{ duration: 0.3 }}
-                              >
-                                <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
-                                  <User className="w-4 h-4" />
-                                </div>
-                                <div className="flex-1">
-                                  <h4 className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                    Patient Group
-                                  </h4>
-                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
-                                    {record.group || "General"}
-                                  </p>
-                                </div>
-                              </motion.div>
-
-                              <DateDisplay
-                                englishDate={
-                                  record.treatmentPlanning[0]?.followUpDate
-                                }
-                                nepaliDate={
-                                  record.treatmentPlanning[0]?.followUpDateNp
-                                }
-                                label="Follow-up Date"
-                                icon={CalendarPlus}
-                                color="text-purple-500"
-                              />
-                            </motion.div>
-
                             <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3 sm:gap-4">
                               <motion.div
                                 initial={{ opacity: 0, scale: 0.9 }}
@@ -1710,12 +1659,92 @@ export function ViewPatientDrawer({
                               </motion.div>
                             </div>
 
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ duration: 0.3 }}
+                              className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3 sm:gap-4"
+                            >
+                              {record.group === "Ortho" ? (
+                                <DateDisplay
+                                  englishDate={
+                                    localPatient.personalDetails.checkUpDate
+                                  }
+                                  nepaliDate={
+                                    localPatient.personalDetails.checkUpDateNp
+                                  }
+                                  label="Check-up Date"
+                                  icon={CalendarCheck}
+                                  color="text-blue-500"
+                                />
+                              ) : (
+                                <DateDisplay
+                                  englishDate={
+                                    localPatient.personalDetails.checkUpDate
+                                  }
+                                  nepaliDate={
+                                    localPatient.personalDetails.checkUpDateNp
+                                  }
+                                  label="Check-up Date"
+                                  icon={CalendarCheck}
+                                  color="text-blue-500"
+                                />
+                              )}
+
+                              <motion.div
+                                className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                whileHover={{ scale: 1.01 }}
+                                transition={{ duration: 0.3 }}
+                              >
+                                <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                                  <User className="w-4 h-4" />
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                    Patient Group
+                                  </h4>
+                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                    {record.group || "General"}
+                                  </p>
+                                </div>
+                              </motion.div>
+
+                              {record.group === "Ortho" ? (
+                                <DateDisplay
+                                  englishDate={
+                                    record.treatmentPlanning[0]
+                                      ?.groupTreatmentDetails[0]?.followUpDate
+                                  }
+                                  // nepaliDate={
+                                  //   record.treatmentPlanning[0]?.followUpDateNp
+                                  // }
+                                  label="Follow-up Date"
+                                  icon={CalendarCheck}
+                                  color="text-blue-500"
+                                />
+                              ) : (
+                                <DateDisplay
+                                  englishDate={
+                                    record.treatmentPlanning[0]?.followUpDate
+                                  }
+                                  nepaliDate={
+                                    record.treatmentPlanning[0]?.followUpDateNp
+                                  }
+                                  label="Follow-up Date"
+                                  icon={CalendarPlus}
+                                  color="text-purple-500"
+                                />
+                              )}
+                            </motion.div>
+
                             {/* Investigation Details */}
                             <motion.div
                               initial={{ opacity: 0, scale: 0.9 }}
                               animate={{ opacity: 1, scale: 1 }}
                               transition={{ duration: 0.3, delay: 0.3 }}
-                              className="space-y-4 col-span-2"
+                              className="space-y-4 col-span-2 mt-6"
                             >
                               <div className="flex items-center justify-between w-full pr-4">
                                 <div className="flex items-center gap-2">
@@ -1920,7 +1949,7 @@ export function ViewPatientDrawer({
                               initial={{ opacity: 0, scale: 0.9 }}
                               animate={{ opacity: 1, scale: 1 }}
                               transition={{ duration: 0.3, delay: 0.4 }}
-                              className="col-span-2"
+                              className="col-span-2 mt-6"
                             >
                               <div className="flex items-center justify-between w-full pr-4">
                                 <div className="flex items-center gap-2">
@@ -1955,7 +1984,7 @@ export function ViewPatientDrawer({
                                   )}
                                 </div>
                               </div>
-                              <div className="space-y-4">
+                              <div className="space-y-4 mt-4">
                                 {record.medicalHistory ? (
                                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                                     {/* Allergies */}
@@ -2237,16 +2266,19 @@ export function ViewPatientDrawer({
                                               </div>
 
                                               {/* Treatment Details */}
-                                              <div className="p-4 border-b">
-                                                <p className="text-xs text-muted-foreground font-medium mb-2">
-                                                  Treatment Details
-                                                </p>
-                                                <div className="bg-muted/20 p-3 rounded-md text-sm">
-                                                  {treatment.treatmentDetails ||
-                                                    "No details provided"}
+                                              {record.group !== "Ortho" && (
+                                                <div className="p-4 border-b">
+                                                  <p className="text-xs text-muted-foreground font-medium mb-2">
+                                                    Treatment Details
+                                                  </p>
+                                                  <div className="bg-muted/20 p-3 rounded-md text-sm">
+                                                    {treatment.treatmentDetails ||
+                                                      "No details provided"}
+                                                  </div>
                                                 </div>
-                                              </div>
+                                              )}
 
+                                              {/* General Patient details */}
                                               {/* Dental Chart Visualization */}
                                               {treatment.selectedTeethDetails &&
                                                 treatment.selectedTeethDetails
@@ -2653,6 +2685,384 @@ export function ViewPatientDrawer({
                                                           );
                                                         })()}
                                                       </div>
+                                                    </div>
+                                                  </div>
+                                                )}
+
+                                              {/* Ortho Patient Details  */}
+                                              {treatment.groupTreatmentDetails &&
+                                                treatment.groupTreatmentDetails
+                                                  .length > 0 && (
+                                                  <div>
+                                                    <div className="space-y-4">
+                                                      {treatment.groupTreatmentDetails.map(
+                                                        (ortho, index) => (
+                                                          <motion.div
+                                                            key={index}
+                                                            initial={{
+                                                              opacity: 0,
+                                                              x: -20,
+                                                            }}
+                                                            animate={{
+                                                              opacity: 1,
+                                                              x: 0,
+                                                            }}
+                                                            transition={{
+                                                              duration: 0.3,
+                                                            }}
+                                                            className="border rounded-md overflow-hidden bg-card"
+                                                          >
+                                                            <div className="flex items-center justify-between bg-muted/30 px-4 py-2 border-b">
+                                                              <span className="flex gap-4 bg-gradient-to-r from-red-600 to-pink-600 dark:from-red-400 dark:to-pink-400 bg-clip-text text-transparent font-bold">
+                                                                <div className="p-2 rounded-xl bg-gradient-to-br from-red-500 to-pink-600 text-white shadow-md w-8 h-8 flex items-center justify-center">
+                                                                  <Heart className="h-5 w-5" />
+                                                                </div>
+                                                                Ortho Patient
+                                                                Details
+                                                              </span>
+                                                              <Badge
+                                                                variant={
+                                                                  ortho.isCompleted
+                                                                    ? "default"
+                                                                    : "outline"
+                                                                }
+                                                                className={
+                                                                  ortho.isCompleted
+                                                                    ? "bg-green-100 text-green-800 border-none dark:bg-green-900 dark:text-green-100"
+                                                                    : "border-orange-200 text-orange-800 dark:border-orange-800 dark:text-orange-200"
+                                                                }
+                                                              >
+                                                                {ortho.isCompleted
+                                                                  ? "Completed"
+                                                                  : "In Progress"}
+                                                              </Badge>
+                                                            </div>
+
+                                                            <div className="bg-muted/30 px-4 py-2 border-b flex flex-wrap items-center justify-between">
+                                                              <DateDisplay
+                                                                englishDate={
+                                                                  ortho.startDate
+                                                                }
+                                                                label="Start Date"
+                                                                icon={
+                                                                  CalendarCheck
+                                                                }
+                                                                color="text-blue-500"
+                                                              />
+
+                                                              <motion.div
+                                                                className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
+                                                                initial={{
+                                                                  opacity: 0,
+                                                                  y: 10,
+                                                                }}
+                                                                animate={{
+                                                                  opacity: 1,
+                                                                  y: 0,
+                                                                }}
+                                                                whileHover={{
+                                                                  scale: 1.01,
+                                                                }}
+                                                                transition={{
+                                                                  duration: 0.3,
+                                                                }}
+                                                              >
+                                                                <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                                                                  <User className="w-4 h-4" />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                  <h4 className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                                                    Toatal
+                                                                    Treatment
+                                                                    Amount
+                                                                  </h4>
+                                                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                                                    {
+                                                                      ortho.totalTreatmentAmount
+                                                                    }
+                                                                  </p>
+                                                                </div>
+                                                              </motion.div>
+
+                                                              <motion.div
+                                                                className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
+                                                                initial={{
+                                                                  opacity: 0,
+                                                                  y: 10,
+                                                                }}
+                                                                animate={{
+                                                                  opacity: 1,
+                                                                  y: 0,
+                                                                }}
+                                                                whileHover={{
+                                                                  scale: 1.01,
+                                                                }}
+                                                                transition={{
+                                                                  duration: 0.3,
+                                                                }}
+                                                              >
+                                                                <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                                                                  <User className="w-4 h-4" />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                  <h4 className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                                                    Toatal Paid
+                                                                    Amount
+                                                                  </h4>
+                                                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                                                    {
+                                                                      ortho.totalPaidAmount
+                                                                    }
+                                                                  </p>
+                                                                </div>
+                                                              </motion.div>
+
+                                                              <motion.div
+                                                                className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
+                                                                initial={{
+                                                                  opacity: 0,
+                                                                  y: 10,
+                                                                }}
+                                                                animate={{
+                                                                  opacity: 1,
+                                                                  y: 0,
+                                                                }}
+                                                                whileHover={{
+                                                                  scale: 1.01,
+                                                                }}
+                                                                transition={{
+                                                                  duration: 0.3,
+                                                                }}
+                                                              >
+                                                                <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                                                                  <User className="w-4 h-4" />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                  <h4 className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                                                    Total
+                                                                    Remaining
+                                                                    Amount
+                                                                  </h4>
+                                                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                                                    {
+                                                                      ortho.totalRemainingAmount
+                                                                    }
+                                                                  </p>
+                                                                </div>
+                                                              </motion.div>
+
+                                                              <motion.div
+                                                                className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
+                                                                initial={{
+                                                                  opacity: 0,
+                                                                  y: 10,
+                                                                }}
+                                                                animate={{
+                                                                  opacity: 1,
+                                                                  y: 0,
+                                                                }}
+                                                                whileHover={{
+                                                                  scale: 1.01,
+                                                                }}
+                                                                transition={{
+                                                                  duration: 0.3,
+                                                                }}
+                                                              >
+                                                                <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                                                                  <User className="w-4 h-4" />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                  <h4 className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                                                    Procedure
+                                                                  </h4>
+                                                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                                                    {
+                                                                      ortho.procedure
+                                                                    }
+                                                                  </p>
+                                                                </div>
+                                                              </motion.div>
+                                                            </div>
+                                                            {/* ortho daily treatment */}
+                                                            {ortho.dailyTreatments &&
+                                                              ortho
+                                                                .dailyTreatments
+                                                                .length > 0 && (
+                                                                <div className="mt-3 space-x-4 space-y-4">
+                                                                  <p className="text-xs font-medium mb-2 px-4">
+                                                                    Daily
+                                                                    Treatments
+                                                                    History
+                                                                  </p>
+                                                                  <div className="rounded-md border overflow-hidden">
+                                                                    <Table>
+                                                                      <TableHeader className="bg-muted/50">
+                                                                        <TableRow>
+                                                                          <TableHead className="text-xs">
+                                                                            Date
+                                                                          </TableHead>
+                                                                          <TableHead className="text-xs">
+                                                                            Procedure
+                                                                          </TableHead>
+                                                                          <TableHead className="text-xs">
+                                                                            Doctor
+                                                                          </TableHead>
+                                                                          <TableHead className="text-xs text-right">
+                                                                            Amount
+                                                                          </TableHead>
+                                                                          <TableHead className="text-xs text-right">
+                                                                            Paid
+                                                                          </TableHead>
+                                                                          <TableHead className="text-xs text-right">
+                                                                            Status
+                                                                          </TableHead>
+                                                                        </TableRow>
+                                                                      </TableHeader>
+                                                                      <TableBody>
+                                                                        {ortho.dailyTreatments.map(
+                                                                          (
+                                                                            dailyTreatment,
+                                                                            idx
+                                                                          ) => (
+                                                                            <TableRow
+                                                                              key={
+                                                                                idx
+                                                                              }
+                                                                              className={
+                                                                                (
+                                                                                  dailyTreatment as any
+                                                                                )
+                                                                                  .isCompleted
+                                                                                  ? "bg-green-50/30 dark:bg-green-900/20"
+                                                                                  : ""
+                                                                              }
+                                                                            >
+                                                                              <TableCell className="text-xs py-2">
+                                                                                {formatSafeDate(
+                                                                                  dailyTreatment.date
+                                                                                )}
+                                                                              </TableCell>
+                                                                              <TableCell className="text-xs py-2">
+                                                                                {dailyTreatment.procedure ||
+                                                                                  "General"}
+                                                                              </TableCell>
+                                                                              <TableCell className="text-xs py-2">
+                                                                                {typeof dailyTreatment.treatedByDoctor ===
+                                                                                  "object" &&
+                                                                                dailyTreatment.treatedByDoctor !==
+                                                                                  null &&
+                                                                                "name" in
+                                                                                  dailyTreatment.treatedByDoctor
+                                                                                  ? (
+                                                                                      dailyTreatment.treatedByDoctor as {
+                                                                                        name: string;
+                                                                                      }
+                                                                                    )
+                                                                                      .name
+                                                                                  : typeof dailyTreatment.treatedByDoctor ===
+                                                                                      "string"
+                                                                                    ? dailyTreatment.treatedByDoctor
+                                                                                    : "N/A"}
+                                                                              </TableCell>
+                                                                              <TableCell className="text-xs py-2 text-right">
+                                                                                ₹
+                                                                                {dailyTreatment.treatmentAmount ||
+                                                                                  0}
+                                                                              </TableCell>
+                                                                              <TableCell className="text-xs py-2 text-right">
+                                                                                ₹
+                                                                                {dailyTreatment.paidAmount ||
+                                                                                  0}
+                                                                              </TableCell>
+                                                                              <TableCell className="text-xs py-2 text-right">
+                                                                                <Badge
+                                                                                  variant={
+                                                                                    (
+                                                                                      dailyTreatment as any
+                                                                                    )
+                                                                                      .isCompleted
+                                                                                      ? "default"
+                                                                                      : "outline"
+                                                                                  }
+                                                                                  className={`text-xs ${
+                                                                                    (
+                                                                                      dailyTreatment as any
+                                                                                    )
+                                                                                      .isCompleted
+                                                                                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                                                                                      : "border-orange-200 text-orange-800 dark:border-orange-800 dark:text-orange-200"
+                                                                                  }`}
+                                                                                >
+                                                                                  {(
+                                                                                    dailyTreatment as any
+                                                                                  )
+                                                                                    .isCompleted
+                                                                                    ? "Done"
+                                                                                    : "Pending"}
+                                                                                </Badge>
+                                                                              </TableCell>
+                                                                            </TableRow>
+                                                                          )
+                                                                        )}
+                                                                      </TableBody>
+                                                                    </Table>
+                                                                  </div>
+
+                                                                  {/* Treatment Notes */}
+                                                                  {ortho.dailyTreatments.some(
+                                                                    (t) =>
+                                                                      t.notes
+                                                                  ) && (
+                                                                    <div className="mt-3">
+                                                                      <p className="text-xs font-medium mb-2">
+                                                                        Treatment
+                                                                        Notes
+                                                                      </p>
+                                                                      <div className="space-y-2">
+                                                                        {ortho.dailyTreatments
+                                                                          .filter(
+                                                                            (
+                                                                              t
+                                                                            ) =>
+                                                                              t.notes
+                                                                          )
+                                                                          .map(
+                                                                            (
+                                                                              treatment,
+                                                                              idx
+                                                                            ) => (
+                                                                              <div
+                                                                                key={
+                                                                                  idx
+                                                                                }
+                                                                                className="bg-muted/20 p-2 rounded-md"
+                                                                              >
+                                                                                <p className="text-xs text-muted-foreground mb-1">
+                                                                                  {formatSafeDate(
+                                                                                    treatment.date
+                                                                                  )}{" "}
+                                                                                  -{" "}
+                                                                                  {treatment.procedure ||
+                                                                                    "General"}
+
+                                                                                  :
+                                                                                </p>
+                                                                                <p className="text-sm">
+                                                                                  {
+                                                                                    treatment.notes
+                                                                                  }
+                                                                                </p>
+                                                                              </div>
+                                                                            )
+                                                                          )}
+                                                                      </div>
+                                                                    </div>
+                                                                  )}
+                                                                </div>
+                                                              )}
+                                                          </motion.div>
+                                                        )
+                                                      )}
                                                     </div>
                                                   </div>
                                                 )}

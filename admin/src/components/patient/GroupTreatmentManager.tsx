@@ -1,0 +1,628 @@
+import { useState } from "react";
+import { format } from "date-fns";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Plus, 
+  DollarSign, 
+  Trash2,
+  Edit,
+  Check,
+  X
+} from "lucide-react";
+
+interface GroupTreatmentDetails {
+  _id?: string;
+  groupName: "Ortho" | "Endo" | "Perio" | "Prostho" | "Surgery" | "General" | "Other";
+  procedure: string;
+  totalTreatmentAmount: number;
+  totalPaidAmount: number;
+  totalRemainingAmount: number;
+  startDate?: string;
+  followUpDate?: string;
+  followUpDateNp?: string;
+  completionDate?: string;
+  completionDateNp?: string;
+  treatedByDoctor: string | null;
+  isCompleted: boolean;
+  dailyTreatments: Array<{
+    _id?: string;
+    date: string;
+    treatmentAmount: number;
+    paidAmount: number;
+    remainingAmount: number;
+    treatedByDoctor: string | null;
+    notes: string;
+    procedure: string;
+    isCompleted: boolean;
+  }>;
+}
+
+interface DailyTreatment {
+  _id?: string;
+  date: string;
+  treatmentAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  treatedByDoctor: string | null;
+  notes: string;
+  procedure: string;
+  isCompleted: boolean;
+}
+
+interface Doctor {
+  _id: string;
+  name: string;
+  specialization: string;
+}
+
+interface GroupTreatmentManagerProps {
+  groupTreatments: GroupTreatmentDetails[];
+  doctors: Doctor[];
+  onAddGroupTreatment: (groupTreatment: GroupTreatmentDetails) => void;
+  onUpdateGroupTreatment: (index: number, groupTreatment: GroupTreatmentDetails) => void;
+  onRemoveGroupTreatment: (index: number) => void;
+}
+
+export function GroupTreatmentManager({
+  groupTreatments,
+  doctors,
+  onAddGroupTreatment,
+  onUpdateGroupTreatment,
+  onRemoveGroupTreatment,
+}: GroupTreatmentManagerProps) {
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [newGroupTreatment, setNewGroupTreatment] = useState<GroupTreatmentDetails>({
+    groupName: "General",
+    procedure: "",
+    totalTreatmentAmount: 0,
+    totalPaidAmount: 0,
+    totalRemainingAmount: 0,
+    startDate: format(new Date(), "yyyy-MM-dd"),
+    followUpDate: "",
+    followUpDateNp: "",
+    treatedByDoctor: null,
+    isCompleted: false,
+    dailyTreatments: [],
+  });
+
+  const handleAddGroupTreatment = () => {
+    const groupTreatment = {
+      ...newGroupTreatment,
+      totalRemainingAmount: newGroupTreatment.totalTreatmentAmount - newGroupTreatment.totalPaidAmount,
+    };
+    onAddGroupTreatment(groupTreatment);
+    setNewGroupTreatment({
+      groupName: "General",
+      procedure: "",
+      totalTreatmentAmount: 0,
+      totalPaidAmount: 0,
+      totalRemainingAmount: 0,
+      startDate: format(new Date(), "yyyy-MM-dd"),
+      followUpDate: "",
+      followUpDateNp: "",
+      treatedByDoctor: null,
+      isCompleted: false,
+      dailyTreatments: [],
+    });
+    setShowAddForm(false);
+  };
+
+  const addDailyTreatment = (groupIndex: number) => {
+    const newDailyTreatment: DailyTreatment = {
+      date: format(new Date(), "yyyy-MM-dd"),
+      treatmentAmount: 0,
+      paidAmount: 0,
+      remainingAmount: 0,
+      treatedByDoctor: null,
+      notes: "",
+      procedure: "",
+      isCompleted: false,
+    };
+
+    const updatedGroupTreatment = { ...groupTreatments[groupIndex] };
+    updatedGroupTreatment.dailyTreatments = [
+      ...updatedGroupTreatment.dailyTreatments,
+      newDailyTreatment,
+    ];
+
+    onUpdateGroupTreatment(groupIndex, updatedGroupTreatment);
+  };
+
+  const updateDailyTreatment = (
+    groupIndex: number,
+    treatmentIndex: number,
+    field: keyof DailyTreatment,
+    value: any
+  ) => {
+    const updatedGroupTreatment = { ...groupTreatments[groupIndex] };
+    updatedGroupTreatment.dailyTreatments = [...updatedGroupTreatment.dailyTreatments];
+    updatedGroupTreatment.dailyTreatments[treatmentIndex] = {
+      ...updatedGroupTreatment.dailyTreatments[treatmentIndex],
+      [field]: value,
+    };
+
+    // Auto-calculate remaining amount
+    if (field === "treatmentAmount" || field === "paidAmount") {
+      const treatment = updatedGroupTreatment.dailyTreatments[treatmentIndex];
+      treatment.remainingAmount = (treatment.treatmentAmount || 0) - (treatment.paidAmount || 0);
+    }
+
+    onUpdateGroupTreatment(groupIndex, updatedGroupTreatment);
+  };
+
+  const removeDailyTreatment = (groupIndex: number, treatmentIndex: number) => {
+    const updatedGroupTreatment = { ...groupTreatments[groupIndex] };
+    updatedGroupTreatment.dailyTreatments = updatedGroupTreatment.dailyTreatments.filter(
+      (_, index) => index !== treatmentIndex
+    );
+    onUpdateGroupTreatment(groupIndex, updatedGroupTreatment);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-medium">Group Treatment Details</h3>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowAddForm(true)}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Add Group Treatment
+        </Button>
+      </div>
+
+      {/* Add Group Treatment Form */}
+      {showAddForm && (
+        <Card className="border-dashed border-2">
+          <CardHeader>
+            <CardTitle className="text-base">Add New Group Treatment</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Group Name</Label>
+                <Select
+                  value={newGroupTreatment.groupName}
+                  onValueChange={(value: any) =>
+                    setNewGroupTreatment((prev) => ({ ...prev, groupName: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="General">General</SelectItem>
+                    <SelectItem value="Ortho">Orthodontics</SelectItem>
+                    <SelectItem value="Endo">Endodontics</SelectItem>
+                    <SelectItem value="Perio">Periodontics</SelectItem>
+                    <SelectItem value="Prostho">Prosthodontics</SelectItem>
+                    <SelectItem value="Surgery">Oral Surgery</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Procedure</Label>
+                <Input
+                  value={newGroupTreatment.procedure}
+                  onChange={(e) =>
+                    setNewGroupTreatment((prev) => ({ ...prev, procedure: e.target.value }))
+                  }
+                  placeholder="Enter procedure name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Total Treatment Amount</Label>
+                <Input
+                  type="number"
+                  value={newGroupTreatment.totalTreatmentAmount}
+                  onChange={(e) =>
+                    setNewGroupTreatment((prev) => ({
+                      ...prev,
+                      totalTreatmentAmount: Number(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Total Paid Amount</Label>
+                <Input
+                  type="number"
+                  value={newGroupTreatment.totalPaidAmount}
+                  onChange={(e) =>
+                    setNewGroupTreatment((prev) => ({
+                      ...prev,
+                      totalPaidAmount: Number(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Start Date</Label>
+                <Input
+                  type="date"
+                  value={newGroupTreatment.startDate}
+                  onChange={(e) =>
+                    setNewGroupTreatment((prev) => ({ ...prev, startDate: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Follow-up Date</Label>
+                <Input
+                  type="date"
+                  value={newGroupTreatment.followUpDate}
+                  onChange={(e) =>
+                    setNewGroupTreatment((prev) => ({ ...prev, followUpDate: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Treated By Doctor</Label>
+                <Select
+                  value={newGroupTreatment.treatedByDoctor || ""}
+                  onValueChange={(value) =>
+                    setNewGroupTreatment((prev) => ({ ...prev, treatedByDoctor: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select doctor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {doctors.map((doctor) => (
+                      <SelectItem key={doctor._id} value={doctor._id}>
+                        {doctor.name} - {doctor.specialization}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={handleAddGroupTreatment} className="gap-2">
+                <Check className="h-4 w-4" />
+                Add Group Treatment
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowAddForm(false)}
+                className="gap-2"
+              >
+                <X className="h-4 w-4" />
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Existing Group Treatments */}
+      {groupTreatments.map((groupTreatment, groupIndex) => (
+        <Card key={groupIndex} className="overflow-hidden">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <CardTitle className="text-base">
+                  {groupTreatment.groupName} Treatment
+                </CardTitle>
+                {groupTreatment.isCompleted && (
+                  <Badge variant="default" className="bg-green-600">
+                    Completed
+                  </Badge>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    setEditingIndex(editingIndex === groupIndex ? null : groupIndex)
+                  }
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onRemoveGroupTreatment(groupIndex)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="text-sm text-muted-foreground">
+              Procedure: {groupTreatment.procedure || "Not specified"}
+            </div>
+
+            <div className="flex gap-4 text-sm">
+              <span className="flex items-center gap-1">
+                <DollarSign className="h-3 w-3" />
+                Total: ${groupTreatment.totalTreatmentAmount}
+              </span>
+              <span className="flex items-center gap-1">
+                <DollarSign className="h-3 w-3" />
+                Paid: ${groupTreatment.totalPaidAmount}
+              </span>
+              <span className="flex items-center gap-1">
+                <DollarSign className="h-3 w-3" />
+                Remaining: ${groupTreatment.totalRemainingAmount}
+              </span>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            {/* Group Treatment Edit Form */}
+            {editingIndex === groupIndex && (
+              <div className="p-4 bg-muted/50 rounded-lg space-y-4">
+                <h4 className="font-medium">Edit Group Treatment Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Procedure</Label>
+                    <Input
+                      value={groupTreatment.procedure}
+                      onChange={(e) => {
+                        const updated = { ...groupTreatment, procedure: e.target.value };
+                        onUpdateGroupTreatment(groupIndex, updated);
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Total Treatment Amount</Label>
+                    <Input
+                      type="number"
+                      value={groupTreatment.totalTreatmentAmount}
+                      onChange={(e) => {
+                        const amount = Number(e.target.value) || 0;
+                        const updated = {
+                          ...groupTreatment,
+                          totalTreatmentAmount: amount,
+                          totalRemainingAmount: amount - groupTreatment.totalPaidAmount,
+                        };
+                        onUpdateGroupTreatment(groupIndex, updated);
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Total Paid Amount</Label>
+                    <Input
+                      type="number"
+                      value={groupTreatment.totalPaidAmount}
+                      onChange={(e) => {
+                        const paid = Number(e.target.value) || 0;
+                        const updated = {
+                          ...groupTreatment,
+                          totalPaidAmount: paid,
+                          totalRemainingAmount: groupTreatment.totalTreatmentAmount - paid,
+                        };
+                        onUpdateGroupTreatment(groupIndex, updated);
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Treated By Doctor</Label>
+                    <Select
+                      value={groupTreatment.treatedByDoctor || ""}
+                      onValueChange={(value) => {
+                        const updated = { ...groupTreatment, treatedByDoctor: value };
+                        onUpdateGroupTreatment(groupIndex, updated);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select doctor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {doctors.map((doctor) => (
+                          <SelectItem key={doctor._id} value={doctor._id}>
+                            {doctor.name} - {doctor.specialization}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Daily Treatments Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Daily Treatments</h4>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addDailyTreatment(groupIndex)}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Daily Treatment
+                </Button>
+              </div>
+
+              {groupTreatment.dailyTreatments.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  No daily treatments recorded
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {groupTreatment.dailyTreatments.map((treatment, treatmentIndex) => (
+                    <Card key={treatmentIndex} className="p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Date</Label>
+                          <Input
+                            type="date"
+                            value={treatment.date}
+                            onChange={(e) =>
+                              updateDailyTreatment(
+                                groupIndex,
+                                treatmentIndex,
+                                "date",
+                                e.target.value
+                              )
+                            }
+                            className="text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Treatment Amount</Label>
+                          <Input
+                            type="number"
+                            value={treatment.treatmentAmount}
+                            onChange={(e) =>
+                              updateDailyTreatment(
+                                groupIndex,
+                                treatmentIndex,
+                                "treatmentAmount",
+                                Number(e.target.value) || 0
+                              )
+                            }
+                            className="text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Paid Amount</Label>
+                          <Input
+                            type="number"
+                            value={treatment.paidAmount}
+                            onChange={(e) =>
+                              updateDailyTreatment(
+                                groupIndex,
+                                treatmentIndex,
+                                "paidAmount",
+                                Number(e.target.value) || 0
+                              )
+                            }
+                            className="text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Remaining</Label>
+                          <Input
+                            type="number"
+                            value={treatment.remainingAmount}
+                            readOnly
+                            className="text-sm bg-muted"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Doctor</Label>
+                          <Select
+                            value={treatment.treatedByDoctor || ""}
+                            onValueChange={(value) =>
+                              updateDailyTreatment(
+                                groupIndex,
+                                treatmentIndex,
+                                "treatedByDoctor",
+                                value
+                              )
+                            }
+                          >
+                            <SelectTrigger className="text-sm">
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {doctors.map((doctor) => (
+                                <SelectItem key={doctor._id} value={doctor._id}>
+                                  {doctor.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Actions</Label>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => removeDailyTreatment(groupIndex, treatmentIndex)}
+                            className="w-full"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3 space-y-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Procedure</Label>
+                          <Input
+                            value={treatment.procedure}
+                            onChange={(e) =>
+                              updateDailyTreatment(
+                                groupIndex,
+                                treatmentIndex,
+                                "procedure",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Enter procedure"
+                            className="text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Notes</Label>
+                          <Textarea
+                            value={treatment.notes}
+                            onChange={(e) =>
+                              updateDailyTreatment(
+                                groupIndex,
+                                treatmentIndex,
+                                "notes",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Enter notes"
+                            className="text-sm min-h-[60px]"
+                          />
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+
+      {groupTreatments.length === 0 && !showAddForm && (
+        <div className="text-center py-8 border border-dashed rounded-lg">
+          <div className="text-muted-foreground">
+            No group treatments added yet
+          </div>
+          <Button
+            variant="outline"
+            className="mt-4"
+            onClick={() => setShowAddForm(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add First Group Treatment
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { crudRequest } from '@/lib/api';
 import { toast } from 'react-toastify';
-import { RefreshCw, AlertCircle, Save, Settings, MessageCircle, CreditCard, Bell } from 'lucide-react';
+import { RefreshCw, AlertCircle, Save, Settings, MessageCircle, CreditCard } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAdminContext } from '@/contexts';
 

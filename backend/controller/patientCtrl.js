@@ -176,17 +176,60 @@ const addPatient = async (req, res) => {
       req.body.password = generatedPassword;
     }
 
-    // Process medical details to set correct groupName for group treatment details
+    // Process medical details to properly handle group treatment details
     if (req.body.medicalDetails && req.body.medicalDetails.length > 0) {
       req.body.medicalDetails.forEach((medicalDetail) => {
         if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
           medicalDetail.treatmentPlanning.forEach((plan) => {
+            // Process group treatment details
             if (plan.groupTreatmentDetails && plan.groupTreatmentDetails.length > 0) {
-              plan.groupTreatmentDetails.forEach((groupTreatment) => {
+              plan.groupTreatmentDetails = plan.groupTreatmentDetails.map((groupTreatment) => {
                 // Set the groupName based on the medical details group
-                if (!groupTreatment.groupName || groupTreatment.groupName === "General") {
-                  groupTreatment.groupName = medicalDetail.group || "General";
+                const updatedGroupTreatment = {
+                  ...groupTreatment,
+                  groupName: medicalDetail.group || "General",
+                };
+
+                // Process daily treatments for group treatments
+                if (groupTreatment.dailyTreatments && groupTreatment.dailyTreatments.length > 0) {
+                  updatedGroupTreatment.dailyTreatments = groupTreatment.dailyTreatments.map(dailyTreatment => ({
+                    ...dailyTreatment,
+                    date: new Date(dailyTreatment.date),
+                    treatmentAmount: Number(dailyTreatment.treatmentAmount) || 0,
+                    paidAmount: Number(dailyTreatment.paidAmount) || 0,
+                    remainingAmount: Number(dailyTreatment.remainingAmount) || 0,
+                    procedure: dailyTreatment.procedure || groupTreatment.procedure || "",
+                    notes: dailyTreatment.notes || "",
+                    treatedByDoctor: dailyTreatment.treatedByDoctor || null,
+                    isCompleted: dailyTreatment.isCompleted || false
+                  }));
+
+                  // Calculate totals from daily treatments if not provided
+                  if (!updatedGroupTreatment.totalTreatmentAmount || updatedGroupTreatment.totalTreatmentAmount === 0) {
+                    updatedGroupTreatment.totalTreatmentAmount = updatedGroupTreatment.dailyTreatments.reduce(
+                      (sum, dt) => sum + (Number(dt.treatmentAmount) || 0), 0
+                    );
+                  }
+                  if (!updatedGroupTreatment.totalPaidAmount || updatedGroupTreatment.totalPaidAmount === 0) {
+                    updatedGroupTreatment.totalPaidAmount = updatedGroupTreatment.dailyTreatments.reduce(
+                      (sum, dt) => sum + (Number(dt.paidAmount) || 0), 0
+                    );
+                  }
+                  updatedGroupTreatment.totalRemainingAmount = updatedGroupTreatment.totalTreatmentAmount - updatedGroupTreatment.totalPaidAmount;
                 }
+
+                // Ensure dates are properly formatted
+                if (updatedGroupTreatment.startDate) {
+                  updatedGroupTreatment.startDate = new Date(updatedGroupTreatment.startDate);
+                }
+                if (updatedGroupTreatment.followUpDate) {
+                  updatedGroupTreatment.followUpDate = new Date(updatedGroupTreatment.followUpDate);
+                }
+                if (updatedGroupTreatment.completionDate) {
+                  updatedGroupTreatment.completionDate = new Date(updatedGroupTreatment.completionDate);
+                }
+
+                return updatedGroupTreatment;
               });
             }
           });
@@ -483,6 +526,12 @@ const getPatient = async (req, res) => {
     const patients = await Patient.find().populate("appointments").populate({
       path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
       model: "Doctor",
+    }).populate({
+      path: "medicalDetails.treatmentPlanning.groupTreatmentDetails.treatedByDoctor",
+      model: "Doctor",
+    }).populate({
+      path: "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatedByDoctor",
+      model: "Doctor",
     });
 
     res.status(200).json({
@@ -664,6 +713,31 @@ const updatePatient = async (req, res) => {
             followUpDate: treatment.followUpDate
               ? new Date(treatment.followUpDate)
               : undefined,
+            // Handle groupTreatmentDetails
+            groupTreatmentDetails: treatment.groupTreatmentDetails?.map(group => ({
+              _id: group._id,
+              groupName: group.groupName || "General",
+              procedure: group.procedure || "",
+              totalTreatmentAmount: Number(group.totalTreatmentAmount) || 0,
+              totalPaidAmount: Number(group.totalPaidAmount) || 0,
+              totalRemainingAmount: Number(group.totalRemainingAmount) || 0,
+              startDate: group.startDate ? new Date(group.startDate) : undefined,
+              followUpDate: group.followUpDate ? new Date(group.followUpDate) : undefined,
+              completionDate: group.completionDate ? new Date(group.completionDate) : undefined,
+              treatedByDoctor: group.treatedByDoctor || null,
+              isCompleted: group.isCompleted || false,
+              dailyTreatments: group.dailyTreatments?.map(dt => ({
+                _id: dt._id,
+                date: dt.date ? new Date(dt.date) : new Date(),
+                treatmentAmount: Number(dt.treatmentAmount) || 0,
+                paidAmount: Number(dt.paidAmount) || 0,
+                remainingAmount: Number(dt.remainingAmount) || 0,
+                treatedByDoctor: dt.treatedByDoctor || null,
+                notes: dt.notes || "",
+                procedure: dt.procedure || "",
+                isCompleted: dt.isCompleted || false,
+              })) || []
+            })) || [],
             // Explicitly preserve total values from the request or keep existing values
             totalPlanAmount:
               Number(treatment.treatmentAmount) ||
@@ -745,6 +819,35 @@ const updatePatient = async (req, res) => {
               });
             }
 
+            // Check if treatment has groupTreatmentDetails
+            if (
+              treatment.groupTreatmentDetails &&
+              treatment.groupTreatmentDetails.length > 0
+            ) {
+              // Loop through each group treatment
+              treatment.groupTreatmentDetails.forEach((group) => {
+                // Check if group has a doctor assigned
+                if (group.treatedByDoctor && group.isCompleted) {
+                  doctorIds.add(group.treatedByDoctor.toString());
+                }
+
+                // Check if group has dailyTreatments
+                if (group.dailyTreatments && group.dailyTreatments.length > 0) {
+                  // Loop through each daily treatment
+                  group.dailyTreatments.forEach((dailyTreatment) => {
+                    // If a doctor performed this treatment and it's completed
+                    if (
+                      dailyTreatment.treatedByDoctor &&
+                      dailyTreatment.isCompleted
+                    ) {
+                      // Add doctor ID to the set
+                      doctorIds.add(dailyTreatment.treatedByDoctor.toString());
+                    }
+                  });
+                }
+              });
+            }
+
             // Also check if the overall treatment has a doctor assigned
             if (treatment.treatedByDoctor) {
               doctorIds.add(treatment.treatedByDoctor.toString());
@@ -797,6 +900,14 @@ const updatePatient = async (req, res) => {
         .populate({
           path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
           model: "Doctor",
+        })
+        .populate({
+          path: "medicalDetails.treatmentPlanning.groupTreatmentDetails.treatedByDoctor",
+          model: "Doctor",
+        })
+        .populate({
+          path: "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatedByDoctor",
+          model: "Doctor",
         });
 
       res.status(200).json({
@@ -831,6 +942,14 @@ const getSinglePatient = async (req, res) => {
       })
       .populate({
         path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
+        model: "Doctor",
+      })
+      .populate({
+        path: "medicalDetails.treatmentPlanning.groupTreatmentDetails.treatedByDoctor",
+        model: "Doctor",
+      })
+      .populate({
+        path: "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatedByDoctor",
         model: "Doctor",
       });
 
@@ -985,37 +1104,59 @@ const getFilteredPatients = async (req, res) => {
     const group = req.query.group || "";
     const gender = req.query.gender || "";
     const procedure = req.query.procedure || "";
+    const procedures = req.query.procedures || ""; // Handle multiple procedures
     const doctorId = req.query.doctor || req.query.doctorId || "";
     const from = req.query.from;
     const to = req.query.to;
 
     let query = {};
+    let andConditions = [];
 
+    // Handle search conditions
     if (search) {
-      query["$or"] = [
-        { "personalDetails.name": { $regex: search, $options: "i" } },
-        { "personalDetails.sn": { $regex: search, $options: "i" } },
-      ];
+      andConditions.push({
+        $or: [
+          { "personalDetails.name": { $regex: search, $options: "i" } },
+          { "personalDetails.sn": { $regex: search, $options: "i" } },
+        ]
+      });
     }
 
     if (group && group !== "all") {
-      query["medicalDetails.group"] = group;
+      andConditions.push({ "medicalDetails.group": group });
     }
 
     if (gender && gender !== "all") {
-      query["personalDetails.gender"] = gender;
+      andConditions.push({ "personalDetails.gender": gender });
     }
 
-    if (procedure && procedure !== "all") {
-      query["medicalDetails.treatmentPlanning.selectedTeethDetails.procedure"] =
-        procedure;
+    // Handle multiple procedures from the frontend
+    if (procedures && procedures !== "all") {
+      const procedureList = procedures.split(",").map(p => p.trim()).filter(p => p);
+      if (procedureList.length > 0) {
+        andConditions.push({
+          $or: [
+            { "medicalDetails.treatmentPlanning.selectedTeethDetails.procedure": { $in: procedureList } },
+            { "medicalDetails.treatmentPlanning.groupTreatmentDetails.procedure": { $in: procedureList } },
+            { "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.procedure": { $in: procedureList } },
+            { "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.procedure": { $in: procedureList } }
+          ]
+        });
+      }
+    }
+    
+    // Keep backward compatibility with single procedure
+    if (procedure && procedure !== "all" && !procedures) {
+      andConditions.push({
+        "medicalDetails.treatmentPlanning.selectedTeethDetails.procedure": procedure
+      });
     }
 
     if (doctorId && doctorId !== "all") {
       try {
-        query[
-          "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor"
-        ] = new mongoose.Types.ObjectId(doctorId);
+        andConditions.push({
+          "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor": new mongoose.Types.ObjectId(doctorId)
+        });
       } catch (err) {
         console.error("Invalid doctor ID format:", err);
         return res.status(400).json({
@@ -1027,9 +1168,15 @@ const getFilteredPatients = async (req, res) => {
     }
 
     if (from || to) {
-      query["createdAt"] = {};
-      if (from) query["createdAt"].$gte = new Date(from);
-      if (to) query["createdAt"].$lte = new Date(to);
+      let dateCondition = {};
+      if (from) dateCondition.$gte = new Date(from);
+      if (to) dateCondition.$lte = new Date(to);
+      andConditions.push({ "createdAt": dateCondition });
+    }
+
+    // Combine all conditions with $and
+    if (andConditions.length > 0) {
+      query = { $and: andConditions };
     }
 
     const patients = await Patient.find(query)
@@ -1083,8 +1230,44 @@ const getProcedureTypes = async (req, res) => {
       "IMF",
     ];
 
-    // Get unique procedures from the database
-    const uniqueProcedures = await Patient.aggregate([
+    // Get unique procedures from selectedTeethDetails.procedure
+    const teethProcedures = await Patient.aggregate([
+      { $unwind: "$medicalDetails" },
+      { $unwind: "$medicalDetails.treatmentPlanning" },
+      { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
+      {
+        $match: {
+          "medicalDetails.treatmentPlanning.selectedTeethDetails.procedure":
+            { $exists: true, $ne: "" },
+        },
+      },
+      {
+        $group: {
+          _id: "$medicalDetails.treatmentPlanning.selectedTeethDetails.procedure",
+        },
+      },
+    ]);
+
+    // Get unique procedures from groupTreatmentDetails.procedure
+    const groupProcedures = await Patient.aggregate([
+      { $unwind: "$medicalDetails" },
+      { $unwind: "$medicalDetails.treatmentPlanning" },
+      { $unwind: "$medicalDetails.treatmentPlanning.groupTreatmentDetails" },
+      {
+        $match: {
+          "medicalDetails.treatmentPlanning.groupTreatmentDetails.procedure":
+            { $exists: true, $ne: "" },
+        },
+      },
+      {
+        $group: {
+          _id: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.procedure",
+        },
+      },
+    ]);
+
+    // Get unique procedures from dailyTreatments.procedure
+    const dailyTreatmentProcedures = await Patient.aggregate([
       { $unwind: "$medicalDetails" },
       { $unwind: "$medicalDetails.treatmentPlanning" },
       { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
@@ -1106,12 +1289,19 @@ const getProcedureTypes = async (req, res) => {
       { $sort: { _id: 1 } },
     ]);
 
-    // Extract procedure names from aggregation result
-    const dbProcedures = uniqueProcedures.map((item) => item._id);
+    // Extract procedure names from aggregation results
+    const dbTeethProcedures = teethProcedures.map((item) => item._id);
+    const dbGroupProcedures = groupProcedures.map((item) => item._id);
+    const dbDailyProcedures = dailyTreatmentProcedures.map((item) => item._id);
 
-    // Combine known procedures with any additional ones found in the database
+    // Combine all procedures
     const allProcedures = [
-      ...new Set([...knownProcedureTypes, ...dbProcedures]),
+      ...new Set([
+        ...knownProcedureTypes,
+        ...dbTeethProcedures,
+        ...dbGroupProcedures,
+        ...dbDailyProcedures,
+      ]),
     ]
       .filter(Boolean)
       .sort();
@@ -2179,7 +2369,8 @@ const getDashboardMetrics = async (req, res) => {
 
     // Revenue aggregation functions
     const getDailyRevenue = async () => {
-      const result = await Patient.aggregate([
+      // Calculate revenue from both selected teeth and group treatments
+      const toothRevenue = await Patient.aggregate([
         { $unwind: "$medicalDetails" },
         { $unwind: "$medicalDetails.treatmentPlanning" },
         { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
@@ -2205,11 +2396,43 @@ const getDashboardMetrics = async (req, res) => {
           },
         },
       ]);
-      return result.length > 0 ? result[0].revenue : 0;
+
+      const groupRevenue = await Patient.aggregate([
+        { $unwind: "$medicalDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning" },
+        { $unwind: "$medicalDetails.treatmentPlanning.groupTreatmentDetails" },
+        {
+          $unwind:
+            "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments",
+        },
+        {
+          $match: {
+            "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date":
+              {
+                $gte: currentDay,
+                $lt: tomorrow,
+              },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            revenue: {
+              $sum: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.paidAmount",
+            },
+          },
+        },
+      ]);
+
+      const toothRevenueAmount = toothRevenue.length > 0 ? toothRevenue[0].revenue : 0;
+      const groupRevenueAmount = groupRevenue.length > 0 ? groupRevenue[0].revenue : 0;
+      
+      return toothRevenueAmount + groupRevenueAmount;
     };
 
     const getWeeklyRevenue = async () => {
-      const result = await Patient.aggregate([
+      // Calculate revenue from both selected teeth and group treatments
+      const toothRevenue = await Patient.aggregate([
         { $unwind: "$medicalDetails" },
         { $unwind: "$medicalDetails.treatmentPlanning" },
         { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
@@ -2235,11 +2458,43 @@ const getDashboardMetrics = async (req, res) => {
           },
         },
       ]);
-      return result.length > 0 ? result[0].revenue : 0;
+
+      const groupRevenue = await Patient.aggregate([
+        { $unwind: "$medicalDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning" },
+        { $unwind: "$medicalDetails.treatmentPlanning.groupTreatmentDetails" },
+        {
+          $unwind:
+            "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments",
+        },
+        {
+          $match: {
+            "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date":
+              {
+                $gte: startOfWeek,
+                $lt: tomorrow,
+              },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            revenue: {
+              $sum: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.paidAmount",
+            },
+          },
+        },
+      ]);
+
+      const toothRevenueAmount = toothRevenue.length > 0 ? toothRevenue[0].revenue : 0;
+      const groupRevenueAmount = groupRevenue.length > 0 ? groupRevenue[0].revenue : 0;
+      
+      return toothRevenueAmount + groupRevenueAmount;
     };
 
     const getMonthlyRevenue = async () => {
-      const result = await Patient.aggregate([
+      // Calculate revenue from both selected teeth and group treatments
+      const toothRevenue = await Patient.aggregate([
         { $unwind: "$medicalDetails" },
         { $unwind: "$medicalDetails.treatmentPlanning" },
         { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
@@ -2265,11 +2520,43 @@ const getDashboardMetrics = async (req, res) => {
           },
         },
       ]);
-      return result.length > 0 ? result[0].revenue : 0;
+
+      const groupRevenue = await Patient.aggregate([
+        { $unwind: "$medicalDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning" },
+        { $unwind: "$medicalDetails.treatmentPlanning.groupTreatmentDetails" },
+        {
+          $unwind:
+            "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments",
+        },
+        {
+          $match: {
+            "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date":
+              {
+                $gte: startOfMonth,
+                $lte: endOfMonth,
+              },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            revenue: {
+              $sum: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.paidAmount",
+            },
+          },
+        },
+      ]);
+
+      const toothRevenueAmount = toothRevenue.length > 0 ? toothRevenue[0].revenue : 0;
+      const groupRevenueAmount = groupRevenue.length > 0 ? groupRevenue[0].revenue : 0;
+      
+      return toothRevenueAmount + groupRevenueAmount;
     };
 
     const getTotalRevenue = async () => {
-      const result = await Patient.aggregate([
+      // Calculate revenue from both selected teeth daily treatments and group treatment daily treatments
+      const toothRevenue = await Patient.aggregate([
         { $unwind: "$medicalDetails" },
         { $unwind: "$medicalDetails.treatmentPlanning" },
         { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
@@ -2286,12 +2573,34 @@ const getDashboardMetrics = async (req, res) => {
           },
         },
       ]);
-      return result.length > 0 ? result[0].revenue : 0;
+
+      const groupRevenue = await Patient.aggregate([
+        { $unwind: "$medicalDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning" },
+        { $unwind: "$medicalDetails.treatmentPlanning.groupTreatmentDetails" },
+        {
+          $unwind:
+            "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments",
+        },
+        {
+          $group: {
+            _id: null,
+            revenue: {
+              $sum: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.paidAmount",
+            },
+          },
+        },
+      ]);
+
+      const toothRevenueAmount = toothRevenue.length > 0 ? toothRevenue[0].revenue : 0;
+      const groupRevenueAmount = groupRevenue.length > 0 ? groupRevenue[0].revenue : 0;
+      
+      return toothRevenueAmount + groupRevenueAmount;
     };
 
     const getRevenueTrend = async () => {
       // Use a more flexible match for the date range when needed
-      let dateMatchCondition = isAllTimeRequest
+      let toothDateMatchCondition = isAllTimeRequest
         ? {}
         : {
             "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date":
@@ -2301,7 +2610,18 @@ const getDashboardMetrics = async (req, res) => {
               },
           };
 
-      const result = await Patient.aggregate([
+      let groupDateMatchCondition = isAllTimeRequest
+        ? {}
+        : {
+            "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date":
+              {
+                $gte: fromDate,
+                $lte: toDate,
+              },
+          };
+
+      // Get revenue from teeth treatments
+      const toothRevenueResult = await Patient.aggregate([
         { $unwind: "$medicalDetails" },
         { $unwind: "$medicalDetails.treatmentPlanning" },
         { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
@@ -2309,7 +2629,7 @@ const getDashboardMetrics = async (req, res) => {
           $unwind:
             "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments",
         },
-        { $match: dateMatchCondition },
+        { $match: toothDateMatchCondition },
         {
           $group: {
             _id: {
@@ -2324,7 +2644,6 @@ const getDashboardMetrics = async (req, res) => {
           },
         },
         { $sort: { _id: 1 } },
-        // Limit results if all-time
         ...(isAllTimeRequest ? [{ $limit: 30 }] : []),
         {
           $project: {
@@ -2334,6 +2653,56 @@ const getDashboardMetrics = async (req, res) => {
           },
         },
       ]);
+
+      // Get revenue from group treatments
+      const groupRevenueResult = await Patient.aggregate([
+        { $unwind: "$medicalDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning" },
+        { $unwind: "$medicalDetails.treatmentPlanning.groupTreatmentDetails" },
+        {
+          $unwind:
+            "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments",
+        },
+        { $match: groupDateMatchCondition },
+        {
+          $group: {
+            _id: {
+              $dateToString: {
+                format: dateFormat,
+                date: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date",
+              },
+            },
+            revenue: {
+              $sum: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.paidAmount",
+            },
+          },
+        },
+        { $sort: { _id: 1 } },
+        ...(isAllTimeRequest ? [{ $limit: 30 }] : []),
+        {
+          $project: {
+            _id: 0,
+            date: "$_id",
+            revenue: 1,
+          },
+        },
+      ]);
+
+      // Combine results by date
+      const combinedRevenue = {};
+      
+      toothRevenueResult.forEach(item => {
+        combinedRevenue[item.date] = (combinedRevenue[item.date] || 0) + item.revenue;
+      });
+
+      groupRevenueResult.forEach(item => {
+        combinedRevenue[item.date] = (combinedRevenue[item.date] || 0) + item.revenue;
+      });
+
+      // Convert back to array format
+      const result = Object.entries(combinedRevenue)
+        .map(([date, revenue]) => ({ date, revenue }))
+        .sort((a, b) => a.date.localeCompare(b.date));
 
       return result;
     };

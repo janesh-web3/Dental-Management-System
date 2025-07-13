@@ -15,6 +15,7 @@ export function TreatmentSummary({ plans, selectedTeethMaps }: TreatmentSummaryP
   let totalTeethSelected = 0;
   let totalTeethCompleted = 0;
   let hasValidToothData = false;
+  let hasValidGroupData = false;
   
   // First, count teeth and calculate tooth-level metrics
   Object.keys(selectedTeethMaps).forEach(mapKey => {
@@ -57,6 +58,19 @@ export function TreatmentSummary({ plans, selectedTeethMaps }: TreatmentSummaryP
       });
     }
   });
+
+  // Calculate group treatment totals
+  plans.forEach(plan => {
+    if (plan.groupTreatmentDetails && plan.groupTreatmentDetails.length > 0) {
+      plan.groupTreatmentDetails.forEach(group => {
+        hasValidGroupData = true;
+        
+        // Add group totals to overall totals
+        totalTreatmentAmount += Number(group.totalTreatmentAmount) || 0;
+        totalPaidAmount += Number(group.totalPaidAmount) || 0;
+      });
+    }
+  });
   
   // Round the totals to avoid floating point precision issues
   totalTreatmentAmount = Math.round(totalTreatmentAmount * 100) / 100;
@@ -70,8 +84,8 @@ export function TreatmentSummary({ plans, selectedTeethMaps }: TreatmentSummaryP
   // Calculate remaining amount after rounding
   totalRemainingAmount = Math.max(0, totalTreatmentAmount - totalPaidAmount);
   
-  // Only use plan-level data if there's no valid tooth data
-  if (!hasValidToothData) {
+  // Only use plan-level data if there's no valid tooth data and no valid group data
+  if (!hasValidToothData && !hasValidGroupData) {
     const manualTotals = plans.reduce((acc, plan) => {
       return {
         treatment: acc.treatment + (Number(plan.treatmentAmount) || 0),

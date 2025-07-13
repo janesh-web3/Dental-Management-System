@@ -268,6 +268,32 @@ export interface TreatmentPlan {
     description: string;
   }>;
   selectedTeethDetails?: ToothData[];
+  groupTreatmentDetails?: Array<{
+    _id?: string;
+    groupName: "Ortho" | "Endo" | "Perio" | "Prostho" | "Surgery" | "General" | "Other";
+    procedure: string;
+    totalTreatmentAmount: number;
+    totalPaidAmount: number;
+    totalRemainingAmount: number;
+    startDate?: string;
+    followUpDate?: string;
+    followUpDateNp?: string;
+    completionDate?: string;
+    completionDateNp?: string;
+    treatedByDoctor: string | null;
+    isCompleted: boolean;
+    dailyTreatments: Array<{
+      _id?: string;
+      date: string;
+      treatmentAmount: number;
+      paidAmount: number;
+      remainingAmount: number;
+      treatedByDoctor: string | null;
+      notes: string;
+      procedure: string;
+      isCompleted: boolean;
+    }>;
+  }>;
 }
 
 export type MedicalHistory = {

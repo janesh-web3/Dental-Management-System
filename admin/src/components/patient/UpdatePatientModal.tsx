@@ -26,6 +26,7 @@ import { TreatmentSummary } from "./TreatmentSummary";
 import { PaymentHistoryDialog } from "./PaymentHistoryDialog";
 import { DocumentComparison } from "./DocumentComparison";
 import { PatientDocumentUploadButton } from "./PatientDocumentUploadButton";
+import { GroupTreatmentManager } from "./GroupTreatmentManager";
 import { convertToNepaliDate, convertToEnglishDate } from "@/lib/utils";
 import { NepaliDatePickerComponent } from "@/components/ui/nepali-date-picker";
 
@@ -76,6 +77,32 @@ interface TreatmentPlan {
     totalTreatmentAmount: number;
     totalPaidAmount: number;
     totalRemainingAmount: number;
+  }>;
+  groupTreatmentDetails?: Array<{
+    _id?: string;
+    groupName: "Ortho" | "Endo" | "Perio" | "Prostho" | "Surgery" | "General" | "Other";
+    procedure: string;
+    totalTreatmentAmount: number;
+    totalPaidAmount: number;
+    totalRemainingAmount: number;
+    startDate?: string;
+    followUpDate?: string;
+    followUpDateNp?: string;
+    completionDate?: string;
+    completionDateNp?: string;
+    treatedByDoctor: string | null;
+    isCompleted: boolean;
+    dailyTreatments: Array<{
+      _id?: string;
+      date: string;
+      treatmentAmount: number;
+      paidAmount: number;
+      remainingAmount: number;
+      treatedByDoctor: string | null;
+      notes: string;
+      procedure: string;
+      isCompleted: boolean;
+    }>;
   }>;
 }
 
@@ -249,6 +276,32 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                   notes: dt.notes || "",
                   isCompleted: dt.isCompleted || false,
                 })) || []
+              })) || [],
+              groupTreatmentDetails: plan.groupTreatmentDetails?.map(group => ({
+                _id: (group as any)._id || "",
+                groupName: (group.groupName as "Ortho" | "Endo" | "Perio" | "Prostho" | "Surgery" | "General" | "Other") || "General",
+                procedure: group.procedure || "",
+                totalTreatmentAmount: Number(group.totalTreatmentAmount) || 0,
+                totalPaidAmount: Number(group.totalPaidAmount) || 0,
+                totalRemainingAmount: Number(group.totalRemainingAmount) || 0,
+                startDate: group.startDate ? format(new Date(group.startDate), "yyyy-MM-dd") : "",
+                followUpDate: group.followUpDate ? format(new Date(group.followUpDate), "yyyy-MM-dd") : "",
+                followUpDateNp: group.followUpDate ? convertToNepaliDate(format(new Date(group.followUpDate), "yyyy-MM-dd")) : "",
+                completionDate: group.completionDate ? format(new Date(group.completionDate), "yyyy-MM-dd") : "",
+                completionDateNp: group.completionDate ? convertToNepaliDate(format(new Date(group.completionDate), "yyyy-MM-dd")) : "",
+                treatedByDoctor: (group.treatedByDoctor as any)?._id || group.treatedByDoctor || null,
+                isCompleted: group.isCompleted || false,
+                dailyTreatments: group.dailyTreatments?.map(dt => ({
+                  _id: (dt as any)._id || "",
+                  date: dt.date ? format(new Date(dt.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+                  treatmentAmount: Number(dt.treatmentAmount) || 0,
+                  paidAmount: Number(dt.paidAmount) || 0,
+                  remainingAmount: Number(dt.remainingAmount) || 0,
+                  treatedByDoctor: dt.treatedByDoctor || null,
+                  procedure: dt.procedure || "",
+                  notes: dt.notes || "",
+                  isCompleted: dt.isCompleted || false,
+                })) || []
               })) || []
             })) || [],
         },
@@ -394,6 +447,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
             clinicalFindings: [],
             otherFindings: "",
             selectedTeethDetails: [],
+            groupTreatmentDetails: [],
             treatmentDocuments: [],
             isCompleted: false,
           },
@@ -493,6 +547,48 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                 }
               );
 
+              // Format group treatment details for backend
+              const formattedGroupTreatmentDetails = plan.groupTreatmentDetails?.map(group => {
+                // Calculate group totals from daily treatments
+                const groupTotalTreatmentAmount = group.dailyTreatments?.reduce(
+                  (sum, dt) => sum + (Number(dt.treatmentAmount) || 0), 0
+                ) || group.totalTreatmentAmount || 0;
+                
+                const groupTotalPaidAmount = group.dailyTreatments?.reduce(
+                  (sum, dt) => sum + (Number(dt.paidAmount) || 0), 0
+                ) || group.totalPaidAmount || 0;
+
+                // Add group totals to plan totals
+                planTotalTreatmentAmount += groupTotalTreatmentAmount;
+                planTotalPaidAmount += groupTotalPaidAmount;
+                planTotalRemainingAmount += (groupTotalTreatmentAmount - groupTotalPaidAmount);
+
+                return {
+                  _id: group._id,
+                  groupName: group.groupName,
+                  procedure: group.procedure || "",
+                  totalTreatmentAmount: groupTotalTreatmentAmount,
+                  totalPaidAmount: groupTotalPaidAmount,
+                  totalRemainingAmount: groupTotalTreatmentAmount - groupTotalPaidAmount,
+                  startDate: group.startDate ? formatSafeDate(group.startDate) : undefined,
+                  followUpDate: group.followUpDate ? formatSafeDate(group.followUpDate) : undefined,
+                  completionDate: group.completionDate ? formatSafeDate(group.completionDate) : undefined,
+                  treatedByDoctor: group.treatedByDoctor || null,
+                  isCompleted: group.isCompleted || false,
+                  dailyTreatments: group.dailyTreatments?.map(dt => ({
+                    _id: dt._id,
+                    date: formatSafeDate(dt.date),
+                    treatmentAmount: Number(dt.treatmentAmount) || 0,
+                    paidAmount: Number(dt.paidAmount) || 0,
+                    remainingAmount: Number(dt.remainingAmount) || 0,
+                    treatedByDoctor: dt.treatedByDoctor || null,
+                    notes: dt.notes || "",
+                    procedure: dt.procedure || "",
+                    isCompleted: dt.isCompleted || false,
+                  })) || []
+                };
+              }) || [];
+
               // IMPORTANT: Don't modify the plan's treatmentDocuments field at all
               // Just pass the original _id to ensure document references are preserved
               return {
@@ -502,6 +598,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                 advancedAmount: Number(plan.advancedAmount) || 0,
                 balanceAmount: Number(plan.balanceAmount) || 0,
                 selectedTeethDetails,
+                groupTreatmentDetails: formattedGroupTreatmentDetails,
                 followUpDate: plan.followUpDate
                   ? formatSafeDate(plan.followUpDate)
                   : undefined,
@@ -916,6 +1013,64 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
       }
 
       return prevMapCopy;
+    });
+  };
+
+  const handleGroupTreatmentAdd = (
+    treatmentIndex: number,
+    groupTreatment: any
+  ) => {
+    setFormData((prev) => {
+      const newPlanning = [...prev.medicalDetails.treatmentPlanning];
+      if (!newPlanning[treatmentIndex].groupTreatmentDetails) {
+        newPlanning[treatmentIndex].groupTreatmentDetails = [];
+      }
+      newPlanning[treatmentIndex].groupTreatmentDetails!.push(groupTreatment);
+      
+      return {
+        ...prev,
+        medicalDetails: {
+          ...prev.medicalDetails,
+          treatmentPlanning: newPlanning,
+        },
+      };
+    });
+  };
+
+  const handleGroupTreatmentUpdate = (
+    treatmentIndex: number,
+    groupIndex: number,
+    groupTreatment: any
+  ) => {
+    setFormData((prev) => {
+      const newPlanning = [...prev.medicalDetails.treatmentPlanning];
+      newPlanning[treatmentIndex].groupTreatmentDetails![groupIndex] = groupTreatment;
+      
+      return {
+        ...prev,
+        medicalDetails: {
+          ...prev.medicalDetails,
+          treatmentPlanning: newPlanning,
+        },
+      };
+    });
+  };
+
+  const handleGroupTreatmentRemove = (
+    treatmentIndex: number,
+    groupIndex: number
+  ) => {
+    setFormData((prev) => {
+      const newPlanning = [...prev.medicalDetails.treatmentPlanning];
+      newPlanning[treatmentIndex].groupTreatmentDetails!.splice(groupIndex, 1);
+      
+      return {
+        ...prev,
+        medicalDetails: {
+          ...prev.medicalDetails,
+          treatmentPlanning: newPlanning,
+        },
+      };
     });
   };
 
@@ -1547,6 +1702,34 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                     selectedTeethMaps={selectedTeethMaps}
                   />
                 )}
+
+                {/* Group Treatment Management */}
+                {formData.medicalDetails.treatmentPlanning.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium border-b pb-2">Group Treatment Management</h3>
+                    {formData.medicalDetails.treatmentPlanning.map((plan, planIndex) => (
+                      <div key={planIndex} className="space-y-4">
+                        <h4 className="text-md font-medium text-muted-foreground">
+                          Treatment Plan {planIndex + 1} - Group Treatments
+                        </h4>
+                        <GroupTreatmentManager
+                          groupTreatments={plan.groupTreatmentDetails || []}
+                          doctors={doctors}
+                          onAddGroupTreatment={(groupTreatment) =>
+                            handleGroupTreatmentAdd(planIndex, groupTreatment)
+                          }
+                          onUpdateGroupTreatment={(groupIndex, groupTreatment) =>
+                            handleGroupTreatmentUpdate(planIndex, groupIndex, groupTreatment)
+                          }
+                          onRemoveGroupTreatment={(groupIndex) =>
+                            handleGroupTreatmentRemove(planIndex, groupIndex)
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Add the dialog component just before the closing </div> tag of the medical tabscontent */}
                 <PaymentHistoryDialog
                   isOpen={showPaymentHistory}

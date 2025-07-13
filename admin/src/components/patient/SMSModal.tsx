@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { useState, useEffect } from "react";
-import { Loader2, Send, Check, Calendar, Users, AlertCircle, DollarSign, MessageCircle } from "lucide-react";
+import { Loader2, Send, Calendar, Users, AlertCircle, DollarSign, MessageCircle } from "lucide-react";
 import { toast } from "react-toastify";
 import { crudRequest } from "@/lib/api";
 import {

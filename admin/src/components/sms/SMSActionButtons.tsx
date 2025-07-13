@@ -7,7 +7,6 @@ import { crudRequest } from '@/lib/api';
 
 export function SMSActionButtons({ 
   patientId, 
-  patientName, 
   phoneNumber, 
   followUpDate,
   hasPaymentDue,
@@ -42,19 +41,19 @@ export function SMSActionButtons({
         ? `/api/sms/followup/${patientId}`
         : `/api/sms/payment-due/${patientId}`;
       
-      const response = await crudRequest({
-        url: endpoint,
-        method: 'POST',
-      });
+      const response = await crudRequest(
+        'POST',
+        endpoint
+      );
 
-      if (response.success) {
+      if (response && typeof response === 'object' && 'success' in response) {
         toast({
           title: 'Success',
           description: `SMS ${type === 'followup' ? 'follow-up' : 'payment reminder'} sent successfully.`,
         });
         onSuccess?.();
       } else {
-        throw new Error(response.message || 'Failed to send SMS');
+        throw new Error((response as any)?.message || 'Failed to send SMS');
       }
     } catch (error: any) {
       console.error(`Error sending ${type} SMS:`, error);

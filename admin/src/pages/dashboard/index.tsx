@@ -5,7 +5,6 @@ import { format } from "date-fns";
 import {
   Users,
   Calendar,
-  User,
   FileText,
   Stethoscope,
   Image as ImageIcon,

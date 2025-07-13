@@ -1,11 +1,11 @@
 const mongoose = require("mongoose");
-const http = require('http');
+const http = require("http");
 const express = require("express");
 const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const { initSocket } = require('./socket');
+const { initSocket } = require("./socket");
 
 // Import routes
 const userRouter = require("./routes/userRoute.js");
@@ -29,7 +29,7 @@ const notificationRouter = require("./routes/notificationRoutes.js");
 const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
 
 // Import multer error handling middleware
-const { handleMulterError } = require('./middleware/multer');
+const { handleMulterError } = require("./middleware/multer");
 
 const app = express();
 const server = http.createServer(app);
@@ -48,7 +48,8 @@ app.use(
       "http://localhost:5174",
       "https://dms.crownagi.com",
       "https://admin.om-shreenagar-dental-clinic.com",
-      "https://om-shreenagar-dental-clinic.com"
+      "https://om-shreenagar-dental-clinic.com",
+      // "https://muskan.crownagi.com",
     ],
   })
 );
@@ -86,11 +87,11 @@ const port = process.env.PORT || 8080;
 
 server.listen(process.env.PORT, () => {
   console.log(`Server is running on port ${process.env.PORT}`);
-  
+
   // Make io accessible in other files
-  app.set('io', io);  
+  app.set("io", io);
   // Schedule automatic updates of doctor patient counts
   // Update every 30 minutes by default
   scheduleDoctorPatientCountUpdates(30);
-  console.log('Scheduled automatic doctor patient count updates');
+  console.log("Scheduled automatic doctor patient count updates");
 });

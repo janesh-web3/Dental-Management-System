@@ -21,7 +21,6 @@ import {
   LayoutGrid,
   LayoutList,
   FilePlus,
-  Filter,
   User,
   FileX,
   Printer,

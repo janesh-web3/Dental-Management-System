@@ -38,6 +38,11 @@ const groupTreatmentDetailsSchema = new mongoose.Schema({
 
 // Add pre-save middleware for group treatment calculations
 groupTreatmentDetailsSchema.pre("save", function (next) {
+  // Ensure dailyTreatments is always an array
+  if (!this.dailyTreatments) {
+    this.dailyTreatments = [];
+  }
+
   if (this.dailyTreatments && this.dailyTreatments.length > 0) {
     // Calculate totals from daily treatments
     const calculatedTreatmentAmount = this.dailyTreatments.reduce(
@@ -49,12 +54,11 @@ groupTreatmentDetailsSchema.pre("save", function (next) {
       0
     );
     
-    // Only update totals if they haven't been explicitly set (i.e., they are 0 or undefined)
-    // This preserves the values sent from the frontend
-    if (!this.totalTreatmentAmount || this.totalTreatmentAmount === 0) {
+    // Update totals if they weren't explicitly set or if calculated amounts are greater
+    if (!this.totalTreatmentAmount || this.totalTreatmentAmount === 0 || calculatedTreatmentAmount > this.totalTreatmentAmount) {
       this.totalTreatmentAmount = calculatedTreatmentAmount;
     }
-    if (!this.totalPaidAmount || this.totalPaidAmount === 0) {
+    if (!this.totalPaidAmount || this.totalPaidAmount === 0 || calculatedPaidAmount > this.totalPaidAmount) {
       this.totalPaidAmount = calculatedPaidAmount;
     }
     
@@ -65,9 +69,22 @@ groupTreatmentDetailsSchema.pre("save", function (next) {
     const allCompleted = this.dailyTreatments.every(treatment => treatment.isCompleted);
     if (allCompleted && this.dailyTreatments.length > 0 && !this.isCompleted) {
       this.isCompleted = true;
-      this.completionDate = new Date();
+      if (!this.completionDate) {
+        this.completionDate = new Date();
+      }
     }
+
+    // If no daily treatments are completed, ensure group is not marked as completed
+    const anyCompleted = this.dailyTreatments.some(treatment => treatment.isCompleted);
+    if (!anyCompleted && this.isCompleted) {
+      this.isCompleted = false;
+      this.completionDate = undefined;
+    }
+  } else {
+    // If no daily treatments, ensure remaining amount is calculated correctly
+    this.totalRemainingAmount = (this.totalTreatmentAmount || 0) - (this.totalPaidAmount || 0);
   }
+  
   next();
 });
 
@@ -180,6 +197,11 @@ treatmentPlanningSchema.methods.calculateTotals = function() {
   // Calculate totals for groupTreatmentDetails
   if (this.groupTreatmentDetails && this.groupTreatmentDetails.length > 0) {
     this.groupTreatmentDetails.forEach(group => {
+      // Ensure daily treatments is an array
+      if (!group.dailyTreatments) {
+        group.dailyTreatments = [];
+      }
+
       // If group has daily treatments, calculate from them
       if (group.dailyTreatments && group.dailyTreatments.length > 0) {
         const groupTreatmentAmount = group.dailyTreatments.reduce((sum, treatment) => 
@@ -188,19 +210,25 @@ treatmentPlanningSchema.methods.calculateTotals = function() {
         const groupPaidAmount = group.dailyTreatments.reduce((sum, treatment) => 
           sum + (Number(treatment.paidAmount) || 0), 0);
 
-        // Only update if the calculated amount is greater than current amount
-        // This preserves manually set totals from frontend
-        if (groupTreatmentAmount > 0 && (!group.totalTreatmentAmount || group.totalTreatmentAmount === 0)) {
-          group.totalTreatmentAmount = groupTreatmentAmount;
-        }
-        if (groupPaidAmount > 0 && (!group.totalPaidAmount || group.totalPaidAmount === 0)) {
-          group.totalPaidAmount = groupPaidAmount;
-        }
-        
+        // Update totals based on daily treatments
+        group.totalTreatmentAmount = Math.max(groupTreatmentAmount, group.totalTreatmentAmount || 0);
+        group.totalPaidAmount = Math.max(groupPaidAmount, group.totalPaidAmount || 0);
         group.totalRemainingAmount = group.totalTreatmentAmount - group.totalPaidAmount;
+
+        // Check completion status
+        const allCompleted = group.dailyTreatments.every(dt => dt.isCompleted);
+        if (allCompleted && group.dailyTreatments.length > 0) {
+          group.isCompleted = true;
+          if (!group.completionDate) {
+            group.completionDate = new Date();
+          }
+        }
+      } else {
+        // No daily treatments, just ensure remaining amount is calculated
+        group.totalRemainingAmount = (group.totalTreatmentAmount || 0) - (group.totalPaidAmount || 0);
       }
       
-      // Add to plan totals (use the group's total amounts, not recalculated ones)
+      // Add to plan totals (use the group's total amounts)
       totalPlanAmount += group.totalTreatmentAmount || 0;
       totalPaidAmount += group.totalPaidAmount || 0;
     });

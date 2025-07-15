@@ -2668,6 +2668,19 @@ export function PatientTable() {
               },
               {} as Record<string, Record<string, any>>
             )}
+            groupTreatmentMaps={paymentPatient.medicalDetails.reduce(
+              (acc, medicalDetail, medicalDetailIndex) => {
+                medicalDetail.treatmentPlanning.forEach((plan, planIndex) => {
+                  const mapKey = `${medicalDetailIndex}-${planIndex}`;
+                  
+                  if (plan.groupTreatmentDetails && plan.groupTreatmentDetails.length > 0) {
+                    acc[mapKey] = plan.groupTreatmentDetails;
+                  }
+                });
+                return acc;
+              },
+              {} as Record<string, any[]>
+            )}
             onPaymentUpdate={(
               mapKey,
               toothNumber,
@@ -2702,6 +2715,56 @@ export function PatientTable() {
                     treatment.paidAmount = newPaidAmount;
                     treatment.remainingAmount =
                       treatment.treatmentAmount - newPaidAmount;
+                  }
+                }
+
+                return updatedPatient;
+              });
+
+              fetchPatient(currentPage, itemsPerPage, searchQuery);
+            }}
+            onGroupPaymentUpdate={(
+              mapKey,
+              groupIndex,
+              treatmentIndex,
+              newPaidAmount
+            ) => {
+              setPaymentPatient((prevPatient) => {
+                if (!prevPatient) return null;
+
+                const updatedPatient = { ...prevPatient };
+                const [medicalDetailIndex, planIndex] = mapKey
+                  .split("-")
+                  .map(Number);
+
+                if (
+                  updatedPatient.medicalDetails[medicalDetailIndex]
+                    ?.treatmentPlanning[planIndex]?.groupTreatmentDetails &&
+                  updatedPatient.medicalDetails[medicalDetailIndex]
+                    .treatmentPlanning[planIndex].groupTreatmentDetails[groupIndex]
+                ) {
+                  const groupTreatment = updatedPatient.medicalDetails[
+                    medicalDetailIndex
+                  ].treatmentPlanning[planIndex].groupTreatmentDetails[groupIndex];
+                  
+                  if (
+                    groupTreatment.dailyTreatments &&
+                    groupTreatment.dailyTreatments[treatmentIndex]
+                  ) {
+                    const treatment = groupTreatment.dailyTreatments[treatmentIndex];
+                    treatment.paidAmount = newPaidAmount;
+                    treatment.remainingAmount = treatment.treatmentAmount - newPaidAmount;
+                    
+                    // Update group totals
+                    const totalPaid = groupTreatment.dailyTreatments.reduce(
+                      (sum, t) => sum + (t.paidAmount || 0), 0
+                    );
+                    const totalAmount = groupTreatment.dailyTreatments.reduce(
+                      (sum, t) => sum + (t.treatmentAmount || 0), 0
+                    );
+                    
+                    groupTreatment.totalPaidAmount = totalPaid;
+                    groupTreatment.totalRemainingAmount = totalAmount - totalPaid;
                   }
                 }
 

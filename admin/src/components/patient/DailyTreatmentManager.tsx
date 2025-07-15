@@ -62,6 +62,7 @@ export function DailyTreatmentManager({
     treatmentAmount: 0,
     paidAmount: 0,
     remainingAmount: 0,
+    paymentDate: format(new Date(), "yyyy-MM-dd"), // Default to today's date
     treatedByDoctor: "",
     procedure: "RVG X-Ray",
     notes: "",
@@ -117,6 +118,7 @@ export function DailyTreatmentManager({
       treatmentAmount: 0,
       paidAmount: 0,
       remainingAmount: 0,
+      paymentDate: "", // Reset payment date
       treatedByDoctor: newTreatment.treatedByDoctor,
       procedure: "RVG X-Ray", // Default to RVG X-Ray
       notes: "",
@@ -325,7 +327,7 @@ export function DailyTreatmentManager({
           <CollapsibleContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 border rounded-md mb-3">
               <div className="space-y-2">
-                <Label>Date</Label>
+                <Label>Treatment Date *</Label>
                 <Input
                   type="date"
                   value={newTreatment.date}
@@ -351,7 +353,8 @@ export function DailyTreatmentManager({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>              <div className="space-y-2 col-span-2">
+              </div>              
+              <div className="space-y-2 col-span-2">
                 <Label>Procedure</Label>
                 <ProcedureDropdown
                   value={newTreatment.procedure || ""}
@@ -381,13 +384,41 @@ export function DailyTreatmentManager({
                 />
               </div>
               <div className="space-y-2 col-span-2">
-                <Label>Notes</Label>
-                <Textarea
-                  placeholder="Treatment notes"
-                  value={newTreatment.notes || ""}
-                  onChange={(e) => handleChange("notes", e.target.value)}
-                  className="min-h-[100px] resize-y"
+                <Label>Payment Date</Label>
+                <Input
+                  type="date"
+                  value={newTreatment.paymentDate || ""}
+                  onChange={(e) => handleChange("paymentDate", e.target.value)}
+                  placeholder="Select payment date"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Leave empty if payment not made yet
+                </p>
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label>Treatment Notes & Observations</Label>
+                <Textarea
+                  placeholder="Enter detailed treatment notes: pain level, wire change, aligner number, patient response, observations, next steps..."
+                  value={newTreatment.notes || ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Limit to 500 characters
+                    if (value.length <= 500) {
+                      handleChange("notes", value);
+                    }
+                  }}
+                  className="min-h-[120px] resize-y border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  rows={4}
+                  maxLength={500}
+                />
+                <div className="flex justify-between items-center">
+                  <p className="text-xs text-muted-foreground">
+                    Add treatment details, patient response, next steps, etc.
+                  </p>
+                  <span className="text-xs text-gray-500">
+                    {(newTreatment.notes || "").length}/500 characters
+                  </span>
+                </div>
               </div>
               <div className="col-span-2">
                 <Button
@@ -412,11 +443,12 @@ export function DailyTreatmentManager({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
+                  <TableHead>Treatment Date</TableHead>
                   <TableHead>Doctor</TableHead>
                   <TableHead>Procedure</TableHead> {/* Add this new column */}
                   <TableHead className="text-right">Total Amount</TableHead>
                   <TableHead className="text-right">Paid</TableHead>
+                  <TableHead>Payment Date</TableHead>
                   <TableHead className="text-right">Remaining</TableHead>
                   <TableHead>Notes</TableHead>
                   <TableHead>Completed</TableHead> {/* Add this new column */}
@@ -444,14 +476,27 @@ export function DailyTreatmentManager({
                     <TableCell className="text-right text-green-600">
                       ₹{treatment.paidAmount}
                     </TableCell>
+                    <TableCell>
+                      {treatment.paymentDate
+                        ? format(new Date(treatment.paymentDate), "dd/MM/yyyy")
+                        : treatment.paidAmount > 0
+                        ? "Not recorded"
+                        : "-"}
+                    </TableCell>
                     <TableCell className="text-right text-red-600">
                       ₹{treatment.remainingAmount}
                     </TableCell>
                     <TableCell
-                      className="truncate max-w-[120px]"
+                      className="max-w-[150px]"
                       title={treatment.notes}
                     >
-                      {treatment.notes || "-"}
+                      {treatment.notes ? (
+                        <div className="truncate text-sm">
+                          {treatment.notes}
+                        </div>
+                      ) : (
+                        "-"
+                      )}
                     </TableCell>
                     <TableCell>
                       <Checkbox

@@ -7,12 +7,12 @@ const initSocket = (server) => {
   io = socketIO(server, {
     cors: {
       origin: [
-        // "http://localhost:5173",
-        // "http://localhost:5174",
+        "http://localhost:5173",
+        "http://localhost:5174",
         // "https://dms.crownagi.com",
         // "https://admin.om-shreenagar-dental-clinic.com",
         // "https://om-shreenagar-dental-clinic.com",
-        "https://muskan.crownagi.com",
+        // "https://muskan.crownagi.com",
       ],
       methods: ["GET", "POST", "DELETE", "PUT", "PATCH"],
       credentials: true,

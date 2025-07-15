@@ -70,6 +70,7 @@ interface TreatmentPlan {
       treatmentAmount: number;
       paidAmount: number;
       remainingAmount: number;
+      paymentDate?: string; // Add payment date field
       treatedByDoctor: string | null;
       notes: string;
       procedure: string;
@@ -98,6 +99,7 @@ interface TreatmentPlan {
       treatmentAmount: number;
       paidAmount: number;
       remainingAmount: number;
+      paymentDate?: string; // Add payment date field
       treatedByDoctor: string | null;
       notes: string;
       procedure: string;
@@ -271,6 +273,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                   treatmentAmount: Number(dt.treatmentAmount) || 0,
                   paidAmount: Number(dt.paidAmount) || 0,
                   remainingAmount: Number(dt.remainingAmount) || 0,
+                  paymentDate: dt.paymentDate ? format(new Date(dt.paymentDate), "yyyy-MM-dd") : "",
                   treatedByDoctor: dt.treatedByDoctor || null,
                   procedure: dt.procedure || "",
                   notes: dt.notes || "",
@@ -297,6 +300,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                   treatmentAmount: Number(dt.treatmentAmount) || 0,
                   paidAmount: Number(dt.paidAmount) || 0,
                   remainingAmount: Number(dt.remainingAmount) || 0,
+                  paymentDate: (dt as any).paymentDate ? format(new Date((dt as any).paymentDate), "yyyy-MM-dd") : "",
                   treatedByDoctor: dt.treatedByDoctor || null,
                   procedure: dt.procedure || "",
                   notes: dt.notes || "",
@@ -511,6 +515,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                       treatmentAmount: Number(treatment.treatmentAmount) || 0,
                       paidAmount: Number(treatment.paidAmount) || 0,
                       remainingAmount: Number(treatment.remainingAmount) || 0,
+                      paymentDate: treatment.paymentDate ? formatSafeDate(treatment.paymentDate) : null,
                       treatedByDoctor: treatment.treatedByDoctor || null,
                       notes: treatment.notes || "",
                       procedure: treatment.procedure || "",
@@ -581,6 +586,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                     treatmentAmount: Number(dt.treatmentAmount) || 0,
                     paidAmount: Number(dt.paidAmount) || 0,
                     remainingAmount: Number(dt.remainingAmount) || 0,
+                    paymentDate: dt.paymentDate ? formatSafeDate(dt.paymentDate) : null,
                     treatedByDoctor: dt.treatedByDoctor || null,
                     notes: dt.notes || "",
                     procedure: dt.procedure || "",

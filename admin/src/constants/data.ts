@@ -64,13 +64,13 @@ export const navItems: NavItem[] = [
     label: "Contacts",
     notificationEnabled: true,
   },
-  // {
-  //   title: "SMS",
-  //   href: "/sms",
-  //   icon: "message",
-  //   label: "SMS",
-  //   notificationEnabled: true,
-  // },
+  {
+    title: "SMS",
+    href: "/sms",
+    icon: "message",
+    label: "SMS",
+    notificationEnabled: true,
+  },
 ];
 
 export const users = [

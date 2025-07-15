@@ -42,6 +42,7 @@ interface GroupTreatmentDetails {
     treatmentAmount: number;
     paidAmount: number;
     remainingAmount: number;
+    paymentDate?: string; // Add payment date field
     treatedByDoctor: string | null;
     notes: string;
     procedure: string;
@@ -55,6 +56,7 @@ interface DailyTreatment {
   treatmentAmount: number;
   paidAmount: number;
   remainingAmount: number;
+  paymentDate?: string; // Add payment date field
   treatedByDoctor: string | null;
   notes: string;
   procedure: string;
@@ -126,6 +128,7 @@ export function GroupTreatmentManager({
       treatmentAmount: 0,
       paidAmount: 0,
       remainingAmount: 0,
+      paymentDate: format(new Date(), "yyyy-MM-dd"), // Default to today's date
       treatedByDoctor: null,
       notes: "",
       procedure: "",
@@ -469,7 +472,7 @@ export function GroupTreatmentManager({
                 <div className="space-y-3">
                   {groupTreatment.dailyTreatments.map((treatment, treatmentIndex) => (
                     <Card key={treatmentIndex} className="p-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-3">
                         <div className="space-y-1">
                           <Label className="text-xs">Date</Label>
                           <Input
@@ -491,15 +494,22 @@ export function GroupTreatmentManager({
                           <Input
                             type="number"
                             value={treatment.treatmentAmount}
-                            onChange={(e) =>
-                              updateDailyTreatment(
-                                groupIndex,
-                                treatmentIndex,
-                                "treatmentAmount",
-                                Number(e.target.value) || 0
-                              )
-                            }
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              // Validate non-negative numbers
+                              if (value >= 0) {
+                                updateDailyTreatment(
+                                  groupIndex,
+                                  treatmentIndex,
+                                  "treatmentAmount",
+                                  value
+                                );
+                              }
+                            }}
                             className="text-sm"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
                           />
                         </div>
                         <div className="space-y-1">
@@ -507,15 +517,48 @@ export function GroupTreatmentManager({
                           <Input
                             type="number"
                             value={treatment.paidAmount}
-                            onChange={(e) =>
-                              updateDailyTreatment(
-                                groupIndex,
-                                treatmentIndex,
-                                "paidAmount",
-                                Number(e.target.value) || 0
-                              )
-                            }
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              // Validate non-negative and not exceeding treatment amount
+                              if (value >= 0 && value <= treatment.treatmentAmount) {
+                                updateDailyTreatment(
+                                  groupIndex,
+                                  treatmentIndex,
+                                  "paidAmount",
+                                  value
+                                );
+                              }
+                            }}
                             className="text-sm"
+                            min="0"
+                            max={treatment.treatmentAmount}
+                            step="0.01"
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Payment Date</Label>
+                          <Input
+                            type="date"
+                            value={treatment.paymentDate || ""}
+                            onChange={(e) => {
+                              const selectedDate = new Date(e.target.value);
+                              const today = new Date();
+                              today.setHours(23, 59, 59, 999); // End of today
+                              
+                              // Validate payment date is not in the future
+                              if (selectedDate <= today) {
+                                updateDailyTreatment(
+                                  groupIndex,
+                                  treatmentIndex,
+                                  "paymentDate",
+                                  e.target.value
+                                );
+                              }
+                            }}
+                            className="text-sm"
+                            placeholder="Payment date"
+                            max={format(new Date(), "yyyy-MM-dd")}
                           />
                         </div>
                         <div className="space-y-1">
@@ -583,20 +626,28 @@ export function GroupTreatmentManager({
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Notes</Label>
+                          <Label className="text-xs">Daily Notes & Observations</Label>
                           <Textarea
                             value={treatment.notes}
-                            onChange={(e) =>
-                              updateDailyTreatment(
-                                groupIndex,
-                                treatmentIndex,
-                                "notes",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Enter notes"
-                            className="text-sm min-h-[60px]"
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              // Limit to 500 characters
+                              if (value.length <= 500) {
+                                updateDailyTreatment(
+                                  groupIndex,
+                                  treatmentIndex,
+                                  "notes",
+                                  value
+                                );
+                              }
+                            }}
+                            placeholder="Enter daily notes: pain level, wire change, aligner number, patient response, treatment progress, observations..."
+                            className="text-sm min-h-[80px] resize-none border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            maxLength={500}
                           />
+                          <div className="text-xs text-gray-500">
+                            {(treatment.notes || "").length}/500 characters
+                          </div>
                         </div>
                       </div>
                     </Card>

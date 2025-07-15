@@ -13,12 +13,19 @@ interface PaymentHistoryDialogProps {
   isOpen: boolean;
   onClose: () => void;
   selectedTeethMaps: Record<string, Record<string, ToothData>>;
+  groupTreatmentMaps?: Record<string, any[]>; // Add group treatment maps
   onPaymentUpdate: (
     mapKey: string,
     toothNumber: string,
     treatmentIndex: number,
     newPaidAmount: number
   ) => void;
+  onGroupPaymentUpdate?: (
+    mapKey: string,
+    groupIndex: number,
+    treatmentIndex: number,
+    newPaidAmount: number
+  ) => void; // Add group payment update callback
   patientId: string;
   medicalDetailId: string;
   patient: Patient; // Add the patient prop
@@ -28,7 +35,9 @@ export function PaymentHistoryDialog({
   isOpen,
   onClose,
   selectedTeethMaps,
+  groupTreatmentMaps = {},
   onPaymentUpdate,
+  onGroupPaymentUpdate,
   patientId,
   medicalDetailId,
   patient
@@ -38,11 +47,14 @@ export function PaymentHistoryDialog({
 
   // Prepare data for display - treatments with remaining balances
   const treatmentsWithBalance: {
+    type: 'tooth' | 'group';
     mapKey: string;
-    toothNumber: string;
+    toothNumber?: string;
+    groupIndex?: number;
     treatmentIndex: number;
     date: string;
-    tooth: ToothData;
+    tooth?: ToothData;
+    groupTreatment?: any;
     treatment: {
       _id?: string;
       date: string;
@@ -55,17 +67,40 @@ export function PaymentHistoryDialog({
     };
   }[] = [];
 
-  // Extract treatments with remaining amounts
+  // Extract tooth-based treatments with remaining amounts
   Object.entries(selectedTeethMaps).forEach(([mapKey, teeth]) => {
     Object.entries(teeth).forEach(([toothNumber, tooth]) => {
       tooth.dailyTreatments?.forEach((treatment, index) => {
         if (treatment.remainingAmount > 0) {
           treatmentsWithBalance.push({
+            type: 'tooth',
             mapKey,
             toothNumber,
             treatmentIndex: index,
             date: treatment.date,
             tooth,
+            treatment: {
+              ...treatment,
+              _id: treatment._id
+            },
+          });
+        }
+      });
+    });
+  });
+
+  // Extract group-based treatments with remaining amounts
+  Object.entries(groupTreatmentMaps).forEach(([mapKey, groupTreatments]) => {
+    groupTreatments?.forEach((groupTreatment, groupIndex) => {
+      groupTreatment.dailyTreatments?.forEach((treatment: any, treatmentIndex: number) => {
+        if (treatment.remainingAmount > 0) {
+          treatmentsWithBalance.push({
+            type: 'group',
+            mapKey,
+            groupIndex,
+            treatmentIndex,
+            date: treatment.date,
+            groupTreatment,
             treatment: {
               ...treatment,
               _id: treatment._id
@@ -90,7 +125,7 @@ export function PaymentHistoryDialog({
     }
   };
 
-  const handlePaymentSubmit = async (
+  const handleToothPaymentSubmit = async (
     mapKey: string,
     toothNumber: string,
     treatmentIndex: number,
@@ -98,7 +133,7 @@ export function PaymentHistoryDialog({
     treatmentAmount: number,
     dailyTreatmentId?: string
   ) => {
-    const key = `${mapKey}-${toothNumber}-${treatmentIndex}`;
+    const key = `tooth-${mapKey}-${toothNumber}-${treatmentIndex}`;
     
     if (processingPayment === key) return;
     
@@ -158,6 +193,74 @@ export function PaymentHistoryDialog({
     }
   };
 
+  const handleGroupPaymentSubmit = async (
+    mapKey: string,
+    groupIndex: number,
+    treatmentIndex: number,
+    currentPaid: number,
+    treatmentAmount: number,
+    dailyTreatmentId?: string
+  ) => {
+    const key = `group-${mapKey}-${groupIndex}-${treatmentIndex}`;
+    
+    if (processingPayment === key) return;
+    
+    const newAmount = newPayments[key] || 0;
+    const remainingAmount = treatmentAmount - currentPaid;
+    
+    if (newAmount <= 0) {
+      toast.error("Please enter a valid payment amount");
+      return;
+    }
+    
+    if (newAmount > remainingAmount) {
+      toast.error("Payment cannot exceed the remaining balance of ₹" + remainingAmount);
+      return;
+    }
+    
+    try {
+      setProcessingPayment(key);
+      
+      // Extract treatment ID from mapKey
+      const [_, treatmentPlanIndex] = mapKey.split("-");
+      
+      // Get the treatment ID directly from patient data
+      const treatmentId = patient.medicalDetails[0]?.treatmentPlanning[parseInt(treatmentPlanIndex)]?._id;
+      
+      if (!dailyTreatmentId || !treatmentId) {
+        toast.error(`Missing required treatment information: ${!dailyTreatmentId ? 'Treatment Entry ID' : 'Treatment Plan ID'}`);
+        console.error("Missing IDs:", { dailyTreatmentId, treatmentId, mapKey, groupIndex });
+        return;
+      }
+      
+      // Call backend API to update group treatment payment
+      await crudRequest(
+        "PATCH",
+        `/patient/update-group-payment/${patientId}/${medicalDetailId}/${treatmentId}/${groupIndex}/${dailyTreatmentId}`,
+        { paidAmount: currentPaid + newAmount }
+      );
+      
+      // Update UI state via parent component
+      const totalPaid = currentPaid + newAmount;
+      if (onGroupPaymentUpdate) {
+        onGroupPaymentUpdate(mapKey, groupIndex, treatmentIndex, totalPaid);
+      }
+      
+      // Clear this entry from newPayments
+      setNewPayments((prev) => {
+        const { [key]: _, ...rest } = prev;
+        return rest;
+      });
+      
+      toast.success("Group treatment payment updated successfully");
+    } catch (error) {
+      console.error("Group payment update error:", error);
+      toast.error("Failed to update group payment: " + (error as Error).message);
+    } finally {
+      setProcessingPayment(null);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl">
@@ -172,21 +275,32 @@ export function PaymentHistoryDialog({
         ) : (
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
             {treatmentsWithBalance.map((item, _index) => {
-              const key = `${item.mapKey}-${item.toothNumber}-${item.treatmentIndex}`;
+              const key = item.type === 'tooth' 
+                ? `tooth-${item.mapKey}-${item.toothNumber}-${item.treatmentIndex}`
+                : `group-${item.mapKey}-${item.groupIndex}-${item.treatmentIndex}`;
+              
               return (
                 <Card key={key} className="overflow-hidden">
                   <CardContent className="p-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="font-medium">
-                          Tooth {item.toothNumber} Treatment
+                          {item.type === 'tooth' 
+                            ? `Tooth ${item.toothNumber} Treatment`
+                            : `${item.groupTreatment?.groupName || 'Group'} Treatment - ${item.groupTreatment?.procedure || 'Treatment'}`
+                          }
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Date: {format(new Date(item.treatment.date), "PP")}
                         </p>
-                        {item.tooth.procedure && (
+                        {item.type === 'tooth' && item.tooth?.procedure && (
                           <p className="text-sm">
                             Procedure: {item.tooth.procedure}
+                          </p>
+                        )}
+                        {item.type === 'group' && item.treatment.procedure && (
+                          <p className="text-sm">
+                            Procedure: {item.treatment.procedure}
                           </p>
                         )}
                         {item.treatment.notes && (
@@ -228,16 +342,27 @@ export function PaymentHistoryDialog({
                             max={item.treatment.remainingAmount}
                           />
                           <Button 
-                            onClick={() => 
-                              handlePaymentSubmit(
-                                item.mapKey, 
-                                item.toothNumber, 
-                                item.treatmentIndex,
-                                item.treatment.paidAmount,
-                                item.treatment.treatmentAmount,
-                                item.treatment._id
-                              )
-                            }
+                            onClick={() => {
+                              if (item.type === 'tooth' && item.toothNumber) {
+                                handleToothPaymentSubmit(
+                                  item.mapKey, 
+                                  item.toothNumber, 
+                                  item.treatmentIndex,
+                                  item.treatment.paidAmount,
+                                  item.treatment.treatmentAmount,
+                                  item.treatment._id
+                                );
+                              } else if (item.type === 'group' && item.groupIndex !== undefined) {
+                                handleGroupPaymentSubmit(
+                                  item.mapKey,
+                                  item.groupIndex,
+                                  item.treatmentIndex,
+                                  item.treatment.paidAmount,
+                                  item.treatment.treatmentAmount,
+                                  item.treatment._id
+                                );
+                              }
+                            }}
                             disabled={!newPayments[key] || processingPayment === key}
                           >
                             {processingPayment === key ? (

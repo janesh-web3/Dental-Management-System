@@ -171,6 +171,7 @@ import { PatientDocumentUploadButton } from "./PatientDocumentUploadButton";
 import DentalChart from "@/components/DentalChart";
 import ChildDentalChart from "@/components/ChildDentalChart";
 import { ServicePayment } from "@/types/finance";
+import { PaymentHistoryDialog } from "./PaymentHistoryDialog";
 
 interface ViewPatientDrawerProps {
   patient: Patient;
@@ -241,7 +242,7 @@ export function ViewPatientDrawer({
   onClose,
 }: ViewPatientDrawerProps) {
   console.log("Rendering ViewPatientDrawer for patient:", patient);
-  const [localPatient] = useState<Patient>(patient);
+  const [localPatient, setLocalPatient] = useState<Patient>(patient);
   const [_selectedMedicalRecordId, setSelectedMedicalRecordId] = useState<
     string | null
   >(null);
@@ -256,6 +257,9 @@ export function ViewPatientDrawer({
     useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+  
+  // Payment dialog state
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
   // Get all treatments and their teeth details for calculations
   const allTreatments = localPatient.medicalDetails.flatMap(
@@ -2452,6 +2456,12 @@ export function ViewPatientDrawer({
                                                                             <TableHead className="text-xs text-right">
                                                                               Paid
                                                                             </TableHead>
+                                                                            <TableHead className="text-xs">
+                                                                              Payment Date
+                                                                            </TableHead>
+                                                                            <TableHead className="text-xs">
+                                                                              Notes
+                                                                            </TableHead>
                                                                             <TableHead className="text-xs text-right">
                                                                               Status
                                                                             </TableHead>
@@ -2513,6 +2523,23 @@ export function ViewPatientDrawer({
                                                                                   {dailyTreatment.paidAmount ||
                                                                                     0}
                                                                                 </TableCell>
+                                                                                <TableCell className="text-xs py-2">
+                                                                                  {dailyTreatment.paymentDate
+                                                                                    ? formatSafeDate(dailyTreatment.paymentDate)
+                                                                                    : "Not paid"}
+                                                                                </TableCell>
+                                                                                <TableCell className="text-xs py-2 max-w-[150px]">
+                                                                                  {dailyTreatment.notes ? (
+                                                                                    <div 
+                                                                                      className="truncate" 
+                                                                                      title={dailyTreatment.notes}
+                                                                                    >
+                                                                                      {dailyTreatment.notes}
+                                                                                    </div>
+                                                                                  ) : (
+                                                                                    <span className="text-muted-foreground">No notes</span>
+                                                                                  )}
+                                                                                </TableCell>
                                                                                 <TableCell className="text-xs py-2 text-right">
                                                                                   <Badge
                                                                                     variant={
@@ -2546,57 +2573,6 @@ export function ViewPatientDrawer({
                                                                         </TableBody>
                                                                       </Table>
                                                                     </div>
-
-                                                                    {/* Treatment Notes */}
-                                                                    {tooth.dailyTreatments.some(
-                                                                      (t) =>
-                                                                        t.notes
-                                                                    ) && (
-                                                                      <div className="mt-3">
-                                                                        <p className="text-xs font-medium mb-2">
-                                                                          Treatment
-                                                                          Notes
-                                                                        </p>
-                                                                        <div className="space-y-2">
-                                                                          {tooth.dailyTreatments
-                                                                            .filter(
-                                                                              (
-                                                                                t
-                                                                              ) =>
-                                                                                t.notes
-                                                                            )
-                                                                            .map(
-                                                                              (
-                                                                                treatment,
-                                                                                idx
-                                                                              ) => (
-                                                                                <div
-                                                                                  key={
-                                                                                    idx
-                                                                                  }
-                                                                                  className="bg-muted/20 p-2 rounded-md"
-                                                                                >
-                                                                                  <p className="text-xs text-muted-foreground mb-1">
-                                                                                    {formatSafeDate(
-                                                                                      treatment.date
-                                                                                    )}{" "}
-                                                                                    -{" "}
-                                                                                    {treatment.procedure ||
-                                                                                      "General"}
-
-                                                                                    :
-                                                                                  </p>
-                                                                                  <p className="text-sm">
-                                                                                    {
-                                                                                      treatment.notes
-                                                                                    }
-                                                                                  </p>
-                                                                                </div>
-                                                                              )
-                                                                            )}
-                                                                        </div>
-                                                                      </div>
-                                                                    )}
                                                                   </div>
                                                                 )}
                                                             </div>
@@ -2607,9 +2583,19 @@ export function ViewPatientDrawer({
 
                                                     {/* Financial Summary Section */}
                                                     <div className="mt-6 p-4 bg-muted/10 rounded-md">
-                                                      <h3 className="text-sm font-medium">
-                                                        Financial Summary
-                                                      </h3>
+                                                      <div className="flex justify-between items-center mb-3">
+                                                        <h3 className="text-sm font-medium">
+                                                          Financial Summary
+                                                        </h3>
+                                                        <Button
+                                                          variant="outline"
+                                                          size="sm"
+                                                          onClick={() => setIsPaymentDialogOpen(true)}
+                                                          className="h-7 px-2 text-xs"
+                                                        >
+                                                          Edit Payment
+                                                        </Button>
+                                                      </div>
                                                       <div className="grid grid-cols-3 gap-4">
                                                         {(() => {
                                                           // Calculate totals from daily treatments
@@ -2913,6 +2899,12 @@ export function ViewPatientDrawer({
                                                                           <TableHead className="text-xs text-right">
                                                                             Paid
                                                                           </TableHead>
+                                                                          <TableHead className="text-xs">
+                                                                            Payment Date
+                                                                          </TableHead>
+                                                                          <TableHead className="text-xs">
+                                                                            Notes
+                                                                          </TableHead>
                                                                           <TableHead className="text-xs text-right">
                                                                             Status
                                                                           </TableHead>
@@ -2974,6 +2966,23 @@ export function ViewPatientDrawer({
                                                                                 {dailyTreatment.paidAmount ||
                                                                                   0}
                                                                               </TableCell>
+                                                                              <TableCell className="text-xs py-2">
+                                                                                {dailyTreatment.paymentDate
+                                                                                  ? formatSafeDate(dailyTreatment.paymentDate)
+                                                                                  : "Not paid"}
+                                                                              </TableCell>
+                                                                              <TableCell className="text-xs py-2 max-w-[150px]">
+                                                                                {dailyTreatment.notes ? (
+                                                                                  <div 
+                                                                                    className="truncate" 
+                                                                                    title={dailyTreatment.notes}
+                                                                                  >
+                                                                                    {dailyTreatment.notes}
+                                                                                  </div>
+                                                                                ) : (
+                                                                                  <span className="text-muted-foreground">No notes</span>
+                                                                                )}
+                                                                              </TableCell>
                                                                               <TableCell className="text-xs py-2 text-right">
                                                                                 <Badge
                                                                                   variant={
@@ -3007,57 +3016,6 @@ export function ViewPatientDrawer({
                                                                       </TableBody>
                                                                     </Table>
                                                                   </div>
-
-                                                                  {/* Treatment Notes */}
-                                                                  {ortho.dailyTreatments.some(
-                                                                    (t) =>
-                                                                      t.notes
-                                                                  ) && (
-                                                                    <div className="mt-3">
-                                                                      <p className="text-xs font-medium mb-2">
-                                                                        Treatment
-                                                                        Notes
-                                                                      </p>
-                                                                      <div className="space-y-2">
-                                                                        {ortho.dailyTreatments
-                                                                          .filter(
-                                                                            (
-                                                                              t
-                                                                            ) =>
-                                                                              t.notes
-                                                                          )
-                                                                          .map(
-                                                                            (
-                                                                              treatment,
-                                                                              idx
-                                                                            ) => (
-                                                                              <div
-                                                                                key={
-                                                                                  idx
-                                                                                }
-                                                                                className="bg-muted/20 p-2 rounded-md"
-                                                                              >
-                                                                                <p className="text-xs text-muted-foreground mb-1">
-                                                                                  {formatSafeDate(
-                                                                                    treatment.date
-                                                                                  )}{" "}
-                                                                                  -{" "}
-                                                                                  {treatment.procedure ||
-                                                                                    "General"}
-
-                                                                                  :
-                                                                                </p>
-                                                                                <p className="text-sm">
-                                                                                  {
-                                                                                    treatment.notes
-                                                                                  }
-                                                                                </p>
-                                                                              </div>
-                                                                            )
-                                                                          )}
-                                                                      </div>
-                                                                    </div>
-                                                                  )}
                                                                 </div>
                                                               )}
                                                           </motion.div>
@@ -3464,6 +3422,114 @@ export function ViewPatientDrawer({
           </div>
         </div>
       </DrawerContent>
+      
+      {/* Payment History Dialog */}
+      <PaymentHistoryDialog
+        isOpen={isPaymentDialogOpen}
+        onClose={() => setIsPaymentDialogOpen(false)}
+        selectedTeethMaps={localPatient.medicalDetails.reduce(
+          (acc, medicalDetail, medicalDetailIndex) => {
+            medicalDetail.treatmentPlanning.forEach((plan, planIndex) => {
+              const mapKey = `${medicalDetailIndex}-${planIndex}`;
+              acc[mapKey] = {};
+
+              if (plan.selectedTeethDetails) {
+                plan.selectedTeethDetails.forEach((tooth) => {
+                  acc[mapKey][tooth.number] = tooth;
+                });
+              }
+            });
+            return acc;
+          },
+          {} as Record<string, Record<string, any>>
+        )}
+        groupTreatmentMaps={localPatient.medicalDetails.reduce(
+          (acc, medicalDetail, medicalDetailIndex) => {
+            medicalDetail.treatmentPlanning.forEach((plan, planIndex) => {
+              const mapKey = `${medicalDetailIndex}-${planIndex}`;
+              
+              if (plan.groupTreatmentDetails && plan.groupTreatmentDetails.length > 0) {
+                acc[mapKey] = plan.groupTreatmentDetails;
+              }
+            });
+            return acc;
+          },
+          {} as Record<string, any[]>
+        )}
+        onPaymentUpdate={(mapKey: string, toothNumber: string, treatmentIndex: number, newPaidAmount: number) => {
+          // Update the local patient state
+          setLocalPatient((prevPatient: Patient) => {
+            const updatedPatient = { ...prevPatient };
+            const [medicalDetailIndex, planIndex] = mapKey.split("-").map(Number);
+
+            if (
+              updatedPatient.medicalDetails[medicalDetailIndex]
+                ?.treatmentPlanning[planIndex]?.selectedTeethDetails
+            ) {
+              const toothToUpdate = updatedPatient.medicalDetails[
+                medicalDetailIndex
+              ].treatmentPlanning[planIndex].selectedTeethDetails.find(
+                (tooth: any) => tooth.number === toothNumber
+              );
+
+              if (
+                toothToUpdate &&
+                toothToUpdate.dailyTreatments &&
+                toothToUpdate.dailyTreatments[treatmentIndex]
+              ) {
+                const treatment = toothToUpdate.dailyTreatments[treatmentIndex];
+                treatment.paidAmount = newPaidAmount;
+                treatment.remainingAmount = treatment.treatmentAmount - newPaidAmount;
+              }
+            }
+
+            return updatedPatient;
+          });
+        }}
+        onGroupPaymentUpdate={(mapKey: string, groupIndex: number, treatmentIndex: number, newPaidAmount: number) => {
+          // Update the local patient state for group treatments
+          setLocalPatient((prevPatient: Patient) => {
+            const updatedPatient = { ...prevPatient };
+            const [medicalDetailIndex, planIndex] = mapKey.split("-").map(Number);
+
+            if (
+              updatedPatient.medicalDetails[medicalDetailIndex]
+                ?.treatmentPlanning[planIndex]?.groupTreatmentDetails &&
+              updatedPatient.medicalDetails[medicalDetailIndex]
+                .treatmentPlanning[planIndex].groupTreatmentDetails[groupIndex]
+            ) {
+              const groupTreatment = updatedPatient.medicalDetails[
+                medicalDetailIndex
+              ].treatmentPlanning[planIndex].groupTreatmentDetails[groupIndex];
+              
+              if (
+                groupTreatment.dailyTreatments &&
+                groupTreatment.dailyTreatments[treatmentIndex]
+              ) {
+                const treatment = groupTreatment.dailyTreatments[treatmentIndex];
+                treatment.paidAmount = newPaidAmount;
+                treatment.remainingAmount = treatment.treatmentAmount - newPaidAmount;
+                
+                // Update group totals
+                const totalPaid = groupTreatment.dailyTreatments.reduce(
+                  (sum: number, t: any) => sum + (t.paidAmount || 0), 0
+                );
+                const totalAmount = groupTreatment.dailyTreatments.reduce(
+                  (sum: number, t: any) => sum + (t.treatmentAmount || 0), 0
+                );
+                
+                groupTreatment.totalPaidAmount = totalPaid;
+                groupTreatment.totalRemainingAmount = totalAmount - totalPaid;
+              }
+            }
+
+            return updatedPatient;
+          });
+        }}
+        patientId={patient._id}
+        medicalDetailId={patient.medicalDetails[0]?._id || ""}
+        patient={localPatient}
+      />
     </Drawer>
   );
 }

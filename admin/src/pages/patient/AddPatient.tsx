@@ -357,6 +357,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                 treatmentAmount,
                 paidAmount,
                 remainingAmount,
+                paymentDate: format(new Date(), "yyyy-MM-dd"), // Default to today's date
                 notes: "",
                 treatedByDoctor: gt.treatedByDoctor || "",
                 isCompleted: false,
@@ -558,6 +559,9 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
               treatmentAmount: Number(treatment.treatmentAmount) || 0,
               paidAmount: Number(treatment.paidAmount) || 0,
               remainingAmount: Number(treatment.remainingAmount) || 0,
+              paymentDate: treatment.paymentDate 
+                ? format(new Date(treatment.paymentDate), "yyyy-MM-dd") 
+                : null,
               notes: treatment.notes || "",
               procedure: toothData.procedure || "",
             })) || [],
@@ -593,6 +597,9 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                 treatmentAmount: Number(treatment.treatmentAmount) || 0,
                 paidAmount: Number(treatment.paidAmount) || 0,
                 remainingAmount: Number(treatment.remainingAmount) || 0,
+                paymentDate: treatment.paymentDate 
+                  ? format(new Date(treatment.paymentDate), "yyyy-MM-dd") 
+                  : null,
                 procedure: treatment.procedure || groupTreatment.procedure || "",
                 notes: treatment.notes || "",
                 treatedByDoctor: treatment.treatedByDoctor || null,
@@ -1916,48 +1923,81 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                               </Button>
                             </div>
 
-                            {/* Daily Treatment Table */}
-                            <div className="border rounded-md overflow-x-auto">
-                              <table className="w-full min-w-[750px]">
-                                <thead className="bg-muted/50">
-                                  <tr>
-                                    <th className="px-3 py-2 text-left text-xs font-medium">Date</th>
-                                    <th className="px-3 py-2 text-left text-xs font-medium">Procedure</th>
-                                    <th className="px-3 py-2 text-left text-xs font-medium">Notes</th>
-                                    <th className="px-3 py-2 text-left text-xs font-medium">Treatment Amount</th>
-                                    <th className="px-3 py-2 text-left text-xs font-medium">Paid Amount</th>
-                                    <th className="px-3 py-2 text-left text-xs font-medium">Remaining</th>
-                                    <th className="px-3 py-2 text-left text-xs font-medium">Doctor</th>
-                                    <th className="px-3 py-2 text-left text-xs font-medium">Completed</th>
-                                    <th className="px-3 py-2 text-left text-xs font-medium">Actions</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {groupTreatment.dailyTreatments.length === 0 ? (
-                                    <tr>
-                                      <td colSpan={9} className="px-3 py-4 text-center text-sm text-muted-foreground">
-                                        No daily treatments added yet. Click "Add Treatment Entry" to add one.
-                                      </td>
-                                    </tr>
-                                  ) : (
-                                    groupTreatment.dailyTreatments.map((treatment) => (
-                                      <tr key={treatment.id} className="border-t">
-                                        <td className="px-3 py-2">
-                                          <Input
-                                            type="date"
-                                            value={treatment.date}
-                                            onChange={(e) => 
-                                              updateDailyTreatment(
-                                                groupTreatment.id, 
-                                                treatment.id, 
-                                                'date', 
-                                                e.target.value
-                                              )
-                                            }
-                                            className="h-8"
-                                          />
-                                        </td>
-                                        <td className="px-3 py-2">
+                            {/* Daily Treatment Grid View */}
+                            <div className="space-y-4">
+                              {groupTreatment.dailyTreatments.length === 0 ? (
+                                <Card className="p-8">
+                                  <div className="text-center text-sm text-muted-foreground">
+                                    <div className="mb-4">
+                                      <svg
+                                        className="mx-auto h-12 w-12 text-gray-300"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        aria-hidden="true"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={1}
+                                          d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                                        />
+                                      </svg>
+                                    </div>
+                                    <h3 className="text-sm font-medium text-gray-900 mb-1">No Daily Treatments</h3>
+                                    <p>No daily treatments added yet. Click "Add Treatment Entry" to add one.</p>
+                                  </div>
+                                </Card>
+                              ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                  {groupTreatment.dailyTreatments.map((treatment) => (
+                                    <Card key={treatment.id} className="p-4 border border-gray-200 hover:shadow-md transition-shadow">
+                                      <div className="space-y-4">
+                                        {/* Header with date and completion status */}
+                                        <div className="flex justify-between items-start">
+                                          <div className="space-y-1 flex-1">
+                                            <Label className="text-xs font-medium text-gray-600">Treatment Date</Label>
+                                            <Input
+                                              type="date"
+                                              value={treatment.date}
+                                              onChange={(e) => 
+                                                updateDailyTreatment(
+                                                  groupTreatment.id, 
+                                                  treatment.id, 
+                                                  'date', 
+                                                  e.target.value
+                                                )
+                                              }
+                                              className="h-8"
+                                            />
+                                          </div>
+                                          <div className="flex items-center gap-2 ml-3">
+                                            <Checkbox
+                                              checked={treatment.isCompleted}
+                                              onCheckedChange={(checked) => 
+                                                updateDailyTreatment(
+                                                  groupTreatment.id, 
+                                                  treatment.id, 
+                                                  'isCompleted', 
+                                                  checked === true
+                                                )
+                                              }
+                                            />
+                                            <Label className="text-xs">Done</Label>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              onClick={() => removeDailyTreatment(groupTreatment.id, treatment.id)}
+                                              className="h-8 w-8 text-red-500 hover:text-red-700"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                          </div>
+                                        </div>
+
+                                        {/* Procedure */}
+                                        <div className="space-y-1">
+                                          <Label className="text-xs font-medium text-gray-600">Procedure</Label>
                                           <Input
                                             value={treatment.procedure || ""}
                                             onChange={(e) => 
@@ -1968,66 +2008,135 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                                                 e.target.value
                                               )
                                             }
-                                            placeholder="Procedure"
+                                            placeholder="Enter procedure name"
                                             className="h-8"
                                           />
-                                        </td>
-                                        <td className="px-3 py-2">
-                                          <Input
+                                        </div>
+
+                                        {/* Daily Notes */}
+                                        <div className="space-y-1">
+                                          <Label className="text-xs font-medium text-gray-600">Daily Notes & Observations</Label>
+                                          <Textarea
                                             value={treatment.notes || ""}
-                                            onChange={(e) => 
-                                              updateDailyTreatment(
-                                                groupTreatment.id, 
-                                                treatment.id, 
-                                                'notes', 
-                                                e.target.value
-                                              )
-                                            }
-                                            placeholder="Notes"
-                                            className="h-8"
+                                            onChange={(e) => {
+                                              const value = e.target.value;
+                                              // Limit to 500 characters
+                                              if (value.length <= 500) {
+                                                updateDailyTreatment(
+                                                  groupTreatment.id, 
+                                                  treatment.id, 
+                                                  'notes', 
+                                                  value
+                                                );
+                                              }
+                                            }}
+                                            placeholder="Enter daily notes: pain level, wire change, aligner number, patient response, observations..."
+                                            className="h-16 text-xs resize-none border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                            rows={3}
+                                            maxLength={500}
                                           />
-                                        </td>                        <td className="px-3 py-2">
-                          <Input
-                            type="number"
-                            value={treatment.treatmentAmount === "0" ? "" : treatment.treatmentAmount || ""}
-                            onChange={(e) => 
-                              updateDailyTreatment(
-                                groupTreatment.id, 
-                                treatment.id, 
-                                'treatmentAmount', 
-                                e.target.value || "0"
-                              )
-                            }
-                            placeholder="0.00"
-                            className="h-8"
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                          <Input
-                            type="number"
-                            value={treatment.paidAmount === "0" ? "" : treatment.paidAmount || ""}
-                            onChange={(e) => 
-                              updateDailyTreatment(
-                                groupTreatment.id, 
-                                treatment.id, 
-                                'paidAmount', 
-                                e.target.value || "0"
-                              )
-                            }
-                            placeholder="0.00"
-                            className="h-8"
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                          <Input
-                            type="number"
-                            value={treatment.remainingAmount === "0" ? "" : treatment.remainingAmount || ""}
-                            readOnly
-                            placeholder="0.00"
-                            className="h-8 bg-muted/50"
-                          />
-                        </td>
-                                        <td className="px-3 py-2">
+                                          <div className="text-xs text-gray-500">
+                                            {(treatment.notes || "").length}/500 characters
+                                          </div>
+                                        </div>
+
+                                        {/* Payment Information Grid */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                          <div className="space-y-1">
+                                            <Label className="text-xs font-medium text-gray-600">Treatment Amount</Label>
+                                            <Input
+                                              type="number"
+                                              value={treatment.treatmentAmount === "0" ? "" : treatment.treatmentAmount || ""}
+                                              onChange={(e) => {
+                                                const value = e.target.value;
+                                                // Validate non-negative numbers
+                                                if (value === "" || (parseFloat(value) >= 0 && !isNaN(parseFloat(value)))) {
+                                                  updateDailyTreatment(
+                                                    groupTreatment.id, 
+                                                    treatment.id, 
+                                                    'treatmentAmount', 
+                                                    value || "0"
+                                                  );
+                                                }
+                                              }}
+                                              placeholder="0.00"
+                                              className="h-8"
+                                              min="0"
+                                              step="0.01"
+                                            />
+                                          </div>
+                                          <div className="space-y-1">
+                                            <Label className="text-xs font-medium text-gray-600">Paid Amount</Label>
+                                            <Input
+                                              type="number"
+                                              value={treatment.paidAmount === "0" ? "" : treatment.paidAmount || ""}
+                                              onChange={(e) => {
+                                                const value = e.target.value;
+                                                const treatmentAmt = parseFloat(treatment.treatmentAmount) || 0;
+                                                const paidAmt = parseFloat(value) || 0;
+                                                
+                                                // Validate non-negative and not exceeding treatment amount
+                                                if (value === "" || (paidAmt >= 0 && paidAmt <= treatmentAmt && !isNaN(paidAmt))) {
+                                                  updateDailyTreatment(
+                                                    groupTreatment.id, 
+                                                    treatment.id, 
+                                                    'paidAmount', 
+                                                    value || "0"
+                                                  );
+                                                }
+                                              }}
+                                              placeholder="0.00"
+                                              className="h-8"
+                                              min="0"
+                                              max={treatment.treatmentAmount || undefined}
+                                              step="0.01"
+                                            />
+                                          </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                          <div className="space-y-1">
+                                            <Label className="text-xs font-medium text-gray-600">Payment Date</Label>
+                                            <Input
+                                              type="date"
+                                              value={treatment.paymentDate || ""}
+                                              onChange={(e) => {
+                                                const selectedDate = new Date(e.target.value);
+                                                const today = new Date();
+                                                today.setHours(23, 59, 59, 999); // End of today
+                                                
+                                                // Validate payment date is not in the future
+                                                if (selectedDate <= today) {
+                                                  updateDailyTreatment(
+                                                    groupTreatment.id, 
+                                                    treatment.id, 
+                                                    'paymentDate', 
+                                                    e.target.value
+                                                  );
+                                                } else {
+                                                  toast.error("Payment date cannot be in the future");
+                                                }
+                                              }}
+                                              placeholder="Payment date"
+                                              className="h-8"
+                                              max={format(new Date(), "yyyy-MM-dd")}
+                                            />
+                                          </div>
+                                          <div className="space-y-1">
+                                            <Label className="text-xs font-medium text-gray-600">Remaining Amount</Label>
+                                            <Input
+                                              type="number"
+                                              value={treatment.remainingAmount === "0" ? "" : treatment.remainingAmount || ""}
+                                              readOnly
+                                              placeholder="0.00"
+                                              className="h-8 bg-muted/50"
+                                            />
+                                          </div>
+                                        </div>
+
+                                        {/* Doctor Selection */}
+                                        <div className="space-y-1">
+                                          <Label className="text-xs font-medium text-gray-600">Treated by Doctor</Label>
                                           <Select
                                             value={treatment.treatedByDoctor}
                                             onValueChange={(value) => 
@@ -2040,7 +2149,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                                             }
                                           >
                                             <SelectTrigger className="h-8">
-                                              <SelectValue placeholder="Doctor" />
+                                              <SelectValue placeholder="Select doctor" />
                                             </SelectTrigger>
                                             <SelectContent>
                                               {doctors.map((doctor) => (
@@ -2050,41 +2159,20 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                                               ))}
                                             </SelectContent>
                                           </Select>
-                                        </td>
-                                        <td className="px-3 py-2">
-                                          <Checkbox
-                                            checked={treatment.isCompleted}
-                                            onCheckedChange={(checked) => 
-                                              updateDailyTreatment(
-                                                groupTreatment.id, 
-                                                treatment.id, 
-                                                'isCompleted', 
-                                                checked === true
-                                              )
-                                            }
-                                          />
-                                        </td>
-                                        <td className="px-3 py-2">
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => removeDailyTreatment(groupTreatment.id, treatment.id)}
-                                          >
-                                            <Trash2 className="w-4 h-4 text-destructive" />
-                                          </Button>
-                                        </td>
-                                      </tr>
-                                    ))
-                                  )}
-                                </tbody>
-                              </table>
-                            </div>
+                                        </div>
+                                      </div>
+                                    </Card>
+                                  ))}
+                                </div>
+                              )}
                           </div>
+                        </div>
+
                         </div>
                       </div>
                     </Card>
-                    ))
-                  }
+                  ))
+                }
                 </div>
               ) : (
                 // Regular Tooth-based Treatment UI
@@ -2494,6 +2582,7 @@ type GroupDailyTreatment = {
   treatmentAmount: string;
   paidAmount: string;
   remainingAmount: string;
+  paymentDate?: string; // Add payment date field
   notes: string;
   treatedByDoctor: string;
   isCompleted: boolean;

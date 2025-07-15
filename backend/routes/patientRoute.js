@@ -266,7 +266,7 @@ router.patch(
   async (req, res) => {
     try {
       const { patientId, medicalDetailId, treatmentId, toothNumber, dailyTreatmentId } = req.params;
-      const { paidAmount } = req.body;
+      const { paidAmount, paymentDate } = req.body;
 
       if (paidAmount === undefined || isNaN(paidAmount) || paidAmount < 0) {
         return res.status(400).json({
@@ -322,7 +322,20 @@ router.patch(
       // Calculate remaining amount
       const remainingAmount = treatmentAmount - paidAmount;
 
-      // Update payment information with pre-calculated remainingAmount
+      // Prepare update fields
+      const updateFields = {
+        "medicalDetails.$[med].treatmentPlanning.$[treat].selectedTeethDetails.$[tooth].dailyTreatments.$[daily].paidAmount": paidAmount,
+        "medicalDetails.$[med].treatmentPlanning.$[treat].selectedTeethDetails.$[tooth].dailyTreatments.$[daily].remainingAmount": remainingAmount,
+      };
+
+      // Add payment date if provided, otherwise use current date if payment amount is greater than 0
+      if (paymentDate) {
+        updateFields["medicalDetails.$[med].treatmentPlanning.$[treat].selectedTeethDetails.$[tooth].dailyTreatments.$[daily].paymentDate"] = new Date(paymentDate);
+      } else if (paidAmount > 0) {
+        updateFields["medicalDetails.$[med].treatmentPlanning.$[treat].selectedTeethDetails.$[tooth].dailyTreatments.$[daily].paymentDate"] = new Date();
+      }
+
+      // Update payment information
       const updatedPatient = await Patient.findOneAndUpdate(
         {
           _id: patientId,
@@ -332,11 +345,7 @@ router.patch(
           "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments._id": dailyTreatmentId
         },
         {
-          $set: {
-            "medicalDetails.$[med].treatmentPlanning.$[treat].selectedTeethDetails.$[tooth].dailyTreatments.$[daily].paidAmount": paidAmount,
-            "medicalDetails.$[med].treatmentPlanning.$[treat].selectedTeethDetails.$[tooth].dailyTreatments.$[daily].remainingAmount": remainingAmount,
-            "medicalDetails.$[med].treatmentPlanning.$[treat].selectedTeethDetails.$[tooth].dailyTreatments.$[daily].lastPaymentDate": new Date()
-          }
+          $set: updateFields
         },
         {
           arrayFilters: [
@@ -411,6 +420,168 @@ router.patch(
       res.status(500).json({
         success: false,
         message: "Failed to update payment",
+        error: error.message
+      });
+    }
+  }
+);
+
+// Add this new route for updating group treatment payments
+router.patch(
+  "/update-group-payment/:patientId/:medicalDetailId/:treatmentId/:groupIndex/:dailyTreatmentId",
+  async (req, res) => {
+    try {
+      const { patientId, medicalDetailId, treatmentId, groupIndex, dailyTreatmentId } = req.params;
+      const { paidAmount, paymentDate } = req.body;
+
+      if (paidAmount === undefined || isNaN(paidAmount) || paidAmount < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid payment amount"
+        });
+      }
+
+      // First, get the patient document
+      const patient = await Patient.findOne(
+        { 
+          _id: patientId,
+          "medicalDetails._id": medicalDetailId 
+        },
+        { "medicalDetails.$": 1 }
+      );
+
+      if (!patient || !patient.medicalDetails[0]) {
+        return res.status(404).json({
+          success: false,
+          message: "Patient or treatment not found"
+        });
+      }
+
+      // Find the treatment amount manually in JavaScript
+      let treatmentAmount = 0;
+      try {
+        const medicalDetail = patient.medicalDetails[0];
+        const treatment = medicalDetail.treatmentPlanning.find(t => 
+          t._id.toString() === treatmentId
+        );
+        if (!treatment) throw new Error("Treatment not found");
+        
+        const groupTreatment = treatment.groupTreatmentDetails[parseInt(groupIndex)];
+        if (!groupTreatment) throw new Error("Group treatment not found");
+        
+        const dailyTreatment = groupTreatment.dailyTreatments.find(d => 
+          d._id.toString() === dailyTreatmentId
+        );
+        if (!dailyTreatment) throw new Error("Daily treatment not found");
+        
+        treatmentAmount = dailyTreatment.treatmentAmount;
+      } catch (err) {
+        console.error("Error finding group treatment amount:", err);
+        return res.status(404).json({
+          success: false,
+          message: "Group treatment details could not be found: " + err.message
+        });
+      }
+
+      // Calculate remaining amount
+      const remainingAmount = treatmentAmount - paidAmount;
+
+      // Prepare update fields
+      const updateFields = {
+        "medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.$[group].dailyTreatments.$[daily].paidAmount": paidAmount,
+        "medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.$[group].dailyTreatments.$[daily].remainingAmount": remainingAmount,
+      };
+
+      // Add payment date if provided, otherwise use current date if payment amount is greater than 0
+      if (paymentDate) {
+        updateFields["medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.$[group].dailyTreatments.$[daily].paymentDate"] = new Date(paymentDate);
+      } else if (paidAmount > 0) {
+        updateFields["medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.$[group].dailyTreatments.$[daily].paymentDate"] = new Date();
+      }
+
+      // Update payment information
+      const updatedPatient = await Patient.findOneAndUpdate(
+        {
+          _id: patientId,
+          "medicalDetails._id": medicalDetailId,
+          "medicalDetails.treatmentPlanning._id": treatmentId
+        },
+        {
+          $set: updateFields
+        },
+        {
+          arrayFilters: [
+            { "med._id": medicalDetailId },
+            { "treat._id": treatmentId },
+            { "group": { $exists: true } },
+            { "daily._id": dailyTreatmentId }
+          ],
+          new: true
+        }
+      );
+
+      if (!updatedPatient) {
+        return res.status(404).json({
+          success: false,
+          message: "Failed to update group payment information"
+        });
+      }
+
+      // Recalculate totals for the group treatment
+      const groupTreatmentData = await Patient.aggregate([
+        { $match: { _id: new mongoose.Types.ObjectId(patientId) } },
+        { $unwind: "$medicalDetails" },
+        { $match: { "medicalDetails._id": new mongoose.Types.ObjectId(medicalDetailId) } },
+        { $unwind: "$medicalDetails.treatmentPlanning" },
+        { $match: { "medicalDetails.treatmentPlanning._id": new mongoose.Types.ObjectId(treatmentId) } },
+        {
+          $project: {
+            groupTreatment: { 
+              $arrayElemAt: ["$medicalDetails.treatmentPlanning.groupTreatmentDetails", parseInt(groupIndex)]
+            }
+          }
+        }
+      ]);
+
+      if (groupTreatmentData.length > 0 && groupTreatmentData[0].groupTreatment) {
+        const treatments = groupTreatmentData[0].groupTreatment.dailyTreatments || [];
+        const totalTreatmentAmount = treatments.reduce((sum, t) => sum + (Number(t.treatmentAmount) || 0), 0);
+        const totalPaidAmount = treatments.reduce((sum, t) => sum + (Number(t.paidAmount) || 0), 0);
+        const totalRemainingAmount = totalTreatmentAmount - totalPaidAmount;
+
+        // Update the group treatment totals
+        await Patient.updateOne(
+          {
+            _id: patientId,
+            "medicalDetails._id": medicalDetailId,
+            "medicalDetails.treatmentPlanning._id": treatmentId
+          },
+          {
+            $set: {
+              [`medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.${groupIndex}.totalTreatmentAmount`]: totalTreatmentAmount,
+              [`medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.${groupIndex}.totalPaidAmount`]: totalPaidAmount,
+              [`medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.${groupIndex}.totalRemainingAmount`]: totalRemainingAmount
+            }
+          },
+          {
+            arrayFilters: [
+              { "med._id": medicalDetailId },
+              { "treat._id": treatmentId }
+            ]
+          }
+        );
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Group payment updated successfully",
+        data: updatedPatient
+      });
+    } catch (error) {
+      console.error("Error updating group payment:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update group payment",
         error: error.message
       });
     }

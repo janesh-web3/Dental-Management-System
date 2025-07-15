@@ -8,6 +8,7 @@ const dailyTreatmentSchema = new mongoose.Schema({
   treatmentAmount: { type: Number, default: 0 },
   paidAmount: { type: Number, default: 0 },
   remainingAmount: { type: Number, default: 0 },
+  paymentDate: { type: Date }, // Add payment date field
   procedure: { type: String }, // Add this new field
   notes: { type: String },
   treatedByDoctor: {

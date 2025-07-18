@@ -2,6 +2,11 @@ const express = require("express");
 const router = express.Router();
 const { upload, deleteFile } = require("../middleware/multer");
 const { protectAdminRoute } = require("../middleware/adminAuthMiddleware");
+const { 
+  authenticateUser, 
+  authorizePermission, 
+  staffOrAdmin 
+} = require("../middleware/rbacMiddleware");
 const {
   addPatient,
   deletePatient,
@@ -30,19 +35,22 @@ const Patient = require("../model/Patient");
 const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 
-router.post("/add-patient", protectAdminRoute, addPatient);
-router.put("/update-patient/:id", updatePatient); // Update route
-router.delete("/delete-patient/:id", deletePatient); // Update route
-router.get("/get-patient", getPatient);
-router.post("/search", searchPatients);
-router.post("/count", getPatientsCount);
-router.get("/get-pagination-patient", getPaginatedPatient);
-router.get("/get-filtered-patients", getFilteredPatients);
-router.post("/get-filtered-patients", getFilteredPatients);
-router.get("/get-procedure-types", getProcedureTypes);
-router.get("/get-patient/:id", getSinglePatient);
+// Patient management routes with RBAC
+router.post("/add-patient", authenticateUser, authorizePermission('patients', 'create'), addPatient);
+router.put("/update-patient/:id", authenticateUser, authorizePermission('patients', 'update'), updatePatient);
+router.delete("/delete-patient/:id", authenticateUser, authorizePermission('patients', 'delete'), deletePatient);
+router.get("/get-patient", authenticateUser, authorizePermission('patients', 'read'), getPatient);
+router.post("/search", authenticateUser, authorizePermission('patients', 'read'), searchPatients);
+router.post("/count", authenticateUser, authorizePermission('patients', 'read'), getPatientsCount);
+router.get("/get-pagination-patient", authenticateUser, authorizePermission('patients', 'read'), getPaginatedPatient);
+router.get("/get-filtered-patients", authenticateUser, authorizePermission('patients', 'read'), getFilteredPatients);
+router.post("/get-filtered-patients", authenticateUser, authorizePermission('patients', 'read'), getFilteredPatients);
+router.get("/get-procedure-types", authenticateUser, authorizePermission('patients', 'read'), getProcedureTypes);
+router.get("/get-patient/:id", authenticateUser, authorizePermission('patients', 'read'), getSinglePatient);
 router.post(
   "/upload-files/:id",
+  authenticateUser,
+  authorizePermission('patients', 'update'),
   upload.array("files", 10), // Allow up to 10 files
   uploadPatientFiles
 );

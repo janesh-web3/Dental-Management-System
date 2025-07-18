@@ -11,6 +11,11 @@ const {
 const { doctorLogin, getCurrentDoctor } = require("../controller/doctorAuthCtrl.js");
 const { protectDoctorRoute } = require("../middleware/doctorAuthMiddleware.js");
 const { upload } = require("../middleware/multer.js");
+const { 
+  authenticateUser, 
+  authorizePermission, 
+  staffOrAdmin 
+} = require("../middleware/rbacMiddleware");
 const Doctor = require("../model/Doctor.js");
 
 // Add a route to ensure at least one doctor exists in the system
@@ -60,15 +65,15 @@ router.get("/ensure-doctor-exists", async (req, res) => {
 router.post("/login", doctorLogin);
 router.get("/get-current-doctor", protectDoctorRoute, getCurrentDoctor);
 
-// Doctor CRUD routes
-router.post("/add-doctor", upload.single('image'), addDoctor);
-router.get("/get-pagination-doctor", getPaginatedDoctor);
-router.get("/get-doctor", getDoctor);
-router.delete("/delete-doctor/:id", deleteDoctor);
-router.put("/update-doctor/:id", upload.single('image'), updateDoctor);
-router.put("/update-password/:id", updateDoctorPassword);
+// Doctor CRUD routes with RBAC
+router.post("/add-doctor", authenticateUser, authorizePermission('doctors', 'create'), upload.single('image'), addDoctor);
+router.get("/get-pagination-doctor", authenticateUser, authorizePermission('doctors', 'read'), getPaginatedDoctor);
+router.get("/get-doctor", authenticateUser, authorizePermission('doctors', 'read'), getDoctor);
+router.delete("/delete-doctor/:id", authenticateUser, authorizePermission('doctors', 'delete'), deleteDoctor);
+router.put("/update-doctor/:id", authenticateUser, authorizePermission('doctors', 'update'), upload.single('image'), updateDoctor);
+router.put("/update-password/:id", authenticateUser, authorizePermission('doctors', 'update'), updateDoctorPassword);
 
-router.post("/doctors/:id/reviews", async (req, res) => {
+router.post("/doctors/:id/reviews", authenticateUser, authorizePermission('doctors', 'update'), async (req, res) => {
   try {
     const doctor = await Doctor.findById(req.params.id);
     console.log(doctor);

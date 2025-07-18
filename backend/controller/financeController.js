@@ -619,6 +619,22 @@ const getFinancialSummary = async (req, res) => {
     
     const totalServicePayment = await ServicePayment.aggregate([
       { $match: servicePaymentQuery },
+      {
+        $lookup: {
+          from: "patients",
+          localField: "patient",
+          foreignField: "_id",
+          as: "patientExists"
+        }
+      },
+      {
+        $match: {
+          $or: [
+            { isWalkIn: true },
+            { patientExists: { $ne: [] } }
+          ]
+        }
+      },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     
@@ -642,9 +658,25 @@ const getFinancialSummary = async (req, res) => {
       { $sort: { total: -1 } },
     ]);
     
-    // Get service payments by type
+    // Get service payments by type - only include payments for existing patients
     const serviceByType = await ServicePayment.aggregate([
       { $match: servicePaymentQuery },
+      {
+        $lookup: {
+          from: "patients",
+          localField: "patient",
+          foreignField: "_id",
+          as: "patientExists"
+        }
+      },
+      {
+        $match: {
+          $or: [
+            { isWalkIn: true },
+            { patientExists: { $ne: [] } }
+          ]
+        }
+      },
       { $group: { _id: "$serviceType", total: { $sum: "$amount" } } },
       { $sort: { total: -1 } },
     ]);

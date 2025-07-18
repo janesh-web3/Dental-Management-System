@@ -4,6 +4,9 @@ const User = require("../model/User.js");
 const Appointment = require("../model/Appointment.js");
 const Patient = require("../model/Patient.js");
 const Doctor = require("../model/Doctor.js");
+const Income = require("../model/Income.js");
+const Expense = require("../model/Expense.js");
+const ServicePayment = require("../model/ServicePayment.js");
 
 const bcrypt = require("bcrypt");
 
@@ -48,11 +51,29 @@ const loginUser = async (req, res) => {
       console.log("User not found for contact:", contact);
       return res.status(404).json({ message: "User not found" });
     }
+
+    if (!user.isActive) {
+      return res.status(401).json({ message: "Account is deactivated. Please contact administrator." });
+    }
     
     const match = await bcrypt.compare(password, user.password);
     if (match) {
+      // Update last login
+      user.lastLogin = new Date();
+      await user.save();
+
       const token = generateToken(user._id);
-      return res.status(200).json({ message: "Logged in successfully", token: token });
+      return res.status(200).json({ 
+        message: "Logged in successfully", 
+        token: token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          permissions: user.permissions
+        }
+      });
     } else {
       console.log("Password mismatch for user:", user._id);
       return res.status(401).json({ message: "Incorrect password" });
@@ -341,7 +362,7 @@ async function calculateTotalRevenue() {
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, role, contact, password } = req.body;
+    const { name, email, role, contact, password, permissions } = req.body;
 
     // Create update object
     const updateData = { name, email, role, contact };
@@ -352,18 +373,34 @@ const updateUser = async (req, res) => {
       updateData.password = hashedPassword;
     }
 
+    // If permissions are provided, add them to update
+    if (permissions) {
+      updateData.permissions = permissions;
+    }
+
     const updatedUser = await User.findByIdAndUpdate(id, updateData, {
       new: true,
     }).select("-password"); // Exclude password from response
 
     if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
     }
 
-    res.status(200).json(updatedUser);
+    res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      user: updatedUser
+    });
   } catch (error) {
     console.error("Update user error:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      success: false, 
+      message: "Error updating user", 
+      error: error.message 
+    });
   }
 };
 
@@ -432,6 +469,412 @@ const getUsers = async (req, res) => {
   }
 };
 
+// Admin Dashboard with Full Access
+const adminDashboard = async (req, res) => {
+  try {
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+
+    // Comprehensive analytics for admin
+    const [
+      totalPatients,
+      totalDoctors,
+      totalUsers,
+      monthlyPatients,
+      appointmentStats,
+      todayAppointments,
+      upcomingAppointments,
+      recentTreatments,
+      treatments,
+      financialData,
+      doctorAnalysis,
+      revenueAnalytics
+    ] = await Promise.all([
+      Patient.countDocuments(),
+      Doctor.countDocuments(),
+      User.countDocuments(),
+      Patient.countDocuments({ createdAt: { $gte: startOfMonth } }),
+      
+      // Appointment statistics
+      Appointment.aggregate([
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            pending: { $sum: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] } },
+            accepted: { $sum: { $cond: [{ $eq: ["$status", "Accepted"] }, 1, 0] } },
+            rejected: { $sum: { $cond: [{ $eq: ["$status", "Rejected"] }, 1, 0] } },
+          }
+        }
+      ]),
+      
+      // Today's appointments
+      Appointment.find({ appointmentDate: today, status: "Accepted" })
+        .populate("doctor", "name")
+        .sort({ appointmentTime: 1 }),
+      
+      // Upcoming appointments
+      Appointment.find({ appointmentDate: { $gt: today }, status: "Accepted" })
+        .populate("doctor")
+        .sort({ appointmentDate: 1 })
+        .limit(5),
+      
+      // Recent treatments
+      Patient.aggregate([
+        { $unwind: "$medicalDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning" },
+        { $sort: { "medicalDetails.treatmentPlanning.treatmentDate": -1 } },
+        { $limit: 10 },
+        {
+          $project: {
+            patientName: "$personalDetails.name",
+            treatment: "$medicalDetails.treatmentPlanning.treatmentDetails",
+            date: "$medicalDetails.treatmentPlanning.treatmentDate",
+            amount: "$medicalDetails.treatmentPlanning.treatmentAmount"
+          }
+        }
+      ]),
+      
+      // Top treatments
+      Patient.aggregate([
+        { $unwind: "$medicalDetails" },
+        { $unwind: "$medicalDetails.treatmentPlanning" },
+        {
+          $group: {
+            _id: "$medicalDetails.treatmentPlanning.treatmentName",
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { count: -1 } },
+        { $limit: 5 }
+      ]),
+      
+      // Financial data
+      Promise.all([
+        Income.aggregate([
+          { $group: { _id: null, total: { $sum: { $toDouble: "$amount" } } } }
+        ]),
+        Expense.aggregate([
+          { $group: { _id: null, total: { $sum: { $toDouble: "$amount" } } } }
+        ]),
+        ServicePayment.aggregate([
+          { $group: { _id: null, total: { $sum: { $toDouble: "$amount" } } } }
+        ])
+      ]),
+      
+      // Doctor analysis
+      Doctor.aggregate([
+        {
+          $lookup: {
+            from: "appointments",
+            localField: "_id",
+            foreignField: "doctor",
+            as: "appointments"
+          }
+        },
+        {
+          $addFields: {
+            totalAppointments: { $size: "$appointments" },
+            completedAppointments: {
+              $size: {
+                $filter: {
+                  input: "$appointments",
+                  as: "appointment",
+                  cond: { $eq: ["$$appointment.hasVisited", true] }
+                }
+              }
+            }
+          }
+        },
+        {
+          $project: {
+            name: 1,
+            specialization: 1,
+            totalAppointments: 1,
+            completedAppointments: 1,
+            performanceRate: {
+              $multiply: [
+                {
+                  $cond: [
+                    { $eq: ["$totalAppointments", 0] },
+                    0,
+                    { $divide: ["$completedAppointments", "$totalAppointments"] }
+                  ]
+                },
+                100
+              ]
+            }
+          }
+        }
+      ]),
+      
+      // Revenue analytics
+      calculateRevenueAnalytics()
+    ]);
+
+    res.json({
+      overview: {
+        totalPatients,
+        totalDoctors,
+        totalUsers,
+        monthlyPatients,
+        todayAppointmentsCount: todayAppointments?.length || 0,
+        appointmentStats: appointmentStats[0] || { total: 0, pending: 0, accepted: 0, rejected: 0 }
+      },
+      appointments: {
+        today: todayAppointments,
+        upcoming: upcomingAppointments
+      },
+      analytics: {
+        topTreatments: treatments,
+        recentTreatments,
+        doctorAnalysis,
+        revenueAnalytics
+      },
+      financial: {
+        totalIncome: financialData[0][0]?.total || 0,
+        totalExpenses: financialData[1][0]?.total || 0,
+        totalServicePayments: financialData[2][0]?.total || 0,
+        netProfit: (financialData[0][0]?.total || 0) - (financialData[1][0]?.total || 0)
+      }
+    });
+  } catch (error) {
+    console.error("Admin Dashboard Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Staff Dashboard with Limited Access
+const staffDashboard = async (req, res) => {
+  try {
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+
+    // Limited analytics for staff
+    const [
+      todayAppointments,
+      todayIncome,
+      todayExpenses,
+      weeklyIncome,
+      weeklyExpenses,
+      basicStats
+    ] = await Promise.all([
+      // Today's appointments
+      Appointment.find({ appointmentDate: today, status: "Accepted" })
+        .populate("doctor", "name")
+        .sort({ appointmentTime: 1 }),
+      
+      // Today's income
+      Income.aggregate([
+        { $match: { date: { $gte: new Date(today) } } },
+        { $group: { _id: null, total: { $sum: { $toDouble: "$amount" } } } }
+      ]),
+      
+      // Today's expenses
+      Expense.aggregate([
+        { $match: { date: { $gte: new Date(today) } } },
+        { $group: { _id: null, total: { $sum: { $toDouble: "$amount" } } } }
+      ]),
+      
+      // Weekly income
+      Income.aggregate([
+        { $match: { date: { $gte: startOfWeek } } },
+        { $group: { _id: null, total: { $sum: { $toDouble: "$amount" } } } }
+      ]),
+      
+      // Weekly expenses
+      Expense.aggregate([
+        { $match: { date: { $gte: startOfWeek } } },
+        { $group: { _id: null, total: { $sum: { $toDouble: "$amount" } } } }
+      ]),
+      
+      // Basic statistics
+      Promise.all([
+        Patient.countDocuments(),
+        Doctor.countDocuments(),
+        Appointment.countDocuments({ status: "Pending" })
+      ])
+    ]);
+
+    const dailyCollection = todayIncome[0]?.total || 0;
+    const dailyExpenses = todayExpenses[0]?.total || 0;
+    const weeklyCollection = weeklyIncome[0]?.total || 0;
+    const weeklyExpensesTotal = weeklyExpenses[0]?.total || 0;
+
+    res.json({
+      overview: {
+        dailyCollection,
+        dailyExpenses,
+        dailyNet: dailyCollection - dailyExpenses,
+        weeklyCollection,
+        weeklyExpenses: weeklyExpensesTotal,
+        weeklyNet: weeklyCollection - weeklyExpensesTotal,
+        totalPatients: basicStats[0],
+        totalDoctors: basicStats[1],
+        pendingAppointments: basicStats[2]
+      },
+      appointments: {
+        today: todayAppointments
+      },
+      transactions: {
+        todayIncome: dailyCollection,
+        todayExpenses: dailyExpenses,
+        weeklyIncome: weeklyCollection,
+        weeklyExpenses: weeklyExpensesTotal
+      }
+    });
+  } catch (error) {
+    console.error("Staff Dashboard Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Helper function for revenue analytics
+async function calculateRevenueAnalytics() {
+  const now = new Date();
+  const today = now.toISOString().split("T")[0];
+  const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [daily, weekly, monthly, total] = await Promise.all([
+    calculateRevenue(today),
+    calculateRevenue(startOfWeek.toISOString().split("T")[0]),
+    calculateRevenue(startOfMonth.toISOString().split("T")[0]),
+    calculateTotalRevenue()
+  ]);
+
+  return { daily, weekly, monthly, total };
+}
+
+// User management endpoints
+const createUser = async (req, res) => {
+  try {
+    const { name, email, password, role, contact, permissions } = req.body;
+    
+    // Check if user already exists
+    const existingUser = await User.findOne({ 
+      $or: [{ email }, { contact }] 
+    });
+    
+    if (existingUser) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "User with this email or contact already exists" 
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword,
+      role,
+      contact,
+      permissions: permissions || undefined, // Let the schema handle default permissions
+    });
+
+    await newUser.save();
+    
+    res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        contact: newUser.contact,
+        isActive: newUser.isActive,
+        permissions: newUser.permissions,
+        createdAt: newUser.createdAt
+      }
+    });
+  } catch (error) {
+    console.error("Create user error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Error creating user", 
+      error: error.message 
+    });
+  }
+};
+
+const toggleUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id);
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    user.isActive = !user.isActive;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: `User ${user.isActive ? 'activated' : 'deactivated'} successfully`,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive
+      }
+    });
+  } catch (error) {
+    console.error("Toggle user status error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Error updating user status", 
+      error: error.message 
+    });
+  }
+};
+
+const changeUserRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    user.role = role;
+    await user.save(); // This will trigger the pre-save middleware to update permissions
+
+    res.status(200).json({
+      success: true,
+      message: "User role updated successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        permissions: user.permissions
+      }
+    });
+  } catch (error) {
+    console.error("Change user role error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Error updating user role", 
+      error: error.message 
+    });
+  }
+};
+
 module.exports = {
   dashboard,
   addUser,
@@ -440,4 +883,9 @@ module.exports = {
   updateUser,
   deleteUser,
   getUsers,
+  adminDashboard,
+  staffDashboard,
+  createUser,
+  toggleUserStatus,
+  changeUserRole,
 };

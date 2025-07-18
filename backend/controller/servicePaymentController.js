@@ -167,9 +167,25 @@ const getServicePayments = async (req, res) => {
     // Get total count
     const total = await ServicePayment.countDocuments(query);
     
-    // Calculate total amount
+    // Calculate total amount - only include payments for existing patients
     const totalAmount = await ServicePayment.aggregate([
       { $match: query },
+      {
+        $lookup: {
+          from: "patients",
+          localField: "patient",
+          foreignField: "_id",
+          as: "patientExists"
+        }
+      },
+      {
+        $match: {
+          $or: [
+            { isWalkIn: true },
+            { patientExists: { $ne: [] } }
+          ]
+        }
+      },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     
@@ -356,9 +372,22 @@ const getPatientServicePayments = async (req, res) => {
       .sort({ date: -1 })
       .populate("createdBy", "name email");
     
-    // Calculate total amount
+    // Calculate total amount - only include payments for existing patients
     const totalAmount = await ServicePayment.aggregate([
       { $match: { patient: new mongoose.Types.ObjectId(patientId) } },
+      {
+        $lookup: {
+          from: "patients",
+          localField: "patient",
+          foreignField: "_id",
+          as: "patientExists"
+        }
+      },
+      {
+        $match: {
+          patientExists: { $ne: [] }
+        }
+      },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     
@@ -393,22 +422,70 @@ const getServicePaymentSummary = async (req, res) => {
       Object.assign(query, getDateFilter(startDate, endDate));
     }
     
-    // Get total service payment amount
+    // Get total service payment amount - only include payments for existing patients
     const totalAmount = await ServicePayment.aggregate([
       { $match: query },
+      {
+        $lookup: {
+          from: "patients",
+          localField: "patient",
+          foreignField: "_id",
+          as: "patientExists"
+        }
+      },
+      {
+        $match: {
+          $or: [
+            { isWalkIn: true },
+            { patientExists: { $ne: [] } }
+          ]
+        }
+      },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     
-    // Get service payments by type
+    // Get service payments by type - only include payments for existing patients
     const byServiceType = await ServicePayment.aggregate([
       { $match: query },
+      {
+        $lookup: {
+          from: "patients",
+          localField: "patient",
+          foreignField: "_id",
+          as: "patientExists"
+        }
+      },
+      {
+        $match: {
+          $or: [
+            { isWalkIn: true },
+            { patientExists: { $ne: [] } }
+          ]
+        }
+      },
       { $group: { _id: "$serviceType", total: { $sum: "$amount" } } },
       { $sort: { total: -1 } },
     ]);
     
-    // Get walk-in vs registered patient payments
+    // Get walk-in vs registered patient payments - only include payments for existing patients
     const byPatientType = await ServicePayment.aggregate([
       { $match: query },
+      {
+        $lookup: {
+          from: "patients",
+          localField: "patient",
+          foreignField: "_id",
+          as: "patientExists"
+        }
+      },
+      {
+        $match: {
+          $or: [
+            { isWalkIn: true },
+            { patientExists: { $ne: [] } }
+          ]
+        }
+      },
       { $group: { _id: "$isWalkIn", total: { $sum: "$amount" } } },
       { $project: {
           _id: 0,

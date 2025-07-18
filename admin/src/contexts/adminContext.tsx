@@ -1,6 +1,33 @@
 import { crudRequest } from "@/lib/api";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
+interface Permission {
+  create: boolean;
+  read: boolean;
+  update: boolean;
+  delete: boolean;
+}
+
+interface Permissions {
+  dashboard: {
+    fullAccess: boolean;
+    basicAccess: boolean;
+    analytics: boolean;
+    reports: boolean;
+  };
+  users: Permission;
+  patients: Permission;
+  doctors: Permission;
+  appointments: Permission;
+  income: Permission;
+  expenses: Permission;
+  contacts: Permission;
+  settings: {
+    access: boolean;
+    configure: boolean;
+  };
+}
+
 interface AdminDetails {
   notificationPreferences: { desktopNotifications: boolean; soundAlerts: boolean; appointmentNotifications: boolean; patientNotifications: boolean; treatmentNotifications: boolean; paymentNotifications: boolean; xrayNotifications: boolean; };
   role: string;
@@ -8,15 +35,30 @@ interface AdminDetails {
   email : string;
   contact : string;
   _id: string;
+  permissions?: Permissions;
+  isActive?: boolean;
+  lastLogin?: string;
 }
 
 // Define the initial state for the basic plan
 const initialState: AdminDetails = {
-  role: "superadmin",
+  role: "staff",
   contact: "",
   name: "",
   _id: "",
   email: "",
+  permissions: {
+    dashboard: { fullAccess: false, basicAccess: true, analytics: false, reports: false },
+    users: { create: false, read: false, update: false, delete: false },
+    patients: { create: true, read: true, update: true, delete: false },
+    doctors: { create: false, read: true, update: false, delete: false },
+    appointments: { create: true, read: true, update: true, delete: false },
+    income: { create: true, read: true, update: true, delete: false },
+    expenses: { create: true, read: true, update: true, delete: false },
+    contacts: { create: true, read: true, update: true, delete: false },
+    settings: { access: false, configure: false },
+  },
+  isActive: true,
   notificationPreferences: {
     desktopNotifications: false,
     soundAlerts: false,
@@ -32,7 +74,10 @@ const initialState: AdminDetails = {
 interface AdminContextType {
   adminDetails: AdminDetails;
   isLoading: boolean;
-  fetchAdminDetails: () => Promise<void>; // Corrected type
+  fetchAdminDetails: () => Promise<void>;
+  hasPermission: (entity: string, action: string) => boolean;
+  isAdmin: () => boolean;
+  isStaff: () => boolean;
 }
 
 // Create the context
@@ -56,6 +101,42 @@ export default function AdminProvider({ children }: AdminProviderProps) {
     }
   };
 
+  // Permission checking functions
+  const hasPermission = (entity: string, action: string): boolean => {
+    if (!adminDetails.permissions) return false;
+    
+    // Admin users have all permissions
+    if (adminDetails.role === 'admin') return true;
+    
+    // Check specific permission
+    const entityPermissions = adminDetails.permissions[entity as keyof Permissions];
+    if (!entityPermissions) return false;
+    
+    // Handle dashboard permissions
+    if (entity === 'dashboard') {
+      const dashboardPerms = entityPermissions as Permissions['dashboard'];
+      return dashboardPerms[action as keyof Permissions['dashboard']] || false;
+    }
+    
+    // Handle settings permissions
+    if (entity === 'settings') {
+      const settingsPerms = entityPermissions as Permissions['settings'];
+      return settingsPerms[action as keyof Permissions['settings']] || false;
+    }
+    
+    // Handle CRUD permissions
+    const crudPerms = entityPermissions as Permission;
+    return crudPerms[action as keyof Permission] || false;
+  };
+
+  const isAdmin = (): boolean => {
+    return adminDetails.role === 'admin';
+  };
+
+  const isStaff = (): boolean => {
+    return adminDetails.role === 'staff';
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -72,6 +153,9 @@ export default function AdminProvider({ children }: AdminProviderProps) {
         adminDetails,
         isLoading,
         fetchAdminDetails,
+        hasPermission,
+        isAdmin,
+        isStaff,
       }}
     >
       {children}

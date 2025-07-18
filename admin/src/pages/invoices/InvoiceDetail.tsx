@@ -1,47 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Box, 
-  Typography, 
-  Button, 
-  Paper, 
-  Grid, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
-  TextField, 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  DialogActions, 
-  DialogContentText, 
-  FormControl, 
-  InputLabel, 
-  Select, 
-  MenuItem, 
-  Card,
-  CardContent,
-  Chip
-} from '@mui/material';
-import { 
-  ArrowBack as ArrowBackIcon, 
-  Print as PrintIcon, 
-  Email as EmailIcon, 
-  Download as DownloadIcon,
-  CheckCircle as CheckCircleIcon,
-  Error as ErrorIcon,
-  Schedule as ScheduleIcon,
-  AttachMoney as AttachMoneyIcon
-} from '@mui/icons-material';
 import { format } from 'date-fns';
-import axios from 'axios';
+import { toast } from 'react-toastify';
+import { 
+  ArrowLeft, 
+  Print, 
+  Mail, 
+  Download,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  DollarSign,
+  Loader2
+} from 'lucide-react';
+
+// ShadCN UI Components
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 // Use environment variable or default to localhost
 const API_BASE_URL = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_URL_DEV || 'http://localhost:5000/api';
-import { toast } from 'react-toastify';
 
 interface InvoiceItem {
   description: string;
@@ -180,346 +186,374 @@ const InvoiceDetail: React.FC = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Paid':
-        return <CheckCircleIcon color="success" />;
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
       case 'Partially Paid':
-        return <ScheduleIcon color="warning" />;
+        return <Clock className="h-4 w-4 text-yellow-600" />;
       case 'Overdue':
-        return <ErrorIcon color="error" />;
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
       default:
         return null;
     }
   };
 
+  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+    switch (status) {
+      case 'Paid':
+        return 'default';
+      case 'Partially Paid':
+        return 'secondary';
+      case 'Overdue':
+        return 'destructive';
+      case 'Sent':
+        return 'outline';
+      default:
+        return 'outline';
+    }
+  };
+
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <AttachMoneyIcon />
-      </Box>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Loading invoice...</span>
+        </div>
+      </div>
     );
   }
 
   if (!invoice) {
     return (
-      <Box textAlign="center" p={4}>
-        <Typography variant="h6">Invoice not found</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(-1)}
-          sx={{ mt: 2 }}
-        >
+      <div className="text-center p-8">
+        <div className="mb-4">
+          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+          <h2 className="text-xl font-semibold">Invoice not found</h2>
+        </div>
+        <Button onClick={() => navigate(-1)}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Invoices
         </Button>
-      </Box>
+      </div>
     );
   }
 
   return (
-    <Box sx={{ p: 3 }} className="print-content">
+    <div className="p-6 print-content">
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(-1)}
-          className="no-print"
-        >
+      <div className="flex justify-between items-center mb-6 no-print">
+        <Button variant="outline" onClick={() => navigate(-1)}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Invoices
         </Button>
-        <Box className="no-print">
-          <Button
-            startIcon={<PrintIcon />}
-            onClick={handlePrint}
-            title="Print"
-          >
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handlePrint}>
+            <Print className="mr-2 h-4 w-4" />
             Print
           </Button>
-          <Button
-            startIcon={<DownloadIcon />}
-            onClick={handleDownloadPdf}
-            title="Download PDF"
-          >
+          <Button variant="outline" onClick={handleDownloadPdf}>
+            <Download className="mr-2 h-4 w-4" />
             Download PDF
           </Button>
-          <Button
-            startIcon={<EmailIcon />}
-            title="Email"
-          >
+          <Button variant="outline">
+            <Mail className="mr-2 h-4 w-4" />
             Email
           </Button>
           <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AttachMoneyIcon />}
             onClick={() => setOpenPaymentDialog(true)}
             disabled={invoice.status === 'Paid' || invoice.status === 'Cancelled'}
-            sx={{ ml: 1 }}
           >
+            <DollarSign className="mr-2 h-4 w-4" />
             Record Payment
           </Button>
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {/* Invoice Header */}
-      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Typography variant="h4" gutterBottom>
-              {process.env.REACT_APP_CLINIC_NAME || 'Dental Clinic'}
-            </Typography>
-            <Typography>{process.env.REACT_APP_CLINIC_ADDRESS || '123 Dental Street'}</Typography>
-            <Typography>Phone: {process.env.REACT_APP_CLINIC_PHONE || '(123) 456-7890'}</Typography>
-            <Typography>Email: {process.env.REACT_APP_CLINIC_EMAIL || 'info@dentalclinic.com'}</Typography>
-          </Grid>
-          <Grid item xs={12} md={6} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
-            <Typography variant="h4" gutterBottom>
-              INVOICE
-            </Typography>
-            <Typography><strong>Invoice #:</strong> {invoice.invoiceNumber}</Typography>
-            <Typography><strong>Date:</strong> {format(new Date(invoice.invoiceDate), 'MMM dd, yyyy')}</Typography>
-            <Typography><strong>Due Date:</strong> {format(new Date(invoice.dueDate), 'MMM dd, yyyy')}</Typography>
-            <Box mt={1}>
-              <Chip
-                icon={getStatusIcon(invoice.status)}
-                label={invoice.status}
-                color={
-                  invoice.status === 'Paid' ? 'success' :
-                  invoice.status === 'Partially Paid' ? 'warning' :
-                  invoice.status === 'Overdue' ? 'error' : 'default'
-                }
-              />
-            </Box>
-          </Grid>
-        </Grid>
-      </Paper>
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h1 className="text-2xl font-bold mb-2">
+                {process.env.REACT_APP_CLINIC_NAME || 'Dental Clinic'}
+              </h1>
+              <div className="text-muted-foreground space-y-1">
+                <p>{process.env.REACT_APP_CLINIC_ADDRESS || '123 Dental Street'}</p>
+                <p>Phone: {process.env.REACT_APP_CLINIC_PHONE || '(123) 456-7890'}</p>
+                <p>Email: {process.env.REACT_APP_CLINIC_EMAIL || 'info@dentalclinic.com'}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <h2 className="text-3xl font-bold mb-4">INVOICE</h2>
+              <div className="space-y-2">
+                <p><strong>Invoice #:</strong> {invoice.invoiceNumber}</p>
+                <p><strong>Date:</strong> {format(new Date(invoice.invoiceDate), 'MMM dd, yyyy')}</p>
+                <p><strong>Due Date:</strong> {format(new Date(invoice.dueDate), 'MMM dd, yyyy')}</p>
+                <div className="mt-2">
+                  <Badge variant={getStatusVariant(invoice.status)} className="inline-flex items-center gap-1">
+                    {getStatusIcon(invoice.status)}
+                    {invoice.status}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Bill To & Doctor Info */}
-      <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Bill To</Typography>
-            <Typography><strong>{invoice.patient.name}</strong></Typography>
-            {invoice.patient.address && <Typography>{invoice.patient.address}</Typography>}
-            {invoice.patient.email && <Typography>Email: {invoice.patient.email}</Typography>}
-            {invoice.patient.phone && <Typography>Phone: {invoice.patient.phone}</Typography>}
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Doctor</Typography>
-            <Typography><strong>{invoice.doctor.name}</strong></Typography>
-          </Paper>
-        </Grid>
-      </Grid>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Bill To</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <p className="font-semibold">{invoice.patient.name}</p>
+              {invoice.patient.address && <p>{invoice.patient.address}</p>}
+              {invoice.patient.email && <p>Email: {invoice.patient.email}</p>}
+              {invoice.patient.phone && <p>Phone: {invoice.patient.phone}</p>}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Doctor</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="font-semibold">{invoice.doctor.name}</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Invoice Items */}
-      <Paper elevation={3} sx={{ mb: 3 }}>
-        <TableContainer>
+      <Card className="mb-6">
+        <CardContent className="p-0">
           <Table>
-            <TableHead>
+            <TableHeader>
               <TableRow>
-                <TableCell>Description</TableCell>
-                <TableCell align="right">Unit Price</TableCell>
-                <TableCell align="center">Qty</TableCell>
-                <TableCell align="right">Amount</TableCell>
+                <TableHead>Description</TableHead>
+                <TableHead className="text-right">Unit Price</TableHead>
+                <TableHead className="text-center">Qty</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
               </TableRow>
-            </TableHead>
+            </TableHeader>
             <TableBody>
               {invoice.items.map((item, index) => (
                 <TableRow key={index}>
                   <TableCell>
-                    <Typography>{item.description}</Typography>
-                    {item.notes && (
-                      <Typography variant="body2" color="textSecondary">
-                        {item.notes}
-                      </Typography>
-                    )}
-                    {item.teethNumbers && item.teethNumbers.length > 0 && (
-                      <Typography variant="body2" color="textSecondary">
-                        Teeth: {item.teethNumbers.join(', ')}
-                      </Typography>
-                    )}
+                    <div>
+                      <p className="font-medium">{item.description}</p>
+                      {item.notes && (
+                        <p className="text-sm text-muted-foreground">{item.notes}</p>
+                      )}
+                      {item.teethNumbers && item.teethNumbers.length > 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          Teeth: {item.teethNumbers.join(', ')}
+                        </p>
+                      )}
+                    </div>
                   </TableCell>
-                  <TableCell align="right">{formatCurrency(item.unitPrice)}</TableCell>
-                  <TableCell align="center">{item.quantity}</TableCell>
-                  <TableCell align="right">{formatCurrency(item.total)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                  <TableCell className="text-center">{item.quantity}</TableCell>
+                  <TableCell className="text-right font-medium">{formatCurrency(item.total)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </TableContainer>
-      </Paper>
+        </CardContent>
+      </Card>
 
       {/* Totals */}
-      <Grid container justifyContent="flex-end" spacing={3}>
-        <Grid item xs={12} md={4}>
-          <Paper elevation={3} sx={{ p: 2 }}>
+      <div className="flex justify-end mb-6">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
             <Table>
               <TableBody>
                 <TableRow>
-                  <TableCell><strong>Subtotal</strong></TableCell>
-                  <TableCell align="right">{formatCurrency(invoice.subtotal)}</TableCell>
+                  <TableCell className="font-medium">Subtotal</TableCell>
+                  <TableCell className="text-right">{formatCurrency(invoice.subtotal)}</TableCell>
                 </TableRow>
                 {invoice.tax > 0 && (
                   <TableRow>
-                    <TableCell><strong>Tax</strong></TableCell>
-                    <TableCell align="right">{formatCurrency(invoice.tax)}</TableCell>
+                    <TableCell className="font-medium">Tax</TableCell>
+                    <TableCell className="text-right">{formatCurrency(invoice.tax)}</TableCell>
                   </TableRow>
                 )}
                 {invoice.discount > 0 && (
                   <TableRow>
-                    <TableCell><strong>Discount</strong></TableCell>
-                    <TableCell align="right">-{formatCurrency(invoice.discount)}</TableCell>
+                    <TableCell className="font-medium">Discount</TableCell>
+                    <TableCell className="text-right">-{formatCurrency(invoice.discount)}</TableCell>
                   </TableRow>
                 )}
                 <TableRow>
-                  <TableCell><strong>Total</strong></TableCell>
-                  <TableCell align="right">{formatCurrency(invoice.total)}</TableCell>
+                  <TableCell className="font-semibold">Total</TableCell>
+                  <TableCell className="text-right font-semibold">{formatCurrency(invoice.total)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell><strong>Amount Paid</strong></TableCell>
-                  <TableCell align="right">{formatCurrency(invoice.amountPaid)}</TableCell>
+                  <TableCell className="font-medium">Amount Paid</TableCell>
+                  <TableCell className="text-right">{formatCurrency(invoice.amountPaid)}</TableCell>
                 </TableRow>
-                <TableRow>
-                  <TableCell><strong>Balance Due</strong></TableCell>
-                  <TableCell align="right">
-                    <Typography variant="h6" color={invoice.balance > 0 ? 'error' : 'success'}>
+                <TableRow className="border-t-2">
+                  <TableCell className="font-bold">Balance Due</TableCell>
+                  <TableCell className="text-right">
+                    <span className={`text-lg font-bold ${invoice.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
                       {formatCurrency(invoice.balance)}
-                    </Typography>
+                    </span>
                   </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
-          </Paper>
-        </Grid>
-      </Grid>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Payment History */}
       {invoice.paymentLogs && invoice.paymentLogs.length > 0 && (
-        <Box mt={4}>
-          <Typography variant="h6" gutterBottom>Payment History</Typography>
-          <Paper elevation={3}>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Payment Method</TableCell>
-                    <TableCell>Transaction ID</TableCell>
-                    <TableCell>Amount</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Notes</TableCell>
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Payment History</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Payment Method</TableHead>
+                  <TableHead>Transaction ID</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Notes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoice.paymentLogs.map((payment, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{format(new Date(payment.paymentDate), 'MMM dd, yyyy')}</TableCell>
+                    <TableCell>{payment.paymentMethod}</TableCell>
+                    <TableCell>{payment.transactionId || 'N/A'}</TableCell>
+                    <TableCell>{formatCurrency(payment.amount)}</TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={
+                          payment.status === 'Completed' ? 'default' :
+                          payment.status === 'Failed' ? 'destructive' : 'secondary'
+                        }
+                      >
+                        {payment.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{payment.notes || '-'}</TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {invoice.paymentLogs.map((payment, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{format(new Date(payment.paymentDate), 'MMM dd, yyyy')}</TableCell>
-                      <TableCell>{payment.paymentMethod}</TableCell>
-                      <TableCell>{payment.transactionId || 'N/A'}</TableCell>
-                      <TableCell>{formatCurrency(payment.amount)}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={payment.status} 
-                          size="small"
-                          color={
-                            payment.status === 'Completed' ? 'success' :
-                            payment.status === 'Failed' ? 'error' : 'default'
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>{payment.notes || '-'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        </Box>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       {/* Notes */}
       {invoice.notes && (
-        <Box mt={3}>
-          <Typography variant="subtitle1">Notes</Typography>
-          <Paper elevation={3} sx={{ p: 2 }}>
-            <Typography>{invoice.notes}</Typography>
-          </Paper>
-        </Box>
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>{invoice.notes}</p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Payment Dialog */}
-      <Dialog open={openPaymentDialog} onClose={() => setOpenPaymentDialog(false)}>
-        <DialogTitle>Record Payment</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ pt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Amount"
-                type="number"
-                value={paymentData.amount}
-                onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
-                disabled={processing}
-                InputProps={{
-                  startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
-                }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControl fullWidth>
-                <InputLabel>Payment Method</InputLabel>
-                <Select
-                  value={paymentData.paymentMethod}
-                  label="Payment Method"
-                  onChange={(e) => setPaymentData({ ...paymentData, paymentMethod: e.target.value })}
+      <Dialog open={openPaymentDialog} onOpenChange={setOpenPaymentDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Record Payment</DialogTitle>
+            <DialogDescription>
+              Enter payment details for invoice {invoice.invoiceNumber}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="amount">Amount</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-3 text-muted-foreground">$</span>
+                <Input
+                  id="amount"
+                  type="number"
+                  value={paymentData.amount}
+                  onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
                   disabled={processing}
-                >
-                  <MenuItem value="Cash">Cash</MenuItem>
-                  <MenuItem value="Credit Card">Credit Card</MenuItem>
-                  <MenuItem value="Debit Card">Debit Card</MenuItem>
-                  <MenuItem value="Bank Transfer">Bank Transfer</MenuItem>
-                  <MenuItem value="Check">Check</MenuItem>
-                  <MenuItem value="Insurance">Insurance</MenuItem>
-                  <MenuItem value="Other">Other</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Transaction ID (Optional)"
+                  className="pl-8"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="paymentMethod">Payment Method</Label>
+              <Select
+                value={paymentData.paymentMethod}
+                onValueChange={(value) => setPaymentData({ ...paymentData, paymentMethod: value })}
+                disabled={processing}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="Credit Card">Credit Card</SelectItem>
+                  <SelectItem value="Debit Card">Debit Card</SelectItem>
+                  <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="Check">Check</SelectItem>
+                  <SelectItem value="Insurance">Insurance</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="transactionId">Transaction ID (Optional)</Label>
+              <Input
+                id="transactionId"
                 value={paymentData.transactionId}
                 onChange={(e) => setPaymentData({ ...paymentData, transactionId: e.target.value })}
                 disabled={processing}
+                placeholder="Enter transaction ID"
               />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Notes (Optional)"
-                multiline
-                rows={3}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Textarea
+                id="notes"
                 value={paymentData.notes}
                 onChange={(e) => setPaymentData({ ...paymentData, notes: e.target.value })}
                 disabled={processing}
+                placeholder="Add any notes about this payment"
+                rows={3}
               />
-            </Grid>
-          </Grid>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setOpenPaymentDialog(false)} 
+              disabled={processing}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handlePaymentSubmit}
+              disabled={!paymentData.amount || processing}
+            >
+              {processing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Recording...
+                </>
+              ) : (
+                'Record Payment'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenPaymentDialog(false)} disabled={processing}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handlePaymentSubmit} 
-            variant="contained" 
-            color="primary"
-            disabled={!paymentData.amount || processing}
-          >
-            {processing ? <AttachMoneyIcon /> : 'Record Payment'}
-          </Button>
-        </DialogActions>
       </Dialog>
 
       {/* Print Styles */}
@@ -547,7 +581,7 @@ const InvoiceDetail: React.FC = () => {
           }
         }
       `}</style>
-    </Box>
+    </div>
   );
 };
 

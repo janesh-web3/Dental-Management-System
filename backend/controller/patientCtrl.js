@@ -2651,6 +2651,22 @@ const getDashboardMetrics = async (req, res) => {
             },
           },
           {
+            $lookup: {
+              from: "patients",
+              localField: "patient",
+              foreignField: "_id",
+              as: "patientExists"
+            }
+          },
+          {
+            $match: {
+              $or: [
+                { isWalkIn: true },
+                { patientExists: { $ne: [] } }
+              ]
+            }
+          },
+          {
             $group: {
               _id: null,
               revenue: { $sum: { $toDouble: "$amount" } },
@@ -2686,6 +2702,22 @@ const getDashboardMetrics = async (req, res) => {
                 $type: ["double", "decimal", "int", "long"],
               },
             },
+          },
+          {
+            $lookup: {
+              from: "patients",
+              localField: "patient",
+              foreignField: "_id",
+              as: "patientExists"
+            }
+          },
+          {
+            $match: {
+              $or: [
+                { isWalkIn: true },
+                { patientExists: { $ne: [] } }
+              ]
+            }
           },
           {
             $group: {
@@ -2725,6 +2757,22 @@ const getDashboardMetrics = async (req, res) => {
             },
           },
           {
+            $lookup: {
+              from: "patients",
+              localField: "patient",
+              foreignField: "_id",
+              as: "patientExists"
+            }
+          },
+          {
+            $match: {
+              $or: [
+                { isWalkIn: true },
+                { patientExists: { $ne: [] } }
+              ]
+            }
+          },
+          {
             $group: {
               _id: null,
               revenue: { $sum: { $toDouble: "$amount" } },
@@ -2759,6 +2807,22 @@ const getDashboardMetrics = async (req, res) => {
                 $type: ["double", "decimal", "int", "long"],
               },
             },
+          },
+          {
+            $lookup: {
+              from: "patients",
+              localField: "patient",
+              foreignField: "_id",
+              as: "patientExists"
+            }
+          },
+          {
+            $match: {
+              $or: [
+                { isWalkIn: true },
+                { patientExists: { $ne: [] } }
+              ]
+            }
           },
           {
             $group: {

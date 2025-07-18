@@ -33,6 +33,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NotificationSettings } from "@/components/shared/NotificationSettings";
 import { VoiceInputSettings } from "@/components/shared/VoiceInputSettings";
+import UserPermissionForm from "@/components/user/UserPermissionForm";
 
 interface UserData {
   _id: string;
@@ -93,48 +94,7 @@ const Setting = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<UserData>(userData);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
-  const [newUser, setNewUser] = useState<Omit<UserData, "_id">>({
-    name: "",
-    email: "",
-    contact: "",
-    role: "",
-    password: "",
-    avatar: "",
-  });
-  const [users, setUsers] = useState<UserData[]>([
-    {
-      _id: "1",
-      name: "John Doe",
-      email: "john@example.com",
-      contact: "1234567890",
-      role: "Admin",
-      avatar: "https://github.com/shadcn.png",
-    },
-    // Add more sample users as needed
-  ]);
-
-  // Add these state declarations after existing states
-  const [formErrors, setFormErrors] = useState({
-    name: "",
-    email: "",
-    password: "",
-    contact: "",
-    role: "",
-  });
-
-  // Add this validation function before handleCreateUser
-  const validateForm = () => {
-    const errors = {
-      name: !newUser.name ? "Name is required" : "",
-      email: !newUser.email ? "Email is required" : "",
-      password: !newUser.password ? "Password is required" : "",
-      contact: !newUser.contact ? "Contact is required" : "",
-      role: !newUser.role ? "Role is required" : "",
-    };
-
-    setFormErrors(errors);
-    return !Object.values(errors).some((error) => error);
-  };
+  const [users, setUsers] = useState<UserData[]>([]);
 
   // Add this state after other state declarations
   const [showPasswordUpdate, setShowPasswordUpdate] = useState(false);
@@ -189,52 +149,40 @@ const Setting = () => {
     }
   };
 
-  const handleCreateUser = async () => {
-    if (!validateForm()) {
-      toast.error("Please fill all required fields");
-      return;
+  const handleCreateUser = async (userData: any) => {
+    try {
+      const response = await crudRequest("POST", "/user/create-user", userData);
+      if (response) {
+        setIsCreatingUser(false);
+        toast.success("User created successfully");
+        // Refresh the users list
+        fetchUsers();
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create user");
     }
-    const data = {
-      name: newUser.name,
-      email: newUser.email,
-      password: newUser.password,
-      role: newUser.role,
-      contact: newUser.contact,
-    };
+  };
 
-    const response = await crudRequest("POST", "/user/add-user", data);
-    if (response) {
-      setIsCreatingUser(false);
-      setNewUser({
-        name: "",
-        email: "",
-        role: "",
-        avatar: "",
-        contact: "",
-        password: "",
-      });
-      toast.success("User created successfully");
-    } else {
-      toast.error("Failed to create user: ");
+  const handleCancelCreate = () => {
+    setIsCreatingUser(false);
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await crudRequest<{ data: UserData[] }>(
+        "GET",
+        "/user/get-users"
+      );
+      if (response) {
+        setUsers(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast.error("Failed to fetch users");
     }
   };
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await crudRequest<{ data: UserData[] }>(
-          "GET",
-          "/user/get-users"
-        );
-        if (response) {
-          setUsers(response.data);
-        }
-      } catch (error) {
-        console.error("Error fetching users:", error);
-        toast.error("Failed to fetch users");
-      }
-    };
-
     fetchUsers();
   }, []);
 
@@ -249,86 +197,15 @@ const Setting = () => {
               Add New User
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New User</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="newName">Name</Label>
-                <Input
-                  id="newName"
-                  value={newUser.name}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, name: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="text"
-                  value={newUser.password}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, password: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="newEmail">Email</Label>
-                <Input
-                  id="newEmail"
-                  type="email"
-                  value={newUser.email}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, email: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="newContact">Contact</Label>
-                <Input
-                  id="newContact"
-                  value={newUser.contact}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, contact: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="newRole">Role</Label>
-                <Select
-                  value={newUser.role}
-                  onValueChange={(value) =>
-                    setNewUser({ ...newUser, role: value })
-                  }
-                >
-                  <SelectTrigger
-                    id="newRole"
-                    className={formErrors.role ? "border-red-500" : ""}
-                  >
-                    <SelectValue placeholder="Select a role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="reception">Reception</SelectItem>
-                  </SelectContent>
-                </Select>
-                {formErrors.role && (
-                  <p className="text-sm text-red-500">{formErrors.role}</p>
-                )}
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button onClick={handleCreateUser}>Create User</Button>
-              <Button
-                variant="outline"
-                onClick={() => setIsCreatingUser(false)}
-              >
-                Cancel
-              </Button>
-            </div>
+            <UserPermissionForm
+              onSubmit={handleCreateUser}
+              onCancel={handleCancelCreate}
+              loading={false}
+            />
           </DialogContent>
         </Dialog>
       </div>

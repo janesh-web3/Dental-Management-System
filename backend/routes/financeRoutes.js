@@ -1,5 +1,10 @@
 const express = require("express");
 const { protectAdminRoute } = require("../middleware/adminAuthMiddleware");
+const { 
+  authenticateUser, 
+  authorizePermission, 
+  staffOrAdmin 
+} = require("../middleware/rbacMiddleware");
 const {
   // Income controllers
   addIncome,
@@ -21,21 +26,21 @@ const {
 
 const router = express.Router();
 
-// ********************* INCOME ROUTES *********************
-router.post("/income", protectAdminRoute, addIncome);
-router.get("/income", protectAdminRoute, getIncomes);
-router.get("/income/:id", protectAdminRoute, getIncomeById);
-router.put("/income/:id", protectAdminRoute, updateIncome);
-router.delete("/income/:id", protectAdminRoute, deleteIncome);
+// ********************* INCOME ROUTES WITH RBAC *********************
+router.post("/income", authenticateUser, authorizePermission('income', 'create'), addIncome);
+router.get("/income", authenticateUser, authorizePermission('income', 'read'), getIncomes);
+router.get("/income/:id", authenticateUser, authorizePermission('income', 'read'), getIncomeById);
+router.put("/income/:id", authenticateUser, authorizePermission('income', 'update'), updateIncome);
+router.delete("/income/:id", authenticateUser, authorizePermission('income', 'delete'), deleteIncome);
 
-// ********************* EXPENSE ROUTES *********************
-router.post("/expense", protectAdminRoute, addExpense);
-router.get("/expense", protectAdminRoute, getExpenses);
-router.get("/expense/:id", protectAdminRoute, getExpenseById);
-router.put("/expense/:id", protectAdminRoute, updateExpense);
-router.delete("/expense/:id", protectAdminRoute, deleteExpense);
+// ********************* EXPENSE ROUTES WITH RBAC *********************
+router.post("/expense", authenticateUser, authorizePermission('expenses', 'create'), addExpense);
+router.get("/expense", authenticateUser, authorizePermission('expenses', 'read'), getExpenses);
+router.get("/expense/:id", authenticateUser, authorizePermission('expenses', 'read'), getExpenseById);
+router.put("/expense/:id", authenticateUser, authorizePermission('expenses', 'update'), updateExpense);
+router.delete("/expense/:id", authenticateUser, authorizePermission('expenses', 'delete'), deleteExpense);
 
-// ********************* FINANCIAL SUMMARY ROUTE *********************
-router.get("/summary", protectAdminRoute, getFinancialSummary);
+// ********************* FINANCIAL SUMMARY ROUTE WITH RBAC *********************
+router.get("/summary", authenticateUser, staffOrAdmin, getFinancialSummary);
 
 module.exports = router; 

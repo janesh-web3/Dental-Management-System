@@ -1,40 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
-  Paper, 
-  IconButton, 
-  TablePagination,
-  Chip,
-  TextField,
-  InputAdornment,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-  Box,
-  Typography,
-  Button
-} from '@mui/material';
-import { 
-  Search as SearchIcon, 
-  Print as PrintIcon,
-  Email as EmailIcon,
-  Download as DownloadIcon,
-  FilterList as FilterListIcon,
-  Add as AddIcon
-} from '@mui/icons-material';
 import { format } from 'date-fns';
 import axios from 'axios';
+import { 
+  Search, 
+  Mail,
+  Download,
+  Filter,
+  Plus,
+  Eye
+} from 'lucide-react';
+
+// ShadCN UI Components
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import { server } from '@/server';
 
 // Use environment variable or default to localhost
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
 interface Invoice {
   _id: string;
   invoiceNumber: string;
@@ -51,7 +60,7 @@ interface Invoice {
 const InvoiceList: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [page, setPage] = useState<number>(0);
+  const [page, setPage] = useState<number>(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   const [totalInvoices, setTotalInvoices] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -79,7 +88,7 @@ const InvoiceList: React.FC = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       const params = new URLSearchParams({
-        page: (page + 1).toString(),
+        page: page.toString(),
         limit: rowsPerPage.toString(),
         search: searchTerm,
         status: statusFilter !== 'all' ? statusFilter : '',
@@ -87,7 +96,7 @@ const InvoiceList: React.FC = () => {
         endDate: dateRange.endDate
       });
 
-      const response = await axios.get(`${API_BASE_URL}/api/v1/invoices?${params}`, {
+      const response = await axios.get(`${server}/invoices?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -104,23 +113,23 @@ const InvoiceList: React.FC = () => {
     fetchInvoices();
   }, [page, rowsPerPage, statusFilter, searchTerm, dateRange]);
 
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handlePageChange = (newPage: number) => {
     setPage(newPage);
   };
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
+  const handleRowsPerPageChange = (value: string) => {
+    setRowsPerPage(parseInt(value, 10));
+    setPage(1);
   };
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
-    setPage(0);
+    setPage(1);
   };
 
-  const handleStatusFilterChange = (event: any) => {
-    setStatusFilter(event.target.value);
-    setPage(0);
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+    setPage(1);
   };
 
   const handleDateChange = (field: 'startDate' | 'endDate', value: string) => {
@@ -128,23 +137,23 @@ const InvoiceList: React.FC = () => {
       ...prev,
       [field]: value
     }));
-    setPage(0);
+    setPage(1);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case 'Paid':
-        return 'success';
+        return 'default';
       case 'Partially Paid':
-        return 'warning';
+        return 'secondary';
       case 'Overdue':
-        return 'error';
+        return 'destructive';
       case 'Sent':
-        return 'info';
+        return 'outline';
       case 'Draft':
-        return 'default';
+        return 'secondary';
       default:
-        return 'default';
+        return 'outline';
     }
   };
 
@@ -155,114 +164,130 @@ const InvoiceList: React.FC = () => {
     }).format(amount / 100); // Assuming amounts are stored in cents
   };
 
+  const totalPages = Math.ceil(totalInvoices / rowsPerPage);
+
   return (
-    <div style={{ padding: '24px' }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1">
-          Invoices
-        </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          component={Link}
-          to="/invoices/new"
-        >
-          New Invoice
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
+          <p className="text-muted-foreground">Manage and track all your invoices</p>
+        </div>
+        <Button asChild>
+          <Link to="/invoices/new">
+            <Plus className="mr-2 h-4 w-4" />
+            New Invoice
+          </Link>
         </Button>
-      </Box>
+      </div>
 
-      <Paper elevation={3} style={{ marginBottom: '24px', padding: '16px' }}>
-        <Box display="flex" flexWrap="wrap" gap={2} mb={2}>
-          <TextField
-            variant="outlined"
-            size="small"
-            placeholder="Search invoices..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-            style={{ minWidth: '250px' }}
-          />
-          
-          <FormControl variant="outlined" size="small" style={{ minWidth: '200px' }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={statusFilter}
-              onChange={handleStatusFilterChange}
-              label="Status"
-            >
-              {statusOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filters
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="search">Search</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="search"
+                  placeholder="Search invoices..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <TextField
-            label="From"
-            type="date"
-            size="small"
-            InputLabelProps={{
-              shrink: true,
-            }}
-            value={dateRange.startDate}
-            onChange={(e) => handleDateChange('startDate', e.target.value)}
-          />
+            <div className="space-y-2">
+              <Label htmlFor="startDate">From Date</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={dateRange.startDate}
+                onChange={(e) => handleDateChange('startDate', e.target.value)}
+              />
+            </div>
 
-          <TextField
-            label="To"
-            type="date"
-            size="small"
-            InputLabelProps={{
-              shrink: true,
-            }}
-            value={dateRange.endDate}
-            onChange={(e) => handleDateChange('endDate', e.target.value)}
-          />
-        </Box>
-      </Paper>
+            <div className="space-y-2">
+              <Label htmlFor="endDate">To Date</Label>
+              <Input
+                id="endDate"
+                type="date"
+                value={dateRange.endDate}
+                onChange={(e) => handleDateChange('endDate', e.target.value)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      <Paper elevation={3}>
-        <TableContainer>
+      {/* Invoice Table */}
+      <Card>
+        <CardContent className="p-0">
           <Table>
-            <TableHead>
+            <TableHeader>
               <TableRow>
-                <TableCell>Invoice #</TableCell>
-                <TableCell>Date</TableCell>
-                <TableCell>Due Date</TableCell>
-                <TableCell>Patient</TableCell>
-                <TableCell align="right">Total</TableCell>
-                <TableCell align="right">Paid</TableCell>
-                <TableCell align="right">Balance</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableHead>Invoice #</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Due Date</TableHead>
+                <TableHead>Patient</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Paid</TableHead>
+                <TableHead className="text-right">Balance</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
-            </TableHead>
+            </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
-                    Loading...
+                  <TableCell colSpan={9} className="text-center py-8">
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      <span className="ml-2">Loading...</span>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : invoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
-                    No invoices found
+                  <TableCell colSpan={9} className="text-center py-8">
+                    <div className="text-muted-foreground">
+                      No invoices found
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 invoices.map((invoice) => (
-                  <TableRow key={invoice._id} hover>
+                  <TableRow key={invoice._id} className="hover:bg-muted/50">
                     <TableCell>
-                      <Link to={`/invoices/${invoice._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <Link 
+                        to={`/invoices/${invoice._id}`} 
+                        className="text-primary hover:underline font-medium"
+                      >
                         {invoice.invoiceNumber}
                       </Link>
                     </TableCell>
@@ -272,58 +297,105 @@ const InvoiceList: React.FC = () => {
                     <TableCell>
                       {format(new Date(invoice.dueDate), 'MMM dd, yyyy')}
                     </TableCell>
-                    <TableCell>{invoice.patientName}</TableCell>
-                    <TableCell align="right">{formatCurrency(invoice.total)}</TableCell>
-                    <TableCell align="right">{formatCurrency(invoice.amountPaid)}</TableCell>
-                    <TableCell align="right">{formatCurrency(invoice.balance)}</TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={invoice.status} 
-                        color={getStatusColor(invoice.status) as any} 
-                        size="small" 
-                      />
+                    <TableCell className="font-medium">{invoice.patientName}</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(invoice.total)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(invoice.amountPaid)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(invoice.balance)}
                     </TableCell>
                     <TableCell>
-                      <IconButton 
-                        size="small" 
-                        component={Link} 
-                        to={`/invoices/${invoice._id}`}
-                        title="View"
-                      >
-                        <SearchIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        href={`${API_BASE_URL}/api/v1/invoices/${invoice._id}/pdf`}
-                        target="_blank"
-                        title="Download PDF"
-                      >
-                        <DownloadIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        title="Email"
-                        // Add email functionality
-                      >
-                        <EmailIcon fontSize="small" />
-                      </IconButton>
+                      <Badge variant={getStatusVariant(invoice.status)}>
+                        {invoice.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link to={`/invoices/${invoice._id}`}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => window.open(`${server}/invoices/${invoice._id}/pdf`, '_blank')}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                          <Mail className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
-        </TableContainer>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25, 50]}
-          component="div"
-          count={totalInvoices}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </Paper>
+        </CardContent>
+      </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Label>Rows per page:</Label>
+            <Select value={rowsPerPage.toString()} onValueChange={handleRowsPerPageChange}>
+              <SelectTrigger className="w-[80px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">
+              Showing {((page - 1) * rowsPerPage) + 1} to {Math.min(page * rowsPerPage, totalInvoices)} of {totalInvoices} results
+            </span>
+          </div>
+          
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => page > 1 && handlePageChange(page - 1)}
+                  className={page <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const pageNumber = i + 1;
+                return (
+                  <PaginationItem key={pageNumber}>
+                    <PaginationLink
+                      onClick={() => handlePageChange(pageNumber)}
+                      isActive={page === pageNumber}
+                      className="cursor-pointer"
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              })}
+              
+              {totalPages > 5 && <PaginationEllipsis />}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => page < totalPages && handlePageChange(page + 1)}
+                  className={page >= totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
     </div>
   );
 };

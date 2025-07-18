@@ -37,6 +37,7 @@ export default function App() {
                       <AppRouter />
                       <NotificationCenter />
                       <Toaster />
+                      {/* <AuthDebugger /> */}
                     </TooltipProvider>
                   </VoiceInputProvider>
                 </SocketProvider>

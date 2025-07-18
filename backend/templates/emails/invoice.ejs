@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice #<%= invoice.invoiceNumber %></title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    .logo {
+      max-width: 150px;
+      margin-bottom: 15px;
+    }
+    .clinic-info {
+      margin-bottom: 20px;
+    }
+    .invoice-details {
+      background-color: #f9f9f9;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+    .patient-info {
+      margin: 20px 0;
+    }
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+      text-align: center;
+      font-size: 12px;
+      color: #777;
+    }
+    .button {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+    .amount-due {
+      font-size: 18px;
+      font-weight: bold;
+      color: #e74c3c;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1><%= clinicName %></h1>
+    <p><%= clinicAddress %></p>
+    <p>Phone: <%= clinicPhone %> | Email: <%= clinicEmail %></p>
+  </div>
+
+  <h2>Invoice #<%= invoice.invoiceNumber %></h2>
+  <p>Date: <%= new Date(invoice.invoiceDate).toLocaleDateString() %></p>
+  <p>Due Date: <%= new Date(invoice.dueDate).toLocaleDateString() %></p>
+
+  <div class="patient-info">
+    <h3>Bill To:</h3>
+    <p><strong><%= invoice.patientName || invoice.patient.name %></strong></p>
+    <p><%= invoice.patient.email || invoice.patientId?.email %></p>
+    <p><%= invoice.patient.phone || invoice.patientId?.phone %></p>
+  </div>
+
+  <div class="invoice-details">
+    <h3>Invoice Summary</h3>
+    <p>Subtotal: $<%= (invoice.subtotal / 100).toFixed(2) %></p>
+    <% if (invoice.tax > 0) { %>
+      <p>Tax (<%= invoice.taxRate || 0 %>%): $<%= (invoice.tax / 100).toFixed(2) %></p>
+    <% } %>
+    <% if (invoice.discount > 0) { %>
+      <p>Discount: -$<%= (invoice.discount / 100).toFixed(2) %></p>
+    <% } %>
+    <p class="amount-due">Amount Due: $<%= (invoice.total / 100).toFixed(2) %></p>
+    <p>Status: <strong><%= invoice.status %></strong></p>
+  </div>
+
+  <p>Please find attached a copy of your invoice for your records.</p>
+  <p>You can also view your invoice and make payments online through our patient portal.</p>
+
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="<%= process.env.PATIENT_PORTAL_URL || '#' %>" class="button">Pay Now</a>
+  </div>
+
+  <p>If you have any questions about this invoice, please don't hesitate to contact our office.</p>
+
+  <div class="footer">
+    <p>© <%= currentYear %> <%= clinicName %>. All rights reserved.</p>
+    <p>This email was sent to <%= invoice.patient.email || invoice.patientId?.email %>. 
+    If you believe you received this in error, please contact us.</p>
+  </div>
+</body>
+</html>

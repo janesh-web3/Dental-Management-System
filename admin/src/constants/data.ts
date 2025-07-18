@@ -43,6 +43,13 @@ export const navItems: NavItem[] = [
     label: "Expense",
     notificationEnabled: true,
   },
+  {
+    title: "Invoices",
+    href: "/finance/invoices",
+    icon: "receipt",
+    label: "Invoices",
+    notificationEnabled: true,
+  },
   // {
   //   title: "Notifications",
   //   href: "/notifications",

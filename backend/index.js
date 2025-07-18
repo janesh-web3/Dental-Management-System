@@ -24,6 +24,7 @@ const financeRouter = require("./routes/financeRoutes.js");
 const servicePaymentRouter = require("./routes/servicePaymentRoutes.js");
 const geminiRouter = require("./routes/geminiRoute.js");
 const notificationRouter = require("./routes/notificationRoutes.js");
+const invoiceRouter = require("./routes/invoiceRoutes.js");
 
 // Import utilities
 const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
@@ -81,7 +82,8 @@ app.use("/api/sms", smsRouter);
 app.use("/api/finance", financeRouter); // Finance management routes
 app.use("/api/service-payment", servicePaymentRouter); // Service payment routes
 app.use("/api/gemini", geminiRouter);
-app.use("/api/notifications", notificationRouter);
+app.use("/api/v1/notifications", notificationRouter);
+app.use("/api/v1/invoices", invoiceRouter);
 
 const port = process.env.PORT || 8080;
 

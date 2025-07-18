@@ -6,6 +6,51 @@ const invoiceItemSchema = new mongoose.Schema({
   unitPrice: { type: Number, required: true },
   discount: { type: Number, default: 0 },
   total: { type: Number, required: true },
+  // For dental-specific fields
+  treatmentType: { 
+    type: String, 
+    enum: ['general', 'orthodontic', 'surgical', 'preventive', 'cosmetic', 'other'],
+    required: true 
+  },
+  treatmentId: { 
+    type: mongoose.Schema.Types.ObjectId,
+    refPath: 'items.treatmentModel'
+  },
+  treatmentModel: {
+    type: String,
+    required: true,
+    enum: ['Treatment', 'OrthoTreatment', 'DailyTreatment']
+  },
+  // For tracking selected teeth
+  teethNumbers: [{
+    type: String,
+    validate: {
+      validator: function(v) {
+        // Validate tooth number format (e.g., 11, 21, 32, 48, etc.)
+        return /^[1-8][1-8]?$/.test(v);
+      },
+      message: props => `${props.value} is not a valid tooth number!`
+    }
+  }],
+  notes: String
+});
+
+// Payment log schema
+const paymentLogSchema = new mongoose.Schema({
+  amount: { type: Number, required: true },
+  paymentDate: { type: Date, default: Date.now },
+  paymentMethod: { 
+    type: String,
+    required: true,
+    enum: ["Cash", "Credit Card", "Debit Card", "Insurance", "Bank Transfer", "Other"]
+  },
+  transactionId: String,
+  notes: String,
+  processedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  }
 });
 
 const invoiceSchema = new mongoose.Schema(
@@ -15,15 +60,24 @@ const invoiceSchema = new mongoose.Schema(
       ref: "Patient",
       required: true,
     },
+    patientName: {
+      type: String,
+      required: true
+    },
     doctor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Doctor",
       required: true,
     },
+    doctorName: {
+      type: String,
+      required: true
+    },
     invoiceNumber: { 
       type: String,
       required: true,
-      unique: true
+      unique: true,
+      index: true
     },
     invoiceDate: { 
       type: Date,
@@ -33,16 +87,30 @@ const invoiceSchema = new mongoose.Schema(
       type: Date,
       required: true 
     },
+    // For orthodontic group payments
+    orthoGroupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'OrthoGroup'
+    },
+    installmentNumber: Number,
+    totalInstallments: Number,
+    
     items: [invoiceItemSchema],
     subtotal: { type: Number, required: true },
     tax: { type: Number, default: 0 },
+    taxRate: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
+    discountType: { 
+      type: String, 
+      enum: ['percentage', 'fixed'],
+      default: 'fixed'
+    },
     total: { type: Number, required: true },
     amountPaid: { type: Number, default: 0 },
     balance: { type: Number, required: true },
     status: { 
       type: String, 
-      enum: ["Draft", "Sent", "Paid", "Partially Paid", "Overdue", "Cancelled"],
+      enum: ["Draft", "Sent", "Paid", "Partially Paid", "Overdue", "Cancelled", "Refunded"],
       default: "Draft"
     },
     paymentMethod: { 
@@ -56,8 +124,48 @@ const invoiceSchema = new mongoose.Schema(
       ref: "TreatmentPlan"
     }
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+  }
 );
+
+// Add indexes for better query performance
+invoiceSchema.index({ patient: 1, status: 1 });
+invoiceSchema.index({ doctor: 1, status: 1 });
+invoiceSchema.index({ invoiceDate: -1 });
+invoiceSchema.index({ status: 1 });
+
+// Virtual for payment logs
+invoiceSchema.virtual('paymentLogs', {
+  ref: 'PaymentLog',
+  localField: '_id',
+  foreignField: 'invoice',
+  justOne: false
+});
+
+// Pre-save hook to generate invoice number
+invoiceSchema.pre('save', async function(next) {
+  if (!this.invoiceNumber) {
+    const count = await this.constructor.countDocuments();
+    this.invoiceNumber = `INV-${new Date().getFullYear()}-${(count + 1).toString().padStart(5, '0')}`;
+  }
+  
+  // Calculate balance
+  this.balance = this.total - this.amountPaid;
+  
+  // Update status based on payment
+  if (this.amountPaid <= 0) {
+    this.status = 'Sent';
+  } else if (this.amountPaid >= this.total) {
+    this.status = 'Paid';
+  } else {
+    this.status = 'Partially Paid';
+  }
+  
+  next();
+});
 
 // Update balance when amount paid changes
 invoiceSchema.pre('save', function(next) {

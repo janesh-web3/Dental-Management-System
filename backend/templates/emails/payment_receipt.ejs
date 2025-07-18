@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Receipt #<%= invoice.invoiceNumber %></title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    .logo {
+      max-width: 150px;
+      margin-bottom: 15px;
+    }
+    .clinic-info {
+      margin-bottom: 20px;
+    }
+    .receipt-details {
+      background-color: #f0f9f0;
+      padding: 20px;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+    .patient-info {
+      margin: 20px 0;
+    }
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+      text-align: center;
+      font-size: 12px;
+      color: #777;
+    }
+    .success-message {
+      color: #27ae60;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+    .payment-details {
+      margin: 20px 0;
+      padding: 15px;
+      background-color: #f9f9f9;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1><%= clinicName %></h1>
+    <p><%= clinicAddress %></p>
+    <p>Phone: <%= clinicPhone %> | Email: <%= clinicEmail %></p>
+  </div>
+
+  <div class="success-message">
+    <h2>Payment Received - Thank You!</h2>
+    <p>We've successfully processed your payment for Invoice #<%= invoice.invoiceNumber %>.</p>
+  </div>
+
+  <div class="receipt-details">
+    <h3>Payment Confirmation</h3>
+    <p><strong>Payment Date:</strong> <%= new Date().toLocaleDateString() %></p>
+    <p><strong>Invoice Number:</strong> #<%= invoice.invoiceNumber %></p>
+    <p><strong>Patient Name:</strong> <%= invoice.patientName || invoice.patient.name %></p>
+    
+    <div class="payment-details">
+      <p><strong>Amount Paid:</strong> $<%= (invoice.paymentLogs && invoice.paymentLogs[invoice.paymentLogs.length - 1]?.amount / 100).toFixed(2) || (invoice.amountPaid / 100).toFixed(2) %></p>
+      <p><strong>Payment Method:</strong> <%= invoice.paymentMethod %></p>
+      <% if (invoice.paymentLogs && invoice.paymentLogs[invoice.paymentLogs.length - 1]?.transactionId) { %>
+        <p><strong>Transaction ID:</strong> <%= invoice.paymentLogs[invoice.paymentLogs.length - 1].transactionId %></p>
+      <% } %>
+    </div>
+
+    <h4>Invoice Summary</h4>
+    <p>Subtotal: $<%= (invoice.subtotal / 100).toFixed(2) %></p>
+    <% if (invoice.tax > 0) { %>
+      <p>Tax (<%= invoice.taxRate || 0 %>%): $<%= (invoice.tax / 100).toFixed(2) %></p>
+    <% } %>
+    <% if (invoice.discount > 0) { %>
+      <p>Discount: -$<%= (invoice.discount / 100).toFixed(2) %></p>
+    <% } %>
+    <p><strong>Total Amount: $<%= (invoice.total / 100).toFixed(2) %></strong></p>
+    <p><strong>Amount Paid: $<%= (invoice.amountPaid / 100).toFixed(2) %></strong></p>
+    <p><strong>Remaining Balance: $<%= ((invoice.total - invoice.amountPaid) / 100).toFixed(2) %></strong></p>
+  </div>
+
+  <p>Please find attached a copy of your payment receipt for your records.</p>
+  
+  <% if (invoice.balance > 0) { %>
+    <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+      <h4>Outstanding Balance</h4>
+      <p>Your remaining balance of $<%= (invoice.balance / 100).toFixed(2) %> is due by <%= new Date(invoice.dueDate).toLocaleDateString() %>.</p>
+      <p>You can make additional payments through our patient portal.</p>
+      <div style="text-align: center; margin: 15px 0;">
+        <a href="<%= process.env.PATIENT_PORTAL_URL || '#' %>" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">Make Additional Payment</a>
+      </div>
+    </div>
+  <% } %>
+
+  <p>If you have any questions about this payment or your account, please don't hesitate to contact our office.</p>
+
+  <div class="footer">
+    <p>© <%= currentYear %> <%= clinicName %>. All rights reserved.</p>
+    <p>This email was sent to <%= invoice.patient.email || invoice.patientId?.email %>. </p>
+  </div>
+</body>
+</html>

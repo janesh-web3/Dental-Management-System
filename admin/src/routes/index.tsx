@@ -76,7 +76,24 @@ const AppRouter: React.FC = () => {
             </Suspense>
           ) 
         },
-        // Finance routes        { path: "/finance/income", element: <IncomePage /> },
+        // Finance routes
+        { 
+          path: "/finance/invoices", 
+          element: (
+            <Suspense fallback={<Loading />}>
+              {React.createElement(lazy(() => import("@/pages/invoices/InvoiceList")))}
+            </Suspense>
+          ) 
+        },
+        { 
+          path: "/finance/invoices/:id", 
+          element: (
+            <Suspense fallback={<Loading />}>
+              {React.createElement(lazy(() => import("@/pages/invoices/InvoiceDetail")))}
+            </Suspense>
+          ) 
+        },
+        { path: "/finance/income", element: <IncomePage /> },
         { path: "/finance/expense", element: <ExpensePage /> },
         { path: "/finance/summary", element: <FinanceSummary /> },
         { path: "/debug", element: <DebugPage /> },

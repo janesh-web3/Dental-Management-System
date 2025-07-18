@@ -1,13 +1,31 @@
 const nodemailer = require('nodemailer');
+const path = require('path');
+const ejs = require('ejs');
+const fs = require('fs');
 
 // Create a transporter object
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // You can change this to your preferred email service
+  service: process.env.EMAIL_SERVICE || 'gmail',
   auth: {
-    user: process.env.EMAIL_USER , // Use environment variable or replace with actual email
-    pass: process.env.EMAIL_PASSWORD // Use environment variable or replace with actual password
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
+  },
+  tls: {
+    rejectUnauthorized: false // For self-signed certificates in development
   }
 });
+
+// Load email templates
+const loadTemplate = async (templateName, data) => {
+  try {
+    const templatePath = path.join(__dirname, `../templates/emails/${templateName}.ejs`);
+    const template = await fs.promises.readFile(templatePath, 'utf-8');
+    return ejs.render(template, data);
+  } catch (error) {
+    console.error('Error loading email template:', error);
+    throw new Error('Failed to load email template');
+  }
+};
 
 // Email template for patient credentials
 const sendPatientCredentials = async (patientEmail, patientName, patientId, password) => {
@@ -81,7 +99,66 @@ const generateStrongPassword = (length = 10) => {
   return password.split('').sort(() => 0.5 - Math.random()).join('');
 };
 
+/**
+ * Send invoice email to patient
+ * @param {Object} invoice - Invoice data
+ * @param {Buffer} pdfBuffer - PDF buffer of the invoice
+ * @param {string} [type='invoice'] - Type of email (invoice or payment_receipt)
+ */
+const sendInvoiceEmail = async (invoice, pdfBuffer, type = 'invoice') => {
+  try {
+    const subject = type === 'invoice' 
+      ? `Invoice #${invoice.invoiceNumber} from ${process.env.CLINIC_NAME || 'Our Dental Clinic'}`
+      : `Payment Receipt for Invoice #${invoice.invoiceNumber}`;
+
+    // Render email template
+    const emailHtml = await loadTemplate(type, { 
+      invoice,
+      clinicName: process.env.CLINIC_NAME || 'Our Dental Clinic',
+      clinicAddress: process.env.CLINIC_ADDRESS || '123 Dental Street, City, Country',
+      clinicPhone: process.env.CLINIC_PHONE || '+1 (123) 456-7890',
+      clinicEmail: process.env.CLINIC_EMAIL || 'info@dentalclinic.com',
+      currentYear: new Date().getFullYear()
+    });
+
+    const mailOptions = {
+      from: `"${process.env.EMAIL_FROM_NAME || 'Dental Clinic'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+      to: invoice.patient.email || invoice.patientId.email,
+      subject,
+      html: emailHtml,
+      attachments: [
+        {
+          filename: type === 'invoice' 
+            ? `invoice-${invoice.invoiceNumber}.pdf` 
+            : `receipt-${invoice.invoiceNumber}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }
+      ]
+    };
+
+    await transporter.sendMail(mailOptions);
+    return true;
+  } catch (error) {
+    console.error('Error sending invoice email:', error);
+    throw new Error('Failed to send invoice email');
+  }
+};
+
+// Generate a random string for password reset tokens
+const generateToken = (length = 32) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < length; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+};
+
 module.exports = {
   sendPatientCredentials,
-  generateStrongPassword
+  generateStrongPassword,
+  sendInvoiceEmail,
+  generateToken,
+  transporter // Export for testing
 };

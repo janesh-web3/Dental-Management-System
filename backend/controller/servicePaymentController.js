@@ -44,8 +44,8 @@ const addServicePayment = async (req, res) => {
     };
     
     // Set createdBy field if admin is authenticated or provided in request
-    if (req.admin) {
-      servicePaymentData.createdBy = req.admin.id;
+    if (req.user) {
+      servicePaymentData.createdBy = req.user._id;
     } else if (createdBy) {
       servicePaymentData.createdBy = createdBy;
     }
@@ -63,15 +63,15 @@ const addServicePayment = async (req, res) => {
     
     // Generate invoice for this service payment
     try {
-      const invoice = await createServicePaymentInvoice(servicePaymentData, req.admin?.id);
+      const invoice = await createServicePaymentInvoice(servicePaymentData, req.user?._id);
       console.log(`Invoice ${invoice.invoiceNumber} generated for service payment ${servicePayment._id}`);
     } catch (invoiceError) {
       console.error("Error generating invoice for service payment:", invoiceError);
       // Don't fail the service payment creation if invoice generation fails
     }
     
-    // Also record this as income for financial tracking - only if admin is authenticated
-    if (req.admin) {
+    // Also record this as income for financial tracking - only if user is authenticated
+    if (req.user) {
       await Income.create({
         title: `${serviceType} - ${patientName}`,
         amount,
@@ -80,7 +80,7 @@ const addServicePayment = async (req, res) => {
                   serviceType === "Medicine" ? "Dental Products" : 
                   serviceType === "Consultation" ? "Consultation Fee" : "Other",
         notes: description || `Service payment for ${serviceType}`,
-        createdBy: req.admin.id,
+        createdBy: req.user._id,
       });
       
       // Send notification to admins - only if admin is authenticated
@@ -271,14 +271,14 @@ const updateServicePayment = async (req, res) => {
       });
     }
     
-    // Only check authorization if admin is authenticated
-    if (req.admin) {
+    // Only check authorization if user is authenticated
+    if (req.user) {
       // Only allow admin, superadmin, or the user who created the record to update it
       if (
-        req.admin.role !== "admin" &&
-        req.admin.role !== "superadmin" &&
+        req.user.role !== "admin" &&
+        req.user.role !== "superadmin" &&
         servicePayment.createdBy &&
-        servicePayment.createdBy.toString() !== req.admin.id
+        servicePayment.createdBy.toString() !== req.user._id.toString()
       ) {
         return res.status(403).json({
           success: false,
@@ -338,13 +338,13 @@ const deleteServicePayment = async (req, res) => {
       });
     }
     
-    // Only check authorization if admin is authenticated and there's a createdBy field
-    if (req.admin && servicePayment.createdBy) {
+    // Only check authorization if user is authenticated and there's a createdBy field
+    if (req.user && servicePayment.createdBy) {
       // Only allow admin, superadmin, or the user who created the record to delete it
       if (
-        req.admin.role !== "admin" &&
-        req.admin.role !== "superadmin" &&
-        servicePayment.createdBy.toString() !== req.admin.id
+        req.user.role !== "admin" &&
+        req.user.role !== "superadmin" &&
+        servicePayment.createdBy.toString() !== req.user._id.toString()
       ) {
         return res.status(403).json({
           success: false,
@@ -357,8 +357,25 @@ const deleteServicePayment = async (req, res) => {
     await ServicePayment.findByIdAndUpdate(req.params.id, {
       isDeleted: true,
       deletedAt: new Date(),
-      deletedBy: req.admin?.id || req.user?.id
+      deletedBy: req.user?._id
     });
+
+    // Cascade delete related invoices
+    try {
+      const Invoice = require("../model/Invoice");
+      await Invoice.updateMany(
+        { sourceType: "ServicePayment", sourceId: req.params.id },
+        { 
+          isDeleted: true, 
+          deletedAt: new Date(),
+          deletedBy: req.user?._id
+        }
+      );
+      console.log(`Cascade deleted invoices for service payment ${req.params.id}`);
+    } catch (cascadeError) {
+      console.error("Error cascade deleting service payment invoices:", cascadeError);
+      // Don't fail the main operation if cascade delete fails
+    }
     
     res.status(200).json({
       success: true,

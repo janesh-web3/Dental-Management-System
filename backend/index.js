@@ -83,8 +83,8 @@ app.use("/api/sms", smsRouter);
 app.use("/api/finance", financeRouter); // Finance management routes
 app.use("/api/service-payment", servicePaymentRouter); // Service payment routes
 app.use("/api/gemini", geminiRouter);
-app.use("/api/v1/notifications", notificationRouter);
-app.use("/api/v1/invoices", invoiceRouter);
+app.use("/api/notifications", notificationRouter);
+app.use("/api/invoices", invoiceRouter);
 app.use("/api/recycle-bin", recycleBinRouter);
 
 const port = process.env.PORT || 8080;

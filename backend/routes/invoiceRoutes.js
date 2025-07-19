@@ -1,5 +1,9 @@
 const express = require('express');
-const { protect, authorize } = require('../middleware/auth');
+const { 
+  authenticateUser, 
+  authorizePermission, 
+  staffOrAdmin 
+} = require("../middleware/rbacMiddleware");
 const {
   createInvoice,
   getInvoices,
@@ -7,35 +11,35 @@ const {
   updateInvoice,
   deleteInvoice,
   recordPayment,
-  getInvoicePdf
+  getInvoicePdf,
+  sendInvoiceEmailPost
 } = require('../controller/invoiceController');
 
 const router = express.Router();
 
-// Apply protect and admin authorization to all routes
-router.use(protect);
-router.use(authorize('admin', 'doctor'));
-
 // Routes for invoices
 router
   .route('/')
-  .get(getInvoices)
-  .post(createInvoice);
+  .get(authenticateUser, authorizePermission('invoices', 'read'), getInvoices)
+  .post(authenticateUser, authorizePermission('invoices', 'create'), createInvoice);
 
 router
   .route('/:id')
-  .get(getInvoice)
-  .put(updateInvoice)
-  .delete(deleteInvoice);
+  .get(authenticateUser, authorizePermission('invoices', 'read'), getInvoice)
+  .put(authenticateUser, authorizePermission('invoices', 'update'), updateInvoice)
+  .delete(authenticateUser, authorizePermission('invoices', 'delete'), deleteInvoice);
 
 // Payment related routes
-router.post('/:id/payments', recordPayment);
+router.post('/:id/payments', authenticateUser, authorizePermission('invoices', 'update'), recordPayment);
 
 // PDF generation
-router.get('/:id/pdf', getInvoicePdf);
+router.get('/:id/pdf', authenticateUser, authorizePermission('invoices', 'read'), getInvoicePdf);
+
+// Email sending
+router.post('/:id/email', authenticateUser, authorizePermission('invoices', 'update'), sendInvoiceEmailPost);
 
 // Statistics and reports
-router.get('/stats/overview', async (req, res) => {
+router.get('/stats/overview', authenticateUser, staffOrAdmin, async (req, res) => {
   // Implementation for invoice statistics
   res.json({ success: true, data: {} });
 });

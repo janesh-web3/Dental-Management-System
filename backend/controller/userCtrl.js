@@ -293,6 +293,8 @@ const dashboard = async (req, res) => {
 // Helper function for revenue calculation
 async function calculateRevenue(startDate) {
   const result = await Patient.aggregate([
+    // Exclude soft deleted patients
+    { $match: { isDeleted: { $ne: true } } },
     { $unwind: "$medicalDetails" },
     { $unwind: "$medicalDetails.treatmentPlanning" },
     {
@@ -331,6 +333,8 @@ async function calculateRevenue(startDate) {
 
 async function calculateTotalRevenue() {
   const result = await Patient.aggregate([
+    // Exclude soft deleted patients
+    { $match: { isDeleted: { $ne: true } } },
     { $unwind: "$medicalDetails" },
     { $unwind: "$medicalDetails.treatmentPlanning" },
     {
@@ -492,10 +496,10 @@ const adminDashboard = async (req, res) => {
       doctorAnalysis,
       revenueAnalytics
     ] = await Promise.all([
-      Patient.countDocuments(),
+      Patient.countDocuments({ isDeleted: { $ne: true } }),
       Doctor.countDocuments(),
       User.countDocuments(),
-      Patient.countDocuments({ createdAt: { $gte: startOfMonth } }),
+      Patient.countDocuments({ createdAt: { $gte: startOfMonth }, isDeleted: { $ne: true } }),
       
       // Appointment statistics
       Appointment.aggregate([
@@ -523,6 +527,7 @@ const adminDashboard = async (req, res) => {
       
       // Recent treatments
       Patient.aggregate([
+        { $match: { isDeleted: { $ne: true } } },
         { $unwind: "$medicalDetails" },
         { $unwind: "$medicalDetails.treatmentPlanning" },
         { $sort: { "medicalDetails.treatmentPlanning.treatmentDate": -1 } },
@@ -539,6 +544,7 @@ const adminDashboard = async (req, res) => {
       
       // Top treatments
       Patient.aggregate([
+        { $match: { isDeleted: { $ne: true } } },
         { $unwind: "$medicalDetails" },
         { $unwind: "$medicalDetails.treatmentPlanning" },
         {
@@ -554,12 +560,31 @@ const adminDashboard = async (req, res) => {
       // Financial data
       Promise.all([
         Income.aggregate([
+          { $match: { isDeleted: { $ne: true } } },
           { $group: { _id: null, total: { $sum: { $toDouble: "$amount" } } } }
         ]),
         Expense.aggregate([
+          { $match: { isDeleted: { $ne: true } } },
           { $group: { _id: null, total: { $sum: { $toDouble: "$amount" } } } }
         ]),
         ServicePayment.aggregate([
+          { $match: { isDeleted: { $ne: true } } },
+          {
+            $lookup: {
+              from: "patients",
+              localField: "patient",
+              foreignField: "_id",
+              as: "patientExists"
+            }
+          },
+          {
+            $match: {
+              $or: [
+                { isWalkIn: true },
+                { "patientExists.isDeleted": { $ne: true } }
+              ]
+            }
+          },
           { $group: { _id: null, total: { $sum: { $toDouble: "$amount" } } } }
         ])
       ]),

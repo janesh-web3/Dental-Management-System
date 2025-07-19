@@ -4,14 +4,14 @@ import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 import { 
   ArrowLeft, 
-  Print, 
   Mail, 
   Download,
   CheckCircle,
   AlertCircle,
   Clock,
   DollarSign,
-  Loader2
+  Loader2,
+  PrinterIcon
 } from 'lucide-react';
 
 // ShadCN UI Components
@@ -36,7 +36,6 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -45,9 +44,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { server } from '@/server';
+import { crudRequest } from '@/lib/api';
 
 // Use environment variable or default to localhost
-const API_BASE_URL = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_URL_DEV || 'http://localhost:5000/api';
 
 interface InvoiceItem {
   description: string;
@@ -77,10 +77,12 @@ interface Invoice {
   dueDate: string;
   patient: {
     _id: string;
-    name: string;
-    email?: string;
-    phone?: string;
-    address?: string;
+    personalDetails: {
+      name: string;
+      email?: string;
+      phone?: string;
+      address?: string;
+    };
   };
   doctor: {
     _id: string;
@@ -118,12 +120,9 @@ const InvoiceDetail: React.FC = () => {
   const fetchInvoice = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/v1/invoices/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await response.json();
-      setInvoice(data.data);
+      const response = await crudRequest<any>('GET', `${server}/invoices/${id}`);
+      console.log('Fetched invoice:', response.data);
+      setInvoice(response.data);
     } catch (error) {
       console.error('Error fetching invoice:', error);
       toast.error('Failed to load invoice details');
@@ -141,20 +140,12 @@ const InvoiceDetail: React.FC = () => {
   const handlePaymentSubmit = async () => {
     try {
       setProcessing(true);
-      const token = localStorage.getItem('token');
-      await fetch(`${API_BASE_URL}/api/v1/invoices/${id}/payments`, {
-        method: 'POST',
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          amount: parseFloat(paymentData.amount) * 100, // Convert to cents
-          paymentMethod: paymentData.paymentMethod,
-          transactionId: paymentData.transactionId,
-          notes: paymentData.notes,
-          sendReceipt: true
-        })
+      await crudRequest('POST', `${server}/invoices/${id}/payments`, {
+        amount: parseFloat(paymentData.amount) * 100, // Convert to cents
+        paymentMethod: paymentData.paymentMethod,
+        transactionId: paymentData.transactionId,
+        notes: paymentData.notes,
+        sendReceipt: true
       });
       
       toast.success('Payment recorded successfully');
@@ -173,14 +164,14 @@ const InvoiceDetail: React.FC = () => {
   };
 
   const handleDownloadPdf = () => {
-    window.open(`${API_BASE_URL}/api/v1/invoices/${id}/pdf`, '_blank');
+    window.open(`${server}/invoices/${id}/pdf`, '_blank');
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-NP', {
       style: 'currency',
-      currency: 'USD',
-    }).format(amount / 100);
+      currency: 'NPR',
+    }).format(amount);
   };
 
   const getStatusIcon = (status: string) => {
@@ -247,7 +238,7 @@ const InvoiceDetail: React.FC = () => {
         </Button>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handlePrint}>
-            <Print className="mr-2 h-4 w-4" />
+            <PrinterIcon className="mr-2 h-4 w-4" />
             Print
           </Button>
           <Button variant="outline" onClick={handleDownloadPdf}>
@@ -274,12 +265,12 @@ const InvoiceDetail: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <h1 className="text-2xl font-bold mb-2">
-                {process.env.REACT_APP_CLINIC_NAME || 'Dental Clinic'}
+                {'Dental Clinic'}
               </h1>
               <div className="text-muted-foreground space-y-1">
-                <p>{process.env.REACT_APP_CLINIC_ADDRESS || '123 Dental Street'}</p>
-                <p>Phone: {process.env.REACT_APP_CLINIC_PHONE || '(123) 456-7890'}</p>
-                <p>Email: {process.env.REACT_APP_CLINIC_EMAIL || 'info@dentalclinic.com'}</p>
+                <p>{'123 Dental Street'}</p>
+                <p>Phone: {'(123) 456-7890'}</p>
+                <p>Email: {'info@dentalclinic.com'}</p>
               </div>
             </div>
             <div className="text-right">
@@ -308,10 +299,10 @@ const InvoiceDetail: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              <p className="font-semibold">{invoice.patient.name}</p>
-              {invoice.patient.address && <p>{invoice.patient.address}</p>}
-              {invoice.patient.email && <p>Email: {invoice.patient.email}</p>}
-              {invoice.patient.phone && <p>Phone: {invoice.patient.phone}</p>}
+              <p className="font-semibold">{invoice?.patient?.personalDetails?.name}</p>
+              {invoice?.patient?.personalDetails?.address && <p>{invoice?.patient?.personalDetails?.address}</p>}
+              {invoice?.patient?.personalDetails?.email && <p>Email: {invoice?.patient?.personalDetails?.email}</p>}
+              {invoice?.patient?.personalDetails?.phone && <p>Phone: {invoice?.patient?.personalDetails?.phone}</p>}
             </div>
           </CardContent>
         </Card>
@@ -320,7 +311,7 @@ const InvoiceDetail: React.FC = () => {
             <CardTitle>Doctor</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-semibold">{invoice.doctor.name}</p>
+            <p className="font-semibold">{invoice?.doctor?.name}</p>
           </CardContent>
         </Card>
       </div>

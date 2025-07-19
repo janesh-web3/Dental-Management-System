@@ -123,6 +123,16 @@ const invoiceSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "TreatmentPlan"
     },
+    // Source tracking for cascade delete functionality
+    sourceType: {
+      type: String,
+      enum: ["Income", "Expense", "ServicePayment", "Treatment", "Registration", "Manual"],
+      required: false // Optional for backward compatibility
+    },
+    sourceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: false // Optional for backward compatibility
+    },
     // Soft delete functionality
     isDeleted: {
       type: Boolean,
@@ -148,6 +158,7 @@ invoiceSchema.index({ patient: 1, status: 1 });
 invoiceSchema.index({ doctor: 1, status: 1 });
 invoiceSchema.index({ invoiceDate: -1 });
 invoiceSchema.index({ status: 1 });
+invoiceSchema.index({ sourceType: 1, sourceId: 1 }); // For cascade delete queries
 
 // Virtual for payment logs
 invoiceSchema.virtual('paymentLogs', {

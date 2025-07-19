@@ -86,6 +86,14 @@ const AppRouter: React.FC = () => {
           ) 
         },
         { 
+          path: "/finance/invoices/new", 
+          element: (
+            <Suspense fallback={<Loading />}>
+              {React.createElement(lazy(() => import("@/pages/invoices/InvoiceNew")))}
+            </Suspense>
+          ) 
+        },
+        { 
           path: "/finance/invoices/:id", 
           element: (
             <Suspense fallback={<Loading />}>

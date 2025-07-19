@@ -92,12 +92,12 @@ const addIncome = async (req, res) => {
       date: date || new Date(),
       category,
       notes,
-      createdBy: req.admin.id,
+      createdBy: req.user._id,
     });
     
     // Generate invoice for this income entry
     try {
-      const invoice = await createIncomeInvoice(income, req.admin.id);
+      const invoice = await createIncomeInvoice(income, req.user._id);
       console.log(`Invoice ${invoice.invoiceNumber} generated for income ${income._id}`);
     } catch (invoiceError) {
       console.error("Error generating invoice for income:", invoiceError);
@@ -112,7 +112,7 @@ const addIncome = async (req, res) => {
       sourceId: income._id.toString(),
       sourceType: "Income",
       targetRoles: ["admin", "superadmin"],
-      createdBy: req.admin.id,
+      createdBy: req.user._id,
       createdByType: "User",
       link: `/finance/income/${income._id}`,
       soundEnabled: true
@@ -258,9 +258,9 @@ const updateIncome = async (req, res) => {
     
     // Only allow admin, superadmin, or the user who created the record to update it
     if (
-      req.admin.role !== "admin" &&
-      req.admin.role !== "superadmin" &&
-      income.createdBy.toString() !== req.admin.id
+      req.user.role !== "admin" &&
+      req.user.role !== "superadmin" &&
+      income.createdBy.toString() !== req.user._id.toString()
     ) {
       return res.status(403).json({
         success: false,
@@ -310,9 +310,9 @@ const deleteIncome = async (req, res) => {
     
     // Only allow admin, superadmin, or the user who created the record to delete it
     if (
-      req.admin.role !== "admin" &&
-      req.admin.role !== "superadmin" &&
-      income.createdBy.toString() !== req.admin.id
+      req.user.role !== "admin" &&
+      req.user.role !== "superadmin" &&
+      income.createdBy.toString() !== req.user._id.toString()
     ) {
       return res.status(403).json({
         success: false,
@@ -324,8 +324,25 @@ const deleteIncome = async (req, res) => {
     await Income.findByIdAndUpdate(req.params.id, {
       isDeleted: true,
       deletedAt: new Date(),
-      deletedBy: req.admin.id
+      deletedBy: req.user._id
     });
+
+    // Cascade delete related invoices
+    try {
+      const Invoice = require("../model/Invoice");
+      await Invoice.updateMany(
+        { sourceType: "Income", sourceId: req.params.id },
+        { 
+          isDeleted: true, 
+          deletedAt: new Date(),
+          deletedBy: req.user._id
+        }
+      );
+      console.log(`Cascade deleted invoices for income ${req.params.id}`);
+    } catch (cascadeError) {
+      console.error("Error cascade deleting income invoices:", cascadeError);
+      // Don't fail the main operation if cascade delete fails
+    }
     
     res.status(200).json({
       success: true,
@@ -362,12 +379,12 @@ const addExpense = async (req, res) => {
       date: date || new Date(),
       category,
       notes,
-      createdBy: req.admin.id,
+      createdBy: req.user._id,
     });
     
     // Generate invoice/receipt for this expense entry
     try {
-      const invoice = await createExpenseInvoice(expense, req.admin.id);
+      const invoice = await createExpenseInvoice(expense, req.user._id);
       console.log(`Expense receipt ${invoice.invoiceNumber} generated for expense ${expense._id}`);
     } catch (invoiceError) {
       console.error("Error generating invoice for expense:", invoiceError);
@@ -382,7 +399,7 @@ const addExpense = async (req, res) => {
       sourceId: expense._id.toString(),
       sourceType: "Expense",
       targetRoles: ["admin", "superadmin"],
-      createdBy: req.admin.id,
+      createdBy: req.user._id,
       createdByType: "User",
       link: `/finance/expense/${expense._id}`,
       soundEnabled: true
@@ -528,9 +545,9 @@ const updateExpense = async (req, res) => {
     
     // Only allow admin, superadmin, or the user who created the record to update it
     if (
-      req.admin.role !== "admin" &&
-      req.admin.role !== "superadmin" &&
-      expense.createdBy.toString() !== req.admin.id
+      req.user.role !== "admin" &&
+      req.user.role !== "superadmin" &&
+      expense.createdBy.toString() !== req.user._id.toString()
     ) {
       return res.status(403).json({
         success: false,
@@ -580,9 +597,9 @@ const deleteExpense = async (req, res) => {
     
     // Only allow admin, superadmin, or the user who created the record to delete it
     if (
-      req.admin.role !== "admin" &&
-      req.admin.role !== "superadmin" &&
-      expense.createdBy.toString() !== req.admin.id
+      req.user.role !== "admin" &&
+      req.user.role !== "superadmin" &&
+      expense.createdBy.toString() !== req.user._id.toString()
     ) {
       return res.status(403).json({
         success: false,
@@ -594,8 +611,25 @@ const deleteExpense = async (req, res) => {
     await Expense.findByIdAndUpdate(req.params.id, {
       isDeleted: true,
       deletedAt: new Date(),
-      deletedBy: req.admin.id
+      deletedBy: req.user._id
     });
+
+    // Cascade delete related invoices
+    try {
+      const Invoice = require("../model/Invoice");
+      await Invoice.updateMany(
+        { sourceType: "Expense", sourceId: req.params.id },
+        { 
+          isDeleted: true, 
+          deletedAt: new Date(),
+          deletedBy: req.user._id
+        }
+      );
+      console.log(`Cascade deleted invoices for expense ${req.params.id}`);
+    } catch (cascadeError) {
+      console.error("Error cascade deleting expense invoices:", cascadeError);
+      // Don't fail the main operation if cascade delete fails
+    }
     
     res.status(200).json({
       success: true,

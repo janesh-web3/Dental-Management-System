@@ -42,8 +42,11 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, animate = true, ...props }, ref) => {
-    let Comp: React.ElementType = asChild ? Slot : (animate ? motion.button : "button");
-    const motionProps = animate
+    // When asChild is true, we don't apply motion props to avoid DOM warnings
+    const shouldUseMotion = animate && !asChild;
+    let Comp: React.ElementType = asChild ? Slot : (shouldUseMotion ? motion.button : "button");
+    
+    const motionProps = shouldUseMotion
       ? {
           whileHover: { scale: 1.03 },
           whileTap: { scale: 0.97 },

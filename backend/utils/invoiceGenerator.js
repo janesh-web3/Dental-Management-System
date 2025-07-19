@@ -205,7 +205,9 @@ const createServicePaymentInvoice = async (servicePaymentData, createdBy) => {
       paymentMethod: servicePaymentData.paymentMethod || "Cash",
       notes: servicePaymentData.isWalkIn ? 
         "Walk-in service payment - automatically generated invoice" :
-        "Service payment - automatically generated invoice"
+        "Service payment - automatically generated invoice",
+      sourceType: "ServicePayment",
+      sourceId: servicePaymentData._id
     };
 
     const invoice = await Invoice.create(invoiceData);
@@ -248,7 +250,9 @@ const createIncomeInvoice = async (incomeData, createdBy) => {
       balance: 0,
       status: "Paid",
       paymentMethod: "Cash",
-      notes: `Income entry - ${incomeData.category} - automatically generated invoice`
+      notes: `Income entry - ${incomeData.category} - automatically generated invoice`,
+      sourceType: "Income",
+      sourceId: incomeData._id
     };
 
     const invoice = await Invoice.create(invoiceData);
@@ -291,7 +295,9 @@ const createExpenseInvoice = async (expenseData, createdBy) => {
       balance: 0,
       status: "Paid",
       paymentMethod: "Cash",
-      notes: `Expense receipt - ${expenseData.category} - automatically generated`
+      notes: `Expense receipt - ${expenseData.category} - automatically generated`,
+      sourceType: "Expense",
+      sourceId: expenseData._id
     };
 
     const invoice = await Invoice.create(invoiceData);

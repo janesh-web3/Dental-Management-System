@@ -42,6 +42,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { server } from '@/server';
+import { crudRequest } from '@/lib/api';
 
 // Use environment variable or default to localhost
 interface Invoice {
@@ -86,7 +87,6 @@ const InvoiceList: React.FC = () => {
   const fetchInvoices = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const params = new URLSearchParams({
         page: page.toString(),
         limit: rowsPerPage.toString(),
@@ -96,11 +96,9 @@ const InvoiceList: React.FC = () => {
         endDate: dateRange.endDate
       });
 
-      const response = await axios.get(`${server}/invoices?${params}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      setInvoices(response.data.data);
+      const response = await crudRequest<any>("GET",`${server}/invoices?${params}`);
+      console.log('Fetched invoices:', response.data);
+      setInvoices(response.data);
       setTotalInvoices(response.data.total || 0);
     } catch (error) {
       console.error('Error fetching invoices:', error);
@@ -158,10 +156,69 @@ const InvoiceList: React.FC = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-NP', {
       style: 'currency',
-      currency: 'USD',
-    }).format(amount / 100); // Assuming amounts are stored in cents
+      currency: 'NPR',
+    }).format(amount); // Assuming amounts are stored in cents
+  };
+
+  const handleDownloadPDF = async (invoiceId: string, invoiceNumber: string) => {
+    try {
+
+      const response = await crudRequest<any>("GET", `${server}/invoices/${invoiceId}/pdf`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Get the blob from the response
+      const blob = await response.blob();
+      
+      // Create a URL for the blob and trigger download
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `invoice-${invoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the URL object
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      // You could add a toast notification here if needed
+    }
+  };
+
+  const handleSendEmail = async (invoiceId: string, invoiceNumber: string) => {
+    const recipientEmail = prompt(`Enter email address to send invoice ${invoiceNumber}:`);
+    
+    if (!recipientEmail) {
+      return; // User cancelled
+    }
+
+    if (!recipientEmail.includes('@')) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      const response = await crudRequest<any>("POST", `/invoices/${invoiceId}/email`, {
+        recipientEmail,
+        subject: `Invoice ${invoiceNumber}`,
+        message: `Please find attached your invoice ${invoiceNumber}.`
+      });
+
+      if (response.success) {
+        alert(`Invoice sent successfully to ${recipientEmail}`);
+      } else {
+        throw new Error(response.error || 'Failed to send email');
+      }
+    } catch (error: any) {
+      console.error('Error sending invoice email:', error);
+      alert(`Failed to send email: ${error.message || 'Unknown error'}`);
+    }
   };
 
   const totalPages = Math.ceil(totalInvoices / rowsPerPage);
@@ -175,7 +232,7 @@ const InvoiceList: React.FC = () => {
           <p className="text-muted-foreground">Manage and track all your invoices</p>
         </div>
         <Button asChild>
-          <Link to="/invoices/new">
+          <Link to="/finance/invoices/new">
             <Plus className="mr-2 h-4 w-4" />
             New Invoice
           </Link>
@@ -285,7 +342,7 @@ const InvoiceList: React.FC = () => {
                   <TableRow key={invoice._id} className="hover:bg-muted/50">
                     <TableCell>
                       <Link 
-                        to={`/invoices/${invoice._id}`} 
+                        to={`/finance/invoices/${invoice._id}`} 
                         className="text-primary hover:underline font-medium"
                       >
                         {invoice.invoiceNumber}
@@ -315,18 +372,22 @@ const InvoiceList: React.FC = () => {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/invoices/${invoice._id}`}>
+                          <Link to={`/finance/invoices/${invoice._id}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          onClick={() => window.open(`${server}/invoices/${invoice._id}/pdf`, '_blank')}
+                          onClick={() => handleDownloadPDF(invoice._id, invoice.invoiceNumber)}
                         >
                           <Download className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleSendEmail(invoice._id, invoice.invoiceNumber)}
+                        >
                           <Mail className="h-4 w-4" />
                         </Button>
                       </div>

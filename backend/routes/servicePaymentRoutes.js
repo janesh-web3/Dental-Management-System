@@ -1,7 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const { protectAdminRoute } = require("../middleware/adminAuthMiddleware");
-const { optionalAdminAuth } = require("../middleware/optionalAdminAuthMiddleware");
+const { 
+  authenticateUser, 
+  authorizePermission, 
+  staffOrAdmin 
+} = require("../middleware/rbacMiddleware");
 const {
   addServicePayment,
   getServicePayments,
@@ -12,15 +15,15 @@ const {
   getServicePaymentSummary,
 } = require("../controller/servicePaymentController");
 
-// Routes that can work with or without authentication
-router.post("/", optionalAdminAuth, addServicePayment);
-router.get("/", optionalAdminAuth, getServicePayments);
-router.get("/:id", optionalAdminAuth, getServicePaymentById);
-router.put("/:id", optionalAdminAuth, updateServicePayment);
-router.delete("/:id", optionalAdminAuth, deleteServicePayment);
-router.get("/patient/:patientId", optionalAdminAuth, getPatientServicePayments);
+// Service payment routes with RBAC
+router.post("/", authenticateUser, authorizePermission('payments', 'create'), addServicePayment);
+router.get("/", authenticateUser, authorizePermission('payments', 'read'), getServicePayments);
+router.get("/:id", authenticateUser, authorizePermission('payments', 'read'), getServicePaymentById);
+router.put("/:id", authenticateUser, authorizePermission('payments', 'update'), updateServicePayment);
+router.delete("/:id", authenticateUser, authorizePermission('payments', 'delete'), deleteServicePayment);
+router.get("/patient/:patientId", authenticateUser, authorizePermission('payments', 'read'), getPatientServicePayments);
 
-// Routes that still require full admin authentication
-router.get("/summary", protectAdminRoute, getServicePaymentSummary);
+// Summary route requires staff or admin access
+router.get("/summary", authenticateUser, staffOrAdmin, getServicePaymentSummary);
 
 module.exports = router;

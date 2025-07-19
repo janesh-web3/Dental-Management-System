@@ -1988,16 +1988,10 @@ export function PatientTable() {
         endpoint = "/patient/get-filtered-patients";
       }
 
-      console.log(`Fetching patients with follow-up filter: ${filter}`);
-      console.log(`Endpoint: ${endpoint}${queryParams}`);
-
       const response: { patients: Patient[]; totalPages: number } =
         await crudRequest("GET", `${endpoint}${queryParams}`);
 
       if (response && Array.isArray(response.patients)) {
-        console.log(
-          `Received ${response.patients.length} patients from server`
-        );
         setPatient(response.patients);
         setFilteredPatients(response.patients);
         setTotalPages(response.totalPages);
@@ -2027,11 +2021,6 @@ export function PatientTable() {
         queryParams += `&procedures=${selectedProcedures.join(",")}`;
         endpoint = "/patient/get-filtered-patients";
       }
-
-      console.log(
-        `Fetching patients with custom follow-up date range: ${from.toLocaleDateString()} to ${to.toLocaleDateString()}`
-      );
-      console.log(`Endpoint: ${endpoint}${queryParams}`);
 
       const response: { patients: Patient[]; totalPages: number } =
         await crudRequest("GET", `${endpoint}${queryParams}`);

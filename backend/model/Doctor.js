@@ -117,6 +117,18 @@ const doctorSchema = new mongoose.Schema({
       },
     },
   ],
+  // Soft delete functionality
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+  deletedAt: {
+    type: Date,
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
 });
 
 doctorSchema.pre("save", async function (next) {

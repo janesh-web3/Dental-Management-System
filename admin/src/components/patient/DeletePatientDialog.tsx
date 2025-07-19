@@ -29,7 +29,7 @@ const DeletePatientDialog = ({
   const handleDelete = async () => {
     try {
       await crudRequest("DELETE", `/patient/delete-patient/${patientId}`);
-      toast.success("Patient deleted successfully");
+      toast.success("Patient moved to recycle bin successfully");
       onDeleteSuccess();
       onClose();
       window.location.reload();
@@ -43,20 +43,20 @@ const DeletePatientDialog = ({
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogTitle>Move to Recycle Bin?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete{" "}
+            This will move{" "}
             <span className="font-semibold">{patientName}</span>'s record and all
-            associated data from the database.
+            associated data to the recycle bin. You can restore it later from the recycle bin if needed.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="bg-orange-600 text-white hover:bg-orange-700"
           >
-            Delete
+            Move to Recycle Bin
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -14,6 +14,7 @@ const { createAndEmitNotification } = require("./notificationCtrl");
 const User = require("../model/User");
 const Doctor = require("../model/Doctor");
 const { getIO } = require("../socket");
+const { createTreatmentPaymentInvoice, createRegistrationAdvanceInvoice } = require("../utils/invoiceGenerator");
 
 // Helper utility functions for date filtering
 const getDateFilter = (filter, startDate, endDate) => {
@@ -431,6 +432,26 @@ const addPatient = async (req, res) => {
       // Don't fail the request if notifications fail
     }
 
+    // Check if there's a registration advance payment to process
+    if (req.body.registrationAdvance && req.body.registrationAdvance.amount > 0) {
+      try {
+        const { amount, paymentMethod } = req.body.registrationAdvance;
+        
+        // Generate invoice for registration advance payment
+        const invoice = await createRegistrationAdvanceInvoice(
+          patient._id,
+          amount,
+          paymentMethod || "Cash",
+          req.admin?.id
+        );
+
+        console.log(`Registration advance invoice ${invoice.invoiceNumber} generated for patient ${patient._id}`);
+      } catch (invoiceError) {
+        console.error("Error generating registration advance invoice:", invoiceError);
+        // Don't fail the entire operation if invoice generation fails
+      }
+    }
+
     res.status(201).json({
       success: true,
       data: patient,
@@ -458,37 +479,49 @@ const deletePatient = async (req, res) => {
   try {
     // Find the patient first to get their details
     const patient = await Patient.findById(req.params.id);
-    if (!patient) {
+    if (!patient || patient.isDeleted) {
       return res.status(404).json({
         success: false,
         message: "Patient not found",
       });
     }
 
-    // Delete the patient's auth record if it exists
+    // Soft delete related records instead of hard delete
     try {
-      await PatientAuth.deleteMany({ patientId: req.params.id });
-      console.log(
-        `Deleted PatientAuth records for patient ID: ${req.params.id}`
+      // Soft delete service payments for this patient
+      await ServicePayment.updateMany(
+        { patient: req.params.id, isDeleted: { $ne: true } },
+        {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedBy: req.admin?.id || req.user?.id
+        }
       );
-    } catch (authError) {
-      console.error("Error deleting PatientAuth record:", authError);
-      // Continue with patient deletion even if auth deletion fails
+      
+      // Soft delete appointments for this patient
+      await Appointment.updateMany(
+        { patientId: req.params.id.toString(), isDeleted: { $ne: true } },
+        {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedBy: req.admin?.id || req.user?.id
+        }
+      );
+      
+      console.log(
+        `Soft deleted related records for patient ID: ${req.params.id}`
+      );
+    } catch (relatedError) {
+      console.error("Error soft deleting related records:", relatedError);
+      // Continue with patient deletion even if related record deletion fails
     }
 
-    // Delete all service payments for this patient
-    try {
-      await ServicePayment.deleteMany({ patient: req.params.id });
-      console.log(
-        `Deleted ServicePayment records for patient ID: ${req.params.id}`
-      );
-    } catch (servicePaymentError) {
-      console.error("Error deleting ServicePayment records:", servicePaymentError);
-      // Continue with patient deletion even if service payment deletion fails
-    }
-
-    // Delete the patient
-    await Patient.findByIdAndDelete(req.params.id);
+    // Soft delete the patient
+    await Patient.findByIdAndUpdate(req.params.id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+      deletedBy: req.admin?.id || req.user?.id
+    });
 
     // Send notification about patient deletion
     try {
@@ -571,7 +604,7 @@ const deletePatient = async (req, res) => {
 
 const getPatient = async (req, res) => {
   try {
-    const patients = await Patient.find()
+    const patients = await Patient.find({ isDeleted: { $ne: true } })
       .populate("appointments")
       .populate({
         path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
@@ -1076,6 +1109,9 @@ const getPaginatedPatient = async (req, res) => {
       }
     }
 
+    // Add isDeleted filter to the query
+    query.isDeleted = { $ne: true };
+
     // Get patients sorted by createdAt in descending order
     const patients = await Patient.find(query)
       .sort({ createdAt: -1 })
@@ -1250,6 +1286,9 @@ const getFilteredPatients = async (req, res) => {
       if (to) dateCondition.$lte = new Date(to);
       andConditions.push({ createdAt: dateCondition });
     }
+
+    // Add isDeleted filter to ensure we only get non-deleted patients
+    andConditions.push({ isDeleted: { $ne: true } });
 
     // Combine all conditions with $and
     if (andConditions.length > 0) {
@@ -1662,7 +1701,7 @@ const getRecentTransactions = async (req, res) => {
 const getNextSerialNumber = async (req, res) => {
   try {
     // Get all patients and find the maximum serial number properly
-    const patients = await Patient.find({}, { "personalDetails.sn": 1 });
+    const patients = await Patient.find({ isDeleted: { $ne: true } }, { "personalDetails.sn": 1 });
 
     let maxSN = 0;
 
@@ -1705,13 +1744,14 @@ const getFinancialInsights = async (req, res) => {
 
     // For all-time data, use more efficient queries
     const dateMatchQuery = isAllTimeRequest
-      ? {}
+      ? { isDeleted: { $ne: true } }
       : {
           "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date":
             {
               $gte: fromDate,
               $lte: toDate,
             },
+          isDeleted: { $ne: true }
         };
 
     // Get all patients with their treatment data
@@ -2118,7 +2158,7 @@ const getDashboardMetrics = async (req, res) => {
     let ageDistribution = [];
     try {
       const patients = await Patient.find(
-        {},
+        { isDeleted: { $ne: true } },
         {
           "personalDetails.age": 1,
           "personalDetails.gender": 1,
@@ -2185,7 +2225,7 @@ const getDashboardMetrics = async (req, res) => {
     let genderDistribution = [];
     try {
       const patients = await Patient.find(
-        {},
+        { isDeleted: { $ne: true } },
         { "personalDetails.gender": 1, "personalDetails.name": 1 }
       ).lean();
 
@@ -3136,7 +3176,7 @@ const getPatientDemographics = async (req, res) => {
   try {
     // Get all patients
     const patients = await Patient.find(
-      {},
+      { isDeleted: { $ne: true } },
       {
         "personalDetails.age": 1,
         "personalDetails.gender": 1,
@@ -3533,6 +3573,66 @@ const addTreatmentPlan = async (req, res) => {
         medicalDetail.treatmentPlanning.length - 1
       ];
 
+    // Generate invoice for treatment payments if any
+    try {
+      // Check for payments in daily treatments and generate invoices
+      const treatmentsWithPayments = [];
+      
+      // Check selected teeth details for payments
+      if (addedTreatmentPlan.selectedTeethDetails) {
+        addedTreatmentPlan.selectedTeethDetails.forEach(tooth => {
+          if (tooth.dailyTreatments) {
+            tooth.dailyTreatments.forEach(treatment => {
+              if (treatment.paidAmount && treatment.paidAmount > 0) {
+                treatmentsWithPayments.push({
+                  treatmentName: `${tooth.procedure} - Tooth ${tooth.number}`,
+                  procedure: tooth.procedure,
+                  treatmentAmount: treatment.treatmentAmount,
+                  teethNumbers: [tooth.number],
+                  notes: treatment.notes,
+                  treatmentType: 'individual'
+                });
+              }
+            });
+          }
+        });
+      }
+
+      // Check for advance payment in main treatment plan
+      if (addedTreatmentPlan.advancedAmount && addedTreatmentPlan.advancedAmount > 0) {
+        treatmentsWithPayments.push({
+          treatmentName: "Treatment Plan Advance Payment",
+          procedure: "Advance Payment",
+          treatmentAmount: addedTreatmentPlan.advancedAmount,
+          teethNumbers: [],
+          notes: "Advance payment for treatment plan",
+          treatmentType: 'advance'
+        });
+      }
+
+      // Generate invoice if there are any payments
+      if (treatmentsWithPayments.length > 0) {
+        const paymentDetails = {
+          paidAmount: treatmentsWithPayments.reduce((sum, t) => sum + (t.treatmentAmount || 0), 0),
+          paymentMethod: "Cash", // Default to Cash, could be made configurable
+          notes: "Treatment payment - automatically generated invoice"
+        };
+
+        const invoice = await createTreatmentPaymentInvoice(
+          patientId,
+          addedTreatmentPlan.treatedByDoctor,
+          treatmentsWithPayments,
+          paymentDetails,
+          req.admin?.id
+        );
+
+        console.log(`Invoice ${invoice.invoiceNumber} generated for treatment plan ${addedTreatmentPlan._id}`);
+      }
+    } catch (invoiceError) {
+      console.error("Error generating invoice for treatment plan:", invoiceError);
+      // Don't fail the entire operation if invoice generation fails
+    }
+
     res.status(201).json({
       success: true,
       message: "Treatment plan added successfully",
@@ -3746,6 +3846,72 @@ const updateTreatmentPlan = async (req, res) => {
       (plan) => plan._id.toString() === treatmentPlanId
     );
 
+    // Generate invoice for any new treatment payments
+    try {
+      // Check for new payments in updated daily treatments
+      const treatmentsWithPayments = [];
+      
+      // Check selected teeth details for payments
+      if (updatedTreatmentPlan.selectedTeethDetails) {
+        updatedTreatmentPlan.selectedTeethDetails.forEach(tooth => {
+          if (tooth.dailyTreatments) {
+            tooth.dailyTreatments.forEach(treatment => {
+              if (treatment.paidAmount && treatment.paidAmount > 0) {
+                treatmentsWithPayments.push({
+                  treatmentName: `${tooth.procedure} - Tooth ${tooth.number}`,
+                  procedure: tooth.procedure,
+                  treatmentAmount: treatment.paidAmount, // Use paid amount for invoice
+                  teethNumbers: [tooth.number],
+                  notes: treatment.notes,
+                  treatmentType: 'individual'
+                });
+              }
+            });
+          }
+        });
+      }
+
+      // Check for advance payment updates
+      if (updatedTreatmentPlan.advancedAmount && updatedTreatmentPlan.advancedAmount > 0) {
+        // Only create invoice if this is a new payment (compare with original data if needed)
+        treatmentsWithPayments.push({
+          treatmentName: "Treatment Plan Advance Payment Update",
+          procedure: "Advance Payment",
+          treatmentAmount: updatedTreatmentPlan.advancedAmount,
+          teethNumbers: [],
+          notes: "Updated advance payment for treatment plan",
+          treatmentType: 'advance'
+        });
+      }
+
+      // Generate invoice if there are any new payments
+      if (treatmentsWithPayments.length > 0) {
+        const totalPaidAmount = treatmentsWithPayments.reduce((sum, t) => sum + (t.treatmentAmount || 0), 0);
+        
+        // Only generate invoice if there's actually a payment amount
+        if (totalPaidAmount > 0) {
+          const paymentDetails = {
+            paidAmount: totalPaidAmount,
+            paymentMethod: "Cash", // Default to Cash, could be made configurable
+            notes: "Treatment payment update - automatically generated invoice"
+          };
+
+          const invoice = await createTreatmentPaymentInvoice(
+            patientId,
+            updatedTreatmentPlan.treatedByDoctor,
+            treatmentsWithPayments,
+            paymentDetails,
+            req.admin?.id
+          );
+
+          console.log(`Invoice ${invoice.invoiceNumber} generated for updated treatment plan ${updatedTreatmentPlan._id}`);
+        }
+      }
+    } catch (invoiceError) {
+      console.error("Error generating invoice for treatment plan update:", invoiceError);
+      // Don't fail the entire operation if invoice generation fails
+    }
+
     res.status(200).json({
       success: true,
       message: "Treatment plan updated successfully",
@@ -3771,7 +3937,10 @@ const getSimplifiedDashboardMetrics = async (req, res) => {
 
     // Get a few recent treatments without complex aggregation
     const recentTreatments = await Patient.find(
-      { "medicalDetails.treatmentPlanning.0": { $exists: true } },
+      { 
+        "medicalDetails.treatmentPlanning.0": { $exists: true },
+        isDeleted: { $ne: true }
+      },
       {
         "personalDetails.name": 1,
         "medicalDetails.treatmentPlanning.treatmentDetails": 1,
@@ -3817,7 +3986,10 @@ const getSimplifiedDashboardMetrics = async (req, res) => {
 
     // Get patients with general documents - simplified
     const patientsWithDocs = await Patient.find(
-      { "documents.0": { $exists: true } },
+      { 
+        "documents.0": { $exists: true },
+        isDeleted: { $ne: true }
+      },
       {
         "personalDetails.name": 1,
         documents: { $slice: 3 }, // Limit to 3 documents per patient
@@ -3986,6 +4158,7 @@ const searchPatients = async (req, res) => {
         { "personalDetails.contactNumber": { $regex: searchRegex } },
         { "personalDetails.emailAddress": { $regex: searchRegex } },
       ],
+      isDeleted: { $ne: true }
     })
       .limit(Number(limit))
       .select("personalDetails name contactNumber emailAddress lastAppointment")

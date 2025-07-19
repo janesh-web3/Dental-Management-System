@@ -10,7 +10,7 @@ const addAppointment = async (req, res) => {
     
     // If a doctor is specified, add the appointment to their list
     if (req.body.doctor) {
-      const foundDoctor = await Doctor.findById(req.body.doctor);
+      const foundDoctor = await Doctor.findOne({ _id: req.body.doctor, isDeleted: { $ne: true } });
       if (foundDoctor) {
         foundDoctor.appointments.push(savedAppointment._id);
         await foundDoctor.save();
@@ -84,8 +84,8 @@ const getAllAppointment = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = "" , status="All"} = req.query;
     const query = search
-      ? { firstName: { $regex: search, $options: "i" }, isDeleted: false ,lastName: { $regex: search, $options: "i" } }
-      : {};
+      ? { firstName: { $regex: search, $options: "i" }, isDeleted: { $ne: true } ,lastName: { $regex: search, $options: "i" } }
+      : { isDeleted: { $ne: true } };
 
     const allAppointment = await Appointment.find(query).sort({ isCreated: -1 })
     .skip((page - 1) * limit)
@@ -192,7 +192,7 @@ const updateAppointment = async (req, res) => {
     const updateData = req.body;
     
     // Find the appointment
-    const appointment = await Appointment.findById(appointmentId);
+    const appointment = await Appointment.findOne({ _id: appointmentId, isDeleted: { $ne: true } });
     
     if (!appointment) {
       return res.status(404).json({
@@ -220,7 +220,7 @@ const updateAppointment = async (req, res) => {
     // If doctor is changing, update the old and new doctor's appointment lists
     if (updateData.doctorId && updateData.doctorId !== appointment.doctor.toString()) {
       // Remove appointment from old doctor's list
-      const oldDoctor = await Doctor.findById(appointment.doctor);
+      const oldDoctor = await Doctor.findOne({ _id: appointment.doctor, isDeleted: { $ne: true } });
       if (oldDoctor) {
         oldDoctor.appointments = oldDoctor.appointments.filter(
           appt => appt.toString() !== appointmentId
@@ -229,7 +229,7 @@ const updateAppointment = async (req, res) => {
       }
       
       // Add appointment to new doctor's list
-      const newDoctor = await Doctor.findById(updateData.doctorId);
+      const newDoctor = await Doctor.findOne({ _id: updateData.doctorId, isDeleted: { $ne: true } });
       if (newDoctor) {
         newDoctor.appointments.push(appointmentId);
         await newDoctor.save();

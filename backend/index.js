@@ -25,6 +25,7 @@ const servicePaymentRouter = require("./routes/servicePaymentRoutes.js");
 const geminiRouter = require("./routes/geminiRoute.js");
 const notificationRouter = require("./routes/notificationRoutes.js");
 const invoiceRouter = require("./routes/invoiceRoutes.js");
+const recycleBinRouter = require("./routes/recycleBinRoutes.js");
 
 // Import utilities
 const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
@@ -84,6 +85,7 @@ app.use("/api/service-payment", servicePaymentRouter); // Service payment routes
 app.use("/api/gemini", geminiRouter);
 app.use("/api/v1/notifications", notificationRouter);
 app.use("/api/v1/invoices", invoiceRouter);
+app.use("/api/recycle-bin", recycleBinRouter);
 
 const port = process.env.PORT || 8080;
 

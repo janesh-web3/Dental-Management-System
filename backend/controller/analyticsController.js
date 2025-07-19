@@ -23,11 +23,11 @@ const getAppointmentAnalytics = async (req, res) => {
     };
     
     // Get total appointments in the date range
-    const totalAppointments = await Appointment.countDocuments(dateMatchCondition);
+    const totalAppointments = await Appointment.countDocuments({ ...dateMatchCondition, isDeleted: { $ne: true } });
     
     // Get appointments by status
     const appointmentsByStatus = await Appointment.aggregate([
-      { $match: dateMatchCondition },
+      { $match: { ...dateMatchCondition, isDeleted: { $ne: true } } },
       { $group: {
           _id: "$status",
           count: { $sum: 1 }
@@ -38,7 +38,7 @@ const getAppointmentAnalytics = async (req, res) => {
     
     // Get gender distribution
     const genderDistribution = await Appointment.aggregate([
-      { $match: dateMatchCondition },
+      { $match: { ...dateMatchCondition, isDeleted: { $ne: true } } },
       { $group: {
           _id: "$gender",
           count: { $sum: 1 }
@@ -48,7 +48,7 @@ const getAppointmentAnalytics = async (req, res) => {
     
     // Get doctor-wise appointment count
     const doctorAppointments = await Appointment.aggregate([
-      { $match: dateMatchCondition },
+      { $match: { ...dateMatchCondition, isDeleted: { $ne: true } } },
       { $lookup: {
           from: "doctors",
           localField: "doctor",
@@ -69,7 +69,7 @@ const getAppointmentAnalytics = async (req, res) => {
     
     // Calculate no-show rate
     const noShowStats = await Appointment.aggregate([
-      { $match: dateMatchCondition },
+      { $match: { ...dateMatchCondition, isDeleted: { $ne: true } } },
       { $group: {
           _id: null,
           total: { $sum: 1 },
@@ -108,7 +108,7 @@ const getAppointmentAnalytics = async (req, res) => {
     }
     
     const appointmentsOverTime = await Appointment.aggregate([
-      { $match: dateMatchCondition },
+      { $match: { ...dateMatchCondition, isDeleted: { $ne: true } } },
       { $group: {
           _id: timeGrouping,
           count: { $sum: 1 },
@@ -158,8 +158,10 @@ const getRevenueAnalytics = async (req, res) => {
     const end = endDate ? endOfDay(new Date(endDate)) : endOfDay(new Date());
     const start = startDate ? startOfDay(new Date(startDate)) : startOfDay(subMonths(end, 12));
     
-    // Aggregate revenue data from patient treatments using dailyTreatmentSchema
+    // Aggregate revenue data from patient treatments using dailyTreatmentSchema (excluding soft deleted)
     const revenueData = await Patient.aggregate([
+      // Exclude soft deleted patients
+      { $match: { isDeleted: { $ne: true } } },
       // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
       // Unwind the treatmentPlanning array
@@ -204,8 +206,10 @@ const getRevenueAnalytics = async (req, res) => {
       }
     ]);
     
-    // Get doctor-wise revenue
+    // Get doctor-wise revenue (excluding soft deleted)
     const doctorRevenue = await Patient.aggregate([
+      // Exclude soft deleted patients
+      { $match: { isDeleted: { $ne: true } } },
       // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
       // Unwind the treatmentPlanning array
@@ -253,8 +257,10 @@ const getRevenueAnalytics = async (req, res) => {
       }
     ]);
     
-    // Get top paying patients based on dailyTreatments
+    // Get top paying patients based on dailyTreatments (excluding soft deleted)
     const topPayingPatients = await Patient.aggregate([
+      // Exclude soft deleted patients
+      { $match: { isDeleted: { $ne: true } } },
       // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
       // Unwind the treatmentPlanning array
@@ -292,8 +298,10 @@ const getRevenueAnalytics = async (req, res) => {
       }
     ]);
     
-    // Get outstanding amounts summary based on dailyTreatments
+    // Get outstanding amounts summary based on dailyTreatments (excluding soft deleted)
     const outstandingAmounts = await Patient.aggregate([
+      // Exclude soft deleted patients
+      { $match: { isDeleted: { $ne: true } } },
       // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
       // Unwind the treatmentPlanning array
@@ -338,8 +346,10 @@ const getRevenueAnalytics = async (req, res) => {
       }
     ]);
     
-    // Calculate overall revenue metrics based on dailyTreatments
+    // Calculate overall revenue metrics based on dailyTreatments (excluding soft deleted)
     const overallRevenue = await Patient.aggregate([
+      // Exclude soft deleted patients
+      { $match: { isDeleted: { $ne: true } } },
       // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
       // Unwind the treatmentPlanning array
@@ -414,8 +424,10 @@ const getDoctorPerformanceAnalytics = async (req, res) => {
     const end = endDate ? endOfDay(new Date(endDate)) : endOfDay(new Date());
     const start = startDate ? startOfDay(new Date(startDate)) : startOfDay(subMonths(end, 6));
     
-    // Get number of patients treated per doctor
+    // Get number of patients treated per doctor (excluding soft deleted)
     const patientsPerDoctor = await Patient.aggregate([
+      // Exclude soft deleted patients
+      { $match: { isDeleted: { $ne: true } } },
       // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
       // Unwind the treatmentPlanning array
@@ -470,8 +482,8 @@ const getDoctorPerformanceAnalytics = async (req, res) => {
     
     // Get average ratings per doctor
     const doctorRatings = await Doctor.aggregate([
-      // Filter out doctors with no reviews
-      { $match: { "reviews.0": { $exists: true } } },
+      // Filter out doctors with no reviews and soft deleted
+      { $match: { "reviews.0": { $exists: true }, isDeleted: { $ne: true } } },
       // Unwind the reviews array
       { $unwind: { path: "$reviews", preserveNullAndEmptyArrays: false } },
       // Filter by date range
@@ -505,7 +517,8 @@ const getDoctorPerformanceAnalytics = async (req, res) => {
       // Filter by date range
       { $match: {
           createdAt: { $gte: start, $lte: end },
-          doctor: { $ne: null }
+          doctor: { $ne: null },
+          isDeleted: { $ne: true }
         }
       },
       // Lookup doctor information
@@ -584,11 +597,12 @@ const getPatientInsightsAnalytics = async (req, res) => {
     const end = endDate ? endOfDay(new Date(endDate)) : endOfDay(new Date());
     const start = startDate ? startOfDay(new Date(startDate)) : startOfDay(subMonths(end, 12));
     
-    // Get new vs returning patients
+    // Get new vs returning patients (excluding soft deleted)
     const patientVisits = await Patient.aggregate([
-      // Filter by date range
+      // Filter by date range and exclude soft deleted
       { $match: {
-          createdAt: { $gte: start, $lte: end }
+          createdAt: { $gte: start, $lte: end },
+          isDeleted: { $ne: true }
         }
       },
       // Group by time period to get new patients
@@ -623,7 +637,8 @@ const getPatientInsightsAnalytics = async (req, res) => {
       // Filter by date range
       { $match: {
           createdAt: { $gte: start, $lte: end },
-          patientId: { $ne: null, $ne: "" }
+          patientId: { $ne: null, $ne: "" },
+          isDeleted: { $ne: true }
         }
       },
       // Group by patient and date to identify returning visits
@@ -675,8 +690,10 @@ const getPatientInsightsAnalytics = async (req, res) => {
       };
     });
     
-    // Get treatment completion rate
+    // Get treatment completion rate (excluding soft deleted)
     const treatmentCompletionRate = await Patient.aggregate([
+      // Exclude soft deleted patients
+      { $match: { isDeleted: { $ne: true } } },
       // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
       // Unwind the treatmentPlanning array
@@ -709,9 +726,11 @@ const getPatientInsightsAnalytics = async (req, res) => {
       }
     ]);
     
-    // Get follow-up tracking and overdue follow-ups
+    // Get follow-up tracking and overdue follow-ups (excluding soft deleted)
     const today = new Date();
     const followUpData = await Patient.aggregate([
+      // Exclude soft deleted patients
+      { $match: { isDeleted: { $ne: true } } },
       // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
       // Filter for records with follow-up dates

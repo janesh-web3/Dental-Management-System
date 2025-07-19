@@ -26,6 +26,15 @@ const protectDoctorRoute = async (req, res, next) => {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key");
 
+      // Handle both id and userId fields in token
+      const doctorId = decoded.id || decoded.userId;
+      if (!doctorId) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid token format"
+        });
+      }
+
       // Check if the token is for a doctor
       if (decoded.role !== "doctor") {
         return res.status(403).json({
@@ -35,8 +44,8 @@ const protectDoctorRoute = async (req, res, next) => {
       }
 
       // Get doctor from the token
-      const doctor = await Doctor.findById(decoded.id).select("-password");
-      if (!doctor) {
+      const doctor = await Doctor.findById(doctorId).select("-password");
+      if (!doctor || doctor.isDeleted) {
         return res.status(404).json({
           success: false,
           message: "Doctor not found"
@@ -46,8 +55,13 @@ const protectDoctorRoute = async (req, res, next) => {
       // Add doctor to request object
       req.doctor = {
         id: doctor._id,
-        role: "doctor"
+        role: "doctor",
+        name: doctor.name,
+        email: doctor.email
       };
+      
+      // Also set req.user for compatibility
+      req.user = doctor;
 
       next();
     } catch (error) {

@@ -186,7 +186,7 @@ export default function IncomePage() {
       if (response.success) {
         toast({
           title: "Success",
-          description: "Income deleted successfully",
+          description: "Income moved to recycle bin successfully",
         });
         fetchIncomes();
         setIsDeleteDialogOpen(false);
@@ -357,9 +357,9 @@ export default function IncomePage() {
                         </Button>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Income</AlertDialogTitle>
+                            <AlertDialogTitle>Move Income to Recycle Bin</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to delete this income record? This action cannot be undone.
+                              Are you sure you want to move this income record to the recycle bin? You can restore it later if needed.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -367,9 +367,9 @@ export default function IncomePage() {
                             <AlertDialogAction
                               onClick={handleDeleteIncome}
                               disabled={isSubmitting}
-                              className="bg-rose-500 hover:bg-rose-600"
+                              className="bg-orange-600 hover:bg-orange-700"
                             >
-                              {isSubmitting ? "Deleting..." : "Delete"}
+                              {isSubmitting ? "Moving..." : "Move to Recycle Bin"}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

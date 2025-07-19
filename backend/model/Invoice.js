@@ -58,7 +58,7 @@ const invoiceSchema = new mongoose.Schema(
     patient: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Patient",
-      required: true,
+      required: false, // Made optional for income/expense/service invoices
     },
     patientName: {
       type: String,
@@ -67,7 +67,7 @@ const invoiceSchema = new mongoose.Schema(
     doctor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Doctor",
-      required: true,
+      required: false, // Made optional for income/expense/service invoices
     },
     doctorName: {
       type: String,
@@ -122,7 +122,19 @@ const invoiceSchema = new mongoose.Schema(
     treatmentPlan: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "TreatmentPlan"
-    }
+    },
+    // Soft delete functionality
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   {
     timestamps: true,

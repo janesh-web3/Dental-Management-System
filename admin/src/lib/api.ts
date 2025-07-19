@@ -13,19 +13,17 @@ const axiosInstance = axios.create({
 
 // Add request interceptor to dynamically set auth token
 axiosInstance.interceptors.request.use((config) => {
-  // Check for doctor routes and use doctor token if available
-  if (config.url?.startsWith('/doctor')) {
-    const doctorToken = sessionStorage.getItem("doctorToken");
-    if (doctorToken) {
-      config.headers.Authorization = `Bearer ${doctorToken}`;
-    }
-  } else {
-    // For admin/other routes, use the regular token
+  // if (config.url?.startsWith("/doctor")) {
+  //   const doctorToken = sessionStorage.getItem("doctorToken");
+  //   if (doctorToken) {
+  //     config.headers.Authorization = `Bearer ${doctorToken}`;
+  //   }
+  // } else {
+    // }
     const token = sessionStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-  }
   return config;
 });
 
@@ -51,7 +49,7 @@ export const crudRequest = async <T>(
       throw error.response.data;
     } else if (error.request) {
       // The request was made but no response was received
-      throw new Error('No response received from server');
+      throw new Error("No response received from server");
     } else {
       // Something happened in setting up the request that triggered an Error
       throw new Error(error.message);
@@ -75,11 +73,11 @@ export const getIncomes = async (
   endDate = ""
 ) => {
   let url = `/finance/income?page=${page}&limit=${limit}`;
-  
+
   if (search) url += `&search=${search}`;
   if (dateFilter && dateFilter !== "all") url += `&dateFilter=${dateFilter}`;
   if (startDate && endDate) url += `&startDate=${startDate}&endDate=${endDate}`;
-  
+
   return await crudRequest("GET", url);
 };
 
@@ -118,11 +116,11 @@ export const getExpenses = async (
   endDate: string
 ): Promise<ApiResponse<Expense[]>> => {
   let url = `/finance/expense?page=${page}&limit=${limit}`;
-  
+
   if (search) url += `&search=${search}`;
   if (dateFilter && dateFilter !== "all") url += `&dateFilter=${dateFilter}`;
   if (startDate && endDate) url += `&startDate=${startDate}&endDate=${endDate}`;
-  
+
   return await crudRequest("GET", url);
 };
 
@@ -153,12 +151,12 @@ export const getServicePayments = async (
   isWalkIn?: boolean
 ): Promise<ApiResponse<ServicePayment[]>> => {
   let url = `/service-payment?page=${page}&limit=${limit}`;
-  
+
   if (search) url += `&search=${search}`;
   if (startDate && endDate) url += `&startDate=${startDate}&endDate=${endDate}`;
   if (patient) url += `&patient=${patient}`;
   if (isWalkIn !== undefined) url += `&isWalkIn=${isWalkIn}`;
-  
+
   return await crudRequest("GET", url);
 };
 
@@ -166,7 +164,10 @@ export const getServicePaymentById = async (id: string) => {
   return await crudRequest("GET", `/service-payment/${id}`);
 };
 
-export const updateServicePayment = async (id: string, data: Partial<ServicePayment>) => {
+export const updateServicePayment = async (
+  id: string,
+  data: Partial<ServicePayment>
+) => {
   return await crudRequest("PUT", `/service-payment/${id}`, data);
 };
 
@@ -189,9 +190,162 @@ export const getFinancialSummary = async <T>(
   endDate = ""
 ): Promise<T> => {
   let url = `/finance/summary`;
-  
+
   if (dateFilter && dateFilter !== "all") url += `?dateFilter=${dateFilter}`;
-  else if (startDate && endDate) url += `?startDate=${startDate}&endDate=${endDate}`;
-  
+  else if (startDate && endDate)
+    url += `?startDate=${startDate}&endDate=${endDate}`;
+
   return await crudRequest<T>("GET", url);
+};
+
+// ********************* RECYCLE BIN API SERVICES *********************
+
+export const getRecycleBinItems = async (
+  type = "all",
+  page = 1,
+  limit = 10
+) => {
+  return await crudRequest(
+    "GET",
+    `/recycle-bin?type=${type}&page=${page}&limit=${limit}`
+  );
+};
+
+export const getRecycleBinStats = async () => {
+  return await crudRequest("GET", `/recycle-bin/stats`);
+};
+
+export const restoreRecycleBinItem = async (type: string, id: string) => {
+  return await crudRequest("PUT", `/recycle-bin/restore/${type}/${id}`);
+};
+
+export const permanentlyDeleteRecycleBinItem = async (
+  type: string,
+  id: string
+) => {
+  return await crudRequest("DELETE", `/recycle-bin/permanent/${type}/${id}`);
+};
+
+export const emptyRecycleBin = async (type?: string) => {
+  const url = type ? `/recycle-bin/empty?type=${type}` : `/recycle-bin/empty`;
+  return await crudRequest("DELETE", url);
+};
+
+// ********************* PATIENT API SERVICES *********************
+
+export const getPatients = async (
+  page = 1,
+  limit = 10,
+  search = "",
+  dateFilter = "all",
+  startDate = "",
+  endDate = "",
+  followUpFilter = ""
+) => {
+  let url = `/patient/get-patients?page=${page}&limit=${limit}`;
+
+  if (search) url += `&search=${search}`;
+  if (dateFilter && dateFilter !== "all") url += `&dateFilter=${dateFilter}`;
+  if (startDate && endDate) url += `&startDate=${startDate}&endDate=${endDate}`;
+  if (followUpFilter) url += `&followUpFilter=${followUpFilter}`;
+
+  return await crudRequest("GET", url);
+};
+
+export const getPatientById = async (id: string) => {
+  return await crudRequest("GET", `/patient/get-single-patient/${id}`);
+};
+
+export const createPatient = async (data: any) => {
+  return await crudRequest("POST", `/patient/add-patient`, data);
+};
+
+export const updatePatient = async (id: string, data: any) => {
+  return await crudRequest("PUT", `/patient/update-patient/${id}`, data);
+};
+
+export const deletePatient = async (id: string) => {
+  return await crudRequest("DELETE", `/patient/delete-patient/${id}`);
+};
+
+// ********************* DOCTOR API SERVICES *********************
+
+export const getDoctors = async (page = 1, limit = 10, search = "") => {
+  let url = `/doctor/get-doctors?page=${page}&limit=${limit}`;
+  if (search) url += `&search=${search}`;
+  return await crudRequest("GET", url);
+};
+
+export const getDoctorById = async (id: string) => {
+  return await crudRequest("GET", `/doctor/get-doctor/${id}`);
+};
+
+export const createDoctor = async (data: any) => {
+  return await crudRequest("POST", `/doctor/add-doctor`, data);
+};
+
+export const updateDoctor = async (id: string, data: any) => {
+  return await crudRequest("PUT", `/doctor/update-doctor/${id}`, data);
+};
+
+export const deleteDoctor = async (id: string) => {
+  return await crudRequest("DELETE", `/doctor/delete-doctor/${id}`);
+};
+
+// ********************* APPOINTMENT API SERVICES *********************
+
+export const getAppointments = async (page = 1, limit = 10, search = "") => {
+  let url = `/appointment/get-all-appointments?page=${page}&limit=${limit}`;
+  if (search) url += `&search=${search}`;
+  return await crudRequest("GET", url);
+};
+
+export const getAppointmentById = async (id: string) => {
+  return await crudRequest("GET", `/appointment/get-appointment/${id}`);
+};
+
+export const createAppointment = async (data: any) => {
+  return await crudRequest("POST", `/appointment/add-appointment`, data);
+};
+
+export const updateAppointment = async (id: string, data: any) => {
+  return await crudRequest(
+    "PUT",
+    `/appointment/update-appointment/${id}`,
+    data
+  );
+};
+
+export const deleteAppointment = async (id: string) => {
+  return await crudRequest("DELETE", `/appointment/delete-appointment/${id}`);
+};
+
+// ********************* INVOICE API SERVICES *********************
+
+export const getInvoices = async (
+  page = 1,
+  limit = 10,
+  search = "",
+  status = ""
+) => {
+  let url = `/v1/invoices?page=${page}&limit=${limit}`;
+  if (search) url += `&search=${search}`;
+  if (status) url += `&status=${status}`;
+  return await crudRequest("GET", url);
+};
+
+export const getInvoiceById = async (id: string) => {
+  return await crudRequest("GET", `/v1/invoices/${id}`);
+};
+
+export const createInvoice = async (data: any) => {
+  return await crudRequest("POST", `/v1/invoices`, data);
+};
+
+export const updateInvoice = async (id: string, data: any) => {
+  return await crudRequest("PUT", `/v1/invoices/${id}`, data);
+};
+
+export const deleteInvoice = async (id: string) => {
+  return await crudRequest("DELETE", `/v1/invoices/${id}`);
 };

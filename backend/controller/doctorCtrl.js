@@ -28,8 +28,8 @@ const addDoctor = async (req, res) => {
       doctorData = req.body;
     }
 
-    // Check if doctor with this email already exists
-    const existingDoctor = await Doctor.findOne({ email: doctorData.email });
+    // Check if doctor with this email already exists (excluding soft deleted)
+    const existingDoctor = await Doctor.findOne({ email: doctorData.email, isDeleted: { $ne: true } });
     if (existingDoctor) {
       return res.status(400).json({
         success: false,
@@ -67,7 +67,7 @@ const getPaginatedDoctor = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const search = req.query.search || "";
 
-    const query = search ? { name: { $regex: search, $options: "i" } } : {};
+    const query = search ? { name: { $regex: search, $options: "i" }, isDeleted: { $ne: true } } : { isDeleted: { $ne: true } };
 
     const doctor = await Doctor.find(query)
       .sort({ createdAt: -1 })
@@ -97,7 +97,7 @@ const getPaginatedDoctor = async (req, res) => {
 
 const getDoctor = async (req, res) => {
   try {
-    const doctor = await Doctor.find().sort({ createdAt: -1 });
+    const doctor = await Doctor.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
     res.json(doctor);
   } catch (error) {
     console.error("Error fetching doctor:", error);
@@ -110,8 +110,46 @@ const getDoctor = async (req, res) => {
 const deleteDoctor = async (req, res) => {
   try {
     const { id } = req.params;
-    await Doctor.findByIdAndDelete(id);
-    res.status(200).json({ message: "Doctor deleted successfully" });
+    
+    // Find the doctor first to ensure they exist and are not already deleted
+    const doctor = await Doctor.findOne({ _id: id, isDeleted: { $ne: true } });
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found"
+      });
+    }
+
+    // Import required models for cascade deletion
+    const Appointment = require("../model/Appointment");
+
+    // Soft delete related appointments
+    try {
+      await Appointment.updateMany(
+        { doctor: id, isDeleted: { $ne: true } },
+        {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedBy: req.admin?.id || req.user?.id
+        }
+      );
+      console.log(`Soft deleted related appointments for doctor ID: ${id}`);
+    } catch (relatedError) {
+      console.error("Error soft deleting related records:", relatedError);
+      // Continue with doctor deletion even if related record deletion fails
+    }
+
+    // Soft delete the doctor
+    await Doctor.findByIdAndUpdate(id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+      deletedBy: req.admin?.id || req.user?.id
+    });
+
+    res.status(200).json({ 
+      success: true,
+      message: "Doctor deleted successfully" 
+    });
   } catch (error) {
     console.error("Error deleting doctor:", error);
     res
@@ -173,7 +211,7 @@ const updateDoctorPassword = async (req, res) => {
       });
     }
 
-    const doctor = await Doctor.findById(id);
+    const doctor = await Doctor.findOne({ _id: id, isDeleted: { $ne: true } });
     if (!doctor) {
       return res.status(404).json({ 
         success: false,

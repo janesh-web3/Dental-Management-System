@@ -222,7 +222,7 @@ export default function ServicePaymentPage() {
       if (response.success) {
         toast({
           title: "Success",
-          description: "Service payment deleted successfully",
+          description: "Service payment moved to recycle bin successfully",
         });
         fetchServicePayments();
         setIsDeleteDialogOpen(false);
@@ -442,9 +442,9 @@ export default function ServicePaymentPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Move Service Payment to Recycle Bin</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this service payment record. This action cannot be undone.
+              Are you sure you want to move this service payment record to the recycle bin? You can restore it later if needed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -452,10 +452,10 @@ export default function ServicePaymentPage() {
             <AlertDialogAction
               onClick={handleDeleteServicePayment}
               disabled={isSubmitting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-orange-600 text-white hover:bg-orange-700"
             >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Delete
+              {isSubmitting ? "Moving..." : "Move to Recycle Bin"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

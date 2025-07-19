@@ -38,6 +38,18 @@ const incomeSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    // Soft delete functionality
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   {
     timestamps: true,

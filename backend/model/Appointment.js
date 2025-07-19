@@ -67,7 +67,19 @@ const appointmentSchema = new mongoose.Schema(
     isCreated : {
       type : Date,
       default : Date.now()
-    }
+    },
+    // Soft delete functionality
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   { timestamps: true }
 );

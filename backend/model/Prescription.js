@@ -35,6 +35,18 @@ const prescriptionSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Soft delete functionality
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   { timestamps: true }
 );

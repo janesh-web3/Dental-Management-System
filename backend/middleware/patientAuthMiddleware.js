@@ -46,7 +46,7 @@ const patientAuthMiddleware = async (req, res, next) => {
     
     // Find patient details
     const patient = await Patient.findById(patientAuth.patientId);
-    if (!patient) {
+    if (!patient || patient.isDeleted) {
       return res.status(404).json({
         success: false,
         message: "Patient not found.",

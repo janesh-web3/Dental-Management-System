@@ -25,7 +25,24 @@ const protectAdminRoute = async (req, res, next) => {
     try {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.userId).select("-password");
+      
+      // Handle both userId and id fields in token
+      const userId = decoded.userId || decoded.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid token format",
+        });
+      }
+      
+      const user = await User.findById(userId).select("-password");
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+      
       // Check if the token is for an admin
       if (user.role !== "admin" && user.role !== "superadmin") {
         return res.status(403).json({
@@ -34,22 +51,19 @@ const protectAdminRoute = async (req, res, next) => {
         });
       }
 
-      // Get admin from the token
-      const admin = await User.findById(decoded.userId).select("-password");
-      if (!admin) {
-        return res.status(404).json({
-          success: false,
-          message: "Admin not found",
-        });
-      }
+      // Use the user we already found
+      const admin = user;
 
       // Add admin to request object
       req.admin = {
         id: admin._id,
-        role: "admin",
+        role: admin.role || "admin",
         name: admin.name,
         email: admin.email,
       };
+      
+      // Also set req.user for compatibility
+      req.user = admin;
 
       next();
     } catch (error) {

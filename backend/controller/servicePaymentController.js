@@ -3,6 +3,7 @@ const Patient = require("../model/Patient");
 const Income = require("../model/Income");
 const { default: mongoose } = require("mongoose");
 const { sendNotification, sendRoleNotification } = require("../utils/notificationHelper");
+const { createServicePaymentInvoice } = require("../utils/invoiceGenerator");
 
 // Helper function to get date filter
 const getDateFilter = (startDate, endDate) => {
@@ -59,6 +60,15 @@ const addServicePayment = async (req, res) => {
     
     // Create new service payment
     const servicePayment = await ServicePayment.create(servicePaymentData);
+    
+    // Generate invoice for this service payment
+    try {
+      const invoice = await createServicePaymentInvoice(servicePaymentData, req.admin?.id);
+      console.log(`Invoice ${invoice.invoiceNumber} generated for service payment ${servicePayment._id}`);
+    } catch (invoiceError) {
+      console.error("Error generating invoice for service payment:", invoiceError);
+      // Don't fail the service payment creation if invoice generation fails
+    }
     
     // Also record this as income for financial tracking - only if admin is authenticated
     if (req.admin) {
@@ -156,7 +166,8 @@ const getServicePayments = async (req, res) => {
     // Pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
-    // Get service payments
+    // Get service payments (excluding soft deleted)
+    query.isDeleted = { $ne: true };
     const servicePayments = await ServicePayment.find(query)
       .sort({ date: -1 }) // Sort by date (newest first)
       .skip(skip)
@@ -167,7 +178,7 @@ const getServicePayments = async (req, res) => {
     // Get total count
     const total = await ServicePayment.countDocuments(query);
     
-    // Calculate total amount - only include payments for existing patients
+    // Calculate total amount - only include payments for existing patients (excluding soft deleted)
     const totalAmount = await ServicePayment.aggregate([
       { $match: query },
       {
@@ -180,8 +191,13 @@ const getServicePayments = async (req, res) => {
       },
       {
         $match: {
-          $or: [
-            { isWalkIn: true },
+          $and: [
+            {
+              $or: [
+                { isWalkIn: true },
+                { "patientExists.isDeleted": { $ne: true } }
+              ]
+            },
             { patientExists: { $ne: [] } }
           ]
         }
@@ -215,7 +231,7 @@ const getServicePayments = async (req, res) => {
 // Get service payment by ID
 const getServicePaymentById = async (req, res) => {
   try {
-    const servicePayment = await ServicePayment.findById(req.params.id)
+    const servicePayment = await ServicePayment.findOne({ _id: req.params.id, isDeleted: { $ne: true } })
       .populate("createdBy", "name email")
       .populate("patient", "personalDetails.name personalDetails.contactNumber");
     
@@ -246,7 +262,7 @@ const updateServicePayment = async (req, res) => {
     const { patientName, contactNumber, serviceType, description, amount, paymentMethod, patient, createdBy } = req.body;
     
     // Find service payment
-    let servicePayment = await ServicePayment.findById(req.params.id);
+    let servicePayment = await ServicePayment.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     
     if (!servicePayment) {
       return res.status(404).json({
@@ -310,12 +326,12 @@ const updateServicePayment = async (req, res) => {
   }
 };
 
-// Delete service payment
+// Soft delete service payment
 const deleteServicePayment = async (req, res) => {
   try {
-    const servicePayment = await ServicePayment.findById(req.params.id);
+    const servicePayment = await ServicePayment.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     
-    if (!servicePayment) {
+    if (!servicePayment || servicePayment.isDeleted) {
       return res.status(404).json({
         success: false,
         message: "Service payment not found",
@@ -337,7 +353,12 @@ const deleteServicePayment = async (req, res) => {
       }
     }
     
-    await ServicePayment.findByIdAndDelete(req.params.id);
+    // Soft delete instead of hard delete
+    await ServicePayment.findByIdAndUpdate(req.params.id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+      deletedBy: req.admin?.id || req.user?.id
+    });
     
     res.status(200).json({
       success: true,
@@ -358,8 +379,8 @@ const getPatientServicePayments = async (req, res) => {
   try {
     const patientId = req.params.patientId;
     
-    // Validate patient exists
-    const patient = await Patient.findById(patientId);
+    // Validate patient exists and is not deleted
+    const patient = await Patient.findOne({ _id: patientId, isDeleted: { $ne: true } });
     if (!patient) {
       return res.status(404).json({
         success: false,
@@ -367,14 +388,14 @@ const getPatientServicePayments = async (req, res) => {
       });
     }
     
-    // Get all service payments for this patient
-    const servicePayments = await ServicePayment.find({ patient: patientId })
+    // Get all service payments for this patient (excluding soft deleted)
+    const servicePayments = await ServicePayment.find({ patient: patientId, isDeleted: { $ne: true } })
       .sort({ date: -1 })
       .populate("createdBy", "name email");
     
     // Calculate total amount - only include payments for existing patients
     const totalAmount = await ServicePayment.aggregate([
-      { $match: { patient: new mongoose.Types.ObjectId(patientId) } },
+      { $match: { patient: new mongoose.Types.ObjectId(patientId), isDeleted: { $ne: true } } },
       {
         $lookup: {
           from: "patients",
@@ -495,8 +516,8 @@ const getServicePaymentSummary = async (req, res) => {
       }
     ]);
     
-    // Get recent service payments (last 5)
-    const recentPayments = await ServicePayment.find(query)
+    // Get recent service payments (last 5) - excluding soft deleted
+    const recentPayments = await ServicePayment.find({ ...query, isDeleted: { $ne: true } })
       .sort({ date: -1 })
       .limit(5)
       .populate("createdBy", "name")

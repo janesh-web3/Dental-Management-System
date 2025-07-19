@@ -66,6 +66,18 @@ const notificationSchema = new mongoose.Schema({
   data: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
+  },
+  // Soft delete functionality
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+  deletedAt: {
+    type: Date,
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
   }
 }, {
   timestamps: true,

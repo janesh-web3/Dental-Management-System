@@ -188,7 +188,7 @@ export default function ExpensePage() {
       if (response.success) {
         toast({
           title: "Success",
-          description: "Expense deleted successfully",
+          description: "Expense moved to recycle bin successfully",
         });
         fetchExpenses();
         setIsDeleteDialogOpen(false);
@@ -359,9 +359,9 @@ export default function ExpensePage() {
                         </Button>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Expense</AlertDialogTitle>
+                            <AlertDialogTitle>Move Expense to Recycle Bin</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to delete this expense record? This action cannot be undone.
+                              This will move this expense record to the recycle bin. You can restore it later if needed.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -369,9 +369,9 @@ export default function ExpensePage() {
                             <AlertDialogAction
                               onClick={handleDeleteExpense}
                               disabled={isSubmitting}
-                              className="bg-rose-500 hover:bg-rose-600"
+                              className="bg-orange-600 hover:bg-orange-700"
                             >
-                              {isSubmitting ? "Deleting..." : "Delete"}
+                              {isSubmitting ? "Moving..." : "Move to Recycle Bin"}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

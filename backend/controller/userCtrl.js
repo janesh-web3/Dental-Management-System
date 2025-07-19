@@ -62,7 +62,7 @@ const loginUser = async (req, res) => {
       user.lastLogin = new Date();
       await user.save();
 
-      const token = generateToken(user._id);
+      const token = generateToken(user._id, user.role);
       return res.status(200).json({ 
         message: "Logged in successfully", 
         token: token,

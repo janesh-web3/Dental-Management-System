@@ -15,6 +15,8 @@ const authenticateUser = async (req, res, next) => {
     token = req.cookies.token;
   }
 
+  console.log("Token found:", token);
+
   // Make sure token exists
   if (!token) {
     return res.status(401).json({ 

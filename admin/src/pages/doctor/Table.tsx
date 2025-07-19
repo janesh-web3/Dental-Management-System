@@ -81,7 +81,7 @@ export function DoctorTable() {
       setDoctors((prev) => prev.filter((doctor) => doctor._id !== id));
       
       // Show notification
-      showDoctorDeletedNotification(doctorName);
+      showDoctorDeletedNotification(`Dr. ${doctorName} moved to recycle bin`);
     } catch (error) {
       console.error("Error deleting doctor:", error);
     }
@@ -288,10 +288,10 @@ export function DoctorTable() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="max-w-[90vw] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-center sm:text-left">Confirm Deletion</DialogTitle>
+            <DialogTitle className="text-center sm:text-left">Move to Recycle Bin?</DialogTitle>
             <DialogDescription className="text-center sm:text-left">
-              Are you sure you want to delete Dr. {doctorToDelete?.name}? This
-              action cannot be undone.
+              This will move Dr. {doctorToDelete?.name}'s record to the recycle bin. 
+              You can restore it later from the recycle bin if needed.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
@@ -303,11 +303,10 @@ export function DoctorTable() {
               Cancel
             </Button>
             <Button 
-              variant="destructive" 
               onClick={confirmDelete}
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto bg-orange-600 text-white hover:bg-orange-700"
             >
-              Delete
+              Move to Recycle Bin
             </Button>
           </DialogFooter>
         </DialogContent>

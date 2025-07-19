@@ -72,8 +72,8 @@ exports.getInvoices = async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    // Build query
-    const query = {};
+    // Build query (exclude soft deleted invoices)
+    const query = { isDeleted: { $ne: true } };
     
     if (startDate || endDate) {
       query.invoiceDate = {};
@@ -120,7 +120,7 @@ exports.getInvoices = async (req, res) => {
 // @access  Private/Admin
 exports.getInvoice = async (req, res) => {
   try {
-    const invoice = await Invoice.findById(req.params.id)
+    const invoice = await Invoice.findOne({ _id: req.params.id, isDeleted: { $ne: true } })
       .populate('patient', 'name email phone address')
       .populate('doctor', 'name email phone')
       .populate('treatmentPlan', 'name')
@@ -153,8 +153,8 @@ exports.updateInvoice = async (req, res) => {
       updateData.balance = updateData.total - (updateData.amountPaid || 0);
     }
     
-    const invoice = await Invoice.findByIdAndUpdate(
-      req.params.id,
+    const invoice = await Invoice.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: { $ne: true } },
       { ...updateData, $set: { items } },
       { new: true, runValidators: true }
     );
@@ -175,7 +175,11 @@ exports.updateInvoice = async (req, res) => {
 // @access  Private/Admin
 exports.deleteInvoice = async (req, res) => {
   try {
-    const invoice = await Invoice.findByIdAndDelete(req.params.id);
+    const invoice = await Invoice.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: { $ne: true } },
+      { isDeleted: true, deletedAt: new Date() },
+      { new: true }
+    );
     
     if (!invoice) {
       return res.status(404).json({ success: false, error: 'Invoice not found' });
@@ -198,7 +202,7 @@ exports.recordPayment = async (req, res) => {
   try {
     const { amount, paymentMethod, transactionId, notes } = req.body;
     
-    const invoice = await Invoice.findById(req.params.id);
+    const invoice = await Invoice.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     if (!invoice) {
       return res.status(404).json({ success: false, error: 'Invoice not found' });
     }
@@ -206,7 +210,7 @@ exports.recordPayment = async (req, res) => {
     await processPayment(invoice, amount, paymentMethod, req.user.id, notes, transactionId);
     
     // Refresh the invoice to get updated data
-    const updatedInvoice = await Invoice.findById(req.params.id)
+    const updatedInvoice = await Invoice.findOne({ _id: req.params.id, isDeleted: { $ne: true } })
       .populate('paymentLogs')
       .populate('patient', 'name email phone')
       .populate('doctor', 'name');
@@ -229,7 +233,7 @@ exports.recordPayment = async (req, res) => {
 // @access  Private/Admin
 exports.getInvoicePdf = async (req, res) => {
   try {
-    const invoice = await Invoice.findById(req.params.id)
+    const invoice = await Invoice.findOne({ _id: req.params.id, isDeleted: { $ne: true } })
       .populate('patient', 'name email phone address')
       .populate('doctor', 'name email phone')
       .populate('treatmentPlan', 'name');

@@ -78,6 +78,20 @@ export const navItems: NavItem[] = [
     label: "SMS",
     notificationEnabled: true,
   },
+  {
+    title: "Recycle Bin",
+    href: "/recycle-bin",
+    icon: "trash",
+    label: "Recycle Bin",
+    notificationEnabled: false,
+  },
+  {
+    title: "System Test",
+    href: "/system-test",
+    icon: "settings",
+    label: "System Test",
+    notificationEnabled: false,
+  },
 ];
 
 export const users = [

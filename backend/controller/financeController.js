@@ -3,6 +3,7 @@ const Expense = require("../model/Expense");
 const ServicePayment = require("../model/ServicePayment");
 const { createAndEmitNotification } = require("./notificationCtrl");
 const { getIO } = require("../socket");
+const { createIncomeInvoice, createExpenseInvoice } = require("../utils/invoiceGenerator");
 
 // Helper function to get date filter
 const getDateFilter = (startDate, endDate) => {
@@ -94,6 +95,15 @@ const addIncome = async (req, res) => {
       createdBy: req.admin.id,
     });
     
+    // Generate invoice for this income entry
+    try {
+      const invoice = await createIncomeInvoice(income, req.admin.id);
+      console.log(`Invoice ${invoice.invoiceNumber} generated for income ${income._id}`);
+    } catch (invoiceError) {
+      console.error("Error generating invoice for income:", invoiceError);
+      // Don't fail the income creation if invoice generation fails
+    }
+    
     // Create notification for all admin users
     await createAndEmitNotification({
       title: "New Income Added",
@@ -145,8 +155,8 @@ const getIncomes = async (req, res) => {
   try {
     const { startDate, endDate, dateFilter, page = 1, limit = 10, search = "" } = req.query;
     
-    // Build query
-    let query = {};
+    // Build query - exclude soft deleted records
+    let query = { isDeleted: { $ne: true } };
     
     // Apply date filter if provided
     if (dateFilter && dateFilter !== "all") {
@@ -163,7 +173,7 @@ const getIncomes = async (req, res) => {
     // Pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
-    // Get income records
+    // Get income records (excluding soft deleted)
     const incomes = await Income.find(query)
       .sort({ date: -1 }) // Sort by date (newest first)
       .skip(skip)
@@ -173,7 +183,7 @@ const getIncomes = async (req, res) => {
     // Get total count
     const total = await Income.countDocuments(query);
     
-    // Calculate total income
+    // Calculate total income (excluding soft deleted)
     const totalIncome = await Income.aggregate([
       { $match: query },
       { $group: { _id: null, total: { $sum: "$amount" } } },
@@ -205,7 +215,7 @@ const getIncomes = async (req, res) => {
 // Get income by ID
 const getIncomeById = async (req, res) => {
   try {
-    const income = await Income.findById(req.params.id).populate(
+    const income = await Income.findOne({ _id: req.params.id, isDeleted: { $ne: true } }).populate(
       "createdBy",
       "name email"
     );
@@ -237,7 +247,7 @@ const updateIncome = async (req, res) => {
     const { title, amount, date, category, notes } = req.body;
     
     // Find income
-    let income = await Income.findById(req.params.id);
+    let income = await Income.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     
     if (!income) {
       return res.status(404).json({
@@ -286,12 +296,12 @@ const updateIncome = async (req, res) => {
   }
 };
 
-// Delete income
+// Soft delete income
 const deleteIncome = async (req, res) => {
   try {
-    const income = await Income.findById(req.params.id);
+    const income = await Income.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     
-    if (!income) {
+    if (!income || income.isDeleted) {
       return res.status(404).json({
         success: false,
         message: "Income record not found",
@@ -310,7 +320,12 @@ const deleteIncome = async (req, res) => {
       });
     }
     
-    await Income.findByIdAndDelete(req.params.id);
+    // Soft delete instead of hard delete
+    await Income.findByIdAndUpdate(req.params.id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+      deletedBy: req.admin.id
+    });
     
     res.status(200).json({
       success: true,
@@ -349,6 +364,15 @@ const addExpense = async (req, res) => {
       notes,
       createdBy: req.admin.id,
     });
+    
+    // Generate invoice/receipt for this expense entry
+    try {
+      const invoice = await createExpenseInvoice(expense, req.admin.id);
+      console.log(`Expense receipt ${invoice.invoiceNumber} generated for expense ${expense._id}`);
+    } catch (invoiceError) {
+      console.error("Error generating invoice for expense:", invoiceError);
+      // Don't fail the expense creation if invoice generation fails
+    }
     
     // Create notification for all admin users
     await createAndEmitNotification({
@@ -401,8 +425,8 @@ const getExpenses = async (req, res) => {
   try {
     const { startDate, endDate, dateFilter, page = 1, limit = 10, search = "" } = req.query;
     
-    // Build query
-    let query = {};
+    // Build query - exclude soft deleted records
+    let query = { isDeleted: { $ne: true } };
     
     // Apply date filter if provided
     if (dateFilter && dateFilter !== "all") {
@@ -461,7 +485,7 @@ const getExpenses = async (req, res) => {
 // Get expense by ID
 const getExpenseById = async (req, res) => {
   try {
-    const expense = await Expense.findById(req.params.id).populate(
+    const expense = await Expense.findOne({ _id: req.params.id, isDeleted: { $ne: true } }).populate(
       "createdBy",
       "name email"
     );
@@ -493,7 +517,7 @@ const updateExpense = async (req, res) => {
     const { title, amount, date, category, notes } = req.body;
     
     // Find expense
-    let expense = await Expense.findById(req.params.id);
+    let expense = await Expense.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     
     if (!expense) {
       return res.status(404).json({
@@ -542,12 +566,12 @@ const updateExpense = async (req, res) => {
   }
 };
 
-// Delete expense
+// Soft delete expense
 const deleteExpense = async (req, res) => {
   try {
-    const expense = await Expense.findById(req.params.id);
+    const expense = await Expense.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     
-    if (!expense) {
+    if (!expense || expense.isDeleted) {
       return res.status(404).json({
         success: false,
         message: "Expense record not found",
@@ -566,7 +590,12 @@ const deleteExpense = async (req, res) => {
       });
     }
     
-    await Expense.findByIdAndDelete(req.params.id);
+    // Soft delete instead of hard delete
+    await Expense.findByIdAndUpdate(req.params.id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+      deletedBy: req.admin.id
+    });
     
     res.status(200).json({
       success: true,
@@ -599,20 +628,22 @@ const getFinancialSummary = async (req, res) => {
       Object.assign(query, getDateFilter(startDate, endDate));
     }
     
-    // Get total income
+    // Get total income (excluding soft deleted)
+    const incomeQuery = { ...query, isDeleted: { $ne: true } };
     const totalIncome = await Income.aggregate([
-      { $match: query },
+      { $match: incomeQuery },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     
-    // Get total expense
+    // Get total expense (excluding soft deleted)
+    const expenseQuery = { ...query, isDeleted: { $ne: true } };
     const totalExpense = await Expense.aggregate([
-      { $match: query },
+      { $match: expenseQuery },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     
-    // Get service payment revenue (these are already included in Income but we want to track separately)
-    const servicePaymentQuery = { ...query };
+    // Get service payment revenue (excluding soft deleted)
+    const servicePaymentQuery = { ...query, isDeleted: { $ne: true } };
     if (query.date) {
       servicePaymentQuery.date = query.date;
     }
@@ -629,9 +660,14 @@ const getFinancialSummary = async (req, res) => {
       },
       {
         $match: {
-          $or: [
-            { isWalkIn: true },
-            { patientExists: { $ne: [] } }
+          $and: [
+            {
+              $or: [
+                { isWalkIn: true },
+                { "patientExists.isDeleted": { $ne: true } }
+              ]
+            },
+            { "patientExists": { $ne: [] } }
           ]
         }
       },
@@ -644,16 +680,16 @@ const getFinancialSummary = async (req, res) => {
     const servicePaymentTotal = totalServicePayment.length > 0 ? totalServicePayment[0].total : 0;
     const balance = incomeTotal - expenseTotal;
     
-    // Get income by category
+    // Get income by category (excluding soft deleted)
     const incomeByCategory = await Income.aggregate([
-      { $match: query },
+      { $match: incomeQuery },
       { $group: { _id: "$category", total: { $sum: "$amount" } } },
       { $sort: { total: -1 } },
     ]);
     
-    // Get expense by category
+    // Get expense by category (excluding soft deleted)
     const expenseByCategory = await Expense.aggregate([
-      { $match: query },
+      { $match: expenseQuery },
       { $group: { _id: "$category", total: { $sum: "$amount" } } },
       { $sort: { total: -1 } },
     ]);
@@ -681,14 +717,14 @@ const getFinancialSummary = async (req, res) => {
       { $sort: { total: -1 } },
     ]);
     
-    // Get recent income (last 5)
-    const recentIncome = await Income.find(query)
+    // Get recent income (last 5, excluding soft deleted)
+    const recentIncome = await Income.find(incomeQuery)
       .sort({ date: -1 })
       .limit(5)
       .populate("createdBy", "name");
     
-    // Get recent expenses (last 5)
-    const recentExpenses = await Expense.find(query)
+    // Get recent expenses (last 5, excluding soft deleted)
+    const recentExpenses = await Expense.find(expenseQuery)
       .sort({ date: -1 })
       .limit(5)
       .populate("createdBy", "name");

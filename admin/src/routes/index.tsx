@@ -109,6 +109,22 @@ const AppRouter: React.FC = () => {
         { path: "/income", element: <IncomePage /> },
         { path: "/expense", element: <ExpensePage /> },
         { path: "/settings/sms", element: <SMSSettings /> },
+        {
+          path: "/recycle-bin",
+          element: (
+            <Suspense fallback={<Loading />}>
+              {React.createElement(lazy(() => import("@/components/admin/RecycleBin")))}
+            </Suspense>
+          )
+        },
+        {
+          path: "/system-test",
+          element: (
+            <Suspense fallback={<Loading />}>
+              {React.createElement(lazy(() => import("@/components/admin/SystemTest")))}
+            </Suspense>
+          )
+        },
       ],
     },
   ];

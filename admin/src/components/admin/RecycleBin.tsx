@@ -47,13 +47,25 @@ const RecycleBin: React.FC = () => {
   const fetchRecycleBinData = async () => {
     try {
       // Fetch stats
-      const statsData = await getRecycleBinStats();
+      const statsData = await getRecycleBinStats() as { success: boolean; data: RecycleBinStats };
       if (statsData.success) {
         setStats(statsData.data);
       }
 
       // Fetch items
-      const itemsData = await getRecycleBinItems(selectedTab);
+      const itemsData = await getRecycleBinItems(selectedTab) as {
+        success: boolean;
+        data: {
+          patients?: RecycleBinItem[];
+          doctors?: RecycleBinItem[];
+          incomes?: RecycleBinItem[];
+          expenses?: RecycleBinItem[];
+          servicePayments?: RecycleBinItem[];
+          appointments?: RecycleBinItem[];
+          invoices?: RecycleBinItem[];
+          items?: RecycleBinItem[];
+        };
+      };
       if (itemsData.success) {
         if (selectedTab === 'all') {
           // Flatten all items from different categories
@@ -81,12 +93,12 @@ const RecycleBin: React.FC = () => {
 
   const restoreItem = async (type: string, id: string) => {
     try {
-      const data = await restoreRecycleBinItem(type, id);
-      if (data.success) {
+      const data = await restoreRecycleBinItem(type, id) as { success: boolean; message?: string };
+      if ((data as { success: boolean }).success) {
         toast.success(`${type} restored successfully`);
         fetchRecycleBinData(); // Refresh data
       } else {
-        toast.error(data.message || 'Failed to restore item');
+        toast.error((data as { message?: string }).message || 'Failed to restore item');
       }
     } catch (error) {
       console.error('Error restoring item:', error);
@@ -101,11 +113,12 @@ const RecycleBin: React.FC = () => {
 
     try {
       const data = await permanentlyDeleteRecycleBinItem(type, id);
-      if (data.success) {
+      const result = data as { success: boolean; message?: string };
+      if (result.success) {
         toast.success(`${type} permanently deleted`);
         fetchRecycleBinData(); // Refresh data
       } else {
-        toast.error(data.message || 'Failed to delete item');
+        toast.error(result.message || 'Failed to delete item');
       }
     } catch (error) {
       console.error('Error deleting item:', error);
@@ -120,11 +133,12 @@ const RecycleBin: React.FC = () => {
 
     try {
       const data = await emptyRecycleBin();
-      if (data.success) {
+      const result = data as { success: boolean; message?: string };
+      if (result.success) {
         toast.success('Recycle bin emptied successfully');
         fetchRecycleBinData(); // Refresh data
       } else {
-        toast.error(data.message || 'Failed to empty recycle bin');
+        toast.error(result.message || 'Failed to empty recycle bin');
       }
     } catch (error) {
       console.error('Error emptying recycle bin:', error);
@@ -161,7 +175,7 @@ const RecycleBin: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Recycle Bin</h1>

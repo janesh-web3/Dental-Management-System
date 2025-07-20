@@ -75,7 +75,7 @@ interface Invoice {
   invoiceNumber: string;
   invoiceDate: string;
   dueDate: string;
-  patient: {
+  patient?: {
     _id: string;
     personalDetails: {
       name: string;
@@ -83,11 +83,15 @@ interface Invoice {
       phone?: string;
       address?: string;
     };
-  };
-  doctor: {
+  } | null;
+  patientName: string; // For invoices without patient reference
+  doctor?: {
     _id: string;
     name: string;
-  };
+  } | null;
+  doctorName: string; // For invoices without doctor reference
+  sourceType?: string; // Income, Expense, ServicePayment, etc.
+  sourceData?: any; // Source data for income/expense invoices
   items: InvoiceItem[];
   subtotal: number;
   tax: number;
@@ -295,14 +299,44 @@ const InvoiceDetail: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <Card>
           <CardHeader>
-            <CardTitle>Bill To</CardTitle>
+            <CardTitle>
+              {invoice.sourceType ? `${invoice.sourceType} Details` : 'Bill To'}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              <p className="font-semibold">{invoice?.patient?.personalDetails?.name}</p>
-              {invoice?.patient?.personalDetails?.address && <p>{invoice?.patient?.personalDetails?.address}</p>}
-              {invoice?.patient?.personalDetails?.email && <p>Email: {invoice?.patient?.personalDetails?.email}</p>}
-              {invoice?.patient?.personalDetails?.phone && <p>Phone: {invoice?.patient?.personalDetails?.phone}</p>}
+              {invoice.patient ? (
+                // Patient invoice
+                <>
+                  <p className="font-semibold">{invoice.patient.personalDetails?.name}</p>
+                  {invoice.patient.personalDetails?.address && <p>{invoice.patient.personalDetails.address}</p>}
+                  {invoice.patient.personalDetails?.email && <p>Email: {invoice.patient.personalDetails.email}</p>}
+                  {invoice.patient.personalDetails?.phone && <p>Phone: {invoice.patient.personalDetails.phone}</p>}
+                </>
+              ) : (
+                // Income/Expense/Service invoice
+                <>
+                  <p className="font-semibold">{invoice.patientName}</p>
+                  {invoice.sourceType && (
+                    <p className="text-sm text-muted-foreground">
+                      Type: {invoice.sourceType}
+                    </p>
+                  )}
+                  {invoice.sourceData && (
+                    <>
+                      {invoice.sourceData.category && (
+                        <p className="text-sm">Category: {invoice.sourceData.category}</p>
+                      )}
+                      {invoice.sourceData.title && (
+                        <p className="text-sm">Title: {invoice.sourceData.title}</p>
+                      )}
+                      {invoice.sourceData.description && (
+                        <p className="text-sm">Description: {invoice.sourceData.description}</p>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -311,7 +345,9 @@ const InvoiceDetail: React.FC = () => {
             <CardTitle>Doctor</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-semibold">{invoice?.doctor?.name}</p>
+            <p className="font-semibold">
+              {invoice.doctor?.name || invoice.doctorName || 'N/A'}
+            </p>
           </CardContent>
         </Card>
       </div>

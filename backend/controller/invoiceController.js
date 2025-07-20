@@ -264,18 +264,49 @@ exports.getInvoice = async (req, res) => {
       _id: req.params.id,
       isDeleted: { $ne: true },
     })
-      .populate("patient", "name email phone address")
+      .populate("patient", "personalDetails name email phone")
       .populate("doctor", "name email phone")
       .populate("treatmentPlan", "name")
       .populate("orthoGroupId", "name")
-      .populate("paymentLogs")
-      .populate("patient", "personalDetails name email phone");
+      .populate("paymentLogs");
 
     console.log("Fetched invoice:", invoice);
-    if (!invoice || !invoice.patient || invoice.patient.isDeleted) {
+    
+    if (!invoice) {
       return res
         .status(404)
-        .json({ success: false, error: "Invoice or patient not found" });
+        .json({ success: false, error: "Invoice not found" });
+    }
+
+    // Check if this is a patient-related invoice and validate patient existence
+    if (invoice.patient && invoice.patient.isDeleted) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Invoice patient not found or deleted" });
+    }
+
+    // For invoices without patients (income/expense invoices), we need to handle them differently
+    if (!invoice.patient && invoice.sourceType) {
+      console.log(`Processing ${invoice.sourceType} invoice without patient`);
+      
+      // For income/expense invoices, populate the source data for better display
+      let sourceData = null;
+      if (invoice.sourceType === "Income") {
+        const Income = require("../model/Income");
+        sourceData = await Income.findById(invoice.sourceId);
+      } else if (invoice.sourceType === "Expense") {
+        const Expense = require("../model/Expense");
+        sourceData = await Expense.findById(invoice.sourceId);
+      } else if (invoice.sourceType === "ServicePayment") {
+        const ServicePayment = require("../model/ServicePayment");
+        sourceData = await ServicePayment.findById(invoice.sourceId);
+      }
+
+      // Add source data to the response
+      const invoiceData = invoice.toObject();
+      invoiceData.sourceData = sourceData;
+      
+      return res.json({ success: true, data: invoiceData });
     }
 
     res.json({ success: true, data: invoice });

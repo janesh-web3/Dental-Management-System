@@ -97,7 +97,6 @@ const InvoiceList: React.FC = () => {
       });
 
       const response = await crudRequest<any>("GET",`${server}/invoices?${params}`);
-      console.log('Fetched invoices:', response.data);
       setInvoices(response.data);
       setTotalInvoices(response.data.total || 0);
     } catch (error) {

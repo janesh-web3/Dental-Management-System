@@ -14,7 +14,7 @@ const { createAndEmitNotification } = require("./notificationCtrl");
 const User = require("../model/User");
 const Doctor = require("../model/Doctor");
 const { getIO } = require("../socket");
-const { createTreatmentPaymentInvoice, createRegistrationAdvanceInvoice } = require("../utils/invoiceGenerator");
+const { createTreatmentPaymentInvoice } = require("../utils/invoiceGenerator");
 
 // Helper utility functions for date filtering
 const getDateFilter = (filter, startDate, endDate) => {
@@ -200,6 +200,7 @@ const addPatient = async (req, res) => {
 
                   // Process daily treatments for group treatments
                   if (
+                    
                     groupTreatment.dailyTreatments &&
                     groupTreatment.dailyTreatments.length > 0
                   ) {
@@ -277,6 +278,144 @@ const addPatient = async (req, res) => {
 
     // Create patient
     const patient = await Patient.create(req.body);
+
+    // Generate invoices for any initial payments in treatment plans
+    try {
+      console.log("Checking for initial payments to generate invoices...");
+      if (patient.medicalDetails && patient.medicalDetails.length > 0) {
+        console.log(`Found ${patient.medicalDetails.length} medical details to check`);
+        for (const medicalDetail of patient.medicalDetails) {
+          if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
+            console.log(`Found ${medicalDetail.treatmentPlanning.length} treatment plans to check`);
+            for (const treatmentPlan of medicalDetail.treatmentPlanning) {
+              const treatmentsWithPayments = [];
+              console.log(`Checking treatment plan ${treatmentPlan._id}`);
+              
+              // Check selected teeth details for payments
+              if (treatmentPlan.selectedTeethDetails) {
+                console.log(`Found ${treatmentPlan.selectedTeethDetails.length} selected teeth to check`);
+                treatmentPlan.selectedTeethDetails.forEach(tooth => {
+                  if (tooth.dailyTreatments) {
+                    console.log(`Checking tooth ${tooth.number} with ${tooth.dailyTreatments.length} daily treatments`);
+                    tooth.dailyTreatments.forEach(treatment => {
+                      console.log(`Treatment paidAmount: ${treatment.paidAmount}`);
+                      if (treatment.paidAmount && treatment.paidAmount > 0) {
+                        console.log(`Found payment of ${treatment.paidAmount} for tooth ${tooth.number}`);
+                        treatmentsWithPayments.push({
+                          treatmentName: `${tooth.procedure} - Tooth ${tooth.number}`,
+                          procedure: tooth.procedure,
+                          treatmentAmount: treatment.paidAmount,
+                          teethNumbers: [tooth.number],
+                          notes: treatment.notes,
+                          treatmentType: 'general'
+                        });
+                      }
+                    });
+                  }
+                });
+              }
+
+              // Check group treatment details for payments
+              if (treatmentPlan.groupTreatmentDetails) {
+                treatmentPlan.groupTreatmentDetails.forEach(group => {
+                  if (group.dailyTreatments) {
+                    group.dailyTreatments.forEach(treatment => {
+                      if (treatment.paidAmount && treatment.paidAmount > 0) {
+                        treatmentsWithPayments.push({
+                          treatmentName: `${group.procedure || 'Group Treatment'} - ${group.groupName || 'Group'}`,
+                          procedure: group.procedure || 'Group Treatment',
+                          treatmentAmount: treatment.paidAmount,
+                          teethNumbers: [],
+                          notes: treatment.notes,
+                          treatmentType: group.groupName === 'Ortho' ? 'orthodontic' : 'general'
+                        });
+                      }
+                    });
+                  }
+                });
+              }
+
+              // Check for advance payment in treatment plan
+              if (treatmentPlan.advancedAmount && treatmentPlan.advancedAmount > 0) {
+                treatmentsWithPayments.push({
+                  treatmentName: "Treatment Plan Advance Payment",
+                  procedure: "Advance Payment",
+                  treatmentAmount: treatmentPlan.advancedAmount,
+                  teethNumbers: [],
+                  notes: "Advance payment for treatment plan",
+                  treatmentType: 'general'
+                });
+              }
+
+              // Generate invoice if there are any payments
+              console.log(`Total treatments with payments: ${treatmentsWithPayments.length}`);
+              if (treatmentsWithPayments.length > 0) {
+                console.log("Generating invoice for payments...");
+                console.log("Treatments with payments:", JSON.stringify(treatmentsWithPayments, null, 2));
+                
+                const paymentDetails = {
+                  paidAmount: treatmentsWithPayments.reduce((sum, t) => sum + (t.treatmentAmount || 0), 0),
+                  paymentMethod: "Cash", // Default to Cash, could be made configurable
+                  notes: "Initial treatment payment - automatically generated invoice"
+                };
+
+                console.log("Payment details:", paymentDetails);
+                console.log("Patient ID:", patient._id);
+                
+                // Get doctor ID from the first treatment with a doctor assigned
+                let doctorId = treatmentPlan.treatedByDoctor;
+                if (!doctorId) {
+                  // Try to get from selected teeth treatments
+                  for (const tooth of treatmentPlan.selectedTeethDetails || []) {
+                    for (const treatment of tooth.dailyTreatments || []) {
+                      if (treatment.treatedByDoctor) {
+                        doctorId = treatment.treatedByDoctor;
+                        break;
+                      }
+                    }
+                    if (doctorId) break;
+                  }
+                  
+                  // Try to get from group treatments
+                  if (!doctorId) {
+                    for (const group of treatmentPlan.groupTreatmentDetails || []) {
+                      if (group.treatedByDoctor) {
+                        doctorId = group.treatedByDoctor;
+                        break;
+                      }
+                      for (const treatment of group.dailyTreatments || []) {
+                        if (treatment.treatedByDoctor) {
+                          doctorId = treatment.treatedByDoctor;
+                          break;
+                        }
+                      }
+                      if (doctorId) break;
+                    }
+                  }
+                }
+                
+                console.log("Doctor ID:", doctorId);
+
+                const invoice = await createTreatmentPaymentInvoice(
+                  patient._id,
+                  doctorId,
+                  treatmentsWithPayments,
+                  paymentDetails,
+                  req.admin?.id
+                );
+
+                console.log(`SUCCESS: Invoice ${invoice.invoiceNumber} generated for initial treatment plan ${treatmentPlan._id}`);
+              } else {
+                console.log("No treatments with payments found for this treatment plan");
+              }
+            }
+          }
+        }
+      }
+    } catch (invoiceError) {
+      console.error("Error generating invoices for initial payments:", invoiceError);
+      // Don't fail patient creation if invoice generation fails
+    }
 
     // Emit the patient:added event right after creation
     const io = getIO();
@@ -432,25 +571,6 @@ const addPatient = async (req, res) => {
       // Don't fail the request if notifications fail
     }
 
-    // Check if there's a registration advance payment to process
-    if (req.body.registrationAdvance && req.body.registrationAdvance.amount > 0) {
-      try {
-        const { amount, paymentMethod } = req.body.registrationAdvance;
-        
-        // Generate invoice for registration advance payment
-        const invoice = await createRegistrationAdvanceInvoice(
-          patient._id,
-          amount,
-          paymentMethod || "Cash",
-          req.admin?.id
-        );
-
-        console.log(`Registration advance invoice ${invoice.invoiceNumber} generated for patient ${patient._id}`);
-      } catch (invoiceError) {
-        console.error("Error generating registration advance invoice:", invoiceError);
-        // Don't fail the entire operation if invoice generation fails
-      }
-    }
 
     res.status(201).json({
       success: true,
@@ -3587,10 +3707,30 @@ const addTreatmentPlan = async (req, res) => {
                 treatmentsWithPayments.push({
                   treatmentName: `${tooth.procedure} - Tooth ${tooth.number}`,
                   procedure: tooth.procedure,
-                  treatmentAmount: treatment.treatmentAmount,
+                  treatmentAmount: treatment.paidAmount,
                   teethNumbers: [tooth.number],
                   notes: treatment.notes,
                   treatmentType: 'individual'
+                });
+              }
+            });
+          }
+        });
+      }
+
+      // Check group treatment details for payments
+      if (addedTreatmentPlan.groupTreatmentDetails) {
+        addedTreatmentPlan.groupTreatmentDetails.forEach(group => {
+          if (group.dailyTreatments) {
+            group.dailyTreatments.forEach(treatment => {
+              if (treatment.paidAmount && treatment.paidAmount > 0) {
+                treatmentsWithPayments.push({
+                  treatmentName: `${group.procedure || 'Group Treatment'} - ${group.groupName || 'Group'}`,
+                  procedure: group.procedure || 'Group Treatment',
+                  treatmentAmount: treatment.paidAmount,
+                  teethNumbers: [],
+                  notes: treatment.notes,
+                  treatmentType: 'group'
                 });
               }
             });
@@ -3864,6 +4004,26 @@ const updateTreatmentPlan = async (req, res) => {
                   teethNumbers: [tooth.number],
                   notes: treatment.notes,
                   treatmentType: 'individual'
+                });
+              }
+            });
+          }
+        });
+      }
+
+      // Check group treatment details for payments
+      if (updatedTreatmentPlan.groupTreatmentDetails) {
+        updatedTreatmentPlan.groupTreatmentDetails.forEach(group => {
+          if (group.dailyTreatments) {
+            group.dailyTreatments.forEach(treatment => {
+              if (treatment.paidAmount && treatment.paidAmount > 0) {
+                treatmentsWithPayments.push({
+                  treatmentName: `${group.procedure || 'Group Treatment'} - ${group.groupName || 'Group'}`,
+                  procedure: group.procedure || 'Group Treatment',
+                  treatmentAmount: treatment.paidAmount,
+                  teethNumbers: [],
+                  notes: treatment.notes,
+                  treatmentType: 'group'
                 });
               }
             });

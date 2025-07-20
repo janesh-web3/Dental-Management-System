@@ -61,13 +61,15 @@ const addServicePayment = async (req, res) => {
     // Create new service payment
     const servicePayment = await ServicePayment.create(servicePaymentData);
     
-    // Generate invoice for this service payment
-    try {
-      const invoice = await createServicePaymentInvoice(servicePaymentData, req.user?._id);
-      console.log(`Invoice ${invoice.invoiceNumber} generated for service payment ${servicePayment._id}`);
-    } catch (invoiceError) {
-      console.error("Error generating invoice for service payment:", invoiceError);
-      // Don't fail the service payment creation if invoice generation fails
+    // Generate invoice for this service payment (only if amount > 0)
+    if (amount && amount > 0) {
+      try {
+        const invoice = await createServicePaymentInvoice(servicePaymentData, req.user?._id);
+        console.log(`Invoice ${invoice.invoiceNumber} generated for service payment ${servicePayment._id}`);
+      } catch (invoiceError) {
+        console.error("Error generating invoice for service payment:", invoiceError);
+        // Don't fail the service payment creation if invoice generation fails
+      }
     }
     
     // Also record this as income for financial tracking - only if user is authenticated

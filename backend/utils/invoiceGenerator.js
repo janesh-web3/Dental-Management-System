@@ -31,65 +31,26 @@ const generateInvoiceNumber = async () => {
   }
 };
 
-/**
- * Create invoice for patient registration advance payment
- */
-const createRegistrationAdvanceInvoice = async (patientId, amount, paymentMethod, createdBy) => {
-  try {
-    const patient = await Patient.findById(patientId);
-    if (!patient) {
-      throw new Error("Patient not found");
-    }
-
-    const invoiceData = {
-      patient: patientId,
-      patientName: patient.personalDetails?.name || "Unknown Patient",
-      doctor: null, // No specific doctor for registration
-      doctorName: "Registration",
-      invoiceNumber: await generateInvoiceNumber(),
-      invoiceDate: new Date(),
-      dueDate: new Date(), // Registration payment is immediate
-      items: [{
-        description: "Initial Registration Advance Payment",
-        quantity: 1,
-        unitPrice: amount,
-        discount: 0,
-        total: amount,
-        treatmentType: 'general',
-        treatmentModel: 'Treatment',
-        notes: "Advance payment during patient registration"
-      }],
-      subtotal: amount,
-      tax: 0,
-      taxRate: 0,
-      discount: 0,
-      total: amount,
-      amountPaid: amount,
-      balance: 0,
-      status: "Paid",
-      paymentMethod: paymentMethod || "Cash",
-      notes: "Automatically generated invoice for registration advance payment"
-    };
-
-    const invoice = await Invoice.create(invoiceData);
-    return invoice;
-  } catch (error) {
-    console.error("Error creating registration advance invoice:", error);
-    throw error;
-  }
-};
 
 /**
  * Create invoice for treatment payment
  */
 const createTreatmentPaymentInvoice = async (patientId, doctorId, treatmentDetails, paymentDetails, createdBy) => {
   try {
+    console.log(`Creating treatment payment invoice for patient: ${patientId}, doctor: ${doctorId}`);
+    
     const patient = await Patient.findById(patientId);
     const doctor = await Doctor.findById(doctorId);
     
     if (!patient) {
-      throw new Error("Patient not found");
+      console.error(`Patient not found with ID: ${patientId}`);
+      throw new Error(`Patient not found with ID: ${patientId}`);
     }
+
+    console.log(`Patient found: ${patient.personalDetails?.name || 'Unknown'}`);
+    console.log(`Doctor found: ${doctor?.name || 'Unknown'}`);
+    console.log(`Treatment details count: ${Array.isArray(treatmentDetails) ? treatmentDetails.length : 1}`);
+    console.log(`Payment details:`, paymentDetails);
 
     const items = [];
     let subtotal = 0;
@@ -344,7 +305,6 @@ const createRevisedInvoice = async (originalInvoiceId, updatedData, createdBy, r
 
 module.exports = {
   generateInvoiceNumber,
-  createRegistrationAdvanceInvoice,
   createTreatmentPaymentInvoice,
   createServicePaymentInvoice,
   createIncomeInvoice,

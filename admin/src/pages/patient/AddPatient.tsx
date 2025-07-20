@@ -110,13 +110,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     paymentMethod: "Cash" as PaymentMethod,
   });
 
-  // Registration advance payment state
-  const [includeRegistrationAdvance, setIncludeRegistrationAdvance] = useState(false);
-  const [registrationAdvance, setRegistrationAdvance] = useState({
-    amount: "",
-    paymentMethod: "Cash" as PaymentMethod,
-  });
-
   const [selectedTeethMaps, setSelectedTeethMaps] = useState<{
     [planIndex: number]: { [key: string]: ToothData };
   }>({});
@@ -182,13 +175,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
   // Add handler for service payment changes
   const handleServicePaymentChange = (field: string, value: any) => {
     setServicePayment((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleRegistrationAdvanceChange = (field: string, value: any) => {
-    setRegistrationAdvance((prev) => ({
       ...prev,
       [field]: value,
     }));
@@ -726,17 +712,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     try {
       setIsSubmitting(true);
       const formattedData = formatDataForBackend(formData);
-      
-      // Add registration advance payment if enabled
-      if (includeRegistrationAdvance && registrationAdvance.amount && parseFloat(registrationAdvance.amount) > 0) {
-        formattedData.registrationAdvance = {
-          amount: parseFloat(registrationAdvance.amount),
-          paymentMethod: registrationAdvance.paymentMethod
-        };
-      }
-      
-      console.log(formattedData)
-      
       const response = await crudRequest<{
         data?: { _id: string };
         _id?: string;
@@ -1344,67 +1319,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                         />
                       </div>
                     </div>
-                  </div>
-                )}
-              </Card>
-
-              {/* Registration Advance Payment Section */}
-              <Card className="p-6">
-                <div className="flex items-center space-x-2 mb-4">
-                  <Checkbox
-                    id="includeRegistrationAdvance"
-                    checked={includeRegistrationAdvance}
-                    onCheckedChange={() =>
-                      setIncludeRegistrationAdvance(!includeRegistrationAdvance)
-                    }
-                  />
-                  <Label
-                    htmlFor="includeRegistrationAdvance"
-                    className="font-medium"
-                  >
-                    Add Registration Advance Payment
-                  </Label>
-                </div>
-
-                {includeRegistrationAdvance && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="advanceAmount">Amount *</Label>
-                        <Input
-                          id="advanceAmount"
-                          type="number"
-                          value={registrationAdvance.amount}
-                          onChange={(e) =>
-                            handleRegistrationAdvanceChange("amount", e.target.value)
-                          }
-                          placeholder="Enter advance amount"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="advancePaymentMethod">Payment Method</Label>
-                        <Select
-                          value={registrationAdvance.paymentMethod}
-                          onValueChange={(value) =>
-                            handleRegistrationAdvanceChange("paymentMethod", value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select payment method" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Cash">Cash</SelectItem>
-                            <SelectItem value="Credit Card">Credit Card</SelectItem>
-                            <SelectItem value="Debit Card">Debit Card</SelectItem>
-                            <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      This advance payment will automatically generate an invoice upon patient registration.
-                    </p>
                   </div>
                 )}
               </Card>

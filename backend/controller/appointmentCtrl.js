@@ -82,11 +82,25 @@ const addAppointment = async (req, res) => {
 
 const getAllAppointment = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "" , status="All"} = req.query;
+    const { page = 1, limit = 10, search = "" , status="All", calendar = false} = req.query;
     const query = search
       ? { firstName: { $regex: search, $options: "i" }, isDeleted: { $ne: true } ,lastName: { $regex: search, $options: "i" } }
       : { isDeleted: { $ne: true } };
 
+    // For calendar view, get all appointments without pagination
+    if (calendar === 'true') {
+      const allAppointment = await Appointment.find(query)
+        .sort({ startDateTime: 1 })
+        .populate({
+          path: "doctor",
+          model: "Doctor",
+          select: "name specialization",
+        });
+
+      return res.status(200).json(allAppointment);
+    }
+
+    // For table view, keep pagination
     const allAppointment = await Appointment.find(query).sort({ isCreated: -1 })
     .skip((page - 1) * limit)
     .limit(parseInt(limit)).populate({
@@ -265,9 +279,214 @@ const updateAppointment = async (req, res) => {
 
 const { sendNotification } = require('../utils/notificationHelper');
 
+// Delete appointment with soft delete
+const deleteAppointment = async (req, res) => {
+  try {
+    const appointmentId = req.params.id;
+    
+    // Find the appointment
+    const appointment = await Appointment.findOne({ _id: appointmentId, isDeleted: { $ne: true } });
+    
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found"
+      });
+    }
+    
+    // Soft delete the appointment
+    appointment.isDeleted = true;
+    appointment.deletedAt = new Date();
+    appointment.deletedBy = req.user?._id; // If user middleware is available
+    await appointment.save();
+    
+    // Remove from doctor's appointment list
+    if (appointment.doctor) {
+      await Doctor.findByIdAndUpdate(
+        appointment.doctor,
+        { $pull: { appointments: appointmentId } }
+      );
+    }
+    
+    // Send notifications
+    await createAndEmitNotification({
+      targetRoles: ['admin'],
+      title: 'Appointment Deleted',
+      message: `Appointment for ${appointment.firstName} ${appointment.lastName} has been deleted`,
+      type: 'warning',
+      sourceId: appointmentId,
+      sourceType: 'Appointment'
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Appointment deleted successfully"
+    });
+    
+  } catch (error) {
+    console.error("Error deleting appointment:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete appointment",
+      error: error.message
+    });
+  }
+};
+
+// Get doctor availability for a specific date
+const getDoctorAvailability = async (req, res) => {
+  try {
+    const { doctorId, date } = req.query;
+    
+    if (!doctorId || !date) {
+      return res.status(400).json({
+        success: false,
+        message: "Doctor ID and date are required"
+      });
+    }
+    
+    const appointments = await Appointment.getDoctorAvailability(doctorId, new Date(date));
+    
+    res.status(200).json({
+      success: true,
+      appointments
+    });
+    
+  } catch (error) {
+    console.error("Error getting doctor availability:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get doctor availability",
+      error: error.message
+    });
+  }
+};
+
+// Check for appointment conflicts
+const checkConflicts = async (req, res) => {
+  try {
+    const { doctorId, startDateTime, endDateTime, excludeId } = req.body;
+    
+    const query = {
+      doctor: doctorId,
+      startDateTime: { $lt: new Date(endDateTime) },
+      endDateTime: { $gt: new Date(startDateTime) },
+      status: { $nin: ['Cancelled', 'Rejected'] },
+      isDeleted: false
+    };
+    
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
+    
+    const conflicts = await Appointment.find(query)
+      .populate('doctor', 'name')
+      .select('firstName lastName startDateTime endDateTime treatmentType');
+    
+    res.status(200).json({
+      success: true,
+      hasConflicts: conflicts.length > 0,
+      conflicts
+    });
+    
+  } catch (error) {
+    console.error("Error checking conflicts:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to check conflicts",
+      error: error.message
+    });
+  }
+};
+
+// Reschedule appointment (drag and drop)
+const rescheduleAppointment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDateTime, endDateTime } = req.body;
+    
+    const appointment = await Appointment.findById(id);
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found"
+      });
+    }
+    
+    // Check for conflicts
+    const conflicts = await appointment.checkConflicts();
+    if (conflicts.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "Time slot conflict detected",
+        conflicts
+      });
+    }
+    
+    // Update appointment times
+    appointment.startDateTime = new Date(startDateTime);
+    appointment.endDateTime = new Date(endDateTime);
+    appointment.appointmentDate = new Date(startDateTime).toISOString().split('T')[0];
+    appointment.appointmentTime = new Date(startDateTime).toTimeString().slice(0, 5);
+    
+    await appointment.save();
+    
+    res.status(200).json({
+      success: true,
+      message: "Appointment rescheduled successfully",
+      appointment
+    });
+    
+  } catch (error) {
+    console.error("Error rescheduling appointment:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to reschedule appointment",
+      error: error.message
+    });
+  }
+};
+
+// Create follow-up appointment
+const createFollowUp = async (req, res) => {
+  try {
+    const { parentId } = req.params;
+    const followUpData = req.body;
+    
+    const parentAppointment = await Appointment.findById(parentId);
+    if (!parentAppointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Parent appointment not found"
+      });
+    }
+    
+    const followUp = await parentAppointment.createFollowUp(followUpData);
+    
+    res.status(201).json({
+      success: true,
+      message: "Follow-up appointment created successfully",
+      appointment: followUp
+    });
+    
+  } catch (error) {
+    console.error("Error creating follow-up:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create follow-up appointment",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   addAppointment,
   getAllAppointment,
   updateAppointmentStatus,
-  updateAppointment
+  updateAppointment,
+  deleteAppointment,
+  getDoctorAvailability,
+  checkConflicts,
+  rescheduleAppointment,
+  createFollowUp
 };

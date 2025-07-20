@@ -1,0 +1,763 @@
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { Calendar, momentLocalizer, Views, Event } from 'react-big-calendar';
+import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
+import moment from 'moment';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { 
+  CalendarDays, 
+  Clock, 
+  User, 
+  MapPin, 
+  Filter,
+  Plus,
+  Search,
+  RefreshCw,
+  Settings,
+  X
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { crudRequest } from '@/lib/api';
+import { useToast } from '@/components/ui/use-toast';
+import CalendarAppointmentModal from './CalendarAppointmentModal';
+import MobileCalendarView from './MobileCalendarView';
+
+// Setup moment localizer and drag-and-drop calendar
+const localizer = momentLocalizer(moment);
+const DragAndDropCalendar = withDragAndDrop(Calendar);
+
+// Define appointment interface for TypeScript
+interface AppointmentEvent extends Event {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  resource?: {
+    appointment: any;
+    patient: {
+      firstName: string;
+      lastName: string;
+      phoneNumber: string;
+    };
+    doctor: {
+      name: string;
+    };
+    treatmentType: string;
+    status: string;
+    priority: string;
+    paymentStatus: string;
+    chair?: string;
+    room?: string;
+  };
+}
+
+interface AppointmentCalendarProps {
+  isAdmin?: boolean;
+}
+
+const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
+  isAdmin = false
+}) => {
+  const [currentView, setCurrentView] = useState<string>(Views.MONTH);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // Basic filter state
+  const [selectedDoctor, setSelectedDoctor] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedTreatment, setSelectedTreatment] = useState<string>('all');
+  
+  // Advanced filter state
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedPriority, setSelectedPriority] = useState<string>('all');
+  const [paymentFilter, setPaymentFilter] = useState<string>('all');
+  
+  // Data state
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
+  const [selectedSlot, setSelectedSlot] = useState<{ start: Date; end: Date } | undefined>();
+  const [editingAppointment, setEditingAppointment] = useState<any>(null);
+  
+  const { toast } = useToast();
+
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchAppointments();
+    if (isAdmin) {
+      fetchDoctors();
+    }
+  }, [isAdmin]);
+
+  // Fetch appointments
+  const fetchAppointments = async () => {
+    try {
+      setLoading(true);
+      const response = await crudRequest("GET", "/appointment/get-appointments?calendar=true");
+      if (response) {
+        setAppointments(response);
+      }
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load appointments. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch doctors
+  const fetchDoctors = async () => {
+    try {
+      const response = await crudRequest("GET", "/doctor/get-doctor");
+      if (response) {
+        setDoctors(response);
+      }
+    } catch (error) {
+      console.error("Error fetching doctors:", error);
+    }
+  };
+
+  // Transform appointments data for React Big Calendar
+  const events: AppointmentEvent[] = useMemo(() => {
+    return appointments
+      .filter(apt => {
+        // Basic filters
+        if (selectedDoctor !== 'all' && apt.doctor?._id !== selectedDoctor) return false;
+        if (selectedStatus !== 'all' && apt.status !== selectedStatus) return false;
+        if (selectedTreatment !== 'all' && apt.treatmentType !== selectedTreatment) return false;
+        
+        // Advanced filters
+        if (selectedPriority !== 'all' && apt.priority !== selectedPriority) return false;
+        if (paymentFilter !== 'all' && apt.paymentStatus !== paymentFilter) return false;
+        
+        // Search filter
+        if (searchTerm) {
+          const search = searchTerm.toLowerCase();
+          const patientName = `${apt.firstName} ${apt.lastName}`.toLowerCase();
+          const subject = (apt.subject || '').toLowerCase();
+          const reason = (apt.reason || '').toLowerCase();
+          
+          if (!patientName.includes(search) && !subject.includes(search) && !reason.includes(search)) {
+            return false;
+          }
+        }
+        
+        // Date range filter
+        if (startDate || endDate) {
+          const appointmentDate = new Date(apt.startDateTime || apt.appointmentDate);
+          
+          if (startDate && appointmentDate < new Date(startDate)) return false;
+          if (endDate && appointmentDate > new Date(endDate)) return false;
+        }
+        
+        return true;
+      })
+      .map(appointment => ({
+        id: appointment._id,
+        title: `${appointment.firstName} ${appointment.lastName}`,
+        start: appointment.startDateTime ? new Date(appointment.startDateTime) : new Date(`${appointment.appointmentDate}T${appointment.appointmentTime}`),
+        end: appointment.endDateTime ? new Date(appointment.endDateTime) : new Date(`${appointment.appointmentDate}T${appointment.appointmentTime}`),
+        resource: {
+          appointment,
+          patient: {
+            firstName: appointment.firstName,
+            lastName: appointment.lastName,
+            phoneNumber: appointment.phoneNumber
+          },
+          doctor: appointment.doctor || { name: 'Unassigned' },
+          treatmentType: appointment.treatmentType || 'Consultation',
+          status: appointment.status,
+          priority: appointment.priority || 'standard',
+          paymentStatus: appointment.paymentStatus || 'pending',
+          chair: appointment.chair,
+          room: appointment.room
+        }
+      }));
+  }, [appointments, selectedDoctor, selectedStatus, selectedTreatment, selectedPriority, paymentFilter, searchTerm, startDate, endDate]);
+
+  // Custom event style getter
+  const eventStyleGetter = useCallback((event: AppointmentEvent) => {
+    const { status, priority, paymentStatus } = event.resource || {};
+    
+    let backgroundColor = '#3174ad';
+    let borderColor = '#3174ad';
+    
+    // Status-based colors
+    switch (status) {
+      case 'Pending':
+        backgroundColor = '#f59e0b';
+        borderColor = '#d97706';
+        break;
+      case 'Accepted':
+        backgroundColor = '#10b981';
+        borderColor = '#059669';
+        break;
+      case 'Completed':
+        backgroundColor = '#6366f1';
+        borderColor = '#4f46e5';
+        break;
+      case 'Cancelled':
+        backgroundColor = '#ef4444';
+        borderColor = '#dc2626';
+        break;
+      case 'No-Show':
+        backgroundColor = '#8b5cf6';
+        borderColor = '#7c3aed';
+        break;
+      default:
+        backgroundColor = '#6b7280';
+        borderColor = '#4b5563';
+    }
+
+    // Priority overlay
+    if (priority === 'urgent') {
+      borderColor = '#dc2626';
+      borderWidth = '3px';
+    }
+
+    return {
+      style: {
+        backgroundColor,
+        borderColor,
+        borderWidth: priority === 'urgent' ? '3px' : '1px',
+        borderRadius: '4px',
+        opacity: 0.9,
+        color: 'white',
+        border: 'none',
+        display: 'block'
+      }
+    };
+  }, []);
+
+  // Custom event component
+  const EventComponent = ({ event }: { event: AppointmentEvent }) => {
+    const { treatmentType, priority, paymentStatus } = event.resource || {};
+    
+    return (
+      <div className="text-xs p-1">
+        <div className="font-medium truncate">{event.title}</div>
+        <div className="flex items-center gap-1 mt-1">
+          <Badge 
+            variant={priority === 'urgent' ? 'destructive' : 'secondary'} 
+            className="text-[10px] px-1 py-0"
+          >
+            {treatmentType}
+          </Badge>
+          {paymentStatus !== 'paid' && (
+            <Badge variant="outline" className="text-[10px] px-1 py-0">
+              ${paymentStatus}
+            </Badge>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Handle view change
+  const handleViewChange = useCallback((view: string) => {
+    setCurrentView(view);
+  }, []);
+
+  // Handle navigation
+  const handleNavigate = useCallback((date: Date) => {
+    setCurrentDate(date);
+  }, []);
+
+  // Handle event selection (for viewing/editing)
+  const handleSelectEvent = useCallback((event: AppointmentEvent) => {
+    setEditingAppointment(event.resource?.appointment);
+    setModalMode('view');
+    setModalOpen(true);
+  }, []);
+
+  // Handle slot selection for new appointments
+  const handleSelectSlot = useCallback((slotInfo: { start: Date; end: Date; slots: Date[] }) => {
+    setSelectedSlot({ start: slotInfo.start, end: slotInfo.end });
+    setEditingAppointment(null);
+    setModalMode('create');
+    setModalOpen(true);
+  }, []);
+
+  // Handle appointment saved
+  const handleAppointmentSaved = useCallback(() => {
+    fetchAppointments(); // Refresh appointments
+  }, []);
+
+  // Handle new appointment button
+  const handleNewAppointment = useCallback(() => {
+    setSelectedSlot(undefined);
+    setEditingAppointment(null);
+    setModalMode('create');
+    setModalOpen(true);
+  }, []);
+
+  // Handle mobile calendar slot selection
+  const handleMobileSlotSelect = useCallback((date: Date, time?: string) => {
+    const slot = {
+      start: time ? new Date(`${date.toISOString().split('T')[0]}T${time}`) : date,
+      end: time ? new Date(`${date.toISOString().split('T')[0]}T${time}`) : date
+    };
+    setSelectedSlot(slot);
+    setEditingAppointment(null);
+    setModalMode('create');
+    setModalOpen(true);
+  }, []);
+
+  // Handle mobile event selection
+  const handleMobileEventSelect = useCallback((appointment: any) => {
+    setEditingAppointment(appointment);
+    setModalMode('view');
+    setModalOpen(true);
+  }, []);
+
+  // Handle drag and drop events
+  const onEventDrop = useCallback(async ({ event, start, end }: { event: AppointmentEvent; start: Date; end: Date }) => {
+    try {
+      setDragging(true);
+      
+      const response = await crudRequest("PUT", `/appointment/reschedule/${event.id}`, {
+        startDateTime: start.toISOString(),
+        endDateTime: end.toISOString()
+      });
+
+      if (response) {
+        toast({
+          title: "Appointment Rescheduled",
+          description: `Appointment moved to ${start.toLocaleDateString()} at ${start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`,
+          variant: "default",
+        });
+        
+        fetchAppointments(); // Refresh appointments
+      }
+    } catch (error: any) {
+      console.error("Error rescheduling appointment:", error);
+      toast({
+        title: "Rescheduling Failed",
+        description: error.response?.data?.message || "Failed to reschedule appointment. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDragging(false);
+    }
+  }, [toast]);
+
+  const onEventResize = useCallback(async ({ event, start, end }: { event: AppointmentEvent; start: Date; end: Date }) => {
+    try {
+      setDragging(true);
+      
+      const response = await crudRequest("PUT", `/appointment/reschedule/${event.id}`, {
+        startDateTime: start.toISOString(),
+        endDateTime: end.toISOString()
+      });
+
+      if (response) {
+        toast({
+          title: "Appointment Duration Updated",
+          description: "Appointment duration has been updated successfully",
+          variant: "default",
+        });
+        
+        fetchAppointments(); // Refresh appointments
+      }
+    } catch (error: any) {
+      console.error("Error resizing appointment:", error);
+      toast({
+        title: "Resize Failed",
+        description: error.response?.data?.message || "Failed to resize appointment. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDragging(false);
+    }
+  }, [toast]);
+
+  // Clear all filters
+  const clearFilters = useCallback(() => {
+    setSelectedDoctor('all');
+    setSelectedStatus('all');
+    setSelectedTreatment('all');
+    setSelectedPriority('all');
+    setPaymentFilter('all');
+    setSearchTerm('');
+    setStartDate('');
+    setEndDate('');
+  }, []);
+
+  // Show mobile view for small screens
+  if (isMobile) {
+    return (
+      <div className="space-y-4">
+        <MobileCalendarView
+          appointments={appointments}
+          onSelectEvent={handleMobileEventSelect}
+          onSelectSlot={handleMobileSlotSelect}
+          onCreateAppointment={handleNewAppointment}
+          loading={loading}
+        />
+        
+        {/* Appointment Modal */}
+        <CalendarAppointmentModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onAppointmentSaved={handleAppointmentSaved}
+          isAdmin={isAdmin}
+          selectedSlot={selectedSlot}
+          editingAppointment={editingAppointment}
+          mode={modalMode}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header with filters and controls */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle className="text-2xl flex items-center gap-2">
+              <CalendarDays className="h-6 w-6" />
+              Appointment Calendar
+            </CardTitle>
+            
+            <div className="flex flex-wrap items-center gap-2">
+              <Button 
+                size="sm" 
+                onClick={handleNewAppointment}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                New Appointment
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="flex items-center gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                {showAdvancedFilters ? 'Hide Filters' : 'Advanced Filters'}
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={fetchAppointments}
+                disabled={loading}
+              >
+                <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
+                Refresh
+              </Button>
+              
+              {(searchTerm || startDate || endDate || selectedPriority !== 'all' || paymentFilter !== 'all') && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={clearFilters}
+                  className="flex items-center gap-2 text-red-600 hover:text-red-700"
+                >
+                  <X className="h-4 w-4" />
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="pt-0">
+          {/* Search Bar */}
+          <div className="mb-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search patients, subjects, or reasons..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          {/* Basic Filter Controls */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {/* Doctor Filter */}
+            <div>
+              <label className="text-sm font-medium mb-1 block">Doctor</label>
+              <select 
+                value={selectedDoctor} 
+                onChange={(e) => setSelectedDoctor(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
+              >
+                <option value="all">All Doctors</option>
+                {doctors.map(doctor => (
+                  <option key={doctor._id} value={doctor._id}>
+                    {doctor.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Status Filter */}
+            <div>
+              <label className="text-sm font-medium mb-1 block">Status</label>
+              <select 
+                value={selectedStatus} 
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
+              >
+                <option value="all">All Status</option>
+                <option value="Pending">Pending</option>
+                <option value="Accepted">Accepted</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+                <option value="No-Show">No-Show</option>
+              </select>
+            </div>
+            
+            {/* Treatment Type Filter */}
+            <div>
+              <label className="text-sm font-medium mb-1 block">Treatment</label>
+              <select 
+                value={selectedTreatment} 
+                onChange={(e) => setSelectedTreatment(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
+              >
+                <option value="all">All Treatments</option>
+                <option value="Consultation">Consultation</option>
+                <option value="Cleaning">Cleaning</option>
+                <option value="Extraction">Extraction</option>
+                <option value="Root Canal">Root Canal</option>
+                <option value="Filling">Filling</option>
+                <option value="Emergency">Emergency</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Advanced Filters */}
+          {showAdvancedFilters && (
+            <div className="border-t pt-4 mt-4">
+              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Advanced Filters
+              </h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Date Range */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Start Date</label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium mb-1 block">End Date</label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+                
+                {/* Priority Filter */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Priority</label>
+                  <select 
+                    value={selectedPriority} 
+                    onChange={(e) => setSelectedPriority(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
+                  >
+                    <option value="all">All Priorities</option>
+                    <option value="low">Low</option>
+                    <option value="standard">Standard</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+                
+                {/* Payment Status Filter */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Payment Status</label>
+                  <select 
+                    value={paymentFilter} 
+                    onChange={(e) => setPaymentFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
+                  >
+                    <option value="all">All Payment Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="partial">Partial</option>
+                    <option value="paid">Paid</option>
+                    <option value="unpaid">Unpaid</option>
+                  </select>
+                </div>
+              </div>
+              
+              {/* Filter Summary */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {searchTerm && (
+                  <Badge variant="secondary" className="text-xs">
+                    Search: "{searchTerm}"
+                  </Badge>
+                )}
+                {startDate && (
+                  <Badge variant="secondary" className="text-xs">
+                    From: {new Date(startDate).toLocaleDateString()}
+                  </Badge>
+                )}
+                {endDate && (
+                  <Badge variant="secondary" className="text-xs">
+                    To: {new Date(endDate).toLocaleDateString()}
+                  </Badge>
+                )}
+                {selectedPriority !== 'all' && (
+                  <Badge variant="secondary" className="text-xs">
+                    Priority: {selectedPriority}
+                  </Badge>
+                )}
+                {paymentFilter !== 'all' && (
+                  <Badge variant="secondary" className="text-xs">
+                    Payment: {paymentFilter}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Calendar */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="h-[700px] p-4">
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading appointments...</p>
+                </div>
+              </div>
+            ) : (
+              <DragAndDropCalendar
+                localizer={localizer}
+                events={events}
+                startAccessor="start"
+                endAccessor="end"
+                onSelectEvent={handleSelectEvent}
+                onSelectSlot={handleSelectSlot}
+                onNavigate={handleNavigate}
+                onView={handleViewChange}
+                onEventDrop={onEventDrop}
+                onEventResize={onEventResize}
+                view={currentView as any}
+                date={currentDate}
+                selectable
+                popup
+                resizable
+                eventPropGetter={eventStyleGetter}
+                components={{
+                  event: EventComponent
+                }}
+                className={cn("bg-white rounded-lg", dragging && "opacity-75")}
+                style={{ height: '100%' }}
+                formats={{
+                  timeGutterFormat: 'HH:mm',
+                  eventTimeRangeFormat: ({ start, end }, culture, localizer) =>
+                    localizer?.format(start, 'HH:mm', culture) + ' - ' + localizer?.format(end, 'HH:mm', culture),
+                  agendaTimeFormat: 'HH:mm',
+                  agendaTimeRangeFormat: ({ start, end }, culture, localizer) =>
+                    localizer?.format(start, 'HH:mm', culture) + ' - ' + localizer?.format(end, 'HH:mm', culture),
+                }}
+                views={['month', 'week', 'day', 'agenda']}
+                step={15}
+                timeslots={4}
+                min={new Date(2023, 0, 1, 8, 0, 0)}
+                max={new Date(2023, 0, 1, 18, 0, 0)}
+                showMultiDayTimes
+                draggableAccessor={() => true}
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Legend */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+              <span className="text-sm">Pending</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-green-500 rounded"></div>
+              <span className="text-sm">Accepted</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-blue-500 rounded"></div>
+              <span className="text-sm">Completed</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-red-500 rounded"></div>
+              <span className="text-sm">Cancelled</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-purple-500 rounded"></div>
+              <span className="text-sm">No-Show</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-red-600 rounded"></div>
+              <span className="text-sm">Urgent Priority</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Appointment Modal */}
+      <CalendarAppointmentModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onAppointmentSaved={handleAppointmentSaved}
+        isAdmin={isAdmin}
+        selectedSlot={selectedSlot}
+        editingAppointment={editingAppointment}
+        mode={modalMode}
+      />
+    </div>
+  );
+};
+
+export default AppointmentCalendar;

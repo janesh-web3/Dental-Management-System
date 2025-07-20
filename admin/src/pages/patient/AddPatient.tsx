@@ -867,6 +867,19 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
           }
         });
       });
+
+      // Add group treatment amounts (for Ortho and other group treatments)
+      groupTreatmentDetails.forEach((groupTreatment) => {
+        // If there are daily treatments, sum them up
+        if (groupTreatment.dailyTreatments && groupTreatment.dailyTreatments.length > 0) {
+          groupTreatment.dailyTreatments.forEach((treatment) => {
+            total += Number(treatment.treatmentAmount) || 0;
+          });
+        } else {
+          // Otherwise use the total treatment amount
+          total += Number(groupTreatment.totalTreatmentAmount) || 0;
+        }
+      });
     } catch (error) {
       console.error("Error calculating total amount:", error);
     }
@@ -887,6 +900,19 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
             });
           }
         });
+      });
+
+      // Add group treatment paid amounts (for Ortho and other group treatments)
+      groupTreatmentDetails.forEach((groupTreatment) => {
+        // If there are daily treatments, sum them up
+        if (groupTreatment.dailyTreatments && groupTreatment.dailyTreatments.length > 0) {
+          groupTreatment.dailyTreatments.forEach((treatment) => {
+            total += Number(treatment.paidAmount) || 0;
+          });
+        } else {
+          // Otherwise use the total paid amount
+          total += Number(groupTreatment.totalPaidAmount) || 0;
+        }
       });
     } catch (error) {
       console.error("Error calculating paid amount:", error);

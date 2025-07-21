@@ -11,11 +11,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "react-toastify";
 import { crudRequest } from "@/lib/api";
 import { format } from "date-fns";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ChevronRight, ChevronLeft, CheckCircle, AlertCircle, User, FileText, Heart, Activity } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import DentalChart from "@/components/DentalChart";
 import SelectedTeethList from "@/components/SelectedTeethList";
 import { getToothPosition, getToothSide } from "@/helper/PatientHelper";
@@ -44,6 +48,20 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
   const { isVoiceInputEnabled } = useVoiceInput();
   const [activeTab, setActiveTab] = useState("personal");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  const steps = [
+    { id: 'personal', label: 'Personal Info', icon: User, tab: 'personal' },
+    { id: 'complaint', label: 'Chief Complaint', icon: FileText, tab: 'complaint' },
+    { id: 'medical', label: 'Medical History', icon: Heart, tab: 'medical' },
+    { id: 'dental', label: 'Dental Treatment', icon: Activity, tab: 'dental' }
+  ];
+
+  const getStepProgress = () => {
+    return ((currentStep + 1) / steps.length) * 100;
+  };
   const [formData, setFormData] = useState<FormData>({
     personalDetails: {
       name: "",
@@ -103,6 +121,54 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
 
   // Add state for service payment
   const [includeServicePayment, setIncludeServicePayment] = useState(false);
+
+  const validateCurrentStep = (): boolean => {
+    const newErrors: { [key: string]: string } = {};
+    
+    switch (currentStep) {
+      case 0: // Personal Info
+        if (!formData.personalDetails.name.trim()) {
+          newErrors.name = "Patient name is required";
+        }
+        if (!formData.personalDetails.gender) {
+          newErrors.gender = "Gender is required";
+        }
+        break;
+      case 1: // Chief Complaint - Optional validation
+        break;
+      case 2: // Medical History - Optional validation
+        break;
+      case 3: // Dental Treatment - Optional validation
+        break;
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const nextStep = () => {
+    if (validateCurrentStep()) {
+      if (!completedSteps.includes(currentStep)) {
+        setCompletedSteps([...completedSteps, currentStep]);
+      }
+      if (currentStep < steps.length - 1) {
+        setCurrentStep(currentStep + 1);
+        setActiveTab(steps[currentStep + 1].tab);
+      }
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+      setActiveTab(steps[currentStep - 1].tab);
+    }
+  };
+
+  const goToStep = (stepIndex: number) => {
+    setCurrentStep(stepIndex);
+    setActiveTab(steps[stepIndex].tab);
+  };
   const [servicePayment, setServicePayment] = useState({
     serviceType: "Consultation" as ServiceType,
     amount: "",
@@ -922,55 +988,110 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
   };
 
   return (
-    <div className="mx-auto py-1 sm:py-2 space-y-1 sm:space-y-2">
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-base md:text-lg lg:text-xl font-bold">
-          Add New Patient
-        </h1>
-        <Button
-          variant="outline"
-          onClick={() => modalClose()}
-          size="sm"
-          className="text-xs md:text-sm"
-        >
-          Cancel
-        </Button>
-      </div>
+    <div className="flex flex-col h-[92vh] max-w-6xl mx-auto">
+      {/* Compact Header with Progress */}
+      <motion.div 
+        className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-3 py-2"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-3">
+            <h1 className="text-base md:text-lg font-bold text-foreground">
+              Add Patient
+            </h1>
+            <Badge variant="outline" className="text-xs">
+              {currentStep + 1}/{steps.length}: {steps[currentStep].label}
+            </Badge>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => modalClose()}
+            size="sm"
+            className="text-xs hover:bg-destructive hover:text-destructive-foreground transition-colors h-7 px-3"
+          >
+            Cancel
+          </Button>
+        </div>
+        
+        {/* Compact Progress Bar */}
+        <div className="space-y-2">
+          <Progress value={getStepProgress()} className="h-1.5" />
+          
+          {/* Compact Step Indicators */}
+          <div className="flex items-center justify-between">
+            {steps.map((step, index) => {
+              const StepIcon = step.icon;
+              const isCompleted = completedSteps.includes(index);
+              const isCurrent = currentStep === index;
+              const isAccessible = index <= currentStep || completedSteps.includes(index);
+              
+              return (
+                <button
+                  key={step.id}
+                  onClick={() => isAccessible && goToStep(index)}
+                  disabled={!isAccessible}
+                  className={`flex items-center space-x-1 px-2 py-1 rounded-md transition-all duration-200 ${
+                    isCurrent 
+                      ? 'bg-primary text-primary-foreground shadow-sm' 
+                      : isCompleted 
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                        : isAccessible
+                          ? 'text-muted-foreground hover:bg-muted'
+                          : 'text-muted-foreground/50 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="relative">
+                    <StepIcon className="w-4 h-4" />
+                    {isCompleted && (
+                      <CheckCircle className="w-2.5 h-2.5 absolute -top-1 -right-1 text-green-600" />
+                    )}
+                  </div>
+                  <span className="text-xs font-medium hidden md:block">
+                    {step.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </motion.div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-1 md:gap-2 h-auto">
-          <TabsTrigger
-            value="personal"
-            className="text-xs md:text-sm py-1.5 md:py-2.5 px-1 md:px-2 data-[state=active]:font-medium h-auto flex items-center justify-center"
-          >
-            <span className="">Personal Details</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="complaint"
-            className="text-xs md:text-sm py-1.5 md:py-2.5 px-1 md:px-2 data-[state=active]:font-medium h-auto flex items-center justify-center"
-          >
-            <span className="">Chief Complaint</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="medical"
-            className="text-xs md:text-sm py-1.5 md:py-2.5 px-1 md:px-2 data-[state=active]:font-medium h-auto flex items-center justify-center"
-          >
-            <span className="">Medical History</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="dental"
-            className="text-xs md:text-sm py-1.5 md:py-2.5 px-1 md:px-2 data-[state=active]:font-medium h-auto flex items-center justify-center"
-          >
-            <span className="">Dental Treatment</span>
-          </TabsTrigger>
-        </TabsList>
+      {/* Form Content */}
+      <ScrollArea className="flex-1 px-3">
+        <Tabs value={activeTab} onValueChange={(value) => {
+          setActiveTab(value);
+          const stepIndex = steps.findIndex(step => step.tab === value);
+          if (stepIndex !== -1) setCurrentStep(stepIndex);
+        }} className="w-full">
 
-        {/* Tab content remains the same */}
-        <TabsContent value="personal">
-          <Card className="p-2 md:p-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 md:gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="checkUpDate">Check-up Date *</Label>
+        {/* Personal Details Step */}
+        <TabsContent value="personal" className="mt-4 mb-4">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key="personal"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card className="p-3 md:p-4 border border-muted-foreground/20 transition-colors">
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <User className="w-4 h-4 text-primary" />
+                    <h3 className="text-base font-semibold">Personal Information</h3>
+                    <Badge variant="outline" className="ml-auto text-xs">
+                      Required *
+                    </Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="checkUpDate" className="text-sm font-medium flex items-center">
+                  Check-up Date 
+                  <span className="text-destructive ml-1">*</span>
+                </Label>
                 <Input
                   id="checkUpDate"
                   type="date"
@@ -978,9 +1099,10 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                   onChange={(e) =>
                     handlePersonalChange("checkUpDate", e.target.value)
                   }
+                  className="transition-colors focus:ring-2 focus:ring-primary/20"
                 />
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <Label htmlFor="checkUpDateNp" className="text-sm font-medium">
                   Check-up Date (Nepali)
                 </Label>
@@ -992,8 +1114,10 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                   placeholder="Select Nepali date"
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="sn">S.N (Auto-generated)</Label>
+              <div className="space-y-2">
+                <Label htmlFor="sn" className="text-sm font-medium text-muted-foreground">
+                  S.N (Auto-generated)
+                </Label>
                 <Input
                   id="sn"
                   type="text"
@@ -1001,9 +1125,9 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                     isLoadingSN ? "Loading..." : formData.personalDetails.sn
                   }
                   readOnly
-                  className={`bg-muted/50 ${isLoadingSN ? "animate-pulse" : ""}`}
+                  className={`bg-muted/50 cursor-not-allowed ${isLoadingSN ? "animate-pulse" : ""}`}
                 />
-              </div>{" "}
+              </div>
               <div className="space-y-1">
                 <Label htmlFor="name">Full Name *</Label>
                 {isVoiceInputEnabled ? (
@@ -1037,8 +1161,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                   />
                 )}
               </div>{" "}
-              <div className="space-y-1">
-                <Label htmlFor="address">Address</Label>
+              <div className="space-y-2">
+                <Label htmlFor="address" className="text-sm font-medium">Address</Label>
                 {isVoiceInputEnabled ? (
                   <div className="flex space-x-2">
                     <Input
@@ -1047,8 +1171,9 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                       onChange={(e) =>
                         handlePersonalChange("address", e.target.value)
                       }
-                      className="flex-1"
-                    />{" "}
+                      className="flex-1 transition-colors focus:ring-2 focus:ring-primary/20"
+                      placeholder="Enter address"
+                    />
                     <VoiceInputButton
                       fieldId="address"
                       onTranscriptReceived={(transcript) =>
@@ -1105,17 +1230,24 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                   />
                 )}
               </div>{" "}
-              <div className="space-y-1">
-                <Label htmlFor="gender">Gender *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="gender" className="text-sm font-medium flex items-center">
+                  Gender 
+                  <span className="text-destructive ml-1">*</span>
+                  {errors.gender && <AlertCircle className="w-4 h-4 text-destructive ml-2" />}
+                </Label>
                 {isVoiceInputEnabled ? (
                   <div className="flex space-x-2">
                     <Select
                       value={formData.personalDetails.gender}
-                      onValueChange={(value) =>
-                        handlePersonalChange("gender", value)
-                      }
+                      onValueChange={(value) => {
+                        handlePersonalChange("gender", value);
+                        if (errors.gender) setErrors(prev => ({ ...prev, gender: '' }));
+                      }}
                     >
-                      <SelectTrigger className="flex-1">
+                      <SelectTrigger className={`flex-1 transition-colors ${
+                        errors.gender ? 'border-destructive focus:border-destructive' : ''
+                      }`}>
                         <SelectValue placeholder="Select gender" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1123,7 +1255,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                         <SelectItem value="Female">Female</SelectItem>
                         <SelectItem value="Other">Other</SelectItem>
                       </SelectContent>
-                    </Select>{" "}
+                    </Select>
                     <VoiceInputButton
                       fieldId="gender"
                       onTranscriptReceived={(transcript) => {
@@ -1136,10 +1268,13 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                           !normalizedTranscript.includes("female")
                         ) {
                           handlePersonalChange("gender", "Male");
+                          if (errors.gender) setErrors(prev => ({ ...prev, gender: '' }));
                         } else if (normalizedTranscript.includes("female")) {
                           handlePersonalChange("gender", "Female");
+                          if (errors.gender) setErrors(prev => ({ ...prev, gender: '' }));
                         } else if (normalizedTranscript.includes("other")) {
                           handlePersonalChange("gender", "Other");
+                          if (errors.gender) setErrors(prev => ({ ...prev, gender: '' }));
                         }
                       }}
                       listenMode="single"
@@ -1149,11 +1284,14 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                 ) : (
                   <Select
                     value={formData.personalDetails.gender}
-                    onValueChange={(value) =>
-                      handlePersonalChange("gender", value)
-                    }
+                    onValueChange={(value) => {
+                      handlePersonalChange("gender", value);
+                      if (errors.gender) setErrors(prev => ({ ...prev, gender: '' }));
+                    }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={`transition-colors ${
+                      errors.gender ? 'border-destructive focus:border-destructive' : ''
+                    }`}>
                       <SelectValue placeholder="Select gender" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1163,7 +1301,10 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                     </SelectContent>
                   </Select>
                 )}
-              </div>{" "}
+                {errors.gender && (
+                  <p className="text-sm text-destructive mt-1">{errors.gender}</p>
+                )}
+              </div>
               <div className="space-y-1">
                 <Label htmlFor="contactNumber">Contact Number</Label>
                 {isVoiceInputEnabled ? (
@@ -1239,9 +1380,9 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
               </div>
             </div>
 
-            <div className="mt-6">
-              <Card className="mb-6 p-4 border border-dashed">
-                <div className="flex items-center space-x-2 mb-4">
+            <div className="mt-4">
+              <Card className="mb-3 p-3 border border-dashed">
+                <div className="flex items-center space-x-2 mb-3">
                   <Checkbox
                     id="includeServicePayment"
                     checked={includeServicePayment}
@@ -1258,7 +1399,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                 </div>
 
                 {includeServicePayment && (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="serviceType">Service Type</Label>
@@ -1349,21 +1490,31 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                 )}
               </Card>
 
-              <div className="flex justify-end">
-                <Button onClick={() => setActiveTab("complaint")}>
-                  Next: Chief Complaint
-                </Button>
-              </div>
-            </div>
-          </Card>
+                </div>
+                </div>
+              </Card>
+            </motion.div>
+          </AnimatePresence>
         </TabsContent>
 
-        <TabsContent value="complaint">
-          <Card className="p-2 md:p-4">
-            <div className="space-y-4">
-              <h3 className="text-base md:text-lg font-semibold">
-                Patient's Chief Complaint
-              </h3>{" "}
+        <TabsContent value="complaint" className="mt-4 mb-4">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key="complaint"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card className="p-3 md:p-4 border border-muted-foreground/20 transition-colors">
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <FileText className="w-4 h-4 text-primary" />
+                    <h3 className="text-base font-semibold">Chief Complaint</h3>
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      Optional
+                    </Badge>
+                  </div>
               <div className="space-y-2">
                 <Label htmlFor="chiefComplaint">
                   What brought the patient in today?
@@ -1373,7 +1524,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                     <Textarea
                       id="chiefComplaint"
                       placeholder="Enter patient's main concern or complaint"
-                      className="min-h-[150px] flex-1"
+                      className="min-h-[120px] flex-1"
                       value={formData.medicalDetails.chiefComplaint}
                       onChange={(e) =>
                         handleChiefComplaintChange(e.target.value)
@@ -1392,40 +1543,39 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                   <Textarea
                     id="chiefComplaint"
                     placeholder="Enter patient's main concern or complaint"
-                    className="min-h-[150px]"
+                    className="min-h-[120px]"
                     value={formData.medicalDetails.chiefComplaint}
                     onChange={(e) => handleChiefComplaintChange(e.target.value)}
                   />
                 )}
               </div>
-            </div>
-            <div className="mt-4 md:mt-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-4">
-              <Button
-                variant="outline"
-                onClick={() => setActiveTab("complaint")}
-                className="text-xs md:text-sm"
-              >
-                Back to Personal Details
-              </Button>
-              <Button
-                onClick={() => setActiveTab("medical")}
-                className="text-xs md:text-sm mt-2 sm:mt-0"
-              >
-                Next: Medical History
-              </Button>
-            </div>
-          </Card>
+                </div>
+              </Card>
+            </motion.div>
+          </AnimatePresence>
         </TabsContent>
 
-        <TabsContent value="medical">
-          <Card className="p-2 md:p-4">
-            <div className="mt-3 md:mt-6 border-t pt-3 md:pt-6">
-              <h3 className="text-sm md:text-base lg:text-lg font-semibold mb-2 md:mb-4">
-                Medical History
-              </h3>
+        <TabsContent value="medical" className="mt-4 mb-4">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key="medical"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card className="p-3 md:p-4 border border-muted-foreground/20 transition-colors">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 mb-3">
+                <Heart className="w-4 h-4 text-primary" />
+                <h3 className="text-base font-semibold">Medical History</h3>
+                <Badge variant="secondary" className="ml-auto text-xs">
+                  Optional
+                </Badge>
+              </div>
 
-              {/* No Medical Issues Checkbox - Make more touch-friendly */}
-              <div className="col-span-2 flex items-center gap-2 p-2 md:p-3 border rounded-md bg-muted mb-3 md:mb-4">
+              {/* No Medical Issues Checkbox - Compact */}
+              <div className="col-span-2 flex items-center gap-2 p-2 border rounded-md bg-muted mb-3">
                 <Checkbox
                   id="noMedicalIssues"
                   checked={
@@ -1468,8 +1618,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                 </Label>
               </div>
 
-              {/* Medical Conditions Grid - Improved for mobile */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              {/* Medical Conditions Grid - Compact */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label htmlFor="bloodPressure" className="text-xs md:text-sm">
                     Blood Pressure
@@ -1652,7 +1802,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                           )
                         }
                         placeholder="Describe any other medical conditions"
-                        className="min-h-[80px] md:min-h-[120px] flex-1" // Shorter on mobile
+                        className="min-h-[60px] md:min-h-[80px] flex-1" // Compact on mobile
                       />{" "}
                       <VoiceInputButton
                         fieldId="otherConditions"
@@ -1679,35 +1829,35 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                         )
                       }
                       placeholder="Describe any other medical conditions"
-                      className="min-h-[80px] md:min-h-[120px]" // Shorter on mobile
+                      className="min-h-[60px] md:min-h-[80px]" // Compact on mobile
                     />
                   )}
                 </div>
               </div>
             </div>
-
-            {/* Navigation buttons - Stack on mobile */}
-            <div className="mt-4 md:mt-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-4">
-              <Button
-                variant="outline"
-                onClick={() => setActiveTab("complaint")}
-                className="w-full sm:w-auto text-xs md:text-sm py-2"
-              >
-                Back to Chief Complaint
-              </Button>
-              <Button
-                onClick={() => setActiveTab("dental")}
-                className="w-full sm:w-auto text-xs md:text-sm py-2 mt-2 sm:mt-0"
-              >
-                Next: Dental Treatment
-              </Button>
-            </div>
           </Card>
+        </motion.div>
+      </AnimatePresence>
         </TabsContent>
 
-        <TabsContent value="dental">
-          <Card className="p-2 md:p-4">
-            <div className="space-y-2 md:space-y-6">
+        <TabsContent value="dental" className="mt-4 mb-4">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key="dental"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card className="p-3 md:p-4 border border-muted-foreground/20 transition-colors">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 mb-3">
+                <Activity className="w-4 h-4 text-primary" />
+                <h3 className="text-base font-semibold">Dental Treatment</h3>
+                <Badge variant="secondary" className="ml-auto text-xs">
+                  Optional
+                </Badge>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-4 mb-6">
                 <div className="space-y-1">
                   <Label htmlFor="patientType">Patient Type *</Label>
@@ -2577,21 +2727,77 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setActiveTab("medical")}
-                >
-                  Back to Medical Details
-                </Button>
-                <Button onClick={handleSubmit} disabled={isSubmitting}>
-                  {isSubmitting ? "Adding Patient..." : "Add Patient"}
-                </Button>
-              </div>
             </div>
           </Card>
+        </motion.div>
+      </AnimatePresence>
         </TabsContent>
       </Tabs>
+      
+      {/* Compact Sticky Footer with Navigation */}
+      <motion.div 
+        className="sticky bottom-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t px-4 py-3"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.1 }}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center space-x-2">
+            <Progress value={getStepProgress()} className="w-16 h-1.5" />
+            <span className="text-xs text-muted-foreground">
+              {currentStep + 1}/{steps.length}
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={prevStep}
+              disabled={currentStep === 0}
+              size="sm"
+              className="flex items-center gap-1 h-8 px-3"
+            >
+              <ChevronLeft className="w-3 h-3" />
+              <span className="hidden sm:inline">Previous</span>
+            </Button>
+            
+            {currentStep < steps.length - 1 ? (
+              <Button
+                onClick={nextStep}
+                size="sm"
+                className="flex items-center gap-1 bg-primary hover:bg-primary/90 h-8 px-3"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight className="w-3 h-3" />
+              </Button>
+            ) : (
+              <Button 
+                onClick={handleSubmit} 
+                disabled={isSubmitting}
+                size="sm"
+                className="flex items-center gap-1 bg-green-600 hover:bg-green-700 h-8 px-3"
+              >
+                {isSubmitting ? (
+                  <>
+                    <motion.div 
+                      className="w-3 h-3 border-2 border-white border-t-transparent rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    />
+                    <span className="hidden sm:inline">Adding...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-3 h-3" />
+                    <span className="hidden sm:inline">Add Patient</span>
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+      </motion.div>
+      </ScrollArea>
     </div>
   );
 };

@@ -5,6 +5,7 @@ export const  dentalName = "Crown Dental Clinic";
 export const socket = "http://localhost:8080";
 export const dentalAddress = "Taranagar, Dhangadhi, Nepal";
 
+
 // shree nagar dental
 // export const server = "https://server.om-shreenagar-dental-clinic.com/api";
 // export const socket = "https://server.om-shreenagar-dental-clinic.com";

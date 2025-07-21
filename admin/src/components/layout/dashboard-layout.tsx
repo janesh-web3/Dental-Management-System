@@ -1,8 +1,10 @@
 import { useState } from "react";
-import Sidebar from "../shared/sidebar";
+import EnhancedSidebar from "../shared/enhanced-sidebar";
+import EnhancedMobileSidebar from "../shared/enhanced-mobile-sidebar";
 import Header from "../shared/header";
-import MobileSidebar from "../shared/mobile-sidebar";
+import { Button } from "../ui/button";
 import { MenuIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
   children,
@@ -12,28 +14,50 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-secondary">
-      <div className="overflow-auto">
-        <MobileSidebar
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-        />
-      </div>
+    <div className="flex h-screen overflow-hidden bg-secondary/20">
+      {/* Mobile Sidebar */}
+      <EnhancedMobileSidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+      />
 
-      <Sidebar />
-      <div className="flex flex-col flex-1 w-0 overflow-auto">
-        <div className="relative z-10 flex flex-shrink-0 h-12 ">
-          <button
-            className="pl-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 xl:hidden"
+      {/* Desktop Sidebar */}
+      <EnhancedSidebar />
+      
+      {/* Main Content */}
+      <div className="flex flex-col flex-1 min-w-0">
+        {/* Mobile Header */}
+        <div className="flex items-center justify-between p-4 border-b md:hidden">
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setSidebarOpen(true)}
+            className="h-9 w-9 p-0"
           >
+            <MenuIcon className="h-5 w-5" />
             <span className="sr-only">Open sidebar</span>
-            <MenuIcon className="w-6 h-6" aria-hidden="true" />
-          </button>
+          </Button>
+          
+          <div className="flex items-center gap-2">
+            <img 
+              src="/logoT.png" 
+              alt="DMS" 
+              className="h-6 w-6 brightness-125" 
+            />
+            <span className="text-sm font-semibold">DMS</span>
+          </div>
+        </div>
+
+        {/* Desktop Header */}
+        <div className="hidden md:block">
           <Header />
         </div>
-        <main className="relative flex-1 overflow-auto rounded-l-xl bg-background focus:outline-none">
-          {children}
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-auto bg-background">
+          <div className="h-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>

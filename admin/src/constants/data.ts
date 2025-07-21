@@ -1,105 +1,131 @@
 import { NavItem } from "@/types";
 
-export const navItems: NavItem[] = [
+export interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
+export const navGroups: NavGroup[] = [
   {
-    title: "Dashboard",
-    href: "/",
-    icon: "dashboard",
-    label: "Dashboard",
-    notificationEnabled: true,
+    title: "Overview",
+    items: [
+      {
+        title: "Dashboard",
+        href: "/",
+        icon: "dashboard",
+        label: "Dashboard",
+        notificationEnabled: true,
+      },
+    ]
   },
   {
-    title: "Patient",
-    href: "/patients",
-    icon: "user",
-    label: "Patient",
-    notificationEnabled: true,
+    title: "Management",
+    items: [
+      {
+        title: "Patients",
+        href: "/patients",
+        icon: "user",
+        label: "Patients",
+        notificationEnabled: true,
+      },
+      {
+        title: "Doctors",
+        href: "/doctors",
+        icon: "employee",
+        label: "Doctors",
+        notificationEnabled: true,
+      },
+      {
+        title: "Appointments",
+        href: "/appointment",
+        icon: "kanban",
+        label: "Appointments",
+        notificationEnabled: true,
+      },
+      {
+        title: "Calendar",
+        href: "/calendar",
+        icon: "calendar",
+        label: "Calendar",
+        notificationEnabled: true,
+      },
+    ]
   },
   {
-    title: "Doctor",
-    href: "/doctors",
-    icon: "employee",
-    label: "Doctor",
-    notificationEnabled: true,
+    title: "Financial",
+    items: [
+      {
+        title: "Income",
+        href: "/income",
+        icon: "arrowUp",
+        label: "Income",
+        notificationEnabled: true,
+      },
+      {
+        title: "Expenses",
+        href: "/expense",
+        icon: "arrowDown",
+        label: "Expenses",
+        notificationEnabled: true,
+      },
+      {
+        title: "Invoices",
+        href: "/finance/invoices",
+        icon: "receipt",
+        label: "Invoices",
+        notificationEnabled: true,
+      },
+    ]
   },
   {
-    title: "Appointment",
-    href: "/appointment",
-    icon: "kanban",
-    label: "Appointment",
-    notificationEnabled: true,
+    title: "Communication",
+    items: [
+      {
+        title: "SMS",
+        href: "/sms",
+        icon: "message",
+        label: "SMS",
+        notificationEnabled: true,
+      },
+      {
+        title: "Contacts",
+        href: "/contacts",
+        icon: "profile",
+        label: "Contacts",
+        notificationEnabled: true,
+      },
+      {
+        title: "Testimonials",
+        href: "/testimonials",
+        icon: "kanban",
+        label: "Testimonials",
+        notificationEnabled: true,
+      },
+    ]
   },
   {
-    title: "Calendar",
-    href: "/calendar",
-    icon: "calendar",
-    label: "Calendar",
-    notificationEnabled: true,
-  },
-  {
-    title: "Income",
-    href: "/income",
-    icon: "arrowUp",
-    label: "Income",
-    notificationEnabled: true,
-  },
-  {
-    title: "Expense",
-    href: "/expense",
-    icon: "arrowDown",
-    label: "Expense",
-    notificationEnabled: true,
-  },
-  {
-    title: "Invoices",
-    href: "/finance/invoices",
-    icon: "receipt",
-    label: "Invoices",
-    notificationEnabled: true,
-  },
-  // {
-  //   title: "Notifications",
-  //   href: "/notifications",
-  //   icon: "bell",
-  //   label: "Notifications",
-  //   notificationEnabled: true,
-  // },
-  {
-    title: "Testimonials",
-    href: "/testimonials",
-    icon: "kanban",
-    label: "Testimonials",
-    notificationEnabled: true,
-  },
-  {
-    title: "Contacts",
-    href: "/contacts",
-    icon: "profile",
-    label: "Contacts",
-    notificationEnabled: true,
-  },
-  {
-    title: "SMS",
-    href: "/sms",
-    icon: "message",
-    label: "SMS",
-    notificationEnabled: true,
-  },
-  {
-    title: "Recycle Bin",
-    href: "/recycle-bin",
-    icon: "trash",
-    label: "Recycle Bin",
-    notificationEnabled: false,
-  },
-  {
-    title: "System Test",
-    href: "/system-test",
-    icon: "settings",
-    label: "System Test",
-    notificationEnabled: false,
-  },
+    title: "System",
+    items: [
+      {
+        title: "Recycle Bin",
+        href: "/recycle-bin",
+        icon: "trash",
+        label: "Recycle Bin",
+        notificationEnabled: false,
+      },
+      {
+        title: "System Test",
+        href: "/system-test",
+        icon: "settings",
+        label: "System Test",
+        notificationEnabled: false,
+      },
+    ]
+  }
 ];
+
+// Keep the original navItems for backward compatibility
+export const navItems: NavItem[] = navGroups.flatMap(group => group.items);
 
 export const users = [
   {

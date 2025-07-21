@@ -21,6 +21,7 @@ import SingleSMS from "@/pages/sms/SingleSMS";
 import BulkSMS from "@/pages/sms/BulkSMS";
 import { ScanPatient } from "@/pages/patient/ScanPatient";
 import PatientView from "@/pages/public/PatientView";
+import Calendar from "@/pages/calendar";
 
 // Finance pages
 import IncomePage from "@/pages/finance/income";
@@ -62,6 +63,7 @@ const AppRouter: React.FC = () => {
         { path: "/scan-patient", element: <ScanPatient /> },
         { path: "/doctors", element: <Doctor /> },
         { path: "/appointment", element: <Appointment /> },
+        { path: "/calendar", element: <Calendar /> },
         { path: "/user", element: <User /> },
         { path: "/settings", element: <Setting /> },        { path: "/testimonials", element: <Testimonials /> },
         { path: "/contacts", element: <Contacts /> },

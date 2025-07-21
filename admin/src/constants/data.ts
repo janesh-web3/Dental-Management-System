@@ -30,6 +30,13 @@ export const navItems: NavItem[] = [
     notificationEnabled: true,
   },
   {
+    title: "Calendar",
+    href: "/calendar",
+    icon: "calendar",
+    label: "Calendar",
+    notificationEnabled: true,
+  },
+  {
     title: "Income",
     href: "/income",
     icon: "arrowUp",

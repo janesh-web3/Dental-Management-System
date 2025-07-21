@@ -16,11 +16,13 @@ import {
   Search,
   RefreshCw,
   Settings,
-  X
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { crudRequest } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import CalendarAppointmentModal from './CalendarAppointmentModal';
 import MobileCalendarView from './MobileCalendarView';
 import ViewPatientDrawer from '../patient/ViewPatientDrawer';
@@ -98,6 +100,10 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   // Appointment drawer state for regular appointments
   const [appointmentDrawerOpen, setAppointmentDrawerOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  
+  // Drag restriction popup state
+  const [dragRestrictionDialogOpen, setDragRestrictionDialogOpen] = useState(false);
+  const [dragRestrictionMessage, setDragRestrictionMessage] = useState('');
   
   const { toast } = useToast();
 
@@ -453,8 +459,57 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
     }
   }, [fetchPatientDetails]);
 
-  // Handle drag and drop events
+  // Check if an appointment can be dragged
+  const canDragAppointment = useCallback((event: AppointmentEvent) => {
+    const appointment = event.resource?.appointment;
+    const status = appointment?.status || event.resource?.status;
+    const isFollowUp = appointment?.isFollowUp || event.title.toLowerCase().includes('follow-up');
+    
+    // Prevent dragging of follow-up appointments
+    if (isFollowUp || status === 'Follow-up') {
+      return false;
+    }
+    
+    // Prevent dragging of completed appointments
+    if (status === 'Completed') {
+      return false;
+    }
+    
+    // Prevent dragging of cancelled appointments
+    if (status === 'Cancelled' || status === 'No-Show') {
+      return false;
+    }
+    
+    return true;
+  }, []);
+
+  // Show drag restriction dialog
+  const showDragRestrictionDialog = useCallback((event: AppointmentEvent, reason: string) => {
+    setDragRestrictionMessage(reason);
+    setDragRestrictionDialogOpen(true);
+  }, []);
+
+  // Handle drag and drop events with restrictions
   const onEventDrop = useCallback(async ({ event, start, end }: { event: AppointmentEvent; start: Date; end: Date }) => {
+    // Check if this appointment can be dragged
+    if (!canDragAppointment(event)) {
+      const appointment = event.resource?.appointment;
+      const status = appointment?.status || event.resource?.status;
+      const isFollowUp = appointment?.isFollowUp || event.title.toLowerCase().includes('follow-up');
+      
+      let reason = '';
+      if (isFollowUp || status === 'Follow-up') {
+        reason = 'Follow-up appointments cannot be rescheduled by dragging. Please use the edit button to modify the follow-up date through the patient management system.';
+      } else if (status === 'Completed') {
+        reason = 'Completed appointments cannot be rescheduled. Please create a new appointment if needed.';
+      } else if (status === 'Cancelled' || status === 'No-Show') {
+        reason = 'Cancelled or No-Show appointments cannot be rescheduled by dragging. Please create a new appointment instead.';
+      }
+      
+      showDragRestrictionDialog(event, reason);
+      return;
+    }
+
     try {
       setDragging(true);
       
@@ -482,9 +537,28 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
     } finally {
       setDragging(false);
     }
-  }, [toast]);
+  }, [toast, canDragAppointment, showDragRestrictionDialog]);
 
   const onEventResize = useCallback(async ({ event, start, end }: { event: AppointmentEvent; start: Date; end: Date }) => {
+    // Check if this appointment can be resized (same restrictions as dragging)
+    if (!canDragAppointment(event)) {
+      const appointment = event.resource?.appointment;
+      const status = appointment?.status || event.resource?.status;
+      const isFollowUp = appointment?.isFollowUp || event.title.toLowerCase().includes('follow-up');
+      
+      let reason = '';
+      if (isFollowUp || status === 'Follow-up') {
+        reason = 'Follow-up appointments cannot be resized. Please use the edit button to modify the follow-up duration through the patient management system.';
+      } else if (status === 'Completed') {
+        reason = 'Completed appointments cannot be modified. Please create a new appointment if needed.';
+      } else if (status === 'Cancelled' || status === 'No-Show') {
+        reason = 'Cancelled or No-Show appointments cannot be modified. Please create a new appointment instead.';
+      }
+      
+      showDragRestrictionDialog(event, reason);
+      return;
+    }
+
     try {
       setDragging(true);
       
@@ -512,7 +586,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
     } finally {
       setDragging(false);
     }
-  }, [toast]);
+  }, [toast, canDragAppointment, showDragRestrictionDialog]);
 
   // Clear all filters
   const clearFilters = useCallback(() => {
@@ -834,7 +908,8 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                 min={new Date(2023, 0, 1, 8, 0, 0)}
                 max={new Date(2023, 0, 1, 18, 0, 0)}
                 showMultiDayTimes
-                draggableAccessor={() => true}
+                draggableAccessor={(event: AppointmentEvent) => canDragAppointment(event)}
+                resizableAccessor={(event: AppointmentEvent) => canDragAppointment(event)}
               />
             )}
           </div>
@@ -843,35 +918,43 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
 
       {/* Legend */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-              <span className="text-sm">Pending</span>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Legend & Drag Controls</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-yellow-500 rounded cursor-move"></div>
+                <span className="text-sm">Pending (Draggable)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-green-500 rounded cursor-move"></div>
+                <span className="text-sm">Accepted (Draggable)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-blue-500 rounded cursor-not-allowed"></div>
+                <span className="text-sm">Completed (Cannot be dragged)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-red-500 rounded cursor-not-allowed"></div>
+                <span className="text-sm">Cancelled (Cannot be dragged)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-purple-500 rounded cursor-not-allowed"></div>
+                <span className="text-sm">No-Show (Cannot be dragged)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-purple-600 opacity-80 rounded cursor-not-allowed"></div>
+                <span className="text-sm">Follow-up (Cannot be dragged)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-red-600 rounded cursor-move"></div>
+                <span className="text-sm">Urgent Priority (Draggable if status allows)</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-500 rounded"></div>
-              <span className="text-sm">Accepted</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-blue-500 rounded"></div>
-              <span className="text-sm">Completed</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-500 rounded"></div>
-              <span className="text-sm">Cancelled</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-purple-500 rounded"></div>
-              <span className="text-sm">No-Show</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-purple-600 opacity-80 rounded"></div>
-              <span className="text-sm">Follow-up</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-red-600 rounded"></div>
-              <span className="text-sm">Urgent Priority</span>
+            <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
+              <strong>Tip:</strong> Drag appointments to reschedule them quickly. Follow-up appointments and completed/cancelled appointments cannot be moved via drag & drop - use the edit button instead.
             </div>
           </div>
         </CardContent>
@@ -912,6 +995,29 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
         onDelete={handleAppointmentDelete}
         onStatusChange={handleStatusChange}
       />
+      
+      {/* Drag Restriction Alert Dialog */}
+      <AlertDialog open={dragRestrictionDialogOpen} onOpenChange={setDragRestrictionDialogOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Cannot Move Appointment
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground">
+              {dragRestrictionMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction 
+              onClick={() => setDragRestrictionDialogOpen(false)}
+              className="bg-primary hover:bg-primary/90"
+            >
+              Got it
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

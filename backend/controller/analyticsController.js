@@ -17,17 +17,18 @@ const getAppointmentAnalytics = async (req, res) => {
     const end = endDate ? endOfDay(new Date(endDate)) : endOfDay(new Date());
     const start = startDate ? startOfDay(new Date(startDate)) : startOfDay(subDays(end, 30));
     
-    // Base match condition for date range
+    // Base match condition for date range and exclude soft deleted
     const dateMatchCondition = {
-      createdAt: { $gte: start, $lte: end }
+      createdAt: { $gte: start, $lte: end },
+      isDeleted: { $ne: true }
     };
     
     // Get total appointments in the date range
-    const totalAppointments = await Appointment.countDocuments({ ...dateMatchCondition, isDeleted: { $ne: true } });
+    const totalAppointments = await Appointment.countDocuments(dateMatchCondition);
     
     // Get appointments by status
     const appointmentsByStatus = await Appointment.aggregate([
-      { $match: { ...dateMatchCondition, isDeleted: { $ne: true } } },
+      { $match: dateMatchCondition },
       { $group: {
           _id: "$status",
           count: { $sum: 1 }
@@ -38,7 +39,7 @@ const getAppointmentAnalytics = async (req, res) => {
     
     // Get gender distribution
     const genderDistribution = await Appointment.aggregate([
-      { $match: { ...dateMatchCondition, isDeleted: { $ne: true } } },
+      { $match: dateMatchCondition },
       { $group: {
           _id: "$gender",
           count: { $sum: 1 }
@@ -48,7 +49,7 @@ const getAppointmentAnalytics = async (req, res) => {
     
     // Get doctor-wise appointment count
     const doctorAppointments = await Appointment.aggregate([
-      { $match: { ...dateMatchCondition, isDeleted: { $ne: true } } },
+      { $match: dateMatchCondition },
       { $lookup: {
           from: "doctors",
           localField: "doctor",
@@ -69,7 +70,7 @@ const getAppointmentAnalytics = async (req, res) => {
     
     // Calculate no-show rate
     const noShowStats = await Appointment.aggregate([
-      { $match: { ...dateMatchCondition, isDeleted: { $ne: true } } },
+      { $match: dateMatchCondition },
       { $group: {
           _id: null,
           total: { $sum: 1 },
@@ -108,7 +109,7 @@ const getAppointmentAnalytics = async (req, res) => {
     }
     
     const appointmentsOverTime = await Appointment.aggregate([
-      { $match: { ...dateMatchCondition, isDeleted: { $ne: true } } },
+      { $match: dateMatchCondition },
       { $group: {
           _id: timeGrouping,
           count: { $sum: 1 },
@@ -512,15 +513,17 @@ const getDoctorPerformanceAnalytics = async (req, res) => {
       }
     ]);
     
+    // Base match condition for date range and exclude soft deleted
+    const appointmentMatchCondition = {
+      createdAt: { $gte: start, $lte: end },
+      doctor: { $ne: null },
+      isDeleted: { $ne: true }
+    };
+
     // Get most/least active doctors based on appointments
     const doctorActivity = await Appointment.aggregate([
-      // Filter by date range
-      { $match: {
-          createdAt: { $gte: start, $lte: end },
-          doctor: { $ne: null },
-          isDeleted: { $ne: true }
-        }
-      },
+      // Filter by date range and exclude soft deleted
+      { $match: appointmentMatchCondition },
       // Lookup doctor information
       { $lookup: {
           from: "doctors",

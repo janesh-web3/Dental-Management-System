@@ -1499,8 +1499,9 @@ const getProcedureTypes = async (req, res) => {
       "IMF",
     ];
 
-    // Get unique procedures from selectedTeethDetails.procedure
+    // Get unique procedures from selectedTeethDetails.procedure (exclude soft-deleted)
     const teethProcedures = await Patient.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
       { $unwind: "$medicalDetails" },
       { $unwind: "$medicalDetails.treatmentPlanning" },
       { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
@@ -1519,8 +1520,9 @@ const getProcedureTypes = async (req, res) => {
       },
     ]);
 
-    // Get unique procedures from groupTreatmentDetails.procedure
+    // Get unique procedures from groupTreatmentDetails.procedure (exclude soft-deleted)
     const groupProcedures = await Patient.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
       { $unwind: "$medicalDetails" },
       { $unwind: "$medicalDetails.treatmentPlanning" },
       { $unwind: "$medicalDetails.treatmentPlanning.groupTreatmentDetails" },
@@ -1539,8 +1541,9 @@ const getProcedureTypes = async (req, res) => {
       },
     ]);
 
-    // Get unique procedures from dailyTreatments.procedure
+    // Get unique procedures from dailyTreatments.procedure (exclude soft-deleted)
     const dailyTreatmentProcedures = await Patient.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
       { $unwind: "$medicalDetails" },
       { $unwind: "$medicalDetails.treatmentPlanning" },
       { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
@@ -1774,6 +1777,8 @@ const getRecentTransactions = async (req, res) => {
     console.log("Fetching recent transactions from daily treatments...");
 
     const transactions = await Patient.aggregate([
+      // Exclude soft-deleted patients
+      { $match: { isDeleted: { $ne: true } } },
       // Unwind to get to the daily treatments level
       { $unwind: "$medicalDetails" },
       { $unwind: "$medicalDetails.treatmentPlanning" },
@@ -1986,6 +1991,7 @@ const getFinancialInsights = async (req, res) => {
     if (isAllTimeRequest) {
       // For all-time, group by selected period instead of day
       const aggregateResult = await Patient.aggregate([
+        { $match: { isDeleted: { $ne: true } } },
         { $unwind: "$medicalDetails" },
         { $unwind: "$medicalDetails.treatmentPlanning" },
         { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
@@ -2035,6 +2041,7 @@ const getFinancialInsights = async (req, res) => {
     } else {
       // Use aggregation for date-specific queries as well for consistency
       revenueTrend = await Patient.aggregate([
+        { $match: { isDeleted: { $ne: true } } },
         { $unwind: "$medicalDetails" },
         { $unwind: "$medicalDetails.treatmentPlanning" },
         { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
@@ -2214,12 +2221,12 @@ const getDashboardMetrics = async (req, res) => {
           },
         };
 
-    // Get total patients
-    const totalPatients = await Patient.countDocuments();
+    // Get total patients (exclude soft-deleted)
+    const totalPatients = await Patient.countDocuments({ isDeleted: { $ne: true } });
 
-    // Get total doctors - query both Doctor collection and User collection with dentist role
-    const doctorCount = await Doctor.countDocuments();
-    const dentistCount = await User.countDocuments({ role: "dentist" });
+    // Get total doctors - query both Doctor collection and User collection with dentist role (exclude soft-deleted)
+    const doctorCount = await Doctor.countDocuments({ isDeleted: { $ne: true } });
+    const dentistCount = await User.countDocuments({ role: "dentist", isDeleted: { $ne: true } });
     const totalDoctors = doctorCount + dentistCount;
 
     // Get total appointments - use date filter only if not all-time
@@ -2232,9 +2239,10 @@ const getDashboardMetrics = async (req, res) => {
           },
         };
 
-    const totalAppointments = await Appointment.countDocuments(
-      appointmentsQuery
-    );
+    const totalAppointments = await Appointment.countDocuments({
+      ...appointmentsQuery,
+      isDeleted: { $ne: true }
+    });
 
     // Get today's appointments
     const todayDate = new Date();
@@ -2259,9 +2267,9 @@ const getDashboardMetrics = async (req, res) => {
         dateFormat = "%Y-%m-%d";
     }
 
-    // Get patient growth data with viewMode-based aggregation
+    // Get patient growth data with viewMode-based aggregation (exclude soft-deleted)
     const patientGrowth = await Patient.aggregate([
-      { $match: createdAtMatchQuery },
+      { $match: { ...createdAtMatchQuery, isDeleted: { $ne: true } } },
       {
         $group: {
           _id: {
@@ -2290,8 +2298,9 @@ const getDashboardMetrics = async (req, res) => {
       });
     }
 
-    // Get appointment distribution
+    // Get appointment distribution (exclude soft-deleted)
     const appointmentDistribution = await Appointment.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
       {
         $group: {
           _id: "$status",
@@ -2581,6 +2590,7 @@ const getDashboardMetrics = async (req, res) => {
     const getRevenue = async (dateFilter, groupByDate = false) => {
       try {
         const pipeline = [
+          { $match: { isDeleted: { $ne: true } } },
           {
             $unwind: {
               path: "$medicalDetails",
@@ -2841,6 +2851,7 @@ const getDashboardMetrics = async (req, res) => {
                 $ne: null,
                 $type: ["double", "decimal", "int", "long"],
               },
+              isDeleted: { $ne: true },
             },
           },
           {
@@ -2848,7 +2859,10 @@ const getDashboardMetrics = async (req, res) => {
               from: "patients",
               localField: "patient",
               foreignField: "_id",
-              as: "patientExists"
+              as: "patientExists",
+              pipeline: [
+                { $match: { isDeleted: { $ne: true } } }
+              ]
             }
           },
           {
@@ -2894,6 +2908,7 @@ const getDashboardMetrics = async (req, res) => {
                 $ne: null,
                 $type: ["double", "decimal", "int", "long"],
               },
+              isDeleted: { $ne: true },
             },
           },
           {
@@ -2901,7 +2916,10 @@ const getDashboardMetrics = async (req, res) => {
               from: "patients",
               localField: "patient",
               foreignField: "_id",
-              as: "patientExists"
+              as: "patientExists",
+              pipeline: [
+                { $match: { isDeleted: { $ne: true } } }
+              ]
             }
           },
           {
@@ -2947,6 +2965,7 @@ const getDashboardMetrics = async (req, res) => {
                 $ne: null,
                 $type: ["double", "decimal", "int", "long"],
               },
+              isDeleted: { $ne: true },
             },
           },
           {
@@ -2954,7 +2973,10 @@ const getDashboardMetrics = async (req, res) => {
               from: "patients",
               localField: "patient",
               foreignField: "_id",
-              as: "patientExists"
+              as: "patientExists",
+              pipeline: [
+                { $match: { isDeleted: { $ne: true } } }
+              ]
             }
           },
           {
@@ -2999,6 +3021,7 @@ const getDashboardMetrics = async (req, res) => {
                 $ne: null,
                 $type: ["double", "decimal", "int", "long"],
               },
+              isDeleted: { $ne: true },
             },
           },
           {
@@ -3006,7 +3029,10 @@ const getDashboardMetrics = async (req, res) => {
               from: "patients",
               localField: "patient",
               foreignField: "_id",
-              as: "patientExists"
+              as: "patientExists",
+              pipeline: [
+                { $match: { isDeleted: { $ne: true } } }
+              ]
             }
           },
           {
@@ -3068,8 +3094,9 @@ const getDashboardMetrics = async (req, res) => {
     // Calculate derived values
     const yearlyRevenue = (monthlyRevenue + monthlyServiceRevenue) * 12;
 
-    // Get recent treatments
+    // Get recent treatments (exclude soft-deleted)
     const recentTreatments = await Patient.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
       { $unwind: "$medicalDetails" },
       { $unwind: "$medicalDetails.treatmentPlanning" },
       {
@@ -3157,6 +3184,7 @@ const getDashboardMetrics = async (req, res) => {
             $gte: new Date(fromDate),
             $lte: new Date(toDate),
           },
+          isDeleted: { $ne: true },
         },
       },
       {
@@ -3195,6 +3223,7 @@ const getDashboardMetrics = async (req, res) => {
             $gte: new Date(fromDate),
             $lte: new Date(toDate),
           },
+          isDeleted: { $ne: true },
         },
       },
       {

@@ -5,38 +5,43 @@ router.get("/dashboard-metrics", async (req, res) => {
     const fromDate = new Date(from);
     const toDate = new Date(to);
 
-    // Get total patients
-    const totalPatients = await Patient.countDocuments();
+    // Get total patients (exclude soft-deleted)
+    const totalPatients = await Patient.countDocuments({ isDeleted: { $ne: true } });
 
-    // Get total appointments
+    // Get total appointments (exclude soft-deleted)
     const totalAppointments = await Appointment.countDocuments({
-      date: { $gte: fromDate, $lte: toDate }
+      date: { $gte: fromDate, $lte: toDate },
+      isDeleted: { $ne: true }
     });
 
-    // Get total doctors
-    const totalDoctors = await Doctor.countDocuments();
+    // Get total doctors (exclude soft-deleted)
+    const totalDoctors = await Doctor.countDocuments({ isDeleted: { $ne: true } });
 
-    // Get appointment status distribution
+    // Get appointment status distribution (exclude soft-deleted)
     const appointmentStatus = {
       scheduled: await Appointment.countDocuments({
         date: { $gte: fromDate, $lte: toDate },
-        status: "scheduled"
+        status: "scheduled",
+        isDeleted: { $ne: true }
       }),
       completed: await Appointment.countDocuments({
         date: { $gte: fromDate, $lte: toDate },
-        status: "completed"
+        status: "completed",
+        isDeleted: { $ne: true }
       }),
       canceled: await Appointment.countDocuments({
         date: { $gte: fromDate, $lte: toDate },
-        status: "canceled"
+        status: "canceled",
+        isDeleted: { $ne: true }
       })
     };
 
-    // Get patient growth data
+    // Get patient growth data (exclude soft-deleted)
     const patientGrowth = await Patient.aggregate([
       {
         $match: {
-          createdAt: { $gte: fromDate, $lte: toDate }
+          createdAt: { $gte: fromDate, $lte: toDate },
+          isDeleted: { $ne: true }
         }
       },
       {
@@ -57,11 +62,12 @@ router.get("/dashboard-metrics", async (req, res) => {
       }
     ]);
 
-    // Get appointment distribution
+    // Get appointment distribution (exclude soft-deleted)
     const appointmentDistribution = await Appointment.aggregate([
       {
         $match: {
-          date: { $gte: fromDate, $lte: toDate }
+          date: { $gte: fromDate, $lte: toDate },
+          isDeleted: { $ne: true }
         }
       },
       {
@@ -79,14 +85,18 @@ router.get("/dashboard-metrics", async (req, res) => {
       }
     ]);
 
-    // Get doctor performance
+    // Get doctor performance (exclude soft-deleted)
     const doctorPerformance = await Doctor.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
       {
         $lookup: {
           from: "appointments",
           localField: "_id",
           foreignField: "doctor",
-          as: "appointments"
+          as: "appointments",
+          pipeline: [
+            { $match: { isDeleted: { $ne: true } } }
+          ]
         }
       },
       {
@@ -172,12 +182,13 @@ router.get("/financial-insights", async (req, res) => {
     const fromDate = new Date(from);
     const toDate = new Date(to);
 
-    // Get daily revenue
+    // Get daily revenue (exclude soft-deleted)
     const dailyRevenue = await Appointment.aggregate([
       {
         $match: {
           date: { $gte: fromDate, $lte: toDate },
-          status: "completed"
+          status: "completed",
+          isDeleted: { $ne: true }
         }
       },
       {
@@ -204,12 +215,13 @@ router.get("/financial-insights", async (req, res) => {
     const monthly = dailyRevenue.reduce((sum, day) => sum + day.revenue, 0) * 30 || 0;
     const total = dailyRevenue.reduce((sum, day) => sum + day.revenue, 0) || 0;
 
-    // Get revenue by doctor
+    // Get revenue by doctor (exclude soft-deleted)
     const revenueByDoctor = await Appointment.aggregate([
       {
         $match: {
           date: { $gte: fromDate, $lte: toDate },
-          status: "completed"
+          status: "completed",
+          isDeleted: { $ne: true }
         }
       },
       {
@@ -217,7 +229,10 @@ router.get("/financial-insights", async (req, res) => {
           from: "doctors",
           localField: "doctor",
           foreignField: "_id",
-          as: "doctorInfo"
+          as: "doctorInfo",
+          pipeline: [
+            { $match: { isDeleted: { $ne: true } } }
+          ]
         }
       },
       {
@@ -238,12 +253,13 @@ router.get("/financial-insights", async (req, res) => {
       }
     ]);
 
-    // Get revenue by treatment
+    // Get revenue by treatment (exclude soft-deleted)
     const revenueByTreatment = await Appointment.aggregate([
       {
         $match: {
           date: { $gte: fromDate, $lte: toDate },
-          status: "completed"
+          status: "completed",
+          isDeleted: { $ne: true }
         }
       },
       {
@@ -272,12 +288,13 @@ router.get("/financial-insights", async (req, res) => {
       }
     ]);
 
-    // Get payment methods distribution
+    // Get payment methods distribution (exclude soft-deleted)
     const paymentMethods = await Appointment.aggregate([
       {
         $match: {
           date: { $gte: fromDate, $lte: toDate },
-          status: "completed"
+          status: "completed",
+          isDeleted: { $ne: true }
         }
       },
       {
@@ -298,10 +315,11 @@ router.get("/financial-insights", async (req, res) => {
     // Calculate profit margin (assuming 30% profit margin)
     const profitMargin = 30;
 
-    // Calculate average transaction value
+    // Calculate average transaction value (exclude soft-deleted)
     const averageTransactionValue = total / (await Appointment.countDocuments({
       date: { $gte: fromDate, $lte: toDate },
-      status: "completed"
+      status: "completed",
+      isDeleted: { $ne: true }
     })) || 0;
 
     res.json({

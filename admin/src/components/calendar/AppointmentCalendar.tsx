@@ -24,6 +24,7 @@ import { useToast } from '@/components/ui/use-toast';
 import CalendarAppointmentModal from './CalendarAppointmentModal';
 import MobileCalendarView from './MobileCalendarView';
 import ViewPatientDrawer from '../patient/ViewPatientDrawer';
+import ViewAppointmentDrawer from './ViewAppointmentDrawer';
 
 // Setup moment localizer and drag-and-drop calendar
 const localizer = momentLocalizer(moment);
@@ -93,6 +94,10 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   // Patient modal state for follow-ups
   const [patientModalOpen, setPatientModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  
+  // Appointment drawer state for regular appointments
+  const [appointmentDrawerOpen, setAppointmentDrawerOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   
   const { toast } = useToast();
 
@@ -332,10 +337,9 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
         fetchPatientDetails(patientId);
       }
     } else {
-      // For regular appointments, show appointment modal
-      setEditingAppointment(appointment);
-      setModalMode('view');
-      setModalOpen(true);
+      // For regular appointments, show appointment drawer with status change capability
+      setSelectedAppointment(appointment);
+      setAppointmentDrawerOpen(true);
     }
   }, [fetchPatientDetails]);
 
@@ -351,6 +355,67 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   const handleAppointmentSaved = useCallback(() => {
     fetchAppointments(); // Refresh appointments
   }, []);
+
+  // Handle status change for appointments
+  const handleStatusChange = useCallback(async (appointmentId: string, newStatus: string) => {
+    try {
+      const response = await crudRequest(
+        "PUT",
+        `/appointment/update-appointment-status/${appointmentId}`,
+        { status: newStatus }
+      );
+
+      if (response) {
+        toast({
+          title: "Status Updated",
+          description: `Appointment status has been changed to ${newStatus}.`,
+          variant: "default",
+        });
+
+        fetchAppointments(); // Refresh appointments
+      }
+    } catch (error) {
+      console.error("Error updating appointment status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update appointment status. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  // Handle appointment edit from drawer
+  const handleAppointmentEdit = useCallback((appointment: any) => {
+    setEditingAppointment(appointment);
+    setModalMode('edit');
+    setModalOpen(true);
+    setAppointmentDrawerOpen(false);
+  }, []);
+
+  // Handle appointment delete from drawer
+  const handleAppointmentDelete = useCallback(async (appointmentId: string) => {
+    try {
+      const response = await crudRequest("DELETE", `/appointment/delete-appointment/${appointmentId}`);
+      
+      if (response) {
+        toast({
+          title: "Appointment Deleted",
+          description: "The appointment has been successfully deleted.",
+          variant: "default",
+        });
+
+        fetchAppointments(); // Refresh appointments
+        setAppointmentDrawerOpen(false);
+      }
+    } catch (error) {
+      console.error("Error deleting appointment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete appointment. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
 
   // Handle new appointment button
   const handleNewAppointment = useCallback(() => {
@@ -382,10 +447,9 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
         fetchPatientDetails(patientId);
       }
     } else {
-      // For regular appointments, show appointment modal
-      setEditingAppointment(appointment);
-      setModalMode('view');
-      setModalOpen(true);
+      // For regular appointments, show appointment drawer with status change capability
+      setSelectedAppointment(appointment);
+      setAppointmentDrawerOpen(true);
     }
   }, [fetchPatientDetails]);
 
@@ -835,6 +899,19 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
           patient={selectedPatient}
         />
       )}
+
+      {/* Appointment Drawer for Regular Appointments */}
+      <ViewAppointmentDrawer
+        isOpen={appointmentDrawerOpen}
+        onClose={() => {
+          setAppointmentDrawerOpen(false);
+          setSelectedAppointment(null);
+        }}
+        appointment={selectedAppointment}
+        onEdit={handleAppointmentEdit}
+        onDelete={handleAppointmentDelete}
+        onStatusChange={handleStatusChange}
+      />
     </div>
   );
 };

@@ -20,7 +20,6 @@ import {
   MapPin,
   Stethoscope,
   DollarSign,
-  AlertTriangle,
   Edit,
   Trash2,
   FileText,
@@ -157,17 +156,33 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
   // Use patient data if available, otherwise fall back to appointment data
   const patientData = appointment.patientId || {
     personalDetails: {
-      firstName: appointment.firstName,
-      lastName: appointment.lastName,
-      contactNumber: appointment.phoneNumber,
-      age: appointment.age,
-      gender: appointment.gender,
-      address: appointment.address,
+      firstName: appointment?.firstName || 'N/A',
+      lastName: appointment?.lastName || 'N/A',
+      contactNumber: appointment?.phoneNumber || 'N/A',
+      age: appointment?.age || 'N/A',
+      gender: appointment?.gender || 'N/A',
+      address: appointment?.address || 'N/A',
     },
   };
 
-  const appointmentDateTime = new Date(appointment.startDateTime);
-  const endDateTime = new Date(appointment.endDateTime);
+  // Add additional safety checks
+  if (!patientData.personalDetails) {
+    patientData.personalDetails = {
+      firstName: appointment?.firstName || 'N/A',
+      lastName: appointment?.lastName || 'N/A',
+      contactNumber: appointment?.phoneNumber || 'N/A',
+      age: appointment?.age || 'N/A',
+      gender: appointment?.gender || 'N/A',
+      address: appointment?.address || 'N/A',
+    };
+  }
+
+  const appointmentDateTime = appointment?.startDateTime 
+    ? new Date(appointment.startDateTime) 
+    : new Date();
+  const endDateTime = appointment?.endDateTime 
+    ? new Date(appointment.endDateTime) 
+    : new Date();
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -206,21 +221,21 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-wrap gap-2">
-                <Badge className={statusColors[appointment.status as keyof typeof statusColors]}>
-                  {appointment.status}
+                <Badge className={statusColors[(appointment?.status || 'Pending') as keyof typeof statusColors]}>
+                  {appointment?.status || 'Pending'}
                 </Badge>
-                <Badge className={priorityColors[appointment.priority as keyof typeof priorityColors]}>
-                  {appointment.priority} Priority
+                <Badge className={priorityColors[(appointment?.priority || 'standard') as keyof typeof priorityColors]}>
+                  {appointment?.priority || 'standard'} Priority
                 </Badge>
-                <Badge className={paymentStatusColors[appointment.paymentStatus as keyof typeof paymentStatusColors]}>
-                  Payment: {appointment.paymentStatus}
+                <Badge className={paymentStatusColors[(appointment?.paymentStatus || 'pending') as keyof typeof paymentStatusColors]}>
+                  Payment: {appointment?.paymentStatus || 'pending'}
                 </Badge>
-                {appointment.hasVisited && (
+                {appointment?.hasVisited && (
                   <Badge className="bg-purple-100 text-purple-800 border-purple-200">
                     Visited
                   </Badge>
                 )}
-                {appointment.isFollowUp && (
+                {appointment?.isFollowUp && (
                   <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200">
                     Follow-up
                   </Badge>
@@ -235,7 +250,7 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
                       variant="outline"
                       size="sm"
                       onClick={() => handleStatusChange(status)}
-                      disabled={loading || appointment.status === status}
+                      disabled={loading || appointment?.status === status}
                       className="text-xs"
                     >
                       Mark as {status}
@@ -299,7 +314,7 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
           </Card>
 
           {/* Doctor Information */}
-          {appointment.doctor && (
+          {appointment?.doctor && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -311,16 +326,16 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
                 <div className="flex items-center gap-2">
                   <UserCheck className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Name:</span>
-                  <span>{appointment.doctor.name}</span>
+                  <span>{appointment.doctor?.name || 'N/A'}</span>
                 </div>
-                {appointment.doctor.specialization && (
+                {appointment.doctor?.specialization && (
                   <div className="flex items-center gap-2">
                     <Stethoscope className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Specialization:</span>
                     <span>{appointment.doctor.specialization}</span>
                   </div>
                 )}
-                {appointment.doctor.contactNumber && (
+                {appointment.doctor?.contactNumber && (
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Contact:</span>
@@ -357,20 +372,20 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Duration:</span>
-                    <span>{appointment.duration} minutes</span>
+                    <span>{appointment?.duration || 30} minutes</span>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Stethoscope className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Treatment:</span>
-                    <span>{appointment.treatmentType}</span>
+                    <span>{appointment?.treatmentType || 'N/A'}</span>
                   </div>
-                  {(appointment.chair || appointment.room) && (
+                  {(appointment?.chair || appointment?.room) && (
                     <div className="flex items-center gap-2">
                       <Building className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">Location:</span>
-                      <span>{appointment.chair || appointment.room}</span>
+                      <span>{appointment?.chair || appointment?.room}</span>
                     </div>
                   )}
                 </div>
@@ -381,13 +396,13 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
               <div className="space-y-2">
                 <div>
                   <span className="font-medium">Subject:</span>
-                  <p className="text-sm text-muted-foreground mt-1">{appointment.subject}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{appointment?.subject || 'N/A'}</p>
                 </div>
                 <div>
                   <span className="font-medium">Reason:</span>
-                  <p className="text-sm text-muted-foreground mt-1">{appointment.reason}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{appointment?.reason || 'N/A'}</p>
                 </div>
-                {appointment.isFollowUp && appointment.followUpReason && (
+                {appointment?.isFollowUp && appointment?.followUpReason && (
                   <div>
                     <span className="font-medium">Follow-up Reason:</span>
                     <p className="text-sm text-muted-foreground mt-1">{appointment.followUpReason}</p>
@@ -398,7 +413,7 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
           </Card>
 
           {/* Financial Information */}
-          {(appointment.estimatedCost || appointment.actualCost) && (
+          {(appointment?.estimatedCost || appointment?.actualCost) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -407,14 +422,14 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {appointment.estimatedCost && (
+                {appointment?.estimatedCost && (
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Estimated Cost:</span>
                     <span>₹{appointment.estimatedCost}</span>
                   </div>
                 )}
-                {appointment.actualCost && (
+                {appointment?.actualCost && (
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Actual Cost:</span>
@@ -424,8 +439,8 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Payment Status:</span>
-                  <Badge className={paymentStatusColors[appointment.paymentStatus as keyof typeof paymentStatusColors]}>
-                    {appointment.paymentStatus}
+                  <Badge className={paymentStatusColors[(appointment?.paymentStatus || 'pending') as keyof typeof paymentStatusColors]}>
+                    {appointment?.paymentStatus || 'pending'}
                   </Badge>
                 </div>
               </CardContent>
@@ -433,7 +448,7 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
           )}
 
           {/* Notes */}
-          {(appointment.comments || appointment.internalNotes) && (
+          {(appointment?.comments || appointment?.internalNotes) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -442,7 +457,7 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {appointment.comments && (
+                {appointment?.comments && (
                   <div>
                     <span className="font-medium">Comments:</span>
                     <p className="text-sm text-muted-foreground mt-1 p-3 bg-muted rounded-md">
@@ -450,7 +465,7 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
                     </p>
                   </div>
                 )}
-                {appointment.internalNotes && (
+                {appointment?.internalNotes && (
                   <div>
                     <span className="font-medium">Internal Notes:</span>
                     <p className="text-sm text-muted-foreground mt-1 p-3 bg-muted rounded-md">
@@ -469,15 +484,15 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-muted-foreground">
               <div>
-                <span className="font-medium">Created:</span> {format(new Date(appointment.createdAt), "PPp")}
+                <span className="font-medium">Created:</span> {appointment?.createdAt ? format(new Date(appointment.createdAt), "PPp") : 'N/A'}
               </div>
               <div>
-                <span className="font-medium">Last Updated:</span> {format(new Date(appointment.updatedAt), "PPp")}
+                <span className="font-medium">Last Updated:</span> {appointment?.updatedAt ? format(new Date(appointment.updatedAt), "PPp") : 'N/A'}
               </div>
               <div>
-                <span className="font-medium">Appointment ID:</span> {appointment._id}
+                <span className="font-medium">Appointment ID:</span> {appointment?._id || 'N/A'}
               </div>
-              {appointment.patientId?._id && (
+              {appointment?.patientId?._id && (
                 <div>
                   <span className="font-medium">Patient ID:</span> {appointment.patientId._id}
                 </div>

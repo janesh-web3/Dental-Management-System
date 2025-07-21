@@ -275,7 +275,10 @@ const updateAppointmentStatus = async (req, res) => {
       req.params.id,
       { status },
       { new: true, runValidators: true }
-    ).populate('doctor').populate('patient');
+    ).populate('doctor').populate({
+      path: 'patientId',
+      select: 'personalDetails'
+    });
 
     if (!appointment) {
       return res.status(404).json({
@@ -286,17 +289,17 @@ const updateAppointmentStatus = async (req, res) => {
 
     // Get doctor and patient information
     const doctorId = appointment.doctor?._id || appointment.doctor;
-    const patientId = appointment.patient?._id || appointment.patient;
-    const patientName = appointment.patient?.firstName 
-      ? `${appointment.patient.firstName} ${appointment.patient.lastName}`
-      : appointment.patientName || 'Patient';
+    const patientId = appointment.patientId?._id || appointment.patientId;
+    const patientName = appointment.patientId?.personalDetails?.name 
+      ? appointment.patientId.personalDetails.name
+      : `${appointment.firstName} ${appointment.lastName}` || 'Patient';
     
     // Send notification to the patient about status update
     if (patientId) {
       await sendNotification({
         title: 'Appointment Status Updated',
-        message: `Your appointment on ${appointment.date} at ${appointment.time} has been ${status.toLowerCase()}`,
-        type: status === 'Confirmed' ? 'success' : status === 'Cancelled' ? 'error' : 'info',
+        message: `Your appointment on ${appointment.appointmentDate} at ${appointment.appointmentTime} has been ${status.toLowerCase()}`,
+        type: status === 'Accepted' ? 'success' : status === 'Cancelled' ? 'error' : 'info',
         userId: patientId,
         userType: 'Patient',
         data: {
@@ -310,8 +313,8 @@ const updateAppointmentStatus = async (req, res) => {
     // Send notification to admin
     await sendNotification({
       title: 'Appointment Status Updated',
-      message: `Appointment for ${patientName} on ${appointment.date} at ${appointment.time} has been ${status.toLowerCase()}`,
-      type: status === 'Confirmed' ? 'success' : status === 'Cancelled' ? 'error' : 'info',
+      message: `Appointment for ${patientName} on ${appointment.appointmentDate} at ${appointment.appointmentTime} has been ${status.toLowerCase()}`,
+      type: status === 'Accepted' ? 'success' : status === 'Cancelled' ? 'error' : 'info',
       userId: process.env.ADMIN_ID || '000000000000000000000000',
       userType: 'User',
       data: {

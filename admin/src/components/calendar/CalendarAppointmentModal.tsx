@@ -68,6 +68,7 @@ const appointmentFormSchema = z.object({
   duration: z.number().min(15).max(480), // 15 minutes to 8 hours
   treatmentType: z.string().min(1, "Treatment type is required"),
   priority: z.string().min(1, "Priority is required"),
+  status: z.string().min(1, "Status is required"),
   subject: z.string().min(1, "Subject is required"),
   reason: z.string().min(1, "Reason is required"),
   comments: z.string().optional(),
@@ -137,6 +138,16 @@ const priorities = [
   { value: "urgent", label: "Urgent", color: "bg-red-100 text-red-800" }
 ];
 
+const appointmentStatuses = [
+  { value: "Pending", label: "Pending", color: "bg-yellow-100 text-yellow-800" },
+  { value: "Accepted", label: "Accepted", color: "bg-green-100 text-green-800" },
+  { value: "Rejected", label: "Rejected", color: "bg-red-100 text-red-800" },
+  { value: "Completed", label: "Completed", color: "bg-blue-100 text-blue-800" },
+  { value: "Cancelled", label: "Cancelled", color: "bg-gray-100 text-gray-800" },
+  { value: "No-Show", label: "No-Show", color: "bg-purple-100 text-purple-800" },
+  { value: "Rescheduled", label: "Rescheduled", color: "bg-orange-100 text-orange-800" }
+];
+
 const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
   isOpen,
   onClose,
@@ -177,6 +188,7 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
       duration: defaultDuration,
       treatmentType: "Consultation",
       priority: "standard",
+      status: "Pending",
       subject: "",
       reason: "",
       comments: "",
@@ -206,6 +218,7 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
         duration: editingAppointment.duration || 30,
         treatmentType: editingAppointment.treatmentType || "Consultation",
         priority: editingAppointment.priority || "standard",
+        status: editingAppointment.status || "Pending",
         subject: editingAppointment.subject || "",
         reason: editingAppointment.reason || "",
         comments: editingAppointment.comments || "",
@@ -316,6 +329,41 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
     
     setIsNewPatient(true);
     setPatientSearchOpen(false);
+  };
+
+  const handleStatusUpdate = async (newStatus: string) => {
+    if (!editingAppointment) return;
+
+    try {
+      setLoading(true);
+      const response = await crudRequest(
+        "PUT",
+        `/appointment/update-appointment-status/${editingAppointment._id}`,
+        { status: newStatus }
+      );
+
+      if (response) {
+        // Update the form value to reflect the change
+        form.setValue("status", newStatus);
+        
+        toast({
+          title: "Status Updated",
+          description: `Appointment status has been changed to ${newStatus}.`,
+          variant: "default",
+        });
+
+        onAppointmentSaved?.();
+      }
+    } catch (error) {
+      console.error("Error updating appointment status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update appointment status. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSaveAppointment = async (data: CalendarAppointmentFormValues) => {
@@ -806,7 +854,7 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <FormField
                         control={form.control}
                         name="treatmentType"
@@ -849,6 +897,43 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
                                   <SelectItem key={priority.value} value={priority.value}>
                                     <div className="flex items-center gap-2">
                                       <Badge className={priority.color}>{priority.label}</Badge>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Status</FormLabel>
+                            <Select 
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                // If in edit mode, immediately update the status
+                                if (mode === 'edit' && editingAppointment && value !== editingAppointment.status) {
+                                  handleStatusUpdate(value);
+                                }
+                              }} 
+                              defaultValue={field.value} 
+                              disabled={isReadOnly || mode === 'create'}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {appointmentStatuses.map((status) => (
+                                  <SelectItem key={status.value} value={status.value}>
+                                    <div className="flex items-center gap-2">
+                                      <Badge className={status.color}>{status.label}</Badge>
                                     </div>
                                   </SelectItem>
                                 ))}

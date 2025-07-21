@@ -8,13 +8,9 @@ import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { 
   CalendarDays, 
-  Clock, 
-  User, 
-  MapPin, 
   Filter,
   Plus,
   Search,
@@ -27,6 +23,7 @@ import { crudRequest } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 import CalendarAppointmentModal from './CalendarAppointmentModal';
 import MobileCalendarView from './MobileCalendarView';
+import ViewPatientDrawer from '../patient/ViewPatientDrawer';
 
 // Setup moment localizer and drag-and-drop calendar
 const localizer = momentLocalizer(moment);
@@ -93,6 +90,10 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   const [selectedSlot, setSelectedSlot] = useState<{ start: Date; end: Date } | undefined>();
   const [editingAppointment, setEditingAppointment] = useState<any>(null);
   
+  // Patient modal state for follow-ups
+  const [patientModalOpen, setPatientModalOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  
   const { toast } = useToast();
 
   // Mobile detection
@@ -119,7 +120,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const response = await crudRequest("GET", "/appointment/get-appointments?calendar=true");
+      const response = await crudRequest<any>("GET", "/appointment/get-appointments?calendar=true");
       if (response) {
         setAppointments(response);
       }
@@ -138,7 +139,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   // Fetch doctors
   const fetchDoctors = async () => {
     try {
-      const response = await crudRequest("GET", "/doctor/get-doctor");
+      const response = await crudRequest<any>("GET", "/doctor/get-doctor");
       if (response) {
         setDoctors(response);
       }
@@ -146,6 +147,25 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
       console.error("Error fetching doctors:", error);
     }
   };
+
+  // Fetch patient details for follow-up events
+  const fetchPatientDetails = useCallback(async (patientId: string) => {
+    try {
+      const response = await crudRequest<any>("GET", `/patient/get-patient/${patientId}`);
+      if (response) {
+        console.log("Fetched patient data from calander:", response.data);
+        setSelectedPatient(response.data);
+        setPatientModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Error fetching patient details:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load patient details. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
 
   // Transform appointments data for React Big Calendar
   const events: AppointmentEvent[] = useMemo(() => {
@@ -207,42 +227,49 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
 
   // Custom event style getter
   const eventStyleGetter = useCallback((event: AppointmentEvent) => {
-    const { status, priority, paymentStatus } = event.resource || {};
+    const { status, priority } = event.resource || {};
+    const isFollowUp = event.resource?.appointment?.isFollowUp;
     
     let backgroundColor = '#3174ad';
     let borderColor = '#3174ad';
     
-    // Status-based colors
-    switch (status) {
-      case 'Pending':
-        backgroundColor = '#f59e0b';
-        borderColor = '#d97706';
-        break;
-      case 'Accepted':
-        backgroundColor = '#10b981';
-        borderColor = '#059669';
-        break;
-      case 'Completed':
-        backgroundColor = '#6366f1';
-        borderColor = '#4f46e5';
-        break;
-      case 'Cancelled':
-        backgroundColor = '#ef4444';
-        borderColor = '#dc2626';
-        break;
-      case 'No-Show':
-        backgroundColor = '#8b5cf6';
-        borderColor = '#7c3aed';
-        break;
-      default:
-        backgroundColor = '#6b7280';
-        borderColor = '#4b5563';
+    // Follow-up specific styling
+    if (isFollowUp || status === 'Follow-up') {
+      backgroundColor = '#8b5cf6';
+      borderColor = '#7c3aed';
+    } else {
+      // Status-based colors for regular appointments
+      switch (status) {
+        case 'Pending':
+          backgroundColor = '#f59e0b';
+          borderColor = '#d97706';
+          break;
+        case 'Accepted':
+          backgroundColor = '#10b981';
+          borderColor = '#059669';
+          break;
+        case 'Completed':
+          backgroundColor = '#6366f1';
+          borderColor = '#4f46e5';
+          break;
+        case 'Cancelled':
+          backgroundColor = '#ef4444';
+          borderColor = '#dc2626';
+          break;
+        case 'No-Show':
+          backgroundColor = '#8b5cf6';
+          borderColor = '#7c3aed';
+          break;
+        default:
+          backgroundColor = '#6b7280';
+          borderColor = '#4b5563';
+      }
     }
 
     // Priority overlay
     if (priority === 'urgent') {
       borderColor = '#dc2626';
-      borderWidth = '3px';
+      // borderWidth is set in the returned style object below
     }
 
     return {
@@ -251,7 +278,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
         borderColor,
         borderWidth: priority === 'urgent' ? '3px' : '1px',
         borderRadius: '4px',
-        opacity: 0.9,
+        opacity: isFollowUp ? 0.8 : 0.9, // Slightly more transparent for follow-ups
         color: 'white',
         border: 'none',
         display: 'block'
@@ -295,10 +322,22 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
 
   // Handle event selection (for viewing/editing)
   const handleSelectEvent = useCallback((event: AppointmentEvent) => {
-    setEditingAppointment(event.resource?.appointment);
-    setModalMode('view');
-    setModalOpen(true);
-  }, []);
+    const appointment = event.resource?.appointment;
+    
+    // Check if this is a follow-up event
+    if (appointment?.isFollowUp || event.resource?.status === 'Follow-up') {
+      // For follow-up events, show patient details instead of appointment details
+      const patientId = appointment?.patientId || event.resource?.appointment?.patientId;
+      if (patientId) {
+        fetchPatientDetails(patientId);
+      }
+    } else {
+      // For regular appointments, show appointment modal
+      setEditingAppointment(appointment);
+      setModalMode('view');
+      setModalOpen(true);
+    }
+  }, [fetchPatientDetails]);
 
   // Handle slot selection for new appointments
   const handleSelectSlot = useCallback((slotInfo: { start: Date; end: Date; slots: Date[] }) => {
@@ -335,10 +374,20 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
 
   // Handle mobile event selection
   const handleMobileEventSelect = useCallback((appointment: any) => {
-    setEditingAppointment(appointment);
-    setModalMode('view');
-    setModalOpen(true);
-  }, []);
+    // Check if this is a follow-up event
+    if (appointment?.isFollowUp || appointment?.status === 'Follow-up') {
+      // For follow-up events, show patient details instead of appointment details
+      const patientId = appointment?.patientId;
+      if (patientId) {
+        fetchPatientDetails(patientId);
+      }
+    } else {
+      // For regular appointments, show appointment modal
+      setEditingAppointment(appointment);
+      setModalMode('view');
+      setModalOpen(true);
+    }
+  }, [fetchPatientDetails]);
 
   // Handle drag and drop events
   const onEventDrop = useCallback(async ({ event, start, end }: { event: AppointmentEvent; start: Date; end: Date }) => {
@@ -435,6 +484,18 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
           editingAppointment={editingAppointment}
           mode={modalMode}
         />
+
+        {/* Patient Modal for Follow-ups */}
+        {selectedPatient && (
+          <ViewPatientDrawer
+            isOpen={patientModalOpen}
+            onClose={() => {
+              setPatientModalOpen(false);
+              setSelectedPatient(null);
+            }}
+            patient={selectedPatient}
+          />
+        )}
       </div>
     );
   }
@@ -517,7 +578,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
               <select 
                 value={selectedDoctor} 
                 onChange={(e) => setSelectedDoctor(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm bg-background"
               >
                 <option value="all">All Doctors</option>
                 {doctors.map(doctor => (
@@ -534,7 +595,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
               <select 
                 value={selectedStatus} 
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm bg-background"
               >
                 <option value="all">All Status</option>
                 <option value="Pending">Pending</option>
@@ -542,6 +603,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                 <option value="Completed">Completed</option>
                 <option value="Cancelled">Cancelled</option>
                 <option value="No-Show">No-Show</option>
+                <option value="Follow-up">Follow-up</option>
               </select>
             </div>
             
@@ -551,7 +613,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
               <select 
                 value={selectedTreatment} 
                 onChange={(e) => setSelectedTreatment(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm bg-background"
               >
                 <option value="all">All Treatments</option>
                 <option value="Consultation">Consultation</option>
@@ -560,6 +622,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                 <option value="Root Canal">Root Canal</option>
                 <option value="Filling">Filling</option>
                 <option value="Emergency">Emergency</option>
+                <option value="Follow-up">Follow-up</option>
               </select>
             </div>
           </div>
@@ -600,7 +663,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                   <select 
                     value={selectedPriority} 
                     onChange={(e) => setSelectedPriority(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm bg-background"
                   >
                     <option value="all">All Priorities</option>
                     <option value="low">Low</option>
@@ -615,7 +678,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                   <select 
                     value={paymentFilter} 
                     onChange={(e) => setPaymentFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm bg-background"
                   >
                     <option value="all">All Payment Status</option>
                     <option value="pending">Pending</option>
@@ -739,6 +802,10 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
               <span className="text-sm">No-Show</span>
             </div>
             <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-purple-600 opacity-80 rounded"></div>
+              <span className="text-sm">Follow-up</span>
+            </div>
+            <div className="flex items-center gap-2">
               <div className="w-4 h-4 border-2 border-red-600 rounded"></div>
               <span className="text-sm">Urgent Priority</span>
             </div>
@@ -756,6 +823,18 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
         editingAppointment={editingAppointment}
         mode={modalMode}
       />
+
+      {/* Patient Modal for Follow-ups */}
+      {selectedPatient && (
+        <ViewPatientDrawer
+          isOpen={patientModalOpen}
+          onClose={() => {
+            setPatientModalOpen(false);
+            setSelectedPatient(null);
+          }}
+          patient={selectedPatient}
+        />
+      )}
     </div>
   );
 };

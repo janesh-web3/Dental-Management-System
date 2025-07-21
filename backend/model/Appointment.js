@@ -184,7 +184,9 @@ const appointmentSchema = new mongoose.Schema(
       default: false,
     },
     patientId: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Patient",
+      required: true,
     },
     status: {
       type: String,

@@ -9,7 +9,9 @@ const {
   getDoctorAvailability,
   checkConflicts,
   rescheduleAppointment,
-  createFollowUp
+  createFollowUp,
+  getPatientsForAppointment,
+  getDoctorsForAppointment
 } = require("../controller/appointmentCtrl.js");
 const patientAuthMiddleware = require("../middleware/patientAuthMiddleware");
 const { 
@@ -31,6 +33,10 @@ router.get("/doctor-availability", authenticateUser, authorizePermission('appoin
 router.post("/check-conflicts", authenticateUser, authorizePermission('appointments', 'read'), checkConflicts);
 router.put("/reschedule/:id", authenticateUser, authorizePermission('appointments', 'update'), rescheduleAppointment);
 router.post("/create-followup/:parentId", authenticateUser, authorizePermission('appointments', 'create'), createFollowUp);
+
+// Autocomplete routes for appointment creation
+router.get("/patients-autocomplete", authenticateUser, authorizePermission('appointments', 'read'), getPatientsForAppointment);
+router.get("/doctors-autocomplete", authenticateUser, authorizePermission('appointments', 'read'), getDoctorsForAppointment);
 
 // Task management routes
 router.get("/tasks", authenticateUser, authorizePermission('appointments', 'read'), async (req, res) => {

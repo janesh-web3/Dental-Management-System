@@ -1147,24 +1147,17 @@ const updatePatient = async (req, res) => {
 
 const getSinglePatient = async (req, res) => {
   try {
-    const patient = await Patient.findById(req.params.id)
-      .populate("appointments")
-      .populate({
-        path: "medicalDetails.treatmentPlanning.treatedByDoctor",
-        model: "Doctor",
-      })
-      .populate({
-        path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
-        model: "Doctor",
-      })
-      .populate({
-        path: "medicalDetails.treatmentPlanning.groupTreatmentDetails.treatedByDoctor",
-        model: "Doctor",
-      })
-      .populate({
-        path: "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatedByDoctor",
-        model: "Doctor",
+    // Validate MongoDB ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid patient ID",
+        details: "Patient ID format is invalid",
       });
+    }
+
+    // Find patient without strict population to avoid errors
+    const patient = await Patient.findById(req.params.id);
 
     if (!patient) {
       return res.status(404).json({
@@ -1172,11 +1165,51 @@ const getSinglePatient = async (req, res) => {
         message: "Patient not found",
       });
     }
+
+    // Try to populate appointments safely
+    try {
+      if (patient.appointments && patient.appointments.length > 0) {
+        await patient.populate("appointments");
+      }
+    } catch (populateError) {
+      console.warn("Could not populate appointments:", populateError.message);
+    }
+
+    // Safely try to populate doctor references
+    try {
+      await patient.populate([
+        {
+          path: "medicalDetails.treatmentPlanning.treatedByDoctor",
+          model: "Doctor",
+          options: { strictPopulate: false }
+        },
+        {
+          path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
+          model: "Doctor",
+          options: { strictPopulate: false }
+        },
+        {
+          path: "medicalDetails.treatmentPlanning.groupTreatmentDetails.treatedByDoctor",
+          model: "Doctor",
+          options: { strictPopulate: false }
+        },
+        {
+          path: "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatedByDoctor",
+          model: "Doctor",
+          options: { strictPopulate: false }
+        }
+      ]);
+    } catch (populateError) {
+      console.warn("Could not populate doctor references:", populateError.message);
+      // Continue without population if it fails
+    }
+
     res.status(200).json({
       success: true,
       data: patient,
     });
   } catch (error) {
+    console.error("Error in getSinglePatient:", error);
     res.status(400).json({
       success: false,
       error: "Invalid patient ID",

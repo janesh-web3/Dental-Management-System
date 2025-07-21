@@ -1,11 +1,47 @@
 const Appointment = require("../model/Appointment.js");
 const Doctor = require("../model/Doctor.js");
+const Patient = require("../model/Patient.js");
 const { createAndEmitNotification } = require("./notificationCtrl.js");
 const { getIO, notifyUser, notifyRoles } = require("../socket.js");
 
 const addAppointment = async (req, res) => {
   try {
-    const newAppointment = new Appointment(req.body);
+    let appointmentData = { ...req.body };
+    
+    // If no patientId is provided, create a new patient
+    if (!appointmentData.patientId) {
+      const newPatient = new Patient({
+        personalDetails: {
+          name: `${appointmentData.firstName} ${appointmentData.lastName}`,
+          age: appointmentData.age,
+          gender: appointmentData.gender,
+          contactNumber: appointmentData.phoneNumber,
+          emailAddress: appointmentData.email || "",
+          address: appointmentData.address || "",
+        },
+        emergencyContact: {
+          name: "",
+          relationship: "",
+          contactNumber: "",
+        },
+        insuranceDetails: {
+          provider: "",
+          policyNumber: "",
+          groupNumber: "",
+        },
+        medicalHistory: {
+          allergies: [],
+          medications: [],
+          previousTreatments: [],
+          chronicConditions: [],
+        }
+      });
+      
+      const savedPatient = await newPatient.save();
+      appointmentData.patientId = savedPatient._id;
+    }
+    
+    const newAppointment = new Appointment(appointmentData);
     const savedAppointment = await newAppointment.save();
     
     // If a doctor is specified, add the appointment to their list
@@ -95,17 +131,116 @@ const getAllAppointment = async (req, res) => {
           path: "doctor",
           model: "Doctor",
           select: "name specialization",
+        })
+        .populate({
+          path: "patientId",
+          model: "Patient",
+          select: "firstName lastName contactNumber email age gender",
         });
 
-      return res.status(200).json(allAppointment);
+      // Get patient follow-up dates
+      const currentDate = new Date();
+      const futureDate = new Date();
+      futureDate.setMonth(currentDate.getMonth() + 12); // Get next 12 months of follow-ups
+
+      const patientsWithFollowUps = await Patient.find({
+        isDeleted: { $ne: true },
+        $or: [
+          {
+            "medicalDetails.treatmentPlanning.followUpDate": {
+              $gte: currentDate,
+              $lte: futureDate
+            }
+          },
+          {
+            "medicalDetails.treatmentPlanning.groupTreatmentDetails.followUpDate": {
+              $gte: currentDate,
+              $lte: futureDate
+            }
+          }
+        ]
+      })
+      .select("personalDetails.name medicalDetails.treatmentPlanning")
+      .lean();
+
+      // Transform follow-up dates into appointment-like objects
+      const followUpEvents = [];
+      
+      patientsWithFollowUps.forEach(patient => {
+        if (patient.medicalDetails && patient.medicalDetails.length > 0) {
+          patient.medicalDetails.forEach(medical => {
+            if (medical.treatmentPlanning && medical.treatmentPlanning.length > 0) {
+              medical.treatmentPlanning.forEach(plan => {
+                // Check treatment planning follow-up date
+                if (plan.followUpDate && new Date(plan.followUpDate) >= currentDate) {
+                  followUpEvents.push({
+                    _id: `followup-tp-${patient._id}-${plan._id}`,
+                    firstName: patient.personalDetails?.name?.split(' ')[0] || 'Patient',
+                    lastName: patient.personalDetails?.name?.split(' ').slice(1).join(' ') || '',
+                    appointmentDate: new Date(plan.followUpDate).toISOString().split('T')[0],
+                    appointmentTime: '09:00',
+                    startDateTime: new Date(plan.followUpDate),
+                    endDateTime: new Date(new Date(plan.followUpDate).getTime() + 30 * 60000), // 30 minutes
+                    treatmentType: 'Follow-up',
+                    status: 'Follow-up',
+                    priority: 'standard',
+                    paymentStatus: 'N/A',
+                    subject: 'Treatment Follow-up',
+                    reason: 'Scheduled follow-up appointment',
+                    isFollowUp: true,
+                    patientId: patient._id,
+                    doctor: null
+                  });
+                }
+
+                // Check group treatment follow-up dates
+                if (plan.groupTreatmentDetails && plan.groupTreatmentDetails.length > 0) {
+                  plan.groupTreatmentDetails.forEach(group => {
+                    if (group.followUpDate && new Date(group.followUpDate) >= currentDate) {
+                      followUpEvents.push({
+                        _id: `followup-gt-${patient._id}-${group._id}`,
+                        firstName: patient.personalDetails?.name?.split(' ')[0] || 'Patient',
+                        lastName: patient.personalDetails?.name?.split(' ').slice(1).join(' ') || '',
+                        appointmentDate: new Date(group.followUpDate).toISOString().split('T')[0],
+                        appointmentTime: '09:00',
+                        startDateTime: new Date(group.followUpDate),
+                        endDateTime: new Date(new Date(group.followUpDate).getTime() + 30 * 60000), // 30 minutes
+                        treatmentType: `${group.groupName} Follow-up`,
+                        status: 'Follow-up',
+                        priority: 'standard',
+                        paymentStatus: 'N/A',
+                        subject: `${group.groupName} Follow-up`,
+                        reason: `Scheduled ${group.groupName} follow-up appointment`,
+                        isFollowUp: true,
+                        patientId: patient._id,
+                        doctor: group.treatedByDoctor || null
+                      });
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+
+      // Combine appointments and follow-ups
+      const combinedEvents = [...allAppointment, ...followUpEvents];
+      return res.status(200).json(combinedEvents);
     }
 
     // For table view, keep pagination
     const allAppointment = await Appointment.find(query).sort({ isCreated: -1 })
     .skip((page - 1) * limit)
-    .limit(parseInt(limit)).populate({
+    .limit(parseInt(limit))
+    .populate({
       path: "doctor",
       model: "Doctor",
+    })
+    .populate({
+      path: "patientId",
+      model: "Patient",
+      select: "firstName lastName contactNumber email age gender",
     })
 
     
@@ -479,6 +614,79 @@ const createFollowUp = async (req, res) => {
   }
 };
 
+// Get patients for appointment autocomplete
+const getPatientsForAppointment = async (req, res) => {
+  try {
+    const { search = "" } = req.query;
+    
+    const query = {
+      isDeleted: { $ne: true }
+    };
+    
+    if (search) {
+      query.$or = [
+        { "personalDetails.firstName": { $regex: search, $options: "i" } },
+        { "personalDetails.lastName": { $regex: search, $options: "i" } },
+        { "personalDetails.contactNumber": { $regex: search, $options: "i" } },
+        { "personalDetails.emailAddress": { $regex: search, $options: "i" } }
+      ];
+    }
+    
+    const patients = await Patient.find(query)
+      .select("personalDetails.firstName personalDetails.lastName personalDetails.contactNumber personalDetails.emailAddress personalDetails.age personalDetails.gender")
+      .limit(20)
+      .sort({ "personalDetails.firstName": 1 });
+    
+    res.status(200).json({
+      success: true,
+      patients
+    });
+  } catch (error) {
+    console.error("Error fetching patients for appointment:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch patients",
+      error: error.message
+    });
+  }
+};
+
+// Get doctors for appointment autocomplete
+const getDoctorsForAppointment = async (req, res) => {
+  try {
+    const { search = "" } = req.query;
+    
+    const query = {
+      isDeleted: { $ne: true },
+      isActive: true
+    };
+    
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { specialization: { $regex: search, $options: "i" } }
+      ];
+    }
+    
+    const doctors = await Doctor.find(query)
+      .select("name specialization contactNumber")
+      .limit(20)
+      .sort({ name: 1 });
+    
+    res.status(200).json({
+      success: true,
+      doctors
+    });
+  } catch (error) {
+    console.error("Error fetching doctors for appointment:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch doctors",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   addAppointment,
   getAllAppointment,
@@ -488,5 +696,7 @@ module.exports = {
   getDoctorAvailability,
   checkConflicts,
   rescheduleAppointment,
-  createFollowUp
+  createFollowUp,
+  getPatientsForAppointment,
+  getDoctorsForAppointment
 };

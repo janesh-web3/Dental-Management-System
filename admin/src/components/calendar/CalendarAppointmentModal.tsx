@@ -10,9 +10,6 @@ import {
   Clock, 
   User, 
   Stethoscope,
-  AlertTriangle,
-  DollarSign,
-  MapPin,
   FileText
 } from "lucide-react";
 
@@ -42,6 +39,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +54,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 // Enhanced appointment schema with new fields
 const appointmentFormSchema = z.object({
+  patientId: z.string().optional(), // New field for existing patient selection
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   age: z.string().min(1, "Age is required"),
@@ -97,6 +102,19 @@ interface Doctor {
   specialization?: string;
 }
 
+interface Patient {
+  _id: string;
+  personalDetails: {
+    firstName: string;
+    lastName: string;
+    contactNumber: string;
+    emailAddress?: string;
+    age: string;
+    gender: string;
+    address?: string;
+  };
+}
+
 const treatmentTypes = [
   "Consultation",
   "Cleaning", 
@@ -132,6 +150,11 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loadingPatients, setLoadingPatients] = useState(false);
+  const [patientSearchOpen, setPatientSearchOpen] = useState(false);
+  const [patientSearchQuery, setPatientSearchQuery] = useState("");
+  const [isNewPatient, setIsNewPatient] = useState(true);
   const { toast } = useToast();
 
   // Calculate default duration from slot if available
@@ -142,6 +165,7 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
   const form = useForm<CalendarAppointmentFormValues>({
     resolver: zodResolver(appointmentFormSchema),
     defaultValues: {
+      patientId: "",
       firstName: "",
       lastName: "",
       age: "",
@@ -170,6 +194,7 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
   useEffect(() => {
     if (editingAppointment && (mode === 'edit' || mode === 'view')) {
       form.reset({
+        patientId: editingAppointment.patientId?._id || "",
         firstName: editingAppointment.firstName || "",
         lastName: editingAppointment.lastName || "",
         age: editingAppointment.age || "",
@@ -192,22 +217,38 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
         isFollowUp: editingAppointment.isFollowUp || false,
         followUpReason: editingAppointment.followUpReason || "",
       });
+      
+      // Set patient selection state based on whether we have a patientId
+      setIsNewPatient(!editingAppointment.patientId?._id);
     }
   }, [editingAppointment, mode, form]);
 
-  // Fetch doctors when modal opens
+  // Fetch doctors and patients when modal opens
   useEffect(() => {
     if (isOpen && isAdmin) {
       fetchDoctors();
+      fetchPatients(); // Load initial patient list
     }
   }, [isOpen, isAdmin]);
+
+  // Debounced patient search
+  useEffect(() => {
+    if (patientSearchQuery) {
+      const timer = setTimeout(() => {
+        fetchPatients(patientSearchQuery);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      fetchPatients();
+    }
+  }, [patientSearchQuery]);
 
   const fetchDoctors = async () => {
     try {
       setLoadingDoctors(true);
-      const response = await crudRequest<Doctor[]>("GET", "/doctor/get-doctor");
-      if (response) {
-        setDoctors(response);
+      const response = await crudRequest<{doctors: Doctor[]}>("GET", "/appointment/doctors-autocomplete");
+      if (response?.doctors) {
+        setDoctors(response.doctors);
       }
     } catch (error) {
       console.error("Error fetching doctors:", error);
@@ -219,6 +260,62 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
     } finally {
       setLoadingDoctors(false);
     }
+  };
+
+  const fetchPatients = async (search = "") => {
+    try {
+      setLoadingPatients(true);
+      const queryParam = search ? `?search=${encodeURIComponent(search)}` : "";
+      const response = await crudRequest<{patients: Patient[]}>("GET", `/appointment/patients-autocomplete${queryParam}`);
+      if (response?.patients) {
+        setPatients(response.patients);
+      } else {
+        setPatients([]);
+      }
+    } catch (error) {
+      console.error("Error fetching patients:", error);
+      setPatients([]);
+      toast({
+        title: "Error",
+        description: "Failed to load patients. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPatients(false);
+    }
+  };
+
+  const handlePatientSelect = (patient: Patient) => {
+    // Auto-fill patient information
+    form.setValue("patientId", patient._id);
+    form.setValue("firstName", patient.personalDetails.firstName);
+    form.setValue("lastName", patient.personalDetails.lastName);
+    form.setValue("age", patient.personalDetails.age);
+    form.setValue("gender", patient.personalDetails.gender);
+    form.setValue("phoneNumber", patient.personalDetails.contactNumber);
+    form.setValue("address", patient.personalDetails.address || "");
+    
+    setIsNewPatient(false);
+    setPatientSearchOpen(false);
+    
+    toast({
+      title: "Patient Selected",
+      description: `Patient information auto-filled for ${patient.personalDetails.firstName} ${patient.personalDetails.lastName}`,
+    });
+  };
+
+  const handleNewPatient = () => {
+    // Clear patient selection and enable manual entry
+    form.setValue("patientId", "");
+    form.setValue("firstName", "");
+    form.setValue("lastName", "");
+    form.setValue("age", "");
+    form.setValue("gender", "Male");
+    form.setValue("phoneNumber", "");
+    form.setValue("address", "");
+    
+    setIsNewPatient(true);
+    setPatientSearchOpen(false);
   };
 
   const handleSaveAppointment = async (data: CalendarAppointmentFormValues) => {
@@ -239,6 +336,11 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
         endDateTime: endDateTime.toISOString(),
         doctor: data.doctor || doctorId || undefined,
       };
+
+      // Remove patientId if it's empty (for new patients)
+      if (!data.patientId || data.patientId === "") {
+        delete appointmentData.patientId;
+      }
 
       let response;
       if (mode === 'edit' && editingAppointment) {
@@ -350,6 +452,101 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* Patient Selection */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-medium">Patient Selection</h4>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={isNewPatient ? "default" : "outline"}
+                            size="sm"
+                            onClick={handleNewPatient}
+                            disabled={isReadOnly}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            New Patient
+                          </Button>
+                          <Popover open={patientSearchOpen} onOpenChange={setPatientSearchOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                type="button"
+                                variant={!isNewPatient ? "default" : "outline"}
+                                size="sm"
+                                disabled={isReadOnly}
+                              >
+                                <Search className="h-4 w-4 mr-2" />
+                                Select Existing Patient
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-0" align="start">
+                              <div className="flex flex-col">
+                                <div className="p-2 border-b">
+                                  <Input
+                                    placeholder="Search patients..."
+                                    value={patientSearchQuery}
+                                    onChange={(e) => setPatientSearchQuery(e.target.value)}
+                                    className="h-8"
+                                  />
+                                </div>
+                                <div className="max-h-64 overflow-y-auto">
+                                  {loadingPatients ? (
+                                    <div className="p-4 text-center text-sm text-muted-foreground">
+                                      <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                                      Loading patients...
+                                    </div>
+                                  ) : patients && patients.length > 0 ? (
+                                    <div className="p-1">
+                                      {patients.map((patient) => (
+                                        <div
+                                          key={patient._id}
+                                          className="flex items-center p-2 cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm"
+                                          onClick={() => handlePatientSelect(patient)}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              form.watch("patientId") === patient._id ? "opacity-100" : "opacity-0"
+                                            )}
+                                          />
+                                          <div className="flex flex-col flex-1">
+                                            <span className="text-sm">
+                                              {patient.personalDetails.firstName} {patient.personalDetails.lastName}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground">
+                                              {patient.personalDetails.contactNumber} • Age: {patient.personalDetails.age}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="p-4 text-center text-sm text-muted-foreground">
+                                      No patients found.
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      </div>
+                      
+                      {!isNewPatient && form.watch("patientId") && (
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-900">
+                              Patient: {form.watch("firstName")} {form.watch("lastName")}
+                            </span>
+                          </div>
+                          <div className="text-xs text-blue-700 mt-1">
+                            {form.watch("phoneNumber")} • Age: {form.watch("age")} • {form.watch("gender")}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -358,7 +555,7 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
                           <FormItem>
                             <FormLabel>First Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="First Name" {...field} disabled={isReadOnly} />
+                              <Input placeholder="First Name" {...field} disabled={isReadOnly || !isNewPatient} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -372,7 +569,7 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
                           <FormItem>
                             <FormLabel>Last Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="Last Name" {...field} disabled={isReadOnly} />
+                              <Input placeholder="Last Name" {...field} disabled={isReadOnly || !isNewPatient} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -388,7 +585,7 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
                           <FormItem>
                             <FormLabel>Age</FormLabel>
                             <FormControl>
-                              <Input placeholder="Age" {...field} disabled={isReadOnly} />
+                              <Input placeholder="Age" {...field} disabled={isReadOnly || !isNewPatient} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -401,7 +598,7 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Gender</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isReadOnly}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isReadOnly || !isNewPatient}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select gender" />
@@ -426,7 +623,7 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
                         <FormItem>
                           <FormLabel>Phone Number</FormLabel>
                           <FormControl>
-                            <Input placeholder="Phone Number" {...field} disabled={isReadOnly} />
+                            <Input placeholder="Phone Number" {...field} disabled={isReadOnly || !isNewPatient} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -440,7 +637,7 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
                         <FormItem>
                           <FormLabel>Address</FormLabel>
                           <FormControl>
-                            <Input placeholder="Address" {...field} disabled={isReadOnly} />
+                            <Input placeholder="Address" {...field} disabled={isReadOnly || !isNewPatient} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

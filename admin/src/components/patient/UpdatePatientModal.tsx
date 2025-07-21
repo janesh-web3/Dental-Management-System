@@ -1163,51 +1163,62 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
   return (
     <TooltipProvider>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-screen h-[100dvh] max-w-none m-0 p-0 rounded-none border-none bg-background/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-hidden">
-          <DialogHeader className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b shadow-sm">
-            <div className="flex flex-col space-y-3 px-4 py-4 sm:px-6">
-              {/* Top Row */}
-              <div className="flex items-center justify-between">
+        <DialogContent className="w-screen h-[100dvh] max-w-none m-0 p-0 rounded-none border-none bg-gradient-to-br from-background via-background/98 to-background/95 shadow-2xl backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 overflow-hidden">
+          <DialogHeader className="sticky top-0 z-50 bg-gradient-to-r from-background/98 via-background/95 to-background/98 backdrop-blur-xl border-b border-border/50 shadow-lg">
+            <div className="flex flex-col px-3 py-2">
+              {/* Compact Header */}
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <User className="h-5 w-5 text-primary" />
+                  <div className="relative flex-shrink-0">
+                    <div className="w-8 h-8 bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 rounded-lg flex items-center justify-center ring-1 ring-primary/10">
+                      <User className="h-4 w-4 text-primary" />
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <DialogTitle className="text-lg sm:text-xl font-semibold text-foreground truncate">
-                        {formData.personalDetails.name || 'Unnamed Patient'}
-                      </DialogTitle>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className="text-xs font-mono">
-                          ID: {patient?._id?.slice(-8) || 'N/A'}
+                    <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border border-background"></div>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <DialogTitle className="text-lg font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent leading-tight">
+                      {formData.personalDetails.name || 'Unnamed Patient'}
+                    </DialogTitle>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      <Badge variant="outline" className="text-xs font-mono bg-muted/50 border-muted-foreground/30 px-1.5 py-0.5">
+                        ID: {patient?._id?.slice(-8) || 'N/A'}
+                      </Badge>
+                      <Badge variant="default" className="text-xs font-medium px-1.5 py-0.5">
+                        {formData.medicalDetails.group || 'General'}
+                      </Badge>
+                      {formData.personalDetails.age && (
+                        <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+                          Age: {formData.personalDetails.age}
                         </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          {formData.medicalDetails.group || 'General'}
-                        </Badge>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <div className="hidden md:flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Progress:</span>
-                    <Progress value={overallProgress} className="w-20" />
-                    <span className="text-xs text-muted-foreground font-medium">{overallProgress}%</span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="hidden lg:flex items-center gap-2 bg-muted/30 rounded-md px-2 py-1">
+                    <span className="text-xs font-medium text-muted-foreground">Progress:</span>
+                    <Progress value={overallProgress} className="w-16 h-1.5" />
+                    <span className="text-xs font-bold text-foreground">{overallProgress}%</span>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8">
-                    <X className="h-4 w-4" />
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={onClose} 
+                    className="h-7 w-7 rounded-md hover:bg-destructive/10 hover:text-destructive transition-colors duration-200"
+                  >
+                    <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
               
-              {/* Mobile Progress */}
-              <div className="md:hidden">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Overall Progress</span>
-                  <span className="text-sm font-medium">{overallProgress}%</span>
+              {/* Compact Mobile Progress */}
+              <div className="lg:hidden mt-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-muted-foreground">Progress</span>
+                  <span className="text-xs font-bold text-foreground">{overallProgress}%</span>
                 </div>
-                <Progress value={overallProgress} className="w-full mt-2" />
+                <Progress value={overallProgress} className="w-full h-1.5" />
               </div>
             </div>
           </DialogHeader>
@@ -1215,35 +1226,34 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
-            className="flex flex-col h-[calc(100vh-6.5rem)]"
+            className="flex flex-col h-[calc(100vh-5rem)]"
           >
             <TabsList
-              className="grid w-full grid-cols-3 gap-1 px-4 py-3 bg-muted/30 backdrop-blur sticky top-[6.5rem] z-40 border-b shadow-sm"
+              className="grid w-full grid-cols-3 gap-1 px-3 py-2 bg-gradient-to-r from-muted/40 via-muted/30 to-muted/40 backdrop-blur-xl sticky top-[4rem] z-40 border-b border-border/30 shadow-lg"
               onKeyDown={handleKeyPress}
             >
               <Tooltip>
                 <TooltipTrigger asChild>
                   <TabsTrigger
                     value="personal"
-                    className="relative flex flex-col items-center gap-2 text-xs sm:text-sm transition-all duration-200 hover:bg-accent/80 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground p-3 sm:p-4 rounded-lg border border-transparent data-[state=active]:border-primary/20 data-[state=active]:shadow-md"
+                    className="relative flex flex-col items-center gap-1 text-xs transition-all duration-200 hover:bg-accent/80 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/90 data-[state=active]:text-primary-foreground p-2 rounded-lg border border-transparent data-[state=active]:border-primary/30 data-[state=active]:shadow-lg"
                     onFocus={() => setFocusedTab("personal")}
                     autoFocus
                   >
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-current/10 flex items-center justify-center">
-                        <User className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <div className="flex items-center gap-1">
+                      <div className="w-4 h-4 rounded-full bg-current/15 flex items-center justify-center">
+                        <User className="w-2.5 h-2.5" />
                       </div>
-                      <span className="hidden sm:inline font-medium">Personal Info</span>
-                      <span className="sm:hidden font-medium">Personal</span>
+                      <span className="font-medium text-xs">Personal</span>
                     </div>
-                    <div className="w-full space-y-1">
-                      <Progress value={progress.personal} className="w-full h-1.5" />
-                      <span className="text-xs opacity-80">{progress.personal}% complete</span>
+                    <div className="w-full">
+                      <Progress value={progress.personal} className="w-full h-1 bg-current/10" />
+                      <span className="text-xs opacity-80">{progress.personal}%</span>
                     </div>
                   </TabsTrigger>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>Personal information and contact details</p>
+                <TooltipContent side="bottom" className="text-xs p-1">
+                  <p>Personal info</p>
                 </TooltipContent>
               </Tooltip>
               
@@ -1251,24 +1261,23 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                 <TooltipTrigger asChild>
                   <TabsTrigger
                     value="medical"
-                    className="relative flex flex-col items-center gap-2 text-xs sm:text-sm transition-all duration-200 hover:bg-accent/80 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground p-3 sm:p-4 rounded-lg border border-transparent data-[state=active]:border-primary/20 data-[state=active]:shadow-md"
+                    className="relative flex flex-col items-center gap-1 text-xs transition-all duration-200 hover:bg-accent/80 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/90 data-[state=active]:text-primary-foreground p-2 rounded-lg border border-transparent data-[state=active]:border-primary/30 data-[state=active]:shadow-lg"
                     onFocus={() => setFocusedTab("medical")}
                   >
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-current/10 flex items-center justify-center">
-                        <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <div className="flex items-center gap-1">
+                      <div className="w-4 h-4 rounded-full bg-current/15 flex items-center justify-center">
+                        <Activity className="w-2.5 h-2.5" />
                       </div>
-                      <span className="hidden sm:inline font-medium">Medical & Treatment</span>
-                      <span className="sm:hidden font-medium">Medical</span>
+                      <span className="font-medium text-xs">Medical</span>
                     </div>
-                    <div className="w-full space-y-1">
-                      <Progress value={progress.medical} className="w-full h-1.5" />
-                      <span className="text-xs opacity-80">{progress.medical}% complete</span>
+                    <div className="w-full">
+                      <Progress value={progress.medical} className="w-full h-1 bg-current/10" />
+                      <span className="text-xs opacity-80">{progress.medical}%</span>
                     </div>
                   </TabsTrigger>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>Medical history and treatment plans</p>
+                <TooltipContent side="bottom" className="text-xs p-1">
+                  <p>Medical & treatments</p>
                 </TooltipContent>
               </Tooltip>
               
@@ -1276,186 +1285,220 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                 <TooltipTrigger asChild>
                   <TabsTrigger
                     value="documents"
-                    className="relative flex flex-col items-center gap-2 text-xs sm:text-sm transition-all duration-200 hover:bg-accent/80 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground p-3 sm:p-4 rounded-lg border border-transparent data-[state=active]:border-primary/20 data-[state=active]:shadow-md"
+                    className="relative flex flex-col items-center gap-1 text-xs transition-all duration-200 hover:bg-accent/80 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/90 data-[state=active]:text-primary-foreground p-2 rounded-lg border border-transparent data-[state=active]:border-primary/30 data-[state=active]:shadow-lg"
                   >
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-current/10 flex items-center justify-center">
-                        <FileDigit className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <div className="flex items-center gap-1">
+                      <div className="w-4 h-4 rounded-full bg-current/15 flex items-center justify-center">
+                        <FileDigit className="w-2.5 h-2.5" />
                       </div>
-                      <span className="hidden sm:inline font-medium">Documents</span>
-                      <span className="sm:hidden font-medium">Files</span>
+                      <span className="font-medium text-xs">Files</span>
                     </div>
-                    <div className="w-full space-y-1">
-                      <Progress value={progress.documents} className="w-full h-1.5" />
-                      <span className="text-xs opacity-80">{progress.documents}% complete</span>
+                    <div className="w-full">
+                      <Progress value={progress.documents} className="w-full h-1 bg-current/10" />
+                      <span className="text-xs opacity-80">{progress.documents}%</span>
                     </div>
                   </TabsTrigger>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>Patient documents and files</p>
+                <TooltipContent side="bottom" className="text-xs p-1">
+                  <p>Documents</p>
                 </TooltipContent>
               </Tooltip>
           </TabsList>
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 scroll-smooth">
             <TabsContent
               value="personal"
-              className="mt-0 focus-visible:outline-none focus-visible:ring-0 space-y-6 p-4 sm:p-6"
+              className="mt-0 focus-visible:outline-none focus-visible:ring-0 space-y-4 p-3 sm:p-4"
             >
               {/* Basic Information Section */}
               <Collapsible 
                 open={expandedSections.personalInfo} 
                 onOpenChange={() => toggleSection('personalInfo')}
               >
-                <Card className="border border-border/40 shadow-sm hover:shadow-md transition-all duration-200 bg-card/50 backdrop-blur">
+                <Card className="border border-border/40 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm ring-1 ring-border/20">
                   <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover:bg-muted/30 transition-all duration-200 p-4 sm:p-6 border-b border-border/20">
+                    <CardHeader className="cursor-pointer hover:bg-gradient-to-r hover:from-muted/40 hover:to-muted/20 transition-all duration-300 p-5 sm:p-7 border-b border-border/30 group">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center shadow-sm">
-                            <User className="h-6 w-6 text-primary" />
+                        <div className="flex items-center gap-5">
+                          <div className="relative w-14 h-14 bg-gradient-to-br from-primary/25 via-primary/15 to-primary/10 rounded-2xl flex items-center justify-center shadow-lg ring-2 ring-primary/10 group-hover:ring-primary/20 transition-all duration-300">
+                            <User className="h-7 w-7 text-primary drop-shadow-sm" />
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-green-400 to-green-500 rounded-full border-2 border-background shadow-sm"></div>
                           </div>
-                          <div>
-                            <CardTitle className="text-lg sm:text-xl font-semibold text-foreground">
+                          <div className="space-y-1">
+                            <CardTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
                               Basic Information
                             </CardTitle>
-                            <p className="text-sm text-muted-foreground mt-1 font-medium">
+                            <p className="text-sm text-muted-foreground font-medium leading-relaxed">
                               Personal details and contact information
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={progress.personal === 100 ? "default" : "secondary"} className="text-xs">
+                        <div className="flex items-center gap-3">
+                          <Badge 
+                            variant={progress.personal === 100 ? "default" : "secondary"} 
+                            className={`text-xs font-semibold px-3 py-1 ${
+                              progress.personal === 100 
+                                ? 'bg-green-500/90 text-white shadow-md' 
+                                : 'bg-yellow-500/90 text-white shadow-md'
+                            }`}
+                          >
                             {progress.personal}%
                           </Badge>
-                          {expandedSections.personalInfo ? 
-                            <ChevronUp className="h-5 w-5 text-muted-foreground" /> : 
-                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                          }
+                          <div className="p-1.5 rounded-full bg-muted/40 group-hover:bg-primary/10 transition-colors duration-200">
+                            {expandedSections.personalInfo ? 
+                              <ChevronUp className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" /> : 
+                              <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                            }
+                          </div>
                         </div>
                       </div>
                     </CardHeader>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <CardContent className="p-4 sm:p-6 pt-0">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div className="space-y-3">
-                          <Label htmlFor="sn" className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                    <CardContent className="p-5 sm:p-7 pt-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+                        <div className="space-y-3 group">
+                          <Label htmlFor="sn" className="text-sm font-semibold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
                             Serial Number
-                            <Badge variant="outline" className="text-xs px-1.5 py-0.5">Optional</Badge>
+                            <Badge variant="outline" className="text-xs px-2 py-0.5 bg-blue-50/50 text-blue-700 border-blue-200">Optional</Badge>
                             <Tooltip>
                               <TooltipTrigger>
-                                <Info className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+                                <Info className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
                               </TooltipTrigger>
-                              <TooltipContent side="top">
+                              <TooltipContent side="top" className="max-w-xs">
                                 <p>Unique serial number for patient identification</p>
                               </TooltipContent>
                             </Tooltip>
                           </Label>
-                          <Input
-                            id="sn"
-                            type="text"
-                            value={formData.personalDetails.sn}
-                            onChange={(e) => {
-                              handlePersonalChange("sn", e.target.value);
-                              setHasUnsavedChanges(true);
-                            }}
-                            className="h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/30 hover:border-primary/50 border-border/60"
-                            placeholder="e.g., P001, SN123"
-                          />
+                          <div className="relative">
+                            <Input
+                              id="sn"
+                              type="text"
+                              value={formData.personalDetails.sn}
+                              onChange={(e) => {
+                                handlePersonalChange("sn", e.target.value);
+                                setHasUnsavedChanges(true);
+                              }}
+                              className="h-12 transition-all duration-300 focus:ring-2 focus:ring-primary/30 focus:border-primary/50 hover:border-primary/30 border-border/60 bg-gradient-to-br from-background to-muted/5 shadow-sm focus:shadow-md pl-4 pr-10"
+                              placeholder="e.g., P001, SN123"
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-muted/30 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-mono text-muted-foreground">#</span>
+                            </div>
+                          </div>
                         </div>
 
-                        <div className="space-y-3">
-                          <Label htmlFor="name" className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                        <div className="space-y-3 group">
+                          <Label htmlFor="name" className="text-sm font-semibold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
                             Full Name
-                            <Badge variant="destructive" className="text-xs px-1.5 py-0.5">Required</Badge>
+                            <Badge variant="destructive" className="text-xs px-2 py-0.5 bg-red-50/80 text-red-700 border-red-200 shadow-sm">Required</Badge>
                           </Label>
-                          <Input
-                            id="name"
-                            value={formData.personalDetails.name}
-                            onChange={(e) => {
-                              handlePersonalChange("name", e.target.value);
-                              setHasUnsavedChanges(true);
-                              if (validationErrors.name) {
-                                setValidationErrors(prev => ({ ...prev, name: '' }));
-                              }
-                            }}
-                            className={`h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/30 hover:border-primary/50 border-border/60 ${
-                              validationErrors.name ? 'border-destructive focus:ring-destructive/30' : ''
-                            }`}
-                            placeholder="Enter patient's full name"
-                            required
-                          />
+                          <div className="relative">
+                            <Input
+                              id="name"
+                              value={formData.personalDetails.name}
+                              onChange={(e) => {
+                                handlePersonalChange("name", e.target.value);
+                                setHasUnsavedChanges(true);
+                                if (validationErrors.name) {
+                                  setValidationErrors(prev => ({ ...prev, name: '' }));
+                                }
+                              }}
+                              className={`h-12 transition-all duration-300 focus:ring-2 focus:ring-primary/30 focus:border-primary/50 hover:border-primary/30 border-border/60 bg-gradient-to-br from-background to-muted/5 shadow-sm focus:shadow-md pl-12 pr-4 ${
+                                validationErrors.name ? 'border-destructive focus:ring-destructive/30 bg-red-50/20' : ''
+                              }`}
+                              placeholder="Enter patient's full name"
+                              required
+                            />
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
+                              <User className="h-3.5 w-3.5 text-primary" />
+                            </div>
+                          </div>
                           {validationErrors.name && (
-                            <p className="text-xs text-destructive mt-1 flex items-center gap-1">
-                              <AlertTriangle className="h-3 w-3" />
-                              {validationErrors.name}
-                            </p>
+                            <div className="bg-red-50/50 border border-red-200/50 rounded-lg p-2">
+                              <p className="text-xs text-red-700 font-medium flex items-center gap-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                {validationErrors.name}
+                              </p>
+                            </div>
                           )}
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="contactNumber" className="text-sm font-medium flex items-center gap-2">
-                            <Phone className="h-3 w-3" />
+                        <div className="space-y-3 group">
+                          <Label htmlFor="contactNumber" className="text-sm font-semibold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
                             Contact Number
-                            <Badge variant="destructive" className="text-xs px-1 py-0">Required</Badge>
+                            <Badge variant="destructive" className="text-xs px-2 py-0.5 bg-red-50/80 text-red-700 border-red-200 shadow-sm">Required</Badge>
                           </Label>
-                          <Input
-                            id="contactNumber"
-                            type="tel"
-                            value={formData.personalDetails.contactNumber}
-                            onChange={(e) => {
-                              handlePersonalChange("contactNumber", e.target.value);
-                              setHasUnsavedChanges(true);
-                            }}
-                            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
-                            placeholder="Enter phone number"
-                            required
-                          />
+                          <div className="relative">
+                            <Input
+                              id="contactNumber"
+                              type="tel"
+                              value={formData.personalDetails.contactNumber}
+                              onChange={(e) => {
+                                handlePersonalChange("contactNumber", e.target.value);
+                                setHasUnsavedChanges(true);
+                              }}
+                              className="h-12 transition-all duration-300 focus:ring-2 focus:ring-primary/30 focus:border-primary/50 hover:border-primary/30 border-border/60 bg-gradient-to-br from-background to-muted/5 shadow-sm focus:shadow-md pl-12 pr-4"
+                              placeholder="Enter phone number"
+                              required
+                            />
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                              <Phone className="h-3.5 w-3.5 text-green-600" />
+                            </div>
+                          </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
-                            <Mail className="h-3 w-3" />
+                        <div className="space-y-3 group">
+                          <Label htmlFor="email" className="text-sm font-semibold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
                             Email Address
-                            <Badge variant="secondary" className="text-xs px-1 py-0">Optional</Badge>
+                            <Badge variant="secondary" className="text-xs px-2 py-0.5 bg-blue-50/50 text-blue-700 border-blue-200">Optional</Badge>
                           </Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            value={formData.personalDetails.emailAddress}
-                            onChange={(e) => {
-                              handlePersonalChange("emailAddress", e.target.value);
-                              setHasUnsavedChanges(true);
-                            }}
-                            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
-                            placeholder="Enter email address"
-                          />
+                          <div className="relative">
+                            <Input
+                              id="email"
+                              type="email"
+                              value={formData.personalDetails.emailAddress}
+                              onChange={(e) => {
+                                handlePersonalChange("emailAddress", e.target.value);
+                                setHasUnsavedChanges(true);
+                              }}
+                              className="h-12 transition-all duration-300 focus:ring-2 focus:ring-primary/30 focus:border-primary/50 hover:border-primary/30 border-border/60 bg-gradient-to-br from-background to-muted/5 shadow-sm focus:shadow-md pl-12 pr-4"
+                              placeholder="Enter email address"
+                            />
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                              <Mail className="h-3.5 w-3.5 text-blue-600" />
+                            </div>
+                          </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="age" className="text-sm font-medium flex items-center gap-2">
+                        <div className="space-y-3 group">
+                          <Label htmlFor="age" className="text-sm font-semibold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
                             Age
-                            <Badge variant="destructive" className="text-xs px-1 py-0">Required</Badge>
+                            <Badge variant="destructive" className="text-xs px-2 py-0.5 bg-red-50/80 text-red-700 border-red-200 shadow-sm">Required</Badge>
                           </Label>
-                          <Input
-                            id="age"
-                            type="number"
-                            min="1"
-                            max="120"
-                            value={formData.personalDetails.age}
-                            onChange={(e) => {
-                              handlePersonalChange("age", Number(e.target.value));
-                              setHasUnsavedChanges(true);
-                            }}
-                            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
-                            placeholder="Enter age"
-                            required
-                          />
+                          <div className="relative">
+                            <Input
+                              id="age"
+                              type="number"
+                              min="1"
+                              max="120"
+                              value={formData.personalDetails.age}
+                              onChange={(e) => {
+                                handlePersonalChange("age", Number(e.target.value));
+                                setHasUnsavedChanges(true);
+                              }}
+                              className="h-12 transition-all duration-300 focus:ring-2 focus:ring-primary/30 focus:border-primary/50 hover:border-primary/30 border-border/60 bg-gradient-to-br from-background to-muted/5 shadow-sm focus:shadow-md pl-12 pr-4"
+                              placeholder="Enter age"
+                              required
+                            />
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center">
+                              <Calendar className="h-3.5 w-3.5 text-purple-600" />
+                            </div>
+                          </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="gender" className="text-sm font-medium">
+                        <div className="space-y-3 group">
+                          <Label htmlFor="gender" className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
                             Gender
                           </Label>
                           <Select
@@ -1465,63 +1508,73 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                               setHasUnsavedChanges(true);
                             }}
                           >
-                            <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30">
+                            <SelectTrigger className="h-12 transition-all duration-300 focus:ring-2 focus:ring-primary/30 focus:border-primary/50 hover:border-primary/30 border-border/60 bg-gradient-to-br from-background to-muted/5 shadow-sm focus:shadow-md">
                               <SelectValue placeholder="Select gender" />
                             </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Male">Male</SelectItem>
-                              <SelectItem value="Female">Female</SelectItem>
-                              <SelectItem value="Other">Other</SelectItem>
+                            <SelectContent className="bg-background/95 backdrop-blur-sm border border-border/50 shadow-xl">
+                              <SelectItem value="Male" className="hover:bg-blue-50 hover:text-blue-900 transition-colors">👨 Male</SelectItem>
+                              <SelectItem value="Female" className="hover:bg-pink-50 hover:text-pink-900 transition-colors">👩 Female</SelectItem>
+                              <SelectItem value="Other" className="hover:bg-purple-50 hover:text-purple-900 transition-colors">⚧ Other</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="checkUpDate" className="text-sm font-medium flex items-center gap-2">
-                            <Calendar className="h-3 w-3" />
+                        <div className="space-y-3 group">
+                          <Label htmlFor="checkUpDate" className="text-sm font-semibold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
                             Check-up Date
                           </Label>
-                          <Input
-                            id="checkUpDate"
-                            type="date"
-                            value={formData.personalDetails.checkUpDate}
-                            onChange={(e) => {
-                              handlePersonalChange("checkUpDate", e.target.value);
-                              setHasUnsavedChanges(true);
-                            }}
-                            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
-                          />
+                          <div className="relative">
+                            <Input
+                              id="checkUpDate"
+                              type="date"
+                              value={formData.personalDetails.checkUpDate}
+                              onChange={(e) => {
+                                handlePersonalChange("checkUpDate", e.target.value);
+                                setHasUnsavedChanges(true);
+                              }}
+                              className="h-12 transition-all duration-300 focus:ring-2 focus:ring-primary/30 focus:border-primary/50 hover:border-primary/30 border-border/60 bg-gradient-to-br from-background to-muted/5 shadow-sm focus:shadow-md pl-12 pr-4"
+                            />
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center">
+                              <Calendar className="h-3.5 w-3.5 text-orange-600" />
+                            </div>
+                          </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="checkUpDateNp" className="text-sm font-medium">
+                        <div className="space-y-3 group">
+                          <Label htmlFor="checkUpDateNp" className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
                             Check-up Date (Nepali)
                           </Label>
-                          <NepaliDatePickerComponent
-                            value={formData.personalDetails.checkUpDateNp}
-                            onChange={(date: string) => {
-                              handlePersonalChange("checkUpDateNp", date);
-                              setHasUnsavedChanges(true);
-                            }}
-                            placeholder="Select Nepali date"
-                          />
+                          <div className="relative">
+                            <NepaliDatePickerComponent
+                              value={formData.personalDetails.checkUpDateNp}
+                              onChange={(date: string) => {
+                                handlePersonalChange("checkUpDateNp", date);
+                                setHasUnsavedChanges(true);
+                              }}
+                              placeholder="Select Nepali date"
+                            />
+                          </div>
                         </div>
 
-                        <div className="space-y-2 col-span-full">
-                          <Label htmlFor="address" className="text-sm font-medium flex items-center gap-2">
-                            <MapPin className="h-3 w-3" />
+                        <div className="space-y-3 col-span-full group">
+                          <Label htmlFor="address" className="text-sm font-semibold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
                             Address
                           </Label>
-                          <Textarea
-                            id="address"
-                            value={formData.personalDetails.address}
-                            onChange={(e) => {
-                              handlePersonalChange("address", e.target.value);
-                              setHasUnsavedChanges(true);
-                            }}
-                            className="min-h-[80px] resize-none transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
-                            placeholder="Enter full address"
-                          />
+                          <div className="relative">
+                            <Textarea
+                              id="address"
+                              value={formData.personalDetails.address}
+                              onChange={(e) => {
+                                handlePersonalChange("address", e.target.value);
+                                setHasUnsavedChanges(true);
+                              }}
+                              className="min-h-[100px] resize-none transition-all duration-300 focus:ring-2 focus:ring-primary/30 focus:border-primary/50 hover:border-primary/30 border-border/60 bg-gradient-to-br from-background to-muted/5 shadow-sm focus:shadow-md pl-12 pr-4 pt-4"
+                              placeholder="Enter full address with area, city, and postal code..."
+                            />
+                            <div className="absolute left-3 top-4 w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center">
+                              <MapPin className="h-3.5 w-3.5 text-indigo-600" />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -1756,7 +1809,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
 
             <TabsContent
               value="medical"
-              className="mt-0 focus-visible:outline-none focus-visible:ring-0 space-y-4"
+              className="mt-0 focus-visible:outline-none focus-visible:ring-0 space-y-4 p-3 sm:p-4"
             >
               {/* Medical Information Section */}
               <Card className="border border-border/50 shadow-sm hover:shadow-md transition-shadow">
@@ -2025,7 +2078,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
 
         <TabsContent
           value="documents"
-          className="mt-0 focus-visible:outline-none focus-visible:ring-0"
+          className="mt-0 focus-visible:outline-none focus-visible:ring-0 p-3 sm:p-4"
         >
           <Card className="border-none shadow-none">
             <CardHeader className="px-4 py-2">
@@ -2063,40 +2116,45 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
         </TabsContent>
           </ScrollArea>
           
-          {/* Enhanced Sticky Footer */}
-          <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t shadow-2xl z-50">
+          {/* Compact Footer */}
+          <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-r from-background/98 via-background/95 to-background/98 backdrop-blur-xl border-t border-border/40 shadow-lg z-50">
             {hasUnsavedChanges && (
-              <div className="px-4 py-2 bg-gradient-to-r from-yellow-50 to-yellow-100 border-b border-yellow-200">
+              <div className="px-3 py-1.5 bg-gradient-to-r from-amber-50/80 via-yellow-50/80 to-amber-50/80 border-b border-amber-200/50">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-yellow-600 flex-shrink-0" />
-                  <span className="text-sm font-medium text-yellow-800">
-                    You have unsaved changes
-                  </span>
+                  <div className="w-5 h-5 bg-amber-100 rounded-full flex items-center justify-center">
+                    <AlertTriangle className="h-3 w-3 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-xs font-semibold text-amber-800">
+                      Unsaved changes
+                    </span>
+                  </div>
+                  <div className="animate-pulse w-1.5 h-1.5 bg-amber-500 rounded-full"></div>
                 </div>
               </div>
             )}
             
-            <div className="p-4 sm:p-6">
-              <div className="flex items-center justify-between gap-4">
-                {/* Navigation Buttons */}
+            <div className="p-3">
+              <div className="flex items-center justify-between gap-3">
+                {/* Compact Navigation Buttons */}
                 <div className="flex items-center gap-2 flex-1">
                   <Button
                     variant="outline"
                     onClick={onClose}
-                    className="flex items-center gap-2 h-10 px-4 text-sm font-medium hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                    className="flex items-center gap-1 h-8 px-3 text-xs font-semibold hover:bg-red-50 hover:text-red-600 transition-all duration-200"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3 w-3" />
                     <span className="hidden sm:inline">Cancel</span>
                   </Button>
                   
                   {activeTab === "personal" && (
                     <Button
                       onClick={() => setActiveTab("medical")}
-                      className="flex items-center gap-2 h-10 px-4 text-sm font-medium"
+                      className="flex items-center gap-1 h-8 px-3 text-xs font-semibold bg-gradient-to-r from-primary to-primary/90 transition-all duration-200"
                     >
                       <span className="hidden sm:inline">Next: Medical</span>
                       <span className="sm:hidden">Next</span>
-                      <ArrowRight className="h-4 w-4" />
+                      <ArrowRight className="h-3 w-3" />
                     </Button>
                   )}
                   
@@ -2105,19 +2163,19 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                       <Button
                         variant="outline"
                         onClick={() => setActiveTab("personal")}
-                        className="flex items-center gap-2 h-10 px-4 text-sm font-medium"
+                        className="flex items-center gap-1 h-8 px-3 text-xs font-semibold hover:bg-muted/60 transition-all duration-200"
                       >
-                        <ArrowLeft className="h-4 w-4" />
+                        <ArrowLeft className="h-3 w-3" />
                         <span className="hidden sm:inline">Personal</span>
                         <span className="sm:hidden">Back</span>
                       </Button>
                       <Button
                         onClick={() => setActiveTab("documents")}
-                        className="flex items-center gap-2 h-10 px-4 text-sm font-medium"
+                        className="flex items-center gap-1 h-8 px-3 text-xs font-semibold bg-gradient-to-r from-primary to-primary/90 transition-all duration-200"
                       >
                         <span className="hidden sm:inline">Next: Documents</span>
                         <span className="sm:hidden">Next</span>
-                        <ArrowRight className="h-4 w-4" />
+                        <ArrowRight className="h-3 w-3" />
                       </Button>
                     </>
                   )}
@@ -2126,46 +2184,60 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                     <Button
                       variant="outline"
                       onClick={() => setActiveTab("medical")}
-                      className="flex items-center gap-2 h-10 px-4 text-sm font-medium"
+                      className="flex items-center gap-1 h-8 px-3 text-xs font-semibold hover:bg-muted/60 transition-all duration-200"
                     >
-                      <ArrowLeft className="h-4 w-4" />
+                      <ArrowLeft className="h-3 w-3" />
                       <span className="hidden sm:inline">Medical</span>
                       <span className="sm:hidden">Back</span>
                     </Button>
                   )}
                 </div>
                 
-                {/* Progress and Save */}
-                <div className="flex items-center gap-4 flex-shrink-0">
-                  <div className="hidden md:flex items-center gap-3">
+                {/* Compact Progress and Save */}
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="hidden md:flex items-center gap-2 bg-muted/30 rounded-lg px-2 py-1">
                     <div className="text-xs text-muted-foreground font-medium">
-                      Step {activeTab === 'personal' ? '1' : activeTab === 'medical' ? '2' : '3'} of 3
+                      Step {activeTab === 'personal' ? '1' : activeTab === 'medical' ? '2' : '3'}/3
                     </div>
                     <div className="flex items-center gap-1">
-                      {[1, 2, 3].map((step) => (
-                        <div
-                          key={step}
-                          className={`w-2 h-2 rounded-full transition-colors ${
-                            (step === 1 && activeTab === 'personal') ||
-                            (step === 2 && activeTab === 'medical') ||
-                            (step === 3 && activeTab === 'documents')
-                              ? 'bg-primary'
-                              : step < (activeTab === 'personal' ? 1 : activeTab === 'medical' ? 2 : 3)
-                              ? 'bg-primary/60'
-                              : 'bg-muted'
-                          }`}
-                        />
-                      ))}
+                      {[1, 2, 3].map((step) => {
+                        const isActive = (step === 1 && activeTab === 'personal') ||
+                                        (step === 2 && activeTab === 'medical') ||
+                                        (step === 3 && activeTab === 'documents');
+                        const isCompleted = step < (activeTab === 'personal' ? 1 : activeTab === 'medical' ? 2 : 3);
+                        
+                        return (
+                          <div
+                            key={step}
+                            className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                              isActive
+                                ? 'bg-primary scale-110'
+                                : isCompleted
+                                ? 'bg-green-500'
+                                : 'bg-muted border border-muted-foreground/30'
+                            }`}
+                          />
+                        );
+                      })}
                     </div>
                   </div>
                   
                   <Button 
                     onClick={handleFormSubmit}
                     disabled={isSubmitting}
-                    className="flex items-center gap-2 h-10 px-6 text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="flex items-center gap-2 h-9 px-4 text-xs font-bold bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Save className="h-4 w-4" />
-                    {isSubmitting ? "Saving..." : "Save Changes"}
+                    {isSubmitting ? (
+                      <>
+                        <div className="animate-spin w-3 h-3 border-2 border-white/30 border-t-white rounded-full"></div>
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-3 w-3" />
+                        <span>Save</span>
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>

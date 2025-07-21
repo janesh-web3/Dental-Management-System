@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,33 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, User, Activity, Wallet, FileDigit } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { 
+  Plus, 
+  User, 
+  Activity, 
+  Wallet, 
+  FileDigit, 
+  ChevronDown, 
+  ChevronUp, 
+  Phone, 
+  Mail, 
+  MapPin, 
+  Calendar, 
+  Heart, 
+  Stethoscope, 
+  AlertTriangle, 
+  Info,
+  Save,
+  X,
+  ArrowLeft,
+  ArrowRight
+} from "lucide-react";
 import { crudRequest } from "@/lib/api";
 import { useDoctorContext } from "@/contexts/DoctorContext";
 import { getToothPosition, getToothSide } from "@/helper/PatientHelper";
@@ -175,6 +201,14 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
     "personal"
   );
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    personalInfo: true,
+    medicalHistory: true,
+    treatmentPlans: true,
+    groupTreatments: false
+  });
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     personalDetails: {
@@ -216,7 +250,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
   });
 
   useEffect(() => {
-    if (patient) {
+    if (patient && patient.personalDetails && patient.medicalDetails?.[0]) {
       setFormData({
         personalDetails: {
           name: patient.personalDetails.name,
@@ -318,7 +352,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
   >(() => {
     const initialTeethMaps: Record<string, Record<string, ToothData>> = {};
 
-    patient.medicalDetails[0]?.treatmentPlanning.forEach((plan, planIndex) => {
+    patient?.medicalDetails?.[0]?.treatmentPlanning?.forEach((plan, planIndex) => {
       if (plan.selectedTeethDetails) {
         const mapKey = `0-${planIndex}`;
         initialTeethMaps[mapKey] = plan.selectedTeethDetails.reduce(
@@ -691,7 +725,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
       // Send the API request
       await crudRequest(
         "PUT",
-        `/patient/update-patient/${patient._id}`,
+        `/patient/update-patient/${patient?._id}`,
         formattedData
       );
 
@@ -1081,415 +1115,666 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
   };
 
   // Get all treatment documents
-  const allTreatmentDocuments = patient.medicalDetails.flatMap((record) =>
-    record.treatmentPlanning.flatMap(
-      (treatment) => treatment.treatmentDocuments || []
+  const allTreatmentDocuments = patient?.medicalDetails?.flatMap((record) =>
+    record?.treatmentPlanning?.flatMap(
+      (treatment) => treatment?.treatmentDocuments || []
     )
-  );
+  ) || [];
   
   // Get general patient documents
-  const patientDocuments = patient.documents || [];
+  const patientDocuments = patient?.documents || [];
+
+  // Progress calculation
+  const getTabProgress = () => {
+    const requiredFields = {
+      personal: ['name', 'contactNumber', 'age'],
+      medical: ['patientType', 'group'],
+      documents: []
+    };
+    
+    const personalComplete = requiredFields.personal.every(field => 
+      formData.personalDetails[field as keyof typeof formData.personalDetails]
+    );
+    const medicalComplete = requiredFields.medical.every(field => 
+      formData.medicalDetails[field as keyof typeof formData.medicalDetails]
+    );
+    
+    return {
+      personal: personalComplete ? 100 : 70,
+      medical: medicalComplete ? 100 : 60,
+      documents: 100
+    };
+  };
+
+  const progress = getTabProgress();
+  const overallProgress = Math.round(
+    (progress.personal + progress.medical + progress.documents) / 3
+  );
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // Early return if patient is not provided
+  if (!patient) {
+    return null;
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-screen h-[100dvh] max-w-none m-0 p-0 rounded-none border-none bg-background/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-hidden">
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="flex flex-col h-[calc(100vh-5rem)]"
-        >
-          <TabsList
-            className="grid w-full grid-cols-3 gap-2 px-2 py-1 text-center bg-muted/40 sticky z-40"
-            onKeyDown={handleKeyPress}
+    <TooltipProvider>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="w-screen h-[100dvh] max-w-none m-0 p-0 rounded-none border-none bg-background/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-hidden">
+          <DialogHeader className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b shadow-sm">
+            <div className="flex flex-col space-y-3 px-4 py-4 sm:px-6">
+              {/* Top Row */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <User className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <DialogTitle className="text-lg sm:text-xl font-semibold text-foreground truncate">
+                        {formData.personalDetails.name || 'Unnamed Patient'}
+                      </DialogTitle>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="text-xs font-mono">
+                          ID: {patient?._id?.slice(-8) || 'N/A'}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          {formData.medicalDetails.group || 'General'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="hidden md:flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Progress:</span>
+                    <Progress value={overallProgress} className="w-20" />
+                    <span className="text-xs text-muted-foreground font-medium">{overallProgress}%</span>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Mobile Progress */}
+              <div className="md:hidden">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Overall Progress</span>
+                  <span className="text-sm font-medium">{overallProgress}%</span>
+                </div>
+                <Progress value={overallProgress} className="w-full mt-2" />
+              </div>
+            </div>
+          </DialogHeader>
+
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="flex flex-col h-[calc(100vh-6.5rem)]"
           >
-            <TabsTrigger
-              value="personal"
-              className="flex items-center justify-center gap-1 text-sm sm:text-base sm:gap-2 transition-all duration-200 hover:bg-accent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-              onFocus={() => setFocusedTab("personal")}
-              autoFocus
+            <TabsList
+              className="grid w-full grid-cols-3 gap-1 px-4 py-3 bg-muted/30 backdrop-blur sticky top-[6.5rem] z-40 border-b shadow-sm"
+              onKeyDown={handleKeyPress}
             >
-              <User className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span>Personal Info</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="medical"
-              className="flex items-center justify-center gap-1 text-sm sm:text-base sm:gap-2 transition-all duration-200 hover:bg-accent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-              onFocus={() => setFocusedTab("medical")}
-            >
-              <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span>Treatment Details</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="documents"
-              className="flex items-center justify-center gap-1 text-sm sm:text-base sm:gap-2 transition-all duration-200 hover:bg-accent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              <FileDigit className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span>Documents</span>
-            </TabsTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger
+                    value="personal"
+                    className="relative flex flex-col items-center gap-2 text-xs sm:text-sm transition-all duration-200 hover:bg-accent/80 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground p-3 sm:p-4 rounded-lg border border-transparent data-[state=active]:border-primary/20 data-[state=active]:shadow-md"
+                    onFocus={() => setFocusedTab("personal")}
+                    autoFocus
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-current/10 flex items-center justify-center">
+                        <User className="w-3 h-3 sm:w-4 sm:h-4" />
+                      </div>
+                      <span className="hidden sm:inline font-medium">Personal Info</span>
+                      <span className="sm:hidden font-medium">Personal</span>
+                    </div>
+                    <div className="w-full space-y-1">
+                      <Progress value={progress.personal} className="w-full h-1.5" />
+                      <span className="text-xs opacity-80">{progress.personal}% complete</span>
+                    </div>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Personal information and contact details</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger
+                    value="medical"
+                    className="relative flex flex-col items-center gap-2 text-xs sm:text-sm transition-all duration-200 hover:bg-accent/80 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground p-3 sm:p-4 rounded-lg border border-transparent data-[state=active]:border-primary/20 data-[state=active]:shadow-md"
+                    onFocus={() => setFocusedTab("medical")}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-current/10 flex items-center justify-center">
+                        <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
+                      </div>
+                      <span className="hidden sm:inline font-medium">Medical & Treatment</span>
+                      <span className="sm:hidden font-medium">Medical</span>
+                    </div>
+                    <div className="w-full space-y-1">
+                      <Progress value={progress.medical} className="w-full h-1.5" />
+                      <span className="text-xs opacity-80">{progress.medical}% complete</span>
+                    </div>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Medical history and treatment plans</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger
+                    value="documents"
+                    className="relative flex flex-col items-center gap-2 text-xs sm:text-sm transition-all duration-200 hover:bg-accent/80 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground p-3 sm:p-4 rounded-lg border border-transparent data-[state=active]:border-primary/20 data-[state=active]:shadow-md"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-current/10 flex items-center justify-center">
+                        <FileDigit className="w-3 h-3 sm:w-4 sm:h-4" />
+                      </div>
+                      <span className="hidden sm:inline font-medium">Documents</span>
+                      <span className="sm:hidden font-medium">Files</span>
+                    </div>
+                    <div className="w-full space-y-1">
+                      <Progress value={progress.documents} className="w-full h-1.5" />
+                      <span className="text-xs opacity-80">{progress.documents}% complete</span>
+                    </div>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Patient documents and files</p>
+                </TooltipContent>
+              </Tooltip>
           </TabsList>
 
-          <div className="flex-1 overflow-y-auto px-2 py-2">
+          <ScrollArea className="flex-1">
             <TabsContent
               value="personal"
-              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
+              className="mt-0 focus-visible:outline-none focus-visible:ring-0 space-y-6 p-4 sm:p-6"
             >
-              <Card className="border-none shadow-none">
-                <CardContent className="p-4">
-                  <div className="border-b pb-4">
-                    <h3 className="text-lg font-semibold text-primary">
-                      Personal Information
-                    </h3>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 p-2">
-                    <div className="space-y-3">
-                      <Label htmlFor="sn" className="text-sm font-medium">
-                        S.N
-                      </Label>
-                      <Input
-                        id="sn"
-                        type="sn"
-                        value={formData.personalDetails.sn}
-                        onChange={(e) =>
-                          handlePersonalChange("sn", e.target.value)
-                        }
-                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label htmlFor="name" className="text-sm font-medium">
-                        Full Name
-                      </Label>
-                      <Input
-                        id="name"
-                        value={formData.personalDetails.name}
-                        onChange={(e) =>
-                          handlePersonalChange("name", e.target.value)
-                        }
-                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label
-                        htmlFor="contactNumber"
-                        className="text-sm font-medium"
-                      >
-                        Contact Number
-                      </Label>
-                      <Input
-                        id="contactNumber"
-                        value={formData.personalDetails.contactNumber}
-                        onChange={(e) =>
-                          handlePersonalChange("contactNumber", e.target.value)
-                        }
-                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label htmlFor="email" className="text-sm font-medium">
-                        Email Address
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.personalDetails.emailAddress}
-                        onChange={(e) =>
-                          handlePersonalChange("emailAddress", e.target.value)
-                        }
-                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label htmlFor="age" className="text-sm font-medium">
-                        Age
-                      </Label>
-                      <Input
-                        id="age"
-                        type="number"
-                        value={formData.personalDetails.age}
-                        onChange={(e) =>
-                          handlePersonalChange("age", Number(e.target.value))
-                        }
-                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label htmlFor="gender" className="text-sm font-medium">
-                        Gender
-                      </Label>
-                      <Select
-                        value={formData.personalDetails.gender}
-                        onValueChange={(value) =>
-                          handlePersonalChange("gender", value)
-                        }
-                      >
-                        <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                          <SelectValue placeholder="Select gender" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Male">Male</SelectItem>
-                          <SelectItem value="Female">Female</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label
-                        htmlFor="checkUpDate"
-                        className="text-sm font-medium"
-                      >
-                        Check-up Date
-                      </Label>
-                      <Input
-                        id="checkUpDate"
-                        type="date"
-                        value={formData.personalDetails.checkUpDate}
-                        onChange={(e) =>
-                          handlePersonalChange("checkUpDate", e.target.value)
-                        }
-                        className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label htmlFor="checkUpDateNp" className="text-sm font-medium">
-                        Check-up Date (Nepali)
-                      </Label>
-                      <NepaliDatePickerComponent
-                        value={formData.personalDetails.checkUpDateNp}
-                        onChange={(date: string) => handlePersonalChange("checkUpDateNp", date)}
-                        placeholder="Select Nepali date"
-                      />
-                    </div>
-
-                    <div className="space-y-3 col">
-                      <Label htmlFor="address" className="text-sm font-medium">
-                        Address
-                      </Label>
-                      <Textarea
-                        id="address"
-                        value={formData.personalDetails.address}
-                        onChange={(e) =>
-                          handlePersonalChange("address", e.target.value)
-                        }
-                        className="min-h-[100px] transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Add Chief Complaint Section */}
-                  <div className="mt-6 border-t pt-4">
-                    <h3 className="text-lg font-semibold text-primary mb-3">
-                      Chief Complaint
-                    </h3>
-                    <div className="space-y-2">
-                      <Label htmlFor="chiefComplaint">
-                        Patient's Main Concern
-                      </Label>
-                      <Textarea
-                        id="chiefComplaint"
-                        placeholder="Enter patient's chief complaint"
-                        className="min-h-[120px] transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                        value={formData.medicalDetails.chiefComplaint || ""}
-                        onChange={(e) =>
-                          handleMedicalChange("chiefComplaint", e.target.value)
-                        }
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="mt-6">
-                <CardContent className="p-4">
-                  <div className="space-y-6">
-                    <div className="border-b pb-4">
-                      <h3 className="text-lg font-semibold text-primary">
-                        Medical History
-                      </h3>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Blood Pressure</Label>
-                        <Input
-                          value={
-                            formData.medicalDetails.medicalHistory.bloodPressure
-                          }
-                          onChange={(e) =>
-                            handleMedicalHistoryChange(
-                              "bloodPressure",
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g. 120/80"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Allergies</Label>
-                        <Input
-                          value={
-                            formData.medicalDetails.medicalHistory.allergies
-                          }
-                          onChange={(e) =>
-                            handleMedicalHistoryChange(
-                              "allergies",
-                              e.target.value
-                            )
-                          }
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Other Conditions</Label>
-                        <Textarea
-                          value={
-                            formData.medicalDetails.medicalHistory
-                              .otherConditions
-                          }
-                          onChange={(e) =>
-                            handleMedicalHistoryChange(
-                              "otherConditions",
-                              e.target.value
-                            )
-                          }
-                        />
-                      </div>
-
-                      <div className="col-span-2 grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="diabetes"
-                            checked={
-                              formData.medicalDetails.medicalHistory.diabetes
-                            }
-                            onCheckedChange={(checked) =>
-                              handleMedicalHistoryChange("diabetes", checked)
-                            }
-                          />
-                          <Label htmlFor="diabetes">Diabetes</Label>
+              {/* Basic Information Section */}
+              <Collapsible 
+                open={expandedSections.personalInfo} 
+                onOpenChange={() => toggleSection('personalInfo')}
+              >
+                <Card className="border border-border/40 shadow-sm hover:shadow-md transition-all duration-200 bg-card/50 backdrop-blur">
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover:bg-muted/30 transition-all duration-200 p-4 sm:p-6 border-b border-border/20">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center shadow-sm">
+                            <User className="h-6 w-6 text-primary" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg sm:text-xl font-semibold text-foreground">
+                              Basic Information
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground mt-1 font-medium">
+                              Personal details and contact information
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="thyroid"
-                            checked={
-                              formData.medicalDetails.medicalHistory.thyroid
-                            }
-                            onCheckedChange={(checked) =>
-                              handleMedicalHistoryChange("thyroid", checked)
-                            }
-                          />
-                          <Label htmlFor="thyroid">Thyroid</Label>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={progress.personal === 100 ? "default" : "secondary"} className="text-xs">
+                            {progress.personal}%
+                          </Badge>
+                          {expandedSections.personalInfo ? 
+                            <ChevronUp className="h-5 w-5 text-muted-foreground" /> : 
+                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                          }
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="bleedingDisorder"
-                            checked={
-                              formData.medicalDetails.medicalHistory
-                                .bleedingDisorder
-                            }
-                            onCheckedChange={(checked) =>
-                              handleMedicalHistoryChange(
-                                "bleedingDisorder",
-                                checked
-                              )
-                            }
-                          />
-                          <Label htmlFor="bleedingDisorder">
-                            Bleeding Disorder
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="p-4 sm:p-6 pt-0">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="space-y-3">
+                          <Label htmlFor="sn" className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                            Serial Number
+                            <Badge variant="outline" className="text-xs px-1.5 py-0.5">Optional</Badge>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Info className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p>Unique serial number for patient identification</p>
+                              </TooltipContent>
+                            </Tooltip>
                           </Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="pregnancy"
-                            checked={
-                              formData.medicalDetails.medicalHistory.pregnancy
-                            }
-                            onCheckedChange={(checked) =>
-                              handleMedicalHistoryChange("pregnancy", checked)
-                            }
+                          <Input
+                            id="sn"
+                            type="text"
+                            value={formData.personalDetails.sn}
+                            onChange={(e) => {
+                              handlePersonalChange("sn", e.target.value);
+                              setHasUnsavedChanges(true);
+                            }}
+                            className="h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/30 hover:border-primary/50 border-border/60"
+                            placeholder="e.g., P001, SN123"
                           />
-                          <Label htmlFor="pregnancy">Pregnancy</Label>
                         </div>
 
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="asthma"
-                            checked={
-                              formData.medicalDetails.medicalHistory.asthma
-                            }
-                            onCheckedChange={(checked) =>
-                              handleMedicalHistoryChange("asthma", checked)
-                            }
+                        <div className="space-y-3">
+                          <Label htmlFor="name" className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                            Full Name
+                            <Badge variant="destructive" className="text-xs px-1.5 py-0.5">Required</Badge>
+                          </Label>
+                          <Input
+                            id="name"
+                            value={formData.personalDetails.name}
+                            onChange={(e) => {
+                              handlePersonalChange("name", e.target.value);
+                              setHasUnsavedChanges(true);
+                              if (validationErrors.name) {
+                                setValidationErrors(prev => ({ ...prev, name: '' }));
+                              }
+                            }}
+                            className={`h-11 transition-all duration-200 focus:ring-2 focus:ring-primary/30 hover:border-primary/50 border-border/60 ${
+                              validationErrors.name ? 'border-destructive focus:ring-destructive/30' : ''
+                            }`}
+                            placeholder="Enter patient's full name"
+                            required
                           />
-                          <Label htmlFor="asthma">Asthma</Label>
+                          {validationErrors.name && (
+                            <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              {validationErrors.name}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="contactNumber" className="text-sm font-medium flex items-center gap-2">
+                            <Phone className="h-3 w-3" />
+                            Contact Number
+                            <Badge variant="destructive" className="text-xs px-1 py-0">Required</Badge>
+                          </Label>
+                          <Input
+                            id="contactNumber"
+                            type="tel"
+                            value={formData.personalDetails.contactNumber}
+                            onChange={(e) => {
+                              handlePersonalChange("contactNumber", e.target.value);
+                              setHasUnsavedChanges(true);
+                            }}
+                            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
+                            placeholder="Enter phone number"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
+                            <Mail className="h-3 w-3" />
+                            Email Address
+                            <Badge variant="secondary" className="text-xs px-1 py-0">Optional</Badge>
+                          </Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={formData.personalDetails.emailAddress}
+                            onChange={(e) => {
+                              handlePersonalChange("emailAddress", e.target.value);
+                              setHasUnsavedChanges(true);
+                            }}
+                            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
+                            placeholder="Enter email address"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="age" className="text-sm font-medium flex items-center gap-2">
+                            Age
+                            <Badge variant="destructive" className="text-xs px-1 py-0">Required</Badge>
+                          </Label>
+                          <Input
+                            id="age"
+                            type="number"
+                            min="1"
+                            max="120"
+                            value={formData.personalDetails.age}
+                            onChange={(e) => {
+                              handlePersonalChange("age", Number(e.target.value));
+                              setHasUnsavedChanges(true);
+                            }}
+                            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
+                            placeholder="Enter age"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="gender" className="text-sm font-medium">
+                            Gender
+                          </Label>
+                          <Select
+                            value={formData.personalDetails.gender}
+                            onValueChange={(value) => {
+                              handlePersonalChange("gender", value);
+                              setHasUnsavedChanges(true);
+                            }}
+                          >
+                            <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30">
+                              <SelectValue placeholder="Select gender" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Male">Male</SelectItem>
+                              <SelectItem value="Female">Female</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="checkUpDate" className="text-sm font-medium flex items-center gap-2">
+                            <Calendar className="h-3 w-3" />
+                            Check-up Date
+                          </Label>
+                          <Input
+                            id="checkUpDate"
+                            type="date"
+                            value={formData.personalDetails.checkUpDate}
+                            onChange={(e) => {
+                              handlePersonalChange("checkUpDate", e.target.value);
+                              setHasUnsavedChanges(true);
+                            }}
+                            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="checkUpDateNp" className="text-sm font-medium">
+                            Check-up Date (Nepali)
+                          </Label>
+                          <NepaliDatePickerComponent
+                            value={formData.personalDetails.checkUpDateNp}
+                            onChange={(date: string) => {
+                              handlePersonalChange("checkUpDateNp", date);
+                              setHasUnsavedChanges(true);
+                            }}
+                            placeholder="Select Nepali date"
+                          />
+                        </div>
+
+                        <div className="space-y-2 col-span-full">
+                          <Label htmlFor="address" className="text-sm font-medium flex items-center gap-2">
+                            <MapPin className="h-3 w-3" />
+                            Address
+                          </Label>
+                          <Textarea
+                            id="address"
+                            value={formData.personalDetails.address}
+                            onChange={(e) => {
+                              handlePersonalChange("address", e.target.value);
+                              setHasUnsavedChanges(true);
+                            }}
+                            className="min-h-[80px] resize-none transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
+                            placeholder="Enter full address"
+                          />
                         </div>
                       </div>
-                    </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
 
-                    {/* Add this checkbox prominently at the top of the medical history section: */}
-                    <div className="col-span-2 flex items-center gap-2 p-3 border rounded-md bg-muted/30 mb-4">
-                      <Checkbox
-                        id="noMedicalIssues"
-                        checked={
-                          formData.medicalDetails.medicalHistory.noMedicalIssues
-                        }
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            // Clear all other medical history fields when this is checked
-                            setFormData((prev) => ({
-                              ...prev,
-                              medicalDetails: {
-                                ...prev.medicalDetails,
-                                medicalHistory: {
-                                  bloodPressure: "",
-                                  diabetes: false,
-                                  thyroid: false,
-                                  bleedingDisorder: false,
-                                  pregnancy: false,
-                                  asthma: false,
-                                  allergies: "",
-                                  otherConditions: "",
-                                  noMedicalIssues: true,
-                                },
-                              },
-                            }));
-                          } else {
-                            handleMedicalHistoryChange(
-                              "noMedicalIssues",
-                              checked
-                            );
-                          }
-                        }}
-                      />
-                      <Label htmlFor="noMedicalIssues" className="font-medium">
-                        No Medical Issues
-                      </Label>
+              {/* Chief Complaint Section */}
+              <Card className="border border-border/50 shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="p-3 sm:p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-500/10 rounded-lg">
+                      <Stethoscope className="h-4 w-4 text-blue-600" />
                     </div>
+                    <div>
+                      <CardTitle className="text-base sm:text-lg">Chief Complaint</CardTitle>
+                      <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                        Patient's primary concern or reason for visit
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-4 pt-0">
+                  <div className="space-y-2">
+                    <Label htmlFor="chiefComplaint" className="text-sm font-medium">
+                      Main Concern
+                    </Label>
+                    <Textarea
+                      id="chiefComplaint"
+                      placeholder="Describe the patient's main complaint or concern..."
+                      className="min-h-[100px] resize-none transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
+                      value={formData.medicalDetails.chiefComplaint || ""}
+                      onChange={(e) => {
+                        handleMedicalChange("chiefComplaint", e.target.value);
+                        setHasUnsavedChanges(true);
+                      }}
+                    />
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Medical History Section */}
+              <Collapsible 
+                open={expandedSections.medicalHistory} 
+                onOpenChange={() => toggleSection('medicalHistory')}
+              >
+                <Card className="border border-border/50 shadow-sm hover:shadow-md transition-shadow">
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors p-3 sm:p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-red-500/10 rounded-lg">
+                            <Heart className="h-4 w-4 text-red-600" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-base sm:text-lg">Medical History</CardTitle>
+                            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                              Past medical conditions and health information
+                            </p>
+                          </div>
+                        </div>
+                        {expandedSections.medicalHistory ? 
+                          <ChevronUp className="h-4 w-4" /> : 
+                          <ChevronDown className="h-4 w-4" />
+                        }
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="p-3 sm:p-4 pt-0">
+                      <div className="space-y-6">
+
+                        {/* Quick "No Medical Issues" Toggle */}
+                        <div className="p-4 border-2 border-dashed border-muted-foreground/30 rounded-lg bg-muted/20">
+                          <div className="flex items-center gap-3">
+                            <Checkbox
+                              id="noMedicalIssues"
+                              checked={formData.medicalDetails.medicalHistory.noMedicalIssues}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    medicalDetails: {
+                                      ...prev.medicalDetails,
+                                      medicalHistory: {
+                                        bloodPressure: "",
+                                        diabetes: false,
+                                        thyroid: false,
+                                        bleedingDisorder: false,
+                                        pregnancy: false,
+                                        asthma: false,
+                                        allergies: "",
+                                        otherConditions: "",
+                                        noMedicalIssues: true,
+                                      },
+                                    },
+                                  }));
+                                } else {
+                                  handleMedicalHistoryChange("noMedicalIssues", checked);
+                                }
+                                setHasUnsavedChanges(true);
+                              }}
+                            />
+                            <Label htmlFor="noMedicalIssues" className="font-medium flex items-center gap-2">
+                              <AlertTriangle className="h-4 w-4 text-green-600" />
+                              No Medical Issues
+                            </Label>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2 ml-6">
+                            Check this if the patient has no significant medical history
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Blood Pressure</Label>
+                            <Input
+                              value={formData.medicalDetails.medicalHistory.bloodPressure}
+                              onChange={(e) => {
+                                handleMedicalHistoryChange("bloodPressure", e.target.value);
+                                setHasUnsavedChanges(true);
+                              }}
+                              placeholder="e.g. 120/80"
+                              className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
+                              disabled={formData.medicalDetails.medicalHistory.noMedicalIssues}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Allergies</Label>
+                            <Input
+                              value={formData.medicalDetails.medicalHistory.allergies}
+                              onChange={(e) => {
+                                handleMedicalHistoryChange("allergies", e.target.value);
+                                setHasUnsavedChanges(true);
+                              }}
+                              placeholder="List any known allergies"
+                              className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
+                              disabled={formData.medicalDetails.medicalHistory.noMedicalIssues}
+                            />
+                          </div>
+
+                          <div className="space-y-2 col-span-full md:col-span-1">
+                            <Label className="text-sm font-medium">Other Conditions</Label>
+                            <Textarea
+                              value={formData.medicalDetails.medicalHistory.otherConditions}
+                              onChange={(e) => {
+                                handleMedicalHistoryChange("otherConditions", e.target.value);
+                                setHasUnsavedChanges(true);
+                              }}
+                              placeholder="Describe any other medical conditions"
+                              className="min-h-[80px] resize-none transition-all duration-200 focus:ring-2 focus:ring-primary/20 hover:border-primary/30"
+                              disabled={formData.medicalDetails.medicalHistory.noMedicalIssues}
+                            />
+                          </div>
+                        </div>
+
+                        <Separator className="my-4" />
+                        
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium text-muted-foreground">Medical Conditions</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <div className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted/50 transition-colors">
+                              <Checkbox
+                                id="diabetes"
+                                checked={formData.medicalDetails.medicalHistory.diabetes}
+                                onCheckedChange={(checked) => {
+                                  handleMedicalHistoryChange("diabetes", checked);
+                                  setHasUnsavedChanges(true);
+                                }}
+                                disabled={formData.medicalDetails.medicalHistory.noMedicalIssues}
+                              />
+                              <Label htmlFor="diabetes" className="text-sm">Diabetes</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted/50 transition-colors">
+                              <Checkbox
+                                id="thyroid"
+                                checked={formData.medicalDetails.medicalHistory.thyroid}
+                                onCheckedChange={(checked) => {
+                                  handleMedicalHistoryChange("thyroid", checked);
+                                  setHasUnsavedChanges(true);
+                                }}
+                                disabled={formData.medicalDetails.medicalHistory.noMedicalIssues}
+                              />
+                              <Label htmlFor="thyroid" className="text-sm">Thyroid</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted/50 transition-colors">
+                              <Checkbox
+                                id="bleedingDisorder"
+                                checked={formData.medicalDetails.medicalHistory.bleedingDisorder}
+                                onCheckedChange={(checked) => {
+                                  handleMedicalHistoryChange("bleedingDisorder", checked);
+                                  setHasUnsavedChanges(true);
+                                }}
+                                disabled={formData.medicalDetails.medicalHistory.noMedicalIssues}
+                              />
+                              <Label htmlFor="bleedingDisorder" className="text-sm">Bleeding Disorder</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted/50 transition-colors">
+                              <Checkbox
+                                id="pregnancy"
+                                checked={formData.medicalDetails.medicalHistory.pregnancy}
+                                onCheckedChange={(checked) => {
+                                  handleMedicalHistoryChange("pregnancy", checked);
+                                  setHasUnsavedChanges(true);
+                                }}
+                                disabled={formData.medicalDetails.medicalHistory.noMedicalIssues}
+                              />
+                              <Label htmlFor="pregnancy" className="text-sm">Pregnancy</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted/50 transition-colors">
+                              <Checkbox
+                                id="asthma"
+                                checked={formData.medicalDetails.medicalHistory.asthma}
+                                onCheckedChange={(checked) => {
+                                  handleMedicalHistoryChange("asthma", checked);
+                                  setHasUnsavedChanges(true);
+                                }}
+                                disabled={formData.medicalDetails.medicalHistory.noMedicalIssues}
+                              />
+                              <Label htmlFor="asthma" className="text-sm">Asthma</Label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+
             </TabsContent>
 
             <TabsContent
               value="medical"
-              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
+              className="mt-0 focus-visible:outline-none focus-visible:ring-0 space-y-4"
             >
-              <div className="space-y-4">
-                <Card>
-                  <CardContent className="p-4 space-y-6">
-                    {/* Medical Information Section */}
-                    <div className="grid gap-6">
-                      <div className="space-y-2">
-                        <h3 className="text-lg font-medium">
-                          Medical Information
-                        </h3>
+              {/* Medical Information Section */}
+              <Card className="border border-border/50 shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="p-3 sm:p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-500/10 rounded-lg">
+                      <Stethoscope className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base sm:text-lg">Medical Information</CardTitle>
+                      <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                        Basic medical details and patient classification
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-4 pt-0">
+                  <div className="space-y-4">
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
@@ -1603,103 +1888,100 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                             />
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                {/* Treatment Plans Section */}
-                <div className="m-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium">X-Ray Plans</h3>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-6">
-                      <Button
-                        className="flex items-center gap-2 text-xs sm:text-sm"
-                        onClick={addTreatmentPlan}
-                        size="sm"
-                        variant={"default"}
-                      >
-                        <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Add
-                        X-Ray Plan
-                      </Button>
+                        {/* Treatment Plans Section */}
+                        <div className="mt-6">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-medium">X-Ray Plans</h3>
 
-                      {formData.medicalDetails.treatmentPlanning.length > 0 && (
-                        <Button
-                          variant="default"
-                          size={"sm"}
-                          onClick={() => setShowPaymentHistory(true)}
-                          className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap"
-                        >
-                          <Wallet className="h-3 w-3 sm:h-4 sm:w-4" />
-                          <span className="hidden sm:inline">
-                            Edit Payment History
-                          </span>
-                          <span className="sm:hidden">Payments</span>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-6">
+                              <Button
+                                className="flex items-center gap-2 text-xs sm:text-sm"
+                                onClick={addTreatmentPlan}
+                                size="sm"
+                                variant={"default"}
+                              >
+                                <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Add
+                                X-Ray Plan
+                              </Button>
 
-                  {formData.medicalDetails.treatmentPlanning.length === 0 ? (
-                    <div className="text-center p-8 border border-dashed rounded-lg">
-                      <h4 className="text-muted-foreground mb-2">
-                        No X-ray Plans
-                      </h4>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Add a X-ray plan to start tracking patient treatments
-                      </p>
+                              {formData.medicalDetails.treatmentPlanning.length > 0 && (
+                                <Button
+                                  variant="default"
+                                  size={"sm"}
+                                  onClick={() => setShowPaymentHistory(true)}
+                                  className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap"
+                                >
+                                  <Wallet className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  <span className="hidden sm:inline">
+                                    Edit Payment History
+                                  </span>
+                                  <span className="sm:hidden">Payments</span>
+                                </Button>
+                              )}
+                            </div>
+                          </div>
 
-                      <Button onClick={addTreatmentPlan}>
-                        <Plus className="h-4 w-4 mr-1" /> Add X-Ray Plan
-                      </Button>
-                    </div>
-                  ) : (
-                    formData.medicalDetails.treatmentPlanning.map(
-                      (plan, index) => (
-                        <EnhancedTreatmentPlanCard
-                          key={index}
-                          treatmentIndex={index}
-                          plan={plan}
-                          selectedTeethMap={
-                            selectedTeethMaps[`0-${index}`] || {}
-                          }
-                          patientId={patient._id}
-                          medicalDetailId={patient.medicalDetails[0]?._id || ""}
-                          patientType={formData.medicalDetails.patientType}
-                          doctors={doctors}
-                          onRemove={() => removeTreatmentPlan(index)}
-                          onTreatmentChange={(field, value) =>
-                            handleTreatmentChange(index, field, value)
-                          }
-                          onToothSelect={(toothNumber) =>
-                            handleToothSelect(index, toothNumber)
-                          }
-                          onToothDetailsChange={(toothNumber, details) =>
-                            handleToothDetailsChange(
-                              `0-${index}`,
-                              toothNumber,
-                              details
+                          {formData.medicalDetails.treatmentPlanning.length === 0 ? (
+                            <div className="text-center p-8 border border-dashed rounded-lg">
+                              <h4 className="text-muted-foreground mb-2">
+                                No X-ray Plans
+                              </h4>
+                              <p className="text-sm text-muted-foreground mb-4">
+                                Add a X-ray plan to start tracking patient treatments
+                              </p>
+
+                              <Button onClick={addTreatmentPlan}>
+                                <Plus className="h-4 w-4 mr-1" /> Add X-Ray Plan
+                              </Button>
+                            </div>
+                          ) : (
+                            formData.medicalDetails.treatmentPlanning.map(
+                              (plan, index) => (
+                                <EnhancedTreatmentPlanCard
+                                  key={index}
+                                  treatmentIndex={index}
+                                  plan={plan}
+                                  selectedTeethMap={
+                                    selectedTeethMaps[`0-${index}`] || {}
+                                  }
+                                  patientId={patient?._id || ""}
+                                  medicalDetailId={patient?.medicalDetails?.[0]?._id || ""}
+                                  patientType={formData.medicalDetails.patientType}
+                                  doctors={doctors}
+                                  onRemove={() => removeTreatmentPlan(index)}
+                                  onTreatmentChange={(field, value) =>
+                                    handleTreatmentChange(index, field, value)
+                                  }
+                                  onToothSelect={(toothNumber) =>
+                                    handleToothSelect(index, toothNumber)
+                                  }
+                                  onToothDetailsChange={(toothNumber, details) =>
+                                    handleToothDetailsChange(
+                                      `0-${index}`,
+                                      toothNumber,
+                                      details
+                                    )
+                                  }
+                                  onToothProcedureChange={(toothNumber, procedure) =>
+                                    handleToothProcedureChange(
+                                      `0-${index}`,
+                                      toothNumber,
+                                      procedure
+                                    )
+                                  }
+                                  onDailyTreatmentAdd={(toothNumber, treatment) =>
+                                    handleDailyTreatmentAdd(
+                                      `0-${index}`,
+                                      toothNumber,
+                                      treatment
+                                    )
+                                  }
+                                />
+                              )
                             )
-                          }
-                          onToothProcedureChange={(toothNumber, procedure) =>
-                            handleToothProcedureChange(
-                              `0-${index}`,
-                              toothNumber,
-                              procedure
-                            )
-                          }
-                          onDailyTreatmentAdd={(toothNumber, treatment) =>
-                            handleDailyTreatmentAdd(
-                              `0-${index}`,
-                              toothNumber,
-                              treatment
-                            )
-                          }
-                        />
-                      )
-                    )
-                  )}
-                </div>
+                          )}
+                        </div>
 
                 {/* Treatment Summary */}
                 {formData.medicalDetails.treatmentPlanning.length > 0 && (
@@ -1735,94 +2017,175 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                     ))}
                   </div>
                 )}
+                </div>
+              </CardContent>
+            </Card>
 
-                {/* Add the dialog component just before the closing </div> tag of the medical tabscontent */}
-                <PaymentHistoryDialog
-                  isOpen={showPaymentHistory}
-                  onClose={() => setShowPaymentHistory(false)}
-                  selectedTeethMaps={selectedTeethMaps}
-                  onPaymentUpdate={handlePaymentUpdate}
-                  patientId={patient._id}
-                  medicalDetailId={patient.medicalDetails[0]?._id || ""}
-                  patient={patient} // Pass the patient object
+        </TabsContent>
+
+        <TabsContent
+          value="documents"
+          className="mt-0 focus-visible:outline-none focus-visible:ring-0"
+        >
+          <Card className="border-none shadow-none">
+            <CardHeader className="px-4 py-2">
+              <CardTitle className="text-lg">Patient Documents</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              {patientDocuments.length === 0 && allTreatmentDocuments.length === 0 ? (
+                <div className="text-center p-4 border rounded-md bg-muted/20">
+                  <p className="text-muted-foreground">No documents uploaded for this patient.</p>
+                </div>
+              ) : (
+                <DocumentComparison 
+                  documents={allTreatmentDocuments} 
+                  patientDocuments={patientDocuments} 
                 />
+              )}
+              
+              {/* Button to upload new documents */}
+              <div className="flex justify-end mt-4">
+                <PatientDocumentUploadButton
+                  patientId={patient?._id || ""}
+                  medicalDetailId={patient?.medicalDetails?.[0]?._id}
+                  onSuccess={() => {
+                    // Refresh patient data if needed
+                    toast.success("Documents uploaded successfully");
+                    onClose();
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Upload New Documents
+                </PatientDocumentUploadButton>
               </div>
-            </TabsContent>
-
-            <TabsContent
-              value="documents"
-              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
-            >
-              <Card className="border-none shadow-none">
-                <CardHeader className="px-4 py-2">
-                  <CardTitle className="text-lg">Patient Documents</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4">
-                  {patientDocuments.length === 0 && allTreatmentDocuments.length === 0 ? (
-                    <div className="text-center p-4 border rounded-md bg-muted/20">
-                      <p className="text-muted-foreground">No documents uploaded for this patient.</p>
-                    </div>
-                  ) : (
-                    <DocumentComparison 
-                      documents={allTreatmentDocuments} 
-                      patientDocuments={patientDocuments} 
-                    />
+            </CardContent>
+          </Card>
+        </TabsContent>
+          </ScrollArea>
+          
+          {/* Enhanced Sticky Footer */}
+          <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t shadow-2xl z-50">
+            {hasUnsavedChanges && (
+              <div className="px-4 py-2 bg-gradient-to-r from-yellow-50 to-yellow-100 border-b border-yellow-200">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+                  <span className="text-sm font-medium text-yellow-800">
+                    You have unsaved changes
+                  </span>
+                </div>
+              </div>
+            )}
+            
+            <div className="p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-4">
+                {/* Navigation Buttons */}
+                <div className="flex items-center gap-2 flex-1">
+                  <Button
+                    variant="outline"
+                    onClick={onClose}
+                    className="flex items-center gap-2 h-10 px-4 text-sm font-medium hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                  >
+                    <X className="h-4 w-4" />
+                    <span className="hidden sm:inline">Cancel</span>
+                  </Button>
+                  
+                  {activeTab === "personal" && (
+                    <Button
+                      onClick={() => setActiveTab("medical")}
+                      className="flex items-center gap-2 h-10 px-4 text-sm font-medium"
+                    >
+                      <span className="hidden sm:inline">Next: Medical</span>
+                      <span className="sm:hidden">Next</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
                   )}
                   
-                  {/* Button to upload new documents */}
-                  <div className="flex justify-end mt-4">
-                    <PatientDocumentUploadButton
-                      patientId={patient._id}
-                      medicalDetailId={patient.medicalDetails[0]?._id}
-                      onSuccess={() => {
-                        // Refresh patient data if needed
-                        toast.success("Documents uploaded successfully");
-                        onClose();
-                      }}
+                  {activeTab === "medical" && (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => setActiveTab("personal")}
+                        className="flex items-center gap-2 h-10 px-4 text-sm font-medium"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="hidden sm:inline">Personal</span>
+                        <span className="sm:hidden">Back</span>
+                      </Button>
+                      <Button
+                        onClick={() => setActiveTab("documents")}
+                        className="flex items-center gap-2 h-10 px-4 text-sm font-medium"
+                      >
+                        <span className="hidden sm:inline">Next: Documents</span>
+                        <span className="sm:hidden">Next</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                  
+                  {activeTab === "documents" && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setActiveTab("medical")}
+                      className="flex items-center gap-2 h-10 px-4 text-sm font-medium"
                     >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Upload New Documents
-                    </PatientDocumentUploadButton>
+                      <ArrowLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">Medical</span>
+                      <span className="sm:hidden">Back</span>
+                    </Button>
+                  )}
+                </div>
+                
+                {/* Progress and Save */}
+                <div className="flex items-center gap-4 flex-shrink-0">
+                  <div className="hidden md:flex items-center gap-3">
+                    <div className="text-xs text-muted-foreground font-medium">
+                      Step {activeTab === 'personal' ? '1' : activeTab === 'medical' ? '2' : '3'} of 3
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3].map((step) => (
+                        <div
+                          key={step}
+                          className={`w-2 h-2 rounded-full transition-colors ${
+                            (step === 1 && activeTab === 'personal') ||
+                            (step === 2 && activeTab === 'medical') ||
+                            (step === 3 && activeTab === 'documents')
+                              ? 'bg-primary'
+                              : step < (activeTab === 'personal' ? 1 : activeTab === 'medical' ? 2 : 3)
+                              ? 'bg-primary/60'
+                              : 'bg-muted'
+                          }`}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                  
+                  <Button 
+                    onClick={handleFormSubmit}
+                    disabled={isSubmitting}
+                    className="flex items-center gap-2 h-10 px-6 text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <Save className="h-4 w-4" />
+                    {isSubmitting ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </Tabs>
-        <div className="fixed bottom-0 left-0 right-0 p-2 bg-background/95 border-t flex justify-between sm:justify-end gap-2 sm:gap-4 z-50">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="min-w-[80px] sm:min-w-[100px] text-xs sm:text-sm"
-          >
-            Cancel
-          </Button>
-          {activeTab === "personal" && (
-            <Button
-              onClick={() => setActiveTab("medical")}
-              className="min-w-[80px] sm:min-w-[100px] text-xs sm:text-sm"
-            >
-              Next
-            </Button>
-          )}
-          {activeTab === "medical" && (
-            <Button
-              onClick={() => setActiveTab("personal")}
-              className="min-w-[80px] sm:min-w-[100px] text-xs sm:text-sm"
-            >
-              Previous
-            </Button>
-          )}
-          <Button 
-            onClick={handleFormSubmit}
-            disabled={isSubmitting}
-            className="min-w-[80px] sm:min-w-[100px] text-xs sm:text-sm"
-          >
-            {isSubmitting ? "Saving..." : "Save Changes"}
-          </Button>
-        </div>
       </DialogContent>
     </Dialog>
+    
+    {/* Payment History Dialog */}
+    <PaymentHistoryDialog
+      isOpen={showPaymentHistory}
+      onClose={() => setShowPaymentHistory(false)}
+      selectedTeethMaps={selectedTeethMaps}
+      onPaymentUpdate={handlePaymentUpdate}
+      patientId={patient?._id || ""}
+      medicalDetailId={patient?.medicalDetails?.[0]?._id || ""}
+      patient={patient} // Pass the patient object
+    />
+  </TooltipProvider>
   );
 };
 

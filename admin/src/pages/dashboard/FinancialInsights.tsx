@@ -32,6 +32,30 @@ import {
   Legend,
 } from "recharts";
 
+interface FinancialSummaryData {
+  summary: {
+    income: number;
+    expense: number;
+    balance: number;
+    servicePayment: number;
+  };
+  incomeByCategory: Array<{
+    _id: string;
+    total: number;
+  }>;
+  expenseByCategory: Array<{
+    _id: string;
+    total: number;
+  }>;
+  serviceByType: Array<{
+    _id: string;
+    total: number;
+  }>;
+  recentIncome: any[];
+  recentExpenses: any[];
+  recentServicePayments: any[];
+}
+
 interface FinancialData {
   daily: number;
   weekly: number;
@@ -49,6 +73,10 @@ interface FinancialData {
     date: string;
     revenue: number;
   }>;
+  paymentMethods: Array<{
+    method: string;
+    amount: number;
+  }>;
 }
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8", "#82ca9d"];
@@ -63,6 +91,7 @@ export function FinancialInsights() {
     to: new Date(),
   });
   const [financialData, setFinancialData] = useState<FinancialData | null>(null);
+  const [rawFinancialData, setRawFinancialData] = useState<FinancialSummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"daily" | "weekly" | "monthly" | "yearly">("daily");
 
@@ -84,15 +113,161 @@ export function FinancialInsights() {
     setIsCustomDateRange(false);
   };
 
+  const calculateDailyRevenue = (data: FinancialSummaryData) => {
+    const today = new Date();
+    const servicePayments = Array.isArray(data.recentServicePayments) ? data.recentServicePayments : [];
+    const incomeRecords = Array.isArray(data.recentIncome) ? data.recentIncome : [];
+    
+    const todayRecords = [...servicePayments, ...incomeRecords].filter(
+      record => {
+        if (!record) return false;
+        const recordDate = new Date(record.date || record.createdAt);
+        return recordDate.toDateString() === today.toDateString();
+      }
+    );
+    return todayRecords.reduce((sum, record) => sum + (record.amount || 0), 0);
+  };
+
+  const calculateWeeklyRevenue = (data: FinancialSummaryData) => {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    const servicePayments = Array.isArray(data.recentServicePayments) ? data.recentServicePayments : [];
+    const incomeRecords = Array.isArray(data.recentIncome) ? data.recentIncome : [];
+    
+    const weekRecords = [...servicePayments, ...incomeRecords].filter(
+      record => {
+        if (!record) return false;
+        const recordDate = new Date(record.date || record.createdAt);
+        return recordDate >= oneWeekAgo;
+      }
+    );
+    return weekRecords.reduce((sum, record) => sum + (record.amount || 0), 0);
+  };
+
+  const calculateMonthlyRevenue = (data: FinancialSummaryData) => {
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    
+    const servicePayments = Array.isArray(data.recentServicePayments) ? data.recentServicePayments : [];
+    const incomeRecords = Array.isArray(data.recentIncome) ? data.recentIncome : [];
+    
+    const monthRecords = [...servicePayments, ...incomeRecords].filter(
+      record => {
+        if (!record) return false;
+        const recordDate = new Date(record.date || record.createdAt);
+        return recordDate >= oneMonthAgo;
+      }
+    );
+    return monthRecords.reduce((sum, record) => sum + (record.amount || 0), 0);
+  };
+
+  const generateRevenueTrend = (data: FinancialSummaryData) => {
+    const servicePayments = Array.isArray(data.recentServicePayments) ? data.recentServicePayments : [];
+    const incomeRecords = Array.isArray(data.recentIncome) ? data.recentIncome : [];
+    const allRecords = [...servicePayments, ...incomeRecords];
+    const trendMap = new Map<string, number>();
+    
+    allRecords.forEach(record => {
+      if (!record) return;
+      const date = new Date(record.date || record.createdAt);
+      const dateKey = date.toISOString().split('T')[0];
+      trendMap.set(dateKey, (trendMap.get(dateKey) || 0) + (record.amount || 0));
+    });
+    
+    return Array.from(trendMap.entries())
+      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+      .map(([date, revenue]) => ({ date, revenue }));
+  };
+
+  const processFinancialData = (summaryData: FinancialSummaryData): FinancialData => {
+    const summary = summaryData.summary || { income: 0, expense: 0, balance: 0, servicePayment: 0 };
+    const serviceByType = Array.isArray(summaryData.serviceByType) ? summaryData.serviceByType : [];
+    
+    return {
+      daily: calculateDailyRevenue(summaryData),
+      weekly: calculateWeeklyRevenue(summaryData),
+      monthly: calculateMonthlyRevenue(summaryData),
+      total: summary.income + summary.servicePayment,
+      revenueByDoctor: [],
+      revenueByTreatment: serviceByType.map(item => ({
+        treatmentType: item._id || 'Unknown',
+        revenue: item.total || 0
+      })),
+      revenueTrend: generateRevenueTrend(summaryData),
+      paymentMethods: []
+    };
+  };
+
   useEffect(() => {
     const fetchFinancialData = async () => {
       try {
         setLoading(true);
-        const response = await crudRequest<{ data: FinancialData }>(
-          "GET",
-          `${server}/patient/financial-insights?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&viewMode=${viewMode}`
-        );
-        setFinancialData(response.data);
+        
+        const fetchWithErrorHandling = async (url: string, name: string) => {
+          try {
+            return await crudRequest("GET", url);
+          } catch (error) {
+            console.warn(`Failed to fetch ${name}:`, error);
+            return { data: { summary: { income: 0, expense: 0, balance: 0, servicePayment: 0 }, incomeByCategory: [], expenseByCategory: [], serviceByType: [], recentIncome: [], recentExpenses: [], recentServicePayments: [] } };
+          }
+        };
+        
+        // Fetch financial summary with date filters
+        const summaryUrl = `${server}/finance/summary?startDate=${dateRange.from.toISOString()}&endDate=${dateRange.to.toISOString()}`;
+        const [summaryResponse, servicePaymentsResponse, appointmentsResponse] = await Promise.all([
+          fetchWithErrorHandling(summaryUrl, 'financial summary'),
+          fetchWithErrorHandling(`${server}/service-payment`, 'service payments'),
+          fetchWithErrorHandling(`${server}/appointment/get-appointments`, 'appointments')
+        ]);
+        
+        const summaryData = (summaryResponse as { data: FinancialSummaryData }).data;
+        setRawFinancialData(summaryData);
+        
+        // Process payment methods from service payments with null checks
+        const servicePayments = Array.isArray((servicePaymentsResponse as { data: any }).data) ? (servicePaymentsResponse as { data: any }).data as any[] : [];
+        const paymentMethodsMap = new Map<string, number>();
+        
+        servicePayments.forEach(payment => {
+          if (payment && payment.paymentMethod && payment.amount) {
+            const method = payment.paymentMethod;
+            paymentMethodsMap.set(method, (paymentMethodsMap.get(method) || 0) + payment.amount);
+          }
+        });
+        
+        // Process doctor revenue from appointments and service payments with null checks
+        const appointments = Array.isArray((appointmentsResponse as { data: any }).data) ? (appointmentsResponse as { data: any }).data as any[] : [];
+        const doctorRevenueMap = new Map<string, number>();
+        
+        // Calculate revenue by doctor from appointments with fees
+        appointments.forEach(appointment => {
+          if (appointment && appointment.doctorName && appointment.fee) {
+            const doctorName = appointment.doctorName;
+            doctorRevenueMap.set(doctorName, (doctorRevenueMap.get(doctorName) || 0) + appointment.fee);
+          }
+        });
+        
+        // Also include service payments that have doctor information
+        servicePayments.forEach(payment => {
+          if (payment && payment.doctor && payment.amount) {
+            const doctorName = payment.doctor.name || payment.doctorName;
+            if (doctorName) {
+              doctorRevenueMap.set(doctorName, (doctorRevenueMap.get(doctorName) || 0) + payment.amount);
+            }
+          }
+        });
+        
+        const processedData = processFinancialData(summaryData);
+        processedData.paymentMethods = Array.from(paymentMethodsMap.entries()).map(([method, amount]) => ({
+          method,
+          amount
+        }));
+        processedData.revenueByDoctor = Array.from(doctorRevenueMap.entries()).map(([doctorName, revenue]) => ({
+          doctorName,
+          revenue
+        }));
+        
+        setFinancialData(processedData);
       } catch (error) {
         console.error("Error fetching financial data:", error);
       } finally {
@@ -104,13 +279,7 @@ export function FinancialInsights() {
   }, [dateRange, viewMode]);
 
   const getPaymentMethods = () => {
-    // Sample data - in a real app, this would come from the API
-    return [
-      { method: "Cash", amount: 15000 },
-      { method: "Credit Card", amount: 12000 },
-      { method: "UPI", amount: 18000 },
-      { method: "Insurance", amount: 5000 }
-    ];
+    return financialData?.paymentMethods || [];
   };
 
   const handleExportCSV = () => {

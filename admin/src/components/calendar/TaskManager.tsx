@@ -8,18 +8,14 @@ import {
   Clock,
   User,
   Plus,
-  Filter,
   AlertCircle,
   CheckCircle,
-  Calendar as CalendarIcon,
-  Stethoscope,
   RefreshCw
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
@@ -157,7 +153,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({
     try {
       setLoading(true);
       const response = await crudRequest("GET", "/appointment/tasks");
-      if (response) {
+      if (response && Array.isArray(response)) {
         setTasks(response);
       }
     } catch (error) {
@@ -175,7 +171,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({
   const fetchStaff = async () => {
     try {
       const response = await crudRequest("GET", "/user/staff");
-      if (response) {
+      if (response && Array.isArray(response)) {
         setStaff(response);
       }
     } catch (error) {
@@ -187,7 +183,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({
     try {
       const today = new Date().toISOString().split('T')[0];
       const response = await crudRequest("GET", `/appointment/get-appointments?calendar=true&startDate=${today}`);
-      if (response) {
+      if (response && Array.isArray(response)) {
         const upcoming = response
           .filter((apt: any) => new Date(apt.appointmentDate) >= new Date())
           .slice(0, 20);
@@ -272,10 +268,6 @@ const TaskManager: React.FC<TaskManagerProps> = ({
     }
   };
 
-  const getCategoryIcon = (category: string) => {
-    const cat = taskCategories.find(c => c.value === category);
-    return cat?.icon || '📝';
-  };
 
   const getTaskStats = () => {
     const total = tasks.length;

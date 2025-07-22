@@ -1,4 +1,3 @@
-import React from 'react';
 import PageHead from "@/components/shared/page-head";
 import AppointmentCalendar from "@/components/calendar/AppointmentCalendar";
 

@@ -4,7 +4,6 @@ import EnhancedMobileSidebar from "../shared/enhanced-mobile-sidebar";
 import Header from "../shared/header";
 import { Button } from "../ui/button";
 import { MenuIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
   children,

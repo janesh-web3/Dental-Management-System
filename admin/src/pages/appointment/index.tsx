@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import PageHead from "@/components/shared/page-head";
 import AppointmentTable from "./AppointmentTable";
 import AppointmentCalendar from "@/components/calendar/AppointmentCalendar";

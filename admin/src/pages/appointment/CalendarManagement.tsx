@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import PageHead from "@/components/shared/page-head";
 import AppointmentCalendar from "@/components/calendar/AppointmentCalendar";
 import FollowUpManager from "@/components/calendar/FollowUpManager";
@@ -7,8 +7,7 @@ import TaskManager from "@/components/calendar/TaskManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Calendar, 
-  Users, 
-  Clock, 
+ 
   CheckSquare,
   UserCheck,
   RefreshCw 

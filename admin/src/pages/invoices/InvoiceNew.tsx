@@ -67,8 +67,8 @@ const InvoiceNew: React.FC = () => {
   const loadPatients = async () => {
     try {
       const response = await getPatients(1, 100); // Get first 100 patients
-      if (response.success) {
-        setPatients(response.data || []);
+      if ((response as any).success) {
+        setPatients((response as any).data || []);
       }
     } catch (error) {
       console.error('Error loading patients:', error);
@@ -171,14 +171,14 @@ const InvoiceNew: React.FC = () => {
 
       const response = await createInvoice(invoiceData);
       
-      if (response.success) {
+      if ((response as any).success) {
         toast({
           title: "Success",
           description: "Invoice created successfully",
         });
-        navigate(`/finance/invoices/${response.data._id}`);
+        navigate(`/finance/invoices/${(response as any).data._id}`);
       } else {
-        throw new Error(response.error || 'Failed to create invoice');
+        throw new Error((response as any).error || 'Failed to create invoice');
       }
     } catch (error: any) {
       console.error('Error creating invoice:', error);

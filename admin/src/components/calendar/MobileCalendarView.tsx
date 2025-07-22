@@ -4,11 +4,9 @@ import {
   Calendar as CalendarIcon,
   Clock,
   User,
-  MapPin,
   ChevronLeft,
   ChevronRight,
   Plus,
-  Filter,
   List,
   Grid3X3
 } from 'lucide-react';
@@ -46,8 +44,7 @@ const MobileCalendarView: React.FC<MobileCalendarViewProps> = ({
   appointments = [],
   onSelectEvent,
   onSelectSlot,
-  onCreateAppointment,
-  loading = false
+  onCreateAppointment
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -105,22 +102,6 @@ const MobileCalendarView: React.FC<MobileCalendarViewProps> = ({
     setCurrentDate(newDate);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Pending': return 'bg-yellow-100 text-yellow-800';
-      case 'Accepted': return 'bg-green-100 text-green-800';
-      case 'Completed': return 'bg-blue-100 text-blue-800';
-      case 'Cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getPriorityIndicator = (priority: string) => {
-    if (priority === 'urgent') {
-      return <div className="w-2 h-2 bg-red-500 rounded-full" />;
-    }
-    return null;
-  };
 
   const hasAppointments = (date: Date) => {
     return getAppointmentsForDate(date).length > 0;

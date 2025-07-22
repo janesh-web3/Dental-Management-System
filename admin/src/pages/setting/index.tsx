@@ -23,13 +23,6 @@ import {
 } from "@/components/ui/table";
 import { crudRequest } from "@/lib/api";
 import { toast } from "react-toastify";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NotificationSettings } from "@/components/shared/NotificationSettings";
 import { VoiceInputSettings } from "@/components/shared/VoiceInputSettings";

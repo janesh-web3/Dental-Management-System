@@ -10,7 +10,6 @@ import {
   TrendingUp,
   TrendingDown,
   Wallet,
-  Settings,
   UserCheck,
   BarChart3,
   PieChart,
@@ -18,7 +17,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { crudRequest } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { server } from "@/server";
 import { Analytics } from "@/pages/dashboard/Analytics";

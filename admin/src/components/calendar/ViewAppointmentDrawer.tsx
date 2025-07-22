@@ -40,6 +40,13 @@ interface Patient {
     age: string;
     gender: string;
     address?: string;
+  } | {
+    firstName: string;
+    lastName: string;
+    contactNumber: string;
+    age: string;
+    gender: string;
+    address: string;
   };
 }
 
@@ -294,11 +301,11 @@ const ViewAppointmentDrawer: React.FC<ViewAppointmentDrawerProps> = ({
                     <span className="font-medium">Phone:</span>
                     <span>{patientData.personalDetails.contactNumber}</span>
                   </div>
-                  {patientData.personalDetails.emailAddress && (
+                  {'emailAddress' in patientData.personalDetails && patientData.personalDetails.emailAddress && (
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">Email:</span>
-                      <span className="text-sm">{patientData.personalDetails.emailAddress}</span>
+                      <span className="text-sm">{'emailAddress' in patientData.personalDetails ? patientData.personalDetails.emailAddress : ''}</span>
                     </div>
                   )}
                   {patientData.personalDetails.address && (

@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -18,14 +17,8 @@ import {
   DollarSign,
   FileText,
   Settings,
-  Eye,
-  Edit,
-  Trash2,
-  UserPlus,
   AlertCircle,
   CheckCircle,
-  Lock,
-  Unlock,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 

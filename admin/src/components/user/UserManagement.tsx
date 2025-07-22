@@ -1,25 +1,24 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import {
-  Users,
   UserPlus,
   Edit,
   Trash2,
   Shield,
-  Eye,
   AlertCircle,
   CheckCircle,
   XCircle,
   Clock,
-  Settings,
+  Eye,
 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslation } from "react-i18next";
 import { useAdminContext } from "@/contexts/adminContext";
 import { crudRequest } from "@/lib/api";
@@ -55,7 +54,7 @@ interface User {
 
 const UserManagement = () => {
   const { t } = useTranslation();
-  const { hasPermission, isAdmin } = useAdminContext();
+  const { hasPermission } = useAdminContext();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -137,15 +136,6 @@ const UserManagement = () => {
     }
   };
 
-  const handleChangeRole = async (userId: string, newRole: string) => {
-    try {
-      await crudRequest("PATCH", `${server}/user/change-role/${userId}`, { role: newRole });
-      setMessage({ type: "success", text: t("User role updated") });
-      fetchUsers();
-    } catch (error: any) {
-      setMessage({ type: "error", text: error.message || t("Failed to update user role") });
-    }
-  };
 
   const handleDeleteUser = async (userId: string) => {
     if (!window.confirm(t("Are you sure you want to delete this user?"))) return;
@@ -159,10 +149,6 @@ const UserManagement = () => {
     }
   };
 
-  const openCreateDialog = () => {
-    setSelectedUser(null);
-    setShowCreateDialog(true);
-  };
 
   const openEditDialog = (user: User) => {
     setSelectedUser(user);

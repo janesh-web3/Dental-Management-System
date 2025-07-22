@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
+import { format } from 'date-fns';
 import {
   Clock,
   Calendar as CalendarIcon,
@@ -11,9 +11,7 @@ import {
   Plus,
   Edit,
   Trash2,
-  Save,
-  X,
-  AlertCircle
+  Save
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,7 +45,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import { crudRequest } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -133,7 +130,7 @@ const DoctorAvailabilityManager: React.FC<DoctorAvailabilityManagerProps> = ({
   const [selectedDoctor, setSelectedDoctor] = useState<string>('');
   const [availability, setAvailability] = useState<WeeklyAvailability[]>([]);
   const [timeOffPeriods, setTimeOffPeriods] = useState<TimeOffPeriod[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [editingAvailability, setEditingAvailability] = useState<WeeklyAvailability | null>(null);
   const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false);
   const [isTimeOffModalOpen, setIsTimeOffModalOpen] = useState(false);
@@ -170,7 +167,7 @@ const DoctorAvailabilityManager: React.FC<DoctorAvailabilityManagerProps> = ({
   const fetchDoctors = async () => {
     try {
       const response = await crudRequest("GET", "/doctor/get-doctor");
-      if (response) {
+      if (response && Array.isArray(response)) {
         setDoctors(response);
       }
     } catch (error) {
@@ -187,8 +184,8 @@ const DoctorAvailabilityManager: React.FC<DoctorAvailabilityManagerProps> = ({
     try {
       setLoading(true);
       const response = await crudRequest("GET", `/doctor/availability/${doctorId}`);
-      if (response) {
-        setAvailability(response.availability || []);
+      if (response && typeof response === 'object') {
+        setAvailability((response as any).availability || []);
       }
     } catch (error) {
       console.error("Error fetching availability:", error);
@@ -208,7 +205,7 @@ const DoctorAvailabilityManager: React.FC<DoctorAvailabilityManagerProps> = ({
   const fetchTimeOffPeriods = async (doctorId: string) => {
     try {
       const response = await crudRequest("GET", `/doctor/time-off/${doctorId}`);
-      if (response) {
+      if (response && Array.isArray(response)) {
         setTimeOffPeriods(response);
       }
     } catch (error) {

@@ -156,7 +156,7 @@ const SystemTest: React.FC = () => {
       });
       
       if (response.ok) {
-        const data = await response.json();
+        await response.json();
         updateTestStatus('Recycle Bin Operations', 'success', 
           'Recycle bin is accessible and functional');
       } else {

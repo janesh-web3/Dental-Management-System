@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format, addDays, addWeeks, addMonths } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import {
-  Calendar as CalendarIcon,
   Clock,
   Plus,
   AlertTriangle,
   CheckCircle,
   Users,
-  Filter,
   RefreshCw
 } from 'lucide-react';
 
@@ -124,7 +122,7 @@ const FollowUpManager: React.FC<FollowUpManagerProps> = ({
       
       // Fetch completed appointments that might need follow-ups
       const completedResponse = await crudRequest("GET", "/appointment/get-appointments?status=Completed&calendar=true");
-      if (completedResponse) {
+      if (completedResponse && Array.isArray(completedResponse)) {
         const filtered = completedResponse
           .filter((apt: any) => !apt.hasFollowUp && needsFollowUp(apt))
           .slice(0, 20); // Limit to recent 20
@@ -133,7 +131,7 @@ const FollowUpManager: React.FC<FollowUpManagerProps> = ({
 
       // Fetch pending follow-ups
       const pendingResponse = await crudRequest("GET", "/appointment/get-appointments?isFollowUp=true&status=Pending");
-      if (pendingResponse) {
+      if (pendingResponse && Array.isArray(pendingResponse)) {
         const today = new Date();
         const pending = pendingResponse.map((apt: any) => ({
           _id: apt._id,
@@ -147,7 +145,7 @@ const FollowUpManager: React.FC<FollowUpManagerProps> = ({
         }));
         
         setPendingFollowUps(pending);
-        setOverdueFollowUps(pending.filter(f => f.daysSince > 7));
+        setOverdueFollowUps(pending.filter((f: any) => f.daysSince > 7));
       }
       
     } catch (error) {

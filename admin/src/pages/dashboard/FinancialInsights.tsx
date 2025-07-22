@@ -91,7 +91,7 @@ export function FinancialInsights() {
     to: new Date(),
   });
   const [financialData, setFinancialData] = useState<FinancialData | null>(null);
-  const [rawFinancialData, setRawFinancialData] = useState<FinancialSummaryData | null>(null);
+  const [, setRawFinancialData] = useState<FinancialSummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"daily" | "weekly" | "monthly" | "yearly">("daily");
 

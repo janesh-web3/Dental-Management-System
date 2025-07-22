@@ -73,19 +73,21 @@ const addServicePayment = async (req, res) => {
     }
     
     // Also record this as income for financial tracking - only if user is authenticated
+    // Commented out to prevent automatic income creation when patient amounts are added/updated
+    // if (req.user) {
+    //   await Income.create({
+    //     title: `${serviceType} - ${patientName}`,
+    //     amount,
+    //     date: new Date(),
+    //     category: serviceType === "X-Ray" ? "X-ray Fee" : 
+    //               serviceType === "Medicine" ? "Dental Products" : 
+    //               serviceType === "Consultation" ? "Consultation Fee" : "Other",
+    //     notes: description || `Service payment for ${serviceType}`,
+    //     createdBy: req.user._id,
+    //   });
+    
+    // Send notification to admins - only if admin is authenticated
     if (req.user) {
-      await Income.create({
-        title: `${serviceType} - ${patientName}`,
-        amount,
-        date: new Date(),
-        category: serviceType === "X-Ray" ? "X-ray Fee" : 
-                  serviceType === "Medicine" ? "Dental Products" : 
-                  serviceType === "Consultation" ? "Consultation Fee" : "Other",
-        notes: description || `Service payment for ${serviceType}`,
-        createdBy: req.user._id,
-      });
-      
-      // Send notification to admins - only if admin is authenticated
       await sendRoleNotification({
         title: 'New Payment Received',
         message: `${amount} received from ${patientName} for ${serviceType}`,

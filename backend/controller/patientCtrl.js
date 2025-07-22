@@ -281,7 +281,6 @@ const addPatient = async (req, res) => {
 
     // Generate invoices for any initial payments in treatment plans
     try {
-      console.log("Checking for initial payments to generate invoices...");
       if (patient.medicalDetails && patient.medicalDetails.length > 0) {
         console.log(`Found ${patient.medicalDetails.length} medical details to check`);
         for (const medicalDetail of patient.medicalDetails) {
@@ -350,8 +349,6 @@ const addPatient = async (req, res) => {
               // Generate invoice if there are any payments
               console.log(`Total treatments with payments: ${treatmentsWithPayments.length}`);
               if (treatmentsWithPayments.length > 0) {
-                console.log("Generating invoice for payments...");
-                console.log("Treatments with payments:", JSON.stringify(treatmentsWithPayments, null, 2));
                 
                 const paymentDetails = {
                   paidAmount: treatmentsWithPayments.reduce((sum, t) => sum + (t.treatmentAmount || 0), 0),
@@ -359,9 +356,6 @@ const addPatient = async (req, res) => {
                   notes: "Initial treatment payment - automatically generated invoice"
                 };
 
-                console.log("Payment details:", paymentDetails);
-                console.log("Patient ID:", patient._id);
-                
                 // Get doctor ID from the first treatment with a doctor assigned
                 let doctorId = treatmentPlan.treatedByDoctor;
                 if (!doctorId) {
@@ -394,7 +388,6 @@ const addPatient = async (req, res) => {
                   }
                 }
                 
-                console.log("Doctor ID:", doctorId);
 
                 const invoice = await createTreatmentPaymentInvoice(
                   patient._id,
@@ -404,7 +397,6 @@ const addPatient = async (req, res) => {
                   req.admin?.id
                 );
 
-                console.log(`SUCCESS: Invoice ${invoice.invoiceNumber} generated for initial treatment plan ${treatmentPlan._id}`);
               } else {
                 console.log("No treatments with payments found for this treatment plan");
               }
@@ -495,34 +487,32 @@ const addPatient = async (req, res) => {
       }
 
       // Create service payment record
-      const servicePayment = await ServicePayment.create(servicePaymentData);
+       await ServicePayment.create(servicePaymentData);
 
       // Also record this as income for financial tracking
-      await Income.create({
-        title: `${serviceType} - ${personalDetails.name}`,
-        amount,
-        date: new Date(),
-        category:
-          serviceType === "X-Ray"
-            ? "X-ray Fee"
-            : serviceType === "Medicine"
-            ? "Dental Products"
-            : serviceType === "Consultation"
-            ? "Consultation Fee"
-            : "Other",
-        notes: description || `Service payment for ${serviceType}`,
-        createdBy: req.admin.id,
-      });
+      // await Income.create({
+      //   title: `${serviceType} - ${personalDetails.name}`,
+      //   amount,
+      //   date: new Date(),
+      //   category:
+      //     serviceType === "X-Ray"
+      //       ? "X-ray Fee"
+      //       : serviceType === "Medicine"
+      //       ? "Dental Products"
+      //       : serviceType === "Consultation"
+      //       ? "Consultation Fee"
+      //       : "Other",
+      //   notes: description || `Service payment for ${serviceType}`,
+      //   createdBy: req.admin.id,
+      // });
     } // Send notifications after successful patient creation
     try {
       // First, handle admin notifications
       const admins = await User.find({
         role: { $in: ["admin", "superadmin"] },
       });
-      console.log(`Found ${admins.length} admins to notify`);
 
       // Create a notification for all admins
-      console.log("Creating admin notification...");
       const adminNotification = await createAndEmitNotification({
         title: "New Patient Registered",
         message: `New patient ${personalDetails.name} has been registered`,
@@ -3855,13 +3845,6 @@ const updateTreatmentPlan = async (req, res) => {
   try {
     const { patientId, medicalDetailId, treatmentPlanId } = req.params;
     const treatmentPlanData = req.body;
-
-    console.log("Updating treatment plan:", {
-      patientId,
-      medicalDetailId,
-      treatmentPlanId,
-      treatmentPlan: treatmentPlanData,
-    });
 
     // Validate parameters
     if (!patientId || !medicalDetailId || !treatmentPlanId) {

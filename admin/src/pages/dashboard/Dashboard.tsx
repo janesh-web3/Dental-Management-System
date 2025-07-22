@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, Stethoscope, Clock, TrendingUp, TrendingDown, Database, RefreshCw, Eye, Activity } from "lucide-react";
+import { Users, Calendar, Stethoscope, Clock, TrendingUp, TrendingDown, Database, RefreshCw, Activity } from "lucide-react";
 import { format } from "date-fns";
 import { crudRequest } from "@/lib/api";
 import { server } from "@/server";
@@ -244,7 +244,7 @@ export function Dashboard() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>

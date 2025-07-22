@@ -114,12 +114,13 @@ export const navGroups: NavGroup[] = [
         notificationEnabled: false,
       },
       {
-        title: "System Test",
-        href: "/system-test",
+        title: "Settings",
+        href: "/settings",
         icon: "settings",
-        label: "System Test",
+        label: "Settings",
         notificationEnabled: false,
       },
+      
     ]
   }
 ];

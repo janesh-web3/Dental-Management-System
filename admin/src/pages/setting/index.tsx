@@ -208,7 +208,6 @@ const Setting = () => {
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="advanced">Advanced</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="recycle-bin">Recycle Bin</TabsTrigger>
         </TabsList>
         
         <TabsContent value="profile" className="mt-4">
@@ -450,16 +449,7 @@ const Setting = () => {
         </Card>
       </TabsContent>
 
-      <TabsContent value="recycle-bin" className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recycle Bin</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>This feature is under development.</p>
-          </CardContent>
-        </Card>
-      </TabsContent>
+
     </Tabs>
     </div>
   );

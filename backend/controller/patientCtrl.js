@@ -4152,8 +4152,8 @@ const updateTreatmentPlan = async (req, res) => {
 // Add a new simplified dashboard metrics function for troubleshooting
 const getSimplifiedDashboardMetrics = async (req, res) => {
   try {
-    // Basic counts
-    const totalPatients = await Patient.countDocuments();
+    // Basic counts (exclude deleted patients)
+    const totalPatients = await Patient.countDocuments({ isDeleted: { $ne: true } });
     const doctorCount = await Doctor.countDocuments();
     const totalAppointments = await Appointment.countDocuments();
 

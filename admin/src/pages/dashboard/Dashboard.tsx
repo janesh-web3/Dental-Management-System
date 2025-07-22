@@ -85,6 +85,7 @@ export function Dashboard() {
           "GET",
           `${server}/patient/dashboard-metrics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}`
         );
+        console.log("Dashboard data fetched:", response.data);
         setDashboardData(response.data);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);

@@ -10,7 +10,7 @@ import Patient from "@/pages/patient";
 import Appointment from "@/pages/appointment";
 import User from "@/pages/user";
 import Setting from "@/pages/setting";
-import Dashboard from "@/pages/dashboard";
+import{ Dashboard} from "@/pages/dashboard/Dashboard.tsx";
 import Testimonials from "@/pages/testimonials";
 import Contacts from "@/pages/contact";
 import LandingPage from "@/pages/landing";

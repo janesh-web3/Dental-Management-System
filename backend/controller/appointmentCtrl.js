@@ -628,21 +628,40 @@ const getPatientsForAppointment = async (req, res) => {
     
     if (search) {
       query.$or = [
-        { "personalDetails.firstName": { $regex: search, $options: "i" } },
-        { "personalDetails.lastName": { $regex: search, $options: "i" } },
+        { "personalDetails.name": { $regex: search, $options: "i" } },
         { "personalDetails.contactNumber": { $regex: search, $options: "i" } },
         { "personalDetails.emailAddress": { $regex: search, $options: "i" } }
       ];
     }
     
     const patients = await Patient.find(query)
-      .select("personalDetails.firstName personalDetails.lastName personalDetails.contactNumber personalDetails.emailAddress personalDetails.age personalDetails.gender")
+      .select("personalDetails.name personalDetails.contactNumber personalDetails.emailAddress personalDetails.age personalDetails.gender personalDetails.address")
       .limit(20)
-      .sort({ "personalDetails.firstName": 1 });
+      .sort({ "personalDetails.name": 1 });
+    
+    // Transform the data to split name into firstName and lastName for frontend compatibility
+    const transformedPatients = patients.map(patient => {
+      const nameParts = (patient.personalDetails?.name || "").split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+      
+      return {
+        _id: patient._id,
+        personalDetails: {
+          firstName,
+          lastName,
+          contactNumber: patient.personalDetails?.contactNumber || "",
+          emailAddress: patient.personalDetails?.emailAddress || "",
+          age: patient.personalDetails?.age || "",
+          gender: patient.personalDetails?.gender || "",
+          address: patient.personalDetails?.address || ""
+        }
+      };
+    });
     
     res.status(200).json({
       success: true,
-      patients
+      patients: transformedPatients
     });
   } catch (error) {
     console.error("Error fetching patients for appointment:", error);

@@ -83,7 +83,7 @@ const SelectContent = React.forwardRef<
           exit={{ opacity: 0, scale: 0.95, y: -10 }}
           transition={{ duration: 0.15 }}
           className={cn(
-            'z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-xl border border-border bg-popover/80 backdrop-blur-md text-popover-foreground shadow-lg',
+            'z-[100] max-h-96 min-w-[8rem] overflow-hidden rounded-xl border border-border bg-popover/80 backdrop-blur-md text-popover-foreground shadow-lg',
             'ring-1 ring-ring focus:outline-none',
             className
           )}

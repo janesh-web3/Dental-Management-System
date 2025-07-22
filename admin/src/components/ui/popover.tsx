@@ -25,7 +25,7 @@ const PopoverContent = React.forwardRef<
           exit={{ opacity: 0, scale: 0.95, y: -6 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
           className={cn(
-            'z-50 w-72 rounded-xl border border-border bg-background/70 text-foreground shadow-xl ring-1 ring-muted backdrop-blur-md p-4',
+            'z-[9999] w-72 rounded-xl border border-border bg-background/70 text-foreground shadow-xl ring-1 ring-muted backdrop-blur-md p-4',
             'transition-all duration-300 ease-in-out focus:outline-none',
             className
           )}

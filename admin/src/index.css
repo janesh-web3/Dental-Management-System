@@ -416,3 +416,26 @@
 .dark .rbc-time-view {
   background-color: hsl(var(--card)) !important;
 }
+
+/* Force patient search popover to appear on top of everything */
+.patient-search-popover {
+  z-index: 99999 !important;
+  position: fixed !important;
+}
+
+.patient-search-popover * {
+  z-index: inherit !important;
+}
+
+/* Additional Radix-specific overrides for popovers */
+[data-radix-popper-content-wrapper] .patient-search-popover,
+[data-radix-popper-content-wrapper] .patient-search-popover *,
+.patient-search-popover[data-radix-popper-content-wrapper],
+.patient-search-popover[data-radix-popper-content-wrapper] * {
+  z-index: 99999 !important;
+}
+
+/* Override any Radix portal z-index for popovers */
+[data-radix-portal] [data-state="open"] {
+  z-index: 99999 !important;
+}

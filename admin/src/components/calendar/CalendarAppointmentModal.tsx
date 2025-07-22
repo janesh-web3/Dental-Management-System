@@ -39,12 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Check, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -163,7 +158,6 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
   const [loadingDoctors, setLoadingDoctors] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
-  const [patientSearchOpen, setPatientSearchOpen] = useState(false);
   const [patientSearchQuery, setPatientSearchQuery] = useState("");
   const [isNewPatient, setIsNewPatient] = useState(true);
   const { toast } = useToast();
@@ -309,7 +303,7 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
     form.setValue("address", patient.personalDetails.address || "");
     
     setIsNewPatient(false);
-    setPatientSearchOpen(false);
+    setPatientSearchQuery("");
     
     toast({
       title: "Patient Selected",
@@ -328,7 +322,7 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
     form.setValue("address", "");
     
     setIsNewPatient(true);
-    setPatientSearchOpen(false);
+    setPatientSearchQuery("");
   };
 
   const handleStatusUpdate = async (newStatus: string) => {
@@ -515,68 +509,72 @@ const CalendarAppointmentModal: React.FC<CalendarAppointmentModalProps> = ({
                             <Plus className="h-4 w-4 mr-2" />
                             New Patient
                           </Button>
-                          <Popover open={patientSearchOpen} onOpenChange={setPatientSearchOpen}>
-                            <PopoverTrigger asChild>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                placeholder="Search existing patients..."
+                                value={patientSearchQuery}
+                                onChange={(e) => setPatientSearchQuery(e.target.value)}
+                                disabled={isReadOnly}
+                                className="flex-1"
+                              />
                               <Button
                                 type="button"
-                                variant={!isNewPatient ? "default" : "outline"}
+                                variant="outline"
                                 size="sm"
-                                disabled={isReadOnly}
+                                onClick={() => setPatientSearchQuery("")}
+                                disabled={isReadOnly || !patientSearchQuery}
                               >
-                                <Search className="h-4 w-4 mr-2" />
-                                Select Existing Patient
+                                Clear
                               </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-80 p-0" align="start">
-                              <div className="flex flex-col">
-                                <div className="p-2 border-b">
-                                  <Input
-                                    placeholder="Search patients..."
-                                    value={patientSearchQuery}
-                                    onChange={(e) => setPatientSearchQuery(e.target.value)}
-                                    className="h-8"
-                                  />
-                                </div>
-                                <div className="max-h-64 overflow-y-auto">
-                                  {loadingPatients ? (
-                                    <div className="p-4 text-center text-sm text-muted-foreground">
-                                      <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
-                                      Loading patients...
-                                    </div>
-                                  ) : patients && patients.length > 0 ? (
-                                    <div className="p-1">
-                                      {patients.map((patient) => (
-                                        <div
-                                          key={patient._id}
-                                          className="flex items-center p-2 cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm"
-                                          onClick={() => handlePatientSelect(patient)}
-                                        >
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4",
-                                              form.watch("patientId") === patient._id ? "opacity-100" : "opacity-0"
-                                            )}
-                                          />
-                                          <div className="flex flex-col flex-1">
-                                            <span className="text-sm">
-                                              {patient.personalDetails.firstName} {patient.personalDetails.lastName}
-                                            </span>
+                            </div>
+                            {patientSearchQuery && (
+                              <div className="border rounded-md max-h-48 overflow-y-auto bg-background">
+                                {loadingPatients ? (
+                                  <div className="p-4 text-center text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                                    Searching patients...
+                                  </div>
+                                ) : patients && patients.length > 0 ? (
+                                  <div className="p-1">
+                                    {patients.map((patient) => (
+                                      <div
+                                        key={patient._id}
+                                        className="flex items-center p-3 cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm border-b last:border-b-0"
+                                        onClick={() => handlePatientSelect(patient)}
+                                      >
+                                        <div className="flex flex-col flex-1">
+                                          <span className="text-sm font-medium">
+                                            {patient.personalDetails.firstName} {patient.personalDetails.lastName}
+                                          </span>
+                                          <span className="text-xs text-muted-foreground">
+                                            📞 {patient.personalDetails.contactNumber} • Age: {patient.personalDetails.age} • {patient.personalDetails.gender}
+                                          </span>
+                                          {patient.personalDetails.address && (
                                             <span className="text-xs text-muted-foreground">
-                                              {patient.personalDetails.contactNumber} • Age: {patient.personalDetails.age}
+                                              📍 {patient.personalDetails.address}
                                             </span>
-                                          </div>
+                                          )}
                                         </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <div className="p-4 text-center text-sm text-muted-foreground">
-                                      No patients found.
-                                    </div>
-                                  )}
-                                </div>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className="ml-2"
+                                        >
+                                          Select
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="p-4 text-center text-sm text-muted-foreground">
+                                    No patients found matching "{patientSearchQuery}".
+                                  </div>
+                                )}
                               </div>
-                            </PopoverContent>
-                          </Popover>
+                            )}
+                          </div>
                         </div>
                       </div>
                       

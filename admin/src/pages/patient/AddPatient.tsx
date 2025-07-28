@@ -998,7 +998,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
   };
 
   return (
-    <div className="flex flex-col h-[92vh] max-w-6xl mx-auto">
+    <div className="flex flex-col h-[90vh] max-w-7xl mx-auto overflow-hidden">
       {/* Compact Header with Progress */}
       <motion.div 
         className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-3 py-2"
@@ -1015,14 +1015,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
               {currentStep + 1}/{steps.length}: {steps[currentStep].label}
             </Badge>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => modalClose()}
-            size="sm"
-            className="text-xs hover:bg-destructive hover:text-destructive-foreground transition-colors h-7 px-3"
-          >
-            Cancel
-          </Button>
         </div>
         
         {/* Compact Progress Bar */}
@@ -1068,13 +1060,13 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
         </div>
       </motion.div>
 
-      {/* Form Content */}
-      <ScrollArea className="flex-1 px-3">
+      {/* Form Content - Single ScrollArea for entire form */}
+      <ScrollArea className="flex-1 px-3 pb-10">
         <Tabs value={activeTab} onValueChange={(value) => {
           setActiveTab(value);
           const stepIndex = steps.findIndex(step => step.tab === value);
           if (stepIndex !== -1) setCurrentStep(stepIndex);
-        }} className="w-full">
+        }} className="w-full h-full">
 
         {/* Personal Details Step */}
         <TabsContent value="personal" className="mt-4 mb-4">
@@ -2381,13 +2373,11 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
 
                     <div className="space-y-1">
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                        <div className="border rounded-lg p-1 sm:p-2 bg-background col-span-3 overflow-x-auto">
+                        <div className="border rounded-lg p-1 sm:p-2 bg-background col-span-3">
                           <h5 className="text-xs sm:text-sm md:text-base font-medium mb-1 md:mb-2">
                             Selected Teeth
                           </h5>
-                          <div className="min-w-[280px]">
-                            {" "}
-                            {/* Ensures minimum width for chart */}
+                          <div className="w-full">
                             {plan.patientType === "Adult" ? (
                               <DentalChart
                                 selectedTeeth={selectedTeethMaps[index] || {}}
@@ -2406,7 +2396,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                               />
                             )}
                           </div>
-                          <div className="mt-2 md:mt-4 overflow-x-auto">
+                          <div className="mt-2 md:mt-4">
                             <SelectedTeethList
                               selectedTeeth={selectedTeethMaps[index] || {}}
                               onDetailsChange={(toothNumber, details) =>
@@ -2496,7 +2486,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                             </SelectTrigger>
                             <SelectContent className="max-h-[200px]">
                               {/* SelectItems with enhanced mobile styling */}
-                              <div className="max-h-[40vh] overflow-y-auto">
+                              <div>
                                 <SelectItem
                                   value="Caries"
                                   className="text-xs md:text-sm py-1.5 md:py-2"
@@ -2743,15 +2733,17 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
       </AnimatePresence>
         </TabsContent>
       </Tabs>
+      </ScrollArea>
       
-      {/* Compact Sticky Footer with Navigation */}
+      {/* Sticky Footer with Navigation Buttons - Always at bottom */}
       <motion.div 
-        className="sticky bottom-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t px-4 py-3"
+        className="sticky bottom-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t px-4 py-3 mt-auto"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
       >
         <div className="flex items-center justify-between gap-3">
+          {/* Left side - Progress indicator */}
           <div className="flex items-center space-x-2">
             <Progress value={getStepProgress()} className="w-16 h-1.5" />
             <span className="text-xs text-muted-foreground">
@@ -2759,7 +2751,19 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
             </span>
           </div>
           
+          {/* Right side - Action buttons */}
           <div className="flex items-center gap-2">
+            {/* Cancel Button */}
+            <Button
+              variant="outline"
+              onClick={() => modalClose()}
+              size="sm"
+              className="flex items-center gap-1 h-8 px-3 text-xs hover:bg-destructive hover:text-destructive-foreground transition-colors"
+            >
+              <span>Cancel</span>
+            </Button>
+            
+            {/* Previous Button */}
             <Button
               variant="outline"
               onClick={prevStep}
@@ -2771,6 +2775,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
               <span className="hidden sm:inline">Previous</span>
             </Button>
             
+            {/* Next/Submit Button */}
             {currentStep < steps.length - 1 ? (
               <Button
                 onClick={nextStep}
@@ -2807,7 +2812,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
           </div>
         </div>
       </motion.div>
-      </ScrollArea>
     </div>
   );
 };

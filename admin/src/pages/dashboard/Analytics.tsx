@@ -172,7 +172,7 @@ export function Analytics() {
   };
 
   const formatRevenueDataForCSV = (data: any) => {
-    const { revenueData, doctorRevenue, topPayingPatients } = data;
+    const { revenueData, doctorRevenue, topPayingPatients, revenueBreakdown } = data;
 
     // Format revenue over time
     const timeData = revenueData.map((item: any) => ({
@@ -201,7 +201,33 @@ export function Analytics() {
       RemainingAmount: item.remainingAmount,
     }));
 
-    return [...timeData, ...doctorData, ...patientData];
+    // Format revenue breakdown
+    const breakdownData = [];
+    if (revenueBreakdown) {
+      breakdownData.push({
+        Category: "Revenue Breakdown",
+        Source: "Treatment Revenue",
+        TotalAmount: revenueBreakdown.treatmentRevenue.totalAmount,
+        PaidAmount: revenueBreakdown.treatmentRevenue.paidAmount,
+        RemainingAmount: revenueBreakdown.treatmentRevenue.remainingAmount,
+      });
+      breakdownData.push({
+        Category: "Revenue Breakdown",
+        Source: "Service Payments",
+        TotalAmount: revenueBreakdown.servicePayments.totalAmount,
+        PaidAmount: revenueBreakdown.servicePayments.totalAmount, // Service payments are always paid
+        Count: revenueBreakdown.servicePayments.count,
+      });
+      breakdownData.push({
+        Category: "Revenue Breakdown",
+        Source: "Other Income",
+        TotalAmount: revenueBreakdown.income.totalAmount,
+        PaidAmount: revenueBreakdown.income.totalAmount, // Income is always paid
+        Count: revenueBreakdown.income.count,
+      });
+    }
+
+    return [...timeData, ...doctorData, ...patientData, ...breakdownData];
   };
 
   const formatDoctorDataForCSV = (data: any) => {

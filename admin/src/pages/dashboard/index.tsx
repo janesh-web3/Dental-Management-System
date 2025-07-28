@@ -727,6 +727,7 @@ const Dashboard = () => {
                   {dashboardData?.analytics.recentTreatments.map(
                     (treatment, index) => (
                       <motion.div
+                        key={`treatment-${index}-${treatment.patientName}-${treatment.date}`}
                         initial="hidden"
                         animate="visible"
                         whileHover="hover"

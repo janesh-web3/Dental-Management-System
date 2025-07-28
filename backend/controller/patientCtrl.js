@@ -1764,76 +1764,263 @@ const updateTreatmentStatus = async (req, res) => {
 
 const getRecentTransactions = async (req, res) => {
   try {
-    console.log("Fetching recent transactions from daily treatments...");
+    console.log("Fetching comprehensive recent transactions...");
 
-    const transactions = await Patient.aggregate([
-      // Exclude soft-deleted patients
+    // Get daily treatments from selected teeth
+    const dailyTreatments = await Patient.aggregate([
       { $match: { isDeleted: { $ne: true } } },
-      // Unwind to get to the daily treatments level
       { $unwind: "$medicalDetails" },
       { $unwind: "$medicalDetails.treatmentPlanning" },
       { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
-      {
-        $unwind:
-          "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments",
-      },
-
-      // Only get treatments with amounts
+      { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments" },
       {
         $match: {
-          "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount":
-            {
-              $exists: true,
-              $ne: 0,
-            },
+          "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount": {
+            $exists: true,
+            $ne: 0,
+          },
         },
       },
-
-      // Project the required fields
       {
-        $project: {
+        $addFields: {
+          type: "daily_treatment",
           patientId: "$_id",
           patientName: "$personalDetails.name",
+          patientContact: "$personalDetails.contactNumber",
           treatmentDetails: {
             $concat: [
-              {
-                $ifNull: [
-                  "$medicalDetails.treatmentPlanning.selectedTeethDetails.procedure",
-                  "Treatment",
-                ],
-              },
+              { $ifNull: ["$medicalDetails.treatmentPlanning.selectedTeethDetails.procedure", "Treatment"] },
               " - Tooth #",
-              {
-                $ifNull: [
-                  "$medicalDetails.treatmentPlanning.selectedTeethDetails.number",
-                  "",
-                ],
-              },
+              { $ifNull: ["$medicalDetails.treatmentPlanning.selectedTeethDetails.number", ""] },
             ],
           },
-          amount:
-            "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount",
-          paid: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount",
+          totalAmount: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount",
+          paidAmount: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount",
+          remainingAmount: {
+            $subtract: [
+              "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount",
+              { $ifNull: ["$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount", 0] }
+            ]
+          },
           date: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date",
-          notes:
-            "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.notes",
-          status:
-            "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.isCompleted",
+          notes: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.notes",
+          status: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.isCompleted",
+          procedure: "$medicalDetails.treatmentPlanning.selectedTeethDetails.procedure",
+          toothNumber: "$medicalDetails.treatmentPlanning.selectedTeethDetails.number",
+          paymentDate: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paymentDate",
         },
       },
-
-      // Sort by date descending (newest first)
-      { $sort: { date: -1 } },
-
-      // Limit to 10 recent transactions
-      { $limit: 10 },
+      {
+        $project: {
+          type: 1,
+          patientId: 1,
+          patientName: 1,
+          patientContact: 1,
+          treatmentDetails: 1,
+          totalAmount: 1,
+          paidAmount: 1,
+          remainingAmount: 1,
+          date: 1,
+          notes: 1,
+          status: 1,
+          procedure: 1,
+          toothNumber: 1,
+          paymentDate: 1,
+        },
+      },
     ]);
 
-    console.log(`Found ${transactions.length} transactions`);
+    // Get group treatments
+    const groupTreatments = await Patient.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
+      { $unwind: "$medicalDetails" },
+      { $unwind: "$medicalDetails.treatmentPlanning" },
+      { $unwind: "$medicalDetails.treatmentPlanning.groupTreatmentDetails" },
+      { $unwind: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments" },
+      {
+        $match: {
+          "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatmentAmount": {
+            $exists: true,
+            $ne: 0,
+          },
+        },
+      },
+      {
+        $addFields: {
+          type: "group_treatment",
+          patientId: "$_id",
+          patientName: "$personalDetails.name",
+          patientContact: "$personalDetails.contactNumber",
+          treatmentDetails: {
+            $concat: [
+              { $ifNull: ["$medicalDetails.treatmentPlanning.groupTreatmentDetails.procedure", "Group Treatment"] },
+              " - ",
+              { $ifNull: ["$medicalDetails.treatmentPlanning.groupTreatmentDetails.groupName", "General"] },
+            ],
+          },
+          totalAmount: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatmentAmount",
+          paidAmount: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.paidAmount",
+          remainingAmount: {
+            $subtract: [
+              "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatmentAmount",
+              { $ifNull: ["$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.paidAmount", 0] }
+            ]
+          },
+          date: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date",
+          notes: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.notes",
+          status: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.isCompleted",
+          procedure: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.procedure",
+          groupName: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.groupName",
+          paymentDate: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.paymentDate",
+        },
+      },
+      {
+        $project: {
+          type: 1,
+          patientId: 1,
+          patientName: 1,
+          patientContact: 1,
+          treatmentDetails: 1,
+          totalAmount: 1,
+          paidAmount: 1,
+          remainingAmount: 1,
+          date: 1,
+          notes: 1,
+          status: 1,
+          procedure: 1,
+          groupName: 1,
+          paymentDate: 1,
+        },
+      },
+    ]);
+
+    // Get service payments
+    const servicePayments = await ServicePayment.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
+      {
+        $addFields: {
+          type: "service_payment",
+          patientId: "$patient",
+          patientName: "$patientName",
+          patientContact: "$contactNumber",
+          treatmentDetails: {
+            $concat: [
+              "Service: ",
+              { $ifNull: ["$serviceType", "Unknown Service"] },
+              { $cond: [{ $ne: ["$description", ""] }, { $concat: [" - ", "$description"] }, ""] }
+            ],
+          },
+          totalAmount: "$amount",
+          paidAmount: "$amount",
+          remainingAmount: { $literal: 0 },
+          date: "$date",
+          notes: "$description",
+          status: { $literal: true },
+          serviceType: "$serviceType",
+          paymentMethod: "$paymentMethod",
+          isWalkIn: "$isWalkIn",
+        },
+      },
+      {
+        $project: {
+          type: 1,
+          patientId: 1,
+          patientName: 1,
+          patientContact: 1,
+          treatmentDetails: 1,
+          totalAmount: 1,
+          paidAmount: 1,
+          remainingAmount: 1,
+          date: 1,
+          notes: 1,
+          status: 1,
+          serviceType: 1,
+          paymentMethod: 1,
+          isWalkIn: 1,
+        },
+      },
+    ]);
+
+    // Get income transactions
+    const incomeTransactions = await Income.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
+      {
+        $addFields: {
+          type: "income",
+          patientId: { $literal: null },
+          patientName: { $literal: "System Income" },
+          patientContact: { $literal: "" },
+          treatmentDetails: {
+            $concat: [
+              "Income: ",
+              { $ifNull: ["$category", "Other"] },
+              " - ",
+              { $ifNull: ["$title", "Income Entry"] }
+            ],
+          },
+          totalAmount: "$amount",
+          paidAmount: "$amount",
+          remainingAmount: { $literal: 0 },
+          date: "$date",
+          notes: "$notes",
+          status: { $literal: true },
+          category: "$category",
+          title: "$title",
+        },
+      },
+      {
+        $project: {
+          type: 1,
+          patientId: 1,
+          patientName: 1,
+          patientContact: 1,
+          treatmentDetails: 1,
+          totalAmount: 1,
+          paidAmount: 1,
+          remainingAmount: 1,
+          date: 1,
+          notes: 1,
+          status: 1,
+          category: 1,
+          title: 1,
+        },
+      },
+    ]);
+
+    // Combine all transactions
+    const allTransactions = [
+      ...dailyTreatments,
+      ...groupTreatments,
+      ...servicePayments,
+      ...incomeTransactions,
+    ];
+
+    // Sort by date descending and limit to 15 recent transactions
+    const sortedTransactions = allTransactions
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 15);
+
+    // Calculate summary statistics
+    const summary = {
+      totalTransactions: sortedTransactions.length,
+      totalAmount: sortedTransactions.reduce((sum, t) => sum + (t.totalAmount || 0), 0),
+      totalPaid: sortedTransactions.reduce((sum, t) => sum + (t.paidAmount || 0), 0),
+      totalRemaining: sortedTransactions.reduce((sum, t) => sum + (t.remainingAmount || 0), 0),
+      typeBreakdown: {
+        daily_treatment: dailyTreatments.length,
+        group_treatment: groupTreatments.length,
+        service_payment: servicePayments.length,
+        income: incomeTransactions.length,
+      },
+    };
+
+    console.log(`Found ${sortedTransactions.length} total transactions`);
+    console.log("Transaction breakdown:", summary.typeBreakdown);
 
     res.status(200).json({
       success: true,
-      data: transactions,
+      data: sortedTransactions,
+      summary,
     });
   } catch (error) {
     console.error("Error in getRecentTransactions:", error);

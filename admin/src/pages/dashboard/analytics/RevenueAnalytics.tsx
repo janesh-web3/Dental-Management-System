@@ -60,6 +60,21 @@ interface RevenueData {
     paidAmount: number;
     remainingAmount: number;
   };
+  revenueBreakdown: {
+    treatmentRevenue: {
+      totalAmount: number;
+      paidAmount: number;
+      remainingAmount: number;
+    };
+    servicePayments: {
+      totalAmount: number;
+      count: number;
+    };
+    income: {
+      totalAmount: number;
+      count: number;
+    };
+  };
 }
 
 export default function RevenueAnalytics({ dateRange, period }: RevenueAnalyticsProps) {
@@ -141,7 +156,12 @@ export default function RevenueAnalytics({ dateRange, period }: RevenueAnalytics
             {loading ? (
               <Skeleton className="h-8 w-[100px]" />
             ) : (
-              <div className="text-2xl font-bold text-green-500">{formatCurrency(data?.overallRevenue?.totalAmount || 0)}</div>
+              <div>
+                <div className="text-2xl font-bold text-green-500">{formatCurrency(data?.overallRevenue?.totalAmount || 0)}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Treatments + Services + Income
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -155,7 +175,12 @@ export default function RevenueAnalytics({ dateRange, period }: RevenueAnalytics
             {loading ? (
               <Skeleton className="h-8 w-[100px]" />
             ) : (
-              <div className="text-2xl font-bold text-green-500">{formatCurrency(data?.overallRevenue?.paidAmount || 0)}</div>
+              <div>
+                <div className="text-2xl font-bold text-green-500">{formatCurrency(data?.overallRevenue?.paidAmount || 0)}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  All Sources Combined
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -192,6 +217,49 @@ export default function RevenueAnalytics({ dateRange, period }: RevenueAnalytics
           </CardContent>
         </Card>
       </div>
+      
+      {/* Revenue Breakdown */}
+      {data?.revenueBreakdown && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Revenue Breakdown by Source</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {formatCurrency(data.revenueBreakdown.treatmentRevenue.totalAmount)}
+                </div>
+                <div className="text-sm text-blue-600 dark:text-blue-400 mt-1">Treatment Revenue</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Paid: {formatCurrency(data.revenueBreakdown.treatmentRevenue.paidAmount)} | 
+                  Pending: {formatCurrency(data.revenueBreakdown.treatmentRevenue.remainingAmount)}
+                </div>
+              </div>
+              
+              <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  {formatCurrency(data.revenueBreakdown.servicePayments.totalAmount)}
+                </div>
+                <div className="text-sm text-green-600 dark:text-green-400 mt-1">Service Payments</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {data.revenueBreakdown.servicePayments.count} transactions
+                </div>
+              </div>
+              
+              <div className="text-center p-4 bg-orange-50 dark:bg-orange-950 rounded-lg border border-orange-200 dark:border-orange-800">
+                <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                  {formatCurrency(data.revenueBreakdown.income.totalAmount)}
+                </div>
+                <div className="text-sm text-orange-600 dark:text-orange-400 mt-1">Other Income</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {data.revenueBreakdown.income.count} transactions
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -350,7 +418,7 @@ export default function RevenueAnalytics({ dateRange, period }: RevenueAnalytics
                     {data.outstandingAmounts.map((patient, index) => (
                       <tr key={index} className="border-b">
                         <td className="py-2">{patient.patientName}</td>
-                        <td className="py-2">{patient.contactNumber}</td>
+                        <td className="py-2">{patient?.contactNumber}</td>
                         <td className="text-right py-2">{formatCurrency(patient.totalRemaining)}</td>
                       </tr>
                     ))}

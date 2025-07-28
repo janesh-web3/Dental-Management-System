@@ -159,24 +159,17 @@ const getRevenueAnalytics = async (req, res) => {
     const end = endDate ? endOfDay(new Date(endDate)) : endOfDay(new Date());
     const start = startDate ? startOfDay(new Date(startDate)) : startOfDay(subMonths(end, 12));
     
-    // Aggregate revenue data from patient treatments using dailyTreatmentSchema (excluding soft deleted)
-    const revenueData = await Patient.aggregate([
-      // Exclude soft deleted patients
+    // Get revenue from daily treatments (selectedTeethDetails)
+    const dailyTreatmentRevenue = await Patient.aggregate([
       { $match: { isDeleted: { $ne: true } } },
-      // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
-      // Unwind the treatmentPlanning array
       { $unwind: { path: "$medicalDetails.treatmentPlanning", preserveNullAndEmptyArrays: false } },
-      // Unwind the selectedTeethDetails array
       { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails", preserveNullAndEmptyArrays: false } },
-      // Unwind the dailyTreatments array
       { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments", preserveNullAndEmptyArrays: false } },
-      // Filter by date range
       { $match: {
           "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": { $gte: start, $lte: end }
         }
       },
-      // Group by time period based on dailyTreatments.date
       { $group: {
           _id: period === 'monthly' 
             ? { year: { $year: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date" }, month: { $month: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date" } }
@@ -185,30 +178,105 @@ const getRevenueAnalytics = async (req, res) => {
               : { year: { $year: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date" }, month: { $month: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date" }, day: { $dayOfMonth: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date" } },
           totalAmount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount" },
           paidAmount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount" },
-          remainingAmount: { $sum: { $subtract: ["$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount", "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount"] } },
           date: { $first: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date" }
-        }
-      },
-      // Sort by date
-      { $sort: { date: 1 } },
-      // Format the output
-      { $project: {
-          _id: 0,
-          date: { 
-            $dateToString: { 
-              format: period === 'monthly' ? "%Y-%m" : period === 'weekly' ? "%Y-W%U" : "%Y-%m-%d", 
-              date: "$date" 
-            } 
-          },
-          totalAmount: 1,
-          paidAmount: 1,
-          remainingAmount: 1
         }
       }
     ]);
+
+    // Get revenue from group treatments
+    const groupTreatmentRevenue = await Patient.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
+      { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
+      { $unwind: { path: "$medicalDetails.treatmentPlanning", preserveNullAndEmptyArrays: false } },
+      { $unwind: { path: "$medicalDetails.treatmentPlanning.groupTreatmentDetails", preserveNullAndEmptyArrays: false } },
+      { $unwind: { path: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments", preserveNullAndEmptyArrays: false } },
+      { $match: {
+          "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date": { $gte: start, $lte: end }
+        }
+      },
+      { $group: {
+          _id: period === 'monthly' 
+            ? { year: { $year: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date" }, month: { $month: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date" } }
+            : period === 'weekly'
+              ? { year: { $year: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date" }, week: { $week: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date" } }
+              : { year: { $year: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date" }, month: { $month: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date" }, day: { $dayOfMonth: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date" } },
+          totalAmount: { $sum: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatmentAmount" },
+          paidAmount: { $sum: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.paidAmount" },
+          date: { $first: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date" }
+        }
+      }
+    ]);
+
+    // Get revenue from service payments
+    const ServicePayment = require("../model/ServicePayment");
+    const servicePaymentRevenue = await ServicePayment.aggregate([
+      { $match: { isDeleted: { $ne: true }, date: { $gte: start, $lte: end } } },
+      { $group: {
+          _id: period === 'monthly' 
+            ? { year: { $year: "$date" }, month: { $month: "$date" } }
+            : period === 'weekly'
+              ? { year: { $year: "$date" }, week: { $week: "$date" } }
+              : { year: { $year: "$date" }, month: { $month: "$date" }, day: { $dayOfMonth: "$date" } },
+          totalAmount: { $sum: "$amount" },
+          paidAmount: { $sum: "$amount" }, // Service payments are always paid
+          date: { $first: "$date" }
+        }
+      }
+    ]);
+
+    // Get revenue from income transactions
+    const Income = require("../model/Income");
+    const incomeRevenue = await Income.aggregate([
+      { $match: { isDeleted: { $ne: true }, date: { $gte: start, $lte: end } } },
+      { $group: {
+          _id: period === 'monthly' 
+            ? { year: { $year: "$date" }, month: { $month: "$date" } }
+            : period === 'weekly'
+              ? { year: { $year: "$date" }, week: { $week: "$date" } }
+              : { year: { $year: "$date" }, month: { $month: "$date" }, day: { $dayOfMonth: "$date" } },
+          totalAmount: { $sum: "$amount" },
+          paidAmount: { $sum: "$amount" }, // Income is always paid
+          date: { $first: "$date" }
+        }
+      }
+    ]);
+
+    // Combine all revenue sources by date
+    const revenueMap = new Map();
+    const addToRevenueMap = (revenueArray) => {
+      revenueArray.forEach(item => {
+        const dateKey = period === 'monthly' 
+          ? `${item._id.year}-${String(item._id.month).padStart(2, '0')}`
+          : period === 'weekly'
+            ? `${item._id.year}-W${String(item._id.week).padStart(2, '0')}`
+            : `${item._id.year}-${String(item._id.month).padStart(2, '0')}-${String(item._id.day).padStart(2, '0')}`;
+        
+        if (revenueMap.has(dateKey)) {
+          const existing = revenueMap.get(dateKey);
+          existing.totalAmount += item.totalAmount || 0;
+          existing.paidAmount += item.paidAmount || 0;
+          existing.remainingAmount = existing.totalAmount - existing.paidAmount;
+        } else {
+          revenueMap.set(dateKey, {
+            date: dateKey,
+            totalAmount: item.totalAmount || 0,
+            paidAmount: item.paidAmount || 0,
+            remainingAmount: (item.totalAmount || 0) - (item.paidAmount || 0)
+          });
+        }
+      });
+    };
+
+    addToRevenueMap(dailyTreatmentRevenue);
+    addToRevenueMap(groupTreatmentRevenue);
+    addToRevenueMap(servicePaymentRevenue);
+    addToRevenueMap(incomeRevenue);
+
+    // Convert map to sorted array
+    const revenueData = Array.from(revenueMap.values()).sort((a, b) => a.date.localeCompare(b.date));
     
-    // Get doctor-wise revenue (excluding soft deleted)
-    const doctorRevenue = await Patient.aggregate([
+    // Get doctor-wise revenue from all sources (excluding soft deleted)
+    const dailyTreatmentDoctorRevenue = await Patient.aggregate([
       // Exclude soft deleted patients
       { $match: { isDeleted: { $ne: true } } },
       // Unwind the medicalDetails array
@@ -241,153 +309,293 @@ const getRevenueAnalytics = async (req, res) => {
           totalAmount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount" },
           paidAmount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount" }
         }
+      }
+    ]);
+
+    // Get doctor-wise revenue from group treatments
+    const groupTreatmentDoctorRevenue = await Patient.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
+      { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
+      { $unwind: { path: "$medicalDetails.treatmentPlanning", preserveNullAndEmptyArrays: false } },
+      { $unwind: { path: "$medicalDetails.treatmentPlanning.groupTreatmentDetails", preserveNullAndEmptyArrays: false } },
+      { $unwind: { path: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments", preserveNullAndEmptyArrays: false } },
+      { $match: {
+          "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date": { $gte: start, $lte: end },
+          "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatedByDoctor": { $ne: null }
+        }
       },
-      // Sort by revenue (paid amount)
-      { $sort: { paidAmount: -1 } },
-      // Limit to top 10 doctors
-      { $limit: 10 },
-      // Format the output
-      { $project: {
-          _id: 0,
-          doctorId: "$_id",
-          doctorName: 1,
-          totalAmount: 1,
-          paidAmount: 1,
-          remainingAmount: { $subtract: ["$totalAmount", "$paidAmount"] }
+      { $lookup: {
+          from: "doctors",
+          localField: "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatedByDoctor",
+          foreignField: "_id",
+          as: "doctorInfo"
+        }
+      },
+      { $unwind: { path: "$doctorInfo", preserveNullAndEmptyArrays: true } },
+      { $group: {
+          _id: "$doctorInfo._id",
+          doctorName: { $first: "$doctorInfo.name" },
+          totalAmount: { $sum: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatmentAmount" },
+          paidAmount: { $sum: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.paidAmount" }
         }
       }
     ]);
+
+    // Get doctor-wise revenue from service payments
+    const servicePaymentDoctorRevenue = await ServicePayment.aggregate([
+      { $match: { isDeleted: { $ne: true }, date: { $gte: start, $lte: end }, treatedByDoctor: { $ne: null } } },
+      { $lookup: {
+          from: "doctors",
+          localField: "treatedByDoctor",
+          foreignField: "_id",
+          as: "doctorInfo"
+        }
+      },
+      { $unwind: { path: "$doctorInfo", preserveNullAndEmptyArrays: true } },
+      { $group: {
+          _id: "$doctorInfo._id",
+          doctorName: { $first: "$doctorInfo.name" },
+          totalAmount: { $sum: "$amount" },
+          paidAmount: { $sum: "$amount" }
+        }
+      }
+    ]);
+
+    // Combine all doctor revenue sources
+    const doctorRevenueMap = new Map();
+    const addToDoctorRevenueMap = (revenueArray) => {
+      revenueArray.forEach(item => {
+        if (item._id && item.doctorName) {
+          const doctorKey = item._id.toString();
+          if (doctorRevenueMap.has(doctorKey)) {
+            const existing = doctorRevenueMap.get(doctorKey);
+            existing.totalAmount += item.totalAmount || 0;
+            existing.paidAmount += item.paidAmount || 0;
+          } else {
+            doctorRevenueMap.set(doctorKey, {
+              doctorId: item._id,
+              doctorName: item.doctorName,
+              totalAmount: item.totalAmount || 0,
+              paidAmount: item.paidAmount || 0
+            });
+          }
+        }
+      });
+    };
+
+    addToDoctorRevenueMap(dailyTreatmentDoctorRevenue);
+    addToDoctorRevenueMap(groupTreatmentDoctorRevenue);
+    addToDoctorRevenueMap(servicePaymentDoctorRevenue);
+
+    // Convert to array and add remaining amount
+    const doctorRevenue = Array.from(doctorRevenueMap.values())
+      .map(doctor => ({
+        ...doctor,
+        remainingAmount: doctor.totalAmount - doctor.paidAmount
+      }))
+      .sort((a, b) => b.paidAmount - a.paidAmount)
+      .slice(0, 10);
     
-    // Get top paying patients based on dailyTreatments (excluding soft deleted)
-    const topPayingPatients = await Patient.aggregate([
-      // Exclude soft deleted patients
+    // Get top paying patients from all sources (excluding soft deleted)
+    const dailyTreatmentPatients = await Patient.aggregate([
       { $match: { isDeleted: { $ne: true } } },
-      // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
-      // Unwind the treatmentPlanning array
       { $unwind: { path: "$medicalDetails.treatmentPlanning", preserveNullAndEmptyArrays: false } },
-      // Unwind the selectedTeethDetails array
       { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails", preserveNullAndEmptyArrays: false } },
-      // Unwind the dailyTreatments array
       { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments", preserveNullAndEmptyArrays: false } },
-      // Filter by date range
       { $match: {
           "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": { $gte: start, $lte: end }
         }
       },
-      // Group by patient
       { $group: {
           _id: "$_id",
           patientName: { $first: "$personalDetails.name" },
           totalPaid: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount" },
           totalAmount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount" }
         }
-      },
-      // Sort by total paid amount
-      { $sort: { totalPaid: -1 } },
-      // Limit to top 10 patients
-      { $limit: 10 },
-      // Format the output
-      { $project: {
-          _id: 0,
-          patientId: "$_id",
-          patientName: 1,
-          totalPaid: 1,
-          totalAmount: 1,
-          remainingAmount: { $subtract: ["$totalAmount", "$totalPaid"] }
-        }
       }
     ]);
-    
-    // Get outstanding amounts summary based on dailyTreatments (excluding soft deleted)
-    const outstandingAmounts = await Patient.aggregate([
-      // Exclude soft deleted patients
+
+    // Get patient revenue from group treatments
+    const groupTreatmentPatients = await Patient.aggregate([
       { $match: { isDeleted: { $ne: true } } },
-      // Unwind the medicalDetails array
       { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
-      // Unwind the treatmentPlanning array
       { $unwind: { path: "$medicalDetails.treatmentPlanning", preserveNullAndEmptyArrays: false } },
-      // Unwind the selectedTeethDetails array
-      { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails", preserveNullAndEmptyArrays: false } },
-      // Unwind the dailyTreatments array
-      { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments", preserveNullAndEmptyArrays: false } },
-      // Filter by date range and calculate remaining amount
+      { $unwind: { path: "$medicalDetails.treatmentPlanning.groupTreatmentDetails", preserveNullAndEmptyArrays: false } },
+      { $unwind: { path: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments", preserveNullAndEmptyArrays: false } },
       { $match: {
-          "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": { $gte: start, $lte: end }
+          "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date": { $gte: start, $lte: end }
         }
       },
-      // Add a field for remaining amount
-      { $addFields: {
-          remainingAmount: { $subtract: ["$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount", "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount"] }
-        }
-      },
-      // Filter to only include treatments with remaining amounts
-      { $match: {
-          remainingAmount: { $gt: 0 }
-        }
-      },
-      // Group by patient
       { $group: {
           _id: "$_id",
           patientName: { $first: "$personalDetails.name" },
-          contactNumber: { $first: "$personalDetails.contactNumber" },
-          totalRemaining: { $sum: "$remainingAmount" }
-        }
-      },
-      // Sort by total remaining amount
-      { $sort: { totalRemaining: -1 } },
-      // Format the output
-      { $project: {
-          _id: 0,
-          patientId: "$_id",
-          patientName: 1,
-          contactNumber: 1,
-          totalRemaining: 1
+          totalPaid: { $sum: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.paidAmount" },
+          totalAmount: { $sum: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatmentAmount" }
         }
       }
     ]);
-    
-    // Calculate overall revenue metrics based on dailyTreatments (excluding soft deleted)
-    const overallRevenue = await Patient.aggregate([
-      // Exclude soft deleted patients
-      { $match: { isDeleted: { $ne: true } } },
-      // Unwind the medicalDetails array
-      { $unwind: { path: "$medicalDetails", preserveNullAndEmptyArrays: false } },
-      // Unwind the treatmentPlanning array
-      { $unwind: { path: "$medicalDetails.treatmentPlanning", preserveNullAndEmptyArrays: false } },
-      // Unwind the selectedTeethDetails array
-      { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails", preserveNullAndEmptyArrays: false } },
-      // Unwind the dailyTreatments array
-      { $unwind: { path: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments", preserveNullAndEmptyArrays: false } },
-      // Filter by date range
-      { $match: {
-          "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": { $gte: start, $lte: end }
+
+    // Get patient revenue from service payments
+    const servicePaymentPatients = await ServicePayment.aggregate([
+      { $match: { isDeleted: { $ne: true }, date: { $gte: start, $lte: end } } },
+      { $group: {
+          _id: "$patientId",
+          totalPaid: { $sum: "$amount" },
+          totalAmount: { $sum: "$amount" }
         }
       },
-      // Group all data
+      { $lookup: {
+          from: "patients",
+          localField: "_id",
+          foreignField: "_id",
+          as: "patientInfo"
+        }
+      },
+      { $unwind: { path: "$patientInfo", preserveNullAndEmptyArrays: true } },
+      { $project: {
+          _id: 1,
+          patientName: "$patientInfo.personalDetails.name",
+          totalPaid: 1,
+          totalAmount: 1
+        }
+      }
+    ]);
+
+    // Combine all patient revenue sources
+    const patientRevenueMap = new Map();
+    const addToPatientRevenueMap = (revenueArray) => {
+      revenueArray.forEach(item => {
+        if (item._id && item.patientName) {
+          const patientKey = item._id.toString();
+          if (patientRevenueMap.has(patientKey)) {
+            const existing = patientRevenueMap.get(patientKey);
+            existing.totalAmount += item.totalAmount || 0;
+            existing.totalPaid += item.totalPaid || 0;
+          } else {
+            patientRevenueMap.set(patientKey, {
+              patientId: item._id,
+              patientName: item.patientName,
+              totalAmount: item.totalAmount || 0,
+              totalPaid: item.totalPaid || 0
+            });
+          }
+        }
+      });
+    };
+
+    addToPatientRevenueMap(dailyTreatmentPatients);
+    addToPatientRevenueMap(groupTreatmentPatients);
+    addToPatientRevenueMap(servicePaymentPatients);
+
+    // Convert to array and add remaining amount
+    const topPayingPatients = Array.from(patientRevenueMap.values())
+      .map(patient => ({
+        ...patient,
+        remainingAmount: patient.totalAmount - patient.totalPaid
+      }))
+      .sort((a, b) => b.totalPaid - a.totalPaid)
+      .slice(0, 10);
+    
+    // Get outstanding amounts from treatment revenue only (not service payments or income)
+    const treatmentPatientMap = new Map();
+    [...dailyTreatmentPatients, ...groupTreatmentPatients].forEach(patient => {
+      if (patient._id && patient.patientName) {
+        const patientKey = patient._id.toString();
+        if (treatmentPatientMap.has(patientKey)) {
+          const existing = treatmentPatientMap.get(patientKey);
+          existing.totalAmount += patient.totalAmount || 0;
+          existing.totalPaid += patient.totalPaid || 0;
+        } else {
+          treatmentPatientMap.set(patientKey, {
+            patientId: patient._id,
+            patientName: patient.patientName,
+            totalAmount: patient.totalAmount || 0,
+            totalPaid: patient.totalPaid || 0
+          });
+        }
+      }
+    });
+
+    const outstandingAmounts = Array.from(treatmentPatientMap.values())
+      .map(patient => ({
+        ...patient,
+        remainingAmount: patient.totalAmount - patient.totalPaid
+      }))
+      .filter(patient => patient.remainingAmount > 0)
+      .map(patient => ({
+        patientId: patient.patientId,
+        patientName: patient.patientName,
+        totalRemaining: patient.remainingAmount
+      }))
+      .sort((a, b) => b.totalRemaining - a.totalRemaining);
+
+    // Get contact numbers for outstanding patients
+    const patientIds = outstandingAmounts.map(p => p.patientId);
+    const patientContacts = await Patient.find(
+      { _id: { $in: patientIds }, isDeleted: { $ne: true } },
+      { _id: 1, "personalDetails.contactNumber": 1 }
+    );
+
+    // Add contact numbers to outstanding amounts
+    const contactMap = new Map(
+      patientContacts.map(p => [p._id.toString(), p.personalDetails?.contactNumber])
+    );
+
+    outstandingAmounts.forEach(patient => {
+      patient.contactNumber = contactMap.get(patient.patientId.toString()) || "N/A";
+    });
+    
+    // Calculate service payment and income totals separately
+    const servicePaymentTotal = await ServicePayment.aggregate([
+      { $match: { isDeleted: { $ne: true }, date: { $gte: start, $lte: end } } },
       { $group: {
           _id: null,
-          totalAmount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount" },
-          paidAmount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount" },
-          remainingAmount: { $sum: { $subtract: ["$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount", "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount"] } }
+          totalAmount: { $sum: "$amount" },
+          count: { $sum: 1 }
         }
       }
     ]);
-    
-    // Add procedure filter if provided
-    if (filters.procedure) {
-      analyticsQuery['$or'] = [
-        // Match procedure directly in dailyTreatments
-        { 
-          "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.procedure": filters.procedure 
-        },
-        // Keep the fallback path
-        { 
-          "medicalDetails.treatmentPlanning.selectedTeethDetails.procedure": filters.procedure 
+
+    const incomeTotal = await Income.aggregate([
+      { $match: { isDeleted: { $ne: true }, date: { $gte: start, $lte: end } } },
+      { $group: {
+          _id: null,
+          totalAmount: { $sum: "$amount" },
+          count: { $sum: 1 }
         }
-      ];
-    }
-    
+      }
+    ]);
+
+    // Calculate treatment revenue totals from the raw treatment data (not patient aggregated data)
+    const dailyTreatmentTotals = dailyTreatmentRevenue.reduce((acc, item) => {
+      acc.totalAmount += item.totalAmount || 0;
+      acc.paidAmount += item.paidAmount || 0;
+      return acc;
+    }, { totalAmount: 0, paidAmount: 0 });
+
+    const groupTreatmentTotals = groupTreatmentRevenue.reduce((acc, item) => {
+      acc.totalAmount += item.totalAmount || 0;
+      acc.paidAmount += item.paidAmount || 0;
+      return acc;
+    }, { totalAmount: 0, paidAmount: 0 });
+
+    const treatmentRevenueTotals = {
+      totalAmount: dailyTreatmentTotals.totalAmount + groupTreatmentTotals.totalAmount,
+      paidAmount: dailyTreatmentTotals.paidAmount + groupTreatmentTotals.paidAmount,
+      remainingAmount: (dailyTreatmentTotals.totalAmount + groupTreatmentTotals.totalAmount) - (dailyTreatmentTotals.paidAmount + groupTreatmentTotals.paidAmount)
+    };
+
+    // Calculate overall revenue metrics from all sources (treatments + services + income)
+    const servicePaymentAmount = servicePaymentTotal.length > 0 ? servicePaymentTotal[0].totalAmount : 0;
+    const incomeAmount = incomeTotal.length > 0 ? incomeTotal[0].totalAmount : 0;
+
+    const overallRevenue = {
+      totalAmount: treatmentRevenueTotals.totalAmount + servicePaymentAmount + incomeAmount,
+      paidAmount: treatmentRevenueTotals.paidAmount + servicePaymentAmount + incomeAmount, // Services and income are always paid
+      remainingAmount: treatmentRevenueTotals.remainingAmount // Only treatments have remaining amounts
+    };
+
     res.status(200).json({
       success: true,
       data: {
@@ -395,10 +603,11 @@ const getRevenueAnalytics = async (req, res) => {
         doctorRevenue,
         topPayingPatients,
         outstandingAmounts,
-        overallRevenue: overallRevenue.length > 0 ? overallRevenue[0] : {
-          totalAmount: 0,
-          paidAmount: 0,
-          remainingAmount: 0
+        overallRevenue,
+        revenueBreakdown: {
+          treatmentRevenue: treatmentRevenueTotals,
+          servicePayments: servicePaymentTotal.length > 0 ? servicePaymentTotal[0] : { totalAmount: 0, count: 0 },
+          income: incomeTotal.length > 0 ? incomeTotal[0] : { totalAmount: 0, count: 0 }
         }
       }
     });

@@ -11,6 +11,7 @@ import Appointment from "@/pages/appointment";
 import User from "@/pages/user";
 import Setting from "@/pages/setting";
 import Dashboard from "@/pages/dashboard";
+import { Dashboard2 } from "@/pages/dashboard/Dashboard.tsx";
 import Testimonials from "@/pages/testimonials";
 import Contacts from "@/pages/contact";
 import LandingPage from "@/pages/landing";
@@ -59,61 +60,71 @@ const AppRouter: React.FC = () => {
       ),
       children: [
         { path: "/", element: <Dashboard />, index: true },
+        { path: "/advanced-dashboard", element: <Dashboard2 />, index: true },
         { path: "/patients", element: <Patient /> },
         { path: "/scan-patient", element: <ScanPatient /> },
         { path: "/doctors", element: <Doctor /> },
         { path: "/appointment", element: <Appointment /> },
         { path: "/calendar", element: <Calendar /> },
         { path: "/user", element: <User /> },
-        { path: "/settings", element: <Setting /> },        { path: "/testimonials", element: <Testimonials /> },
+        { path: "/settings", element: <Setting /> },
+        { path: "/testimonials", element: <Testimonials /> },
         { path: "/contacts", element: <Contacts /> },
         { path: "/sms", element: <SMS /> },
         { path: "/sms/single", element: <SingleSMS /> },
         { path: "/sms/bulk", element: <BulkSMS /> },
-        { 
-          path: "/notifications", 
+        {
+          path: "/notifications",
           element: (
             <Suspense fallback={<Loading />}>
               {React.createElement(lazy(() => import("@/pages/notifications")))}
             </Suspense>
-          ) 
+          ),
         },
         // Finance routes
-        { 
-          path: "/finance/invoices", 
+        {
+          path: "/finance/invoices",
           element: (
             <Suspense fallback={<Loading />}>
-              {React.createElement(lazy(() => import("@/pages/invoices/InvoiceList")))}
+              {React.createElement(
+                lazy(() => import("@/pages/invoices/InvoiceList"))
+              )}
             </Suspense>
-          ) 
+          ),
         },
-        { 
-          path: "/finance/invoices/new", 
+        {
+          path: "/finance/invoices/new",
           element: (
             <Suspense fallback={<Loading />}>
-              {React.createElement(lazy(() => import("@/pages/invoices/InvoiceNew")))}
+              {React.createElement(
+                lazy(() => import("@/pages/invoices/InvoiceNew"))
+              )}
             </Suspense>
-          ) 
+          ),
         },
-        { 
-          path: "/finance/invoices/:id", 
+        {
+          path: "/finance/invoices/:id",
           element: (
             <Suspense fallback={<Loading />}>
-              {React.createElement(lazy(() => import("@/pages/invoices/InvoiceDetail")))}
+              {React.createElement(
+                lazy(() => import("@/pages/invoices/InvoiceDetail"))
+              )}
             </Suspense>
-          ) 
+          ),
         },
         { path: "/finance/income", element: <IncomePage /> },
         { path: "/finance/expense", element: <ExpensePage /> },
         { path: "/finance/summary", element: <FinanceSummary /> },
         { path: "/debug", element: <DebugPage /> },
-        { 
-          path: "/finance/service-payment", 
+        {
+          path: "/finance/service-payment",
           element: (
             <Suspense fallback={<Loading />}>
-              {React.createElement(lazy(() => import("@/pages/finance/service-payment")))}
+              {React.createElement(
+                lazy(() => import("@/pages/finance/service-payment"))
+              )}
             </Suspense>
-          ) 
+          ),
         },
         // Standalone Income and Expense routes
         { path: "/income", element: <IncomePage /> },
@@ -123,36 +134,71 @@ const AppRouter: React.FC = () => {
           path: "/recycle-bin",
           element: (
             <Suspense fallback={<Loading />}>
-              {React.createElement(lazy(() => import("@/components/admin/RecycleBin")))}
+              {React.createElement(
+                lazy(() => import("@/components/admin/RecycleBin"))
+              )}
             </Suspense>
-          )
+          ),
         },
-
       ],
     },
   ];
 
   // Import doctor pages and layout components
-  const DoctorDashboard = lazy(() => import("@/pages/doctor-admin/dashboard.tsx"));
-  const AppointmentDashboard = lazy(() => import("@/pages/doctor-admin/appointments.tsx"));
-  const PatientsDashboard = lazy(() => import("@/pages/doctor-admin/patients.tsx"));
-  const TreatmentsDashboard = lazy(() => import("@/pages/doctor-admin/treatments.tsx"));
-  const PrescriptionsDashboard = lazy(() => import("@/pages/doctor-admin/prescriptions.tsx"));
-  const BillingDashboard = lazy(() => import("@/pages/doctor-admin/billing.tsx"));
-  const AnalyticsDashboard = lazy(() => import("@/pages/doctor-admin/analytics.tsx"));
-  const NotificationsDashboard = lazy(() => import("@/pages/doctor-admin/notifications.tsx"));
-  const DoctorLayout = lazy(() => import("@/components/layout/doctor-layout.tsx"));
-  const ProfileDashboard = lazy(() => import("@/pages/doctor-admin/profile.tsx"));
+  const DoctorDashboard = lazy(
+    () => import("@/pages/doctor-admin/dashboard.tsx")
+  );
+  const AppointmentDashboard = lazy(
+    () => import("@/pages/doctor-admin/appointments.tsx")
+  );
+  const PatientsDashboard = lazy(
+    () => import("@/pages/doctor-admin/patients.tsx")
+  );
+  const TreatmentsDashboard = lazy(
+    () => import("@/pages/doctor-admin/treatments.tsx")
+  );
+  const PrescriptionsDashboard = lazy(
+    () => import("@/pages/doctor-admin/prescriptions.tsx")
+  );
+  const BillingDashboard = lazy(
+    () => import("@/pages/doctor-admin/billing.tsx")
+  );
+  const AnalyticsDashboard = lazy(
+    () => import("@/pages/doctor-admin/analytics.tsx")
+  );
+  const NotificationsDashboard = lazy(
+    () => import("@/pages/doctor-admin/notifications.tsx")
+  );
+  const DoctorLayout = lazy(
+    () => import("@/components/layout/doctor-layout.tsx")
+  );
+  const ProfileDashboard = lazy(
+    () => import("@/pages/doctor-admin/profile.tsx")
+  );
 
   // Import patient pages and layout components
-  const PatientDashboard = lazy(() => import("@/pages/patient-admin/dashboard.tsx"));
-  const PatientAppointments = lazy(() => import("@/pages/patient-admin/appointments.tsx"));
-  const PatientTreatments = lazy(() => import("@/pages/patient-admin/treatments.tsx"));
+  const PatientDashboard = lazy(
+    () => import("@/pages/patient-admin/dashboard.tsx")
+  );
+  const PatientAppointments = lazy(
+    () => import("@/pages/patient-admin/appointments.tsx")
+  );
+  const PatientTreatments = lazy(
+    () => import("@/pages/patient-admin/treatments.tsx")
+  );
   const PatientBills = lazy(() => import("@/pages/patient-admin/bills.tsx"));
-  const PatientProfile = lazy(() => import("@/pages/patient-admin/profile.tsx"));
-  const PatientMessages = lazy(() => import("@/pages/patient-admin/messages.tsx"));
-  const PatientLayout = lazy(() => import("@/components/layout/patient-layout.tsx"));
-  const PatientPrescriptions = lazy(() => import("@/pages/patient-admin/prescriptions.tsx"));
+  const PatientProfile = lazy(
+    () => import("@/pages/patient-admin/profile.tsx")
+  );
+  const PatientMessages = lazy(
+    () => import("@/pages/patient-admin/messages.tsx")
+  );
+  const PatientLayout = lazy(
+    () => import("@/components/layout/patient-layout.tsx")
+  );
+  const PatientPrescriptions = lazy(
+    () => import("@/pages/patient-admin/prescriptions.tsx")
+  );
 
   const doctorRoutes = [
     {
@@ -169,41 +215,41 @@ const AppRouter: React.FC = () => {
       children: [
         // Redirect from /doctor to /doctor/dashboard
         { path: "", element: <Navigate to="/doctor/dashboard" replace /> },
-        { 
-          path: "dashboard", 
-          element: <DoctorDashboard />
+        {
+          path: "dashboard",
+          element: <DoctorDashboard />,
         },
-        { 
-          path: "patients", 
-          element: <PatientsDashboard />
+        {
+          path: "patients",
+          element: <PatientsDashboard />,
         },
-        { 
-          path: "appointments", 
-          element: <AppointmentDashboard />
+        {
+          path: "appointments",
+          element: <AppointmentDashboard />,
         },
-        { 
-          path: "treatments", 
-          element: <TreatmentsDashboard />
+        {
+          path: "treatments",
+          element: <TreatmentsDashboard />,
         },
-        { 
-          path: "prescriptions", 
-          element: <PrescriptionsDashboard />
+        {
+          path: "prescriptions",
+          element: <PrescriptionsDashboard />,
         },
-        { 
-          path: "billing", 
-          element: <BillingDashboard />
+        {
+          path: "billing",
+          element: <BillingDashboard />,
         },
-        { 
-          path: "analytics", 
-          element: <AnalyticsDashboard />
+        {
+          path: "analytics",
+          element: <AnalyticsDashboard />,
         },
-        { 
-          path: "notifications", 
-          element: <NotificationsDashboard />
+        {
+          path: "notifications",
+          element: <NotificationsDashboard />,
         },
-        { 
-          path: "profile", 
-          element: <ProfileDashboard /> 
+        {
+          path: "profile",
+          element: <ProfileDashboard />,
         },
       ],
     },
@@ -225,40 +271,41 @@ const AppRouter: React.FC = () => {
       children: [
         // Redirect from /patient to /patient/dashboard
         { path: "", element: <Navigate to="/patient/dashboard" replace /> },
-        { 
-          path: "dashboard", 
-          element: <PatientDashboard />
+        {
+          path: "dashboard",
+          element: <PatientDashboard />,
         },
-        { 
-          path: "appointments", 
-          element: <PatientAppointments /> 
+        {
+          path: "appointments",
+          element: <PatientAppointments />,
         },
-        { 
-          path: "treatments", 
-          element: <PatientTreatments /> 
+        {
+          path: "treatments",
+          element: <PatientTreatments />,
         },
-        { 
-          path: "prescriptions", 
-          element: <PatientPrescriptions /> 
+        {
+          path: "prescriptions",
+          element: <PatientPrescriptions />,
         },
-        { 
-          path: "bills", 
-          element: <PatientBills /> 
+        {
+          path: "bills",
+          element: <PatientBills />,
         },
-        { 
-          path: "profile", 
-          element: <PatientProfile /> 
-        },        { 
-          path: "messages", 
-          element: <PatientMessages /> 
+        {
+          path: "profile",
+          element: <PatientProfile />,
         },
-        { 
-          path: "notifications", 
+        {
+          path: "messages",
+          element: <PatientMessages />,
+        },
+        {
+          path: "notifications",
           element: (
             <Suspense fallback={<Loading />}>
               {React.createElement(lazy(() => import("@/pages/notifications")))}
             </Suspense>
-          ) 
+          ),
         },
       ],
     },
@@ -273,7 +320,12 @@ const AppRouter: React.FC = () => {
     { path: "*", element: <Navigate to="/404" replace /> },
   ];
 
-  const routes = useRoutes([...dashboardRoutes, ...doctorRoutes, ...patientRoutes, ...publicRoutes]);
+  const routes = useRoutes([
+    ...dashboardRoutes,
+    ...doctorRoutes,
+    ...patientRoutes,
+    ...publicRoutes,
+  ]);
 
   return routes;
 };

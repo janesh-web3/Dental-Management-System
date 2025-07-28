@@ -946,6 +946,11 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
           total += Number(groupTreatment.totalTreatmentAmount) || 0;
         }
       });
+
+      // Add service payment amount if included
+      if (includeServicePayment && servicePayment.amount) {
+        total += Number(servicePayment.amount) || 0;
+      }
     } catch (error) {
       console.error("Error calculating total amount:", error);
     }
@@ -980,6 +985,11 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
           total += Number(groupTreatment.totalPaidAmount) || 0;
         }
       });
+
+      // Add service payment amount if included (service payments are typically paid at time of service)
+      if (includeServicePayment && servicePayment.amount) {
+        total += Number(servicePayment.amount) || 0;
+      }
     } catch (error) {
       console.error("Error calculating paid amount:", error);
     }

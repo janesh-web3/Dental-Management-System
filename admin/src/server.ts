@@ -1,9 +1,9 @@
 
 // local 
-// export const server = "http://localhost:8080/api";
-// export const  dentalName = "Crown Dental Clinic";
-// export const socket = "http://localhost:8080";
-// export const dentalAddress = "Taranagar, Dhangadhi, Nepal";
+export const server = "http://localhost:8080/api";
+export const  dentalName = "Crown Dental Clinic";
+export const socket = "http://localhost:8080";
+export const dentalAddress = "Taranagar, Dhangadhi, Nepal";
 
 
 // shree nagar dental
@@ -13,10 +13,10 @@
 // export const dentalAddress = "Parkmod, Dhangadhi, Nepal";
 
 // crown dental clinic
-export const server = "https://server3.crownagi.com/api"; 
-export const socket = "https://server3.crownagi.com";
-export const dentalAddress = "Taranagar, Dhangadhi, Nepal";
-export const  dentalName = "Crown Dental Clinic";
+// export const server = "https://server3.crownagi.com/api"; 
+// export const socket = "https://server3.crownagi.com";
+// export const dentalAddress = "Taranagar, Dhangadhi, Nepal";
+// export const  dentalName = "Crown Dental Clinic";
 
 
 // muskan dental

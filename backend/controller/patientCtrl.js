@@ -2577,7 +2577,7 @@ const getDashboardMetrics = async (req, res) => {
     };
 
     // Combined revenue aggregation function
-    const getRevenue = async (dateFilter, groupByDate = false) => {
+    const getRevenue = async (teethDateFilter, groupDateFilter, groupByDate = false) => {
       try {
         const pipeline = [
           { $match: { isDeleted: { $ne: true } } },
@@ -2608,7 +2608,7 @@ const getDashboardMetrics = async (req, res) => {
                     preserveNullAndEmptyArrays: true,
                   },
                 },
-                { $match: dateFilter },
+                ...(Object.keys(teethDateFilter).length > 0 ? [{ $match: teethDateFilter }] : []),
                 {
                   $group: {
                     _id: groupByDate
@@ -2663,7 +2663,7 @@ const getDashboardMetrics = async (req, res) => {
                     preserveNullAndEmptyArrays: true,
                   },
                 },
-                { $match: dateFilter },
+                ...(Object.keys(groupDateFilter).length > 0 ? [{ $match: groupDateFilter }] : []),
                 {
                   $group: {
                     _id: groupByDate
@@ -2736,7 +2736,8 @@ const getDashboardMetrics = async (req, res) => {
         const result = await Patient.aggregate(pipeline);
 
         console.log(`Revenue calculation result:`, {
-          dateFilter,
+          teethDateFilter,
+          groupDateFilter,
           groupByDate,
           result,
           documentsProcessed: result.reduce(
@@ -2761,73 +2762,75 @@ const getDashboardMetrics = async (req, res) => {
 
     // Revenue aggregation functions
     const getDailyRevenue = async () => {
-      const dateFilter = {
-        "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date":
-          {
-            $gte: currentDay,
-            $lt: tomorrow,
-          },
-        "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date":
-          {
-            $gte: currentDay,
-            $lt: tomorrow,
-          },
+      const teethDateFilter = {
+        "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": {
+          $gte: currentDay,
+          $lt: tomorrow,
+        },
       };
-      return await getRevenue(dateFilter);
+      const groupDateFilter = {
+        "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date": {
+          $gte: currentDay,
+          $lt: tomorrow,
+        },
+      };
+      return await getRevenue(teethDateFilter, groupDateFilter);
     };
 
     const getWeeklyRevenue = async () => {
-      const dateFilter = {
-        "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date":
-          {
-            $gte: startOfWeek,
-            $lt: tomorrow,
-          },
-        "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date":
-          {
-            $gte: startOfWeek,
-            $lt: tomorrow,
-          },
+      const teethDateFilter = {
+        "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": {
+          $gte: startOfWeek,
+          $lt: tomorrow,
+        },
       };
-      return await getRevenue(dateFilter);
+      const groupDateFilter = {
+        "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date": {
+          $gte: startOfWeek,
+          $lt: tomorrow,
+        },
+      };
+      return await getRevenue(teethDateFilter, groupDateFilter);
     };
 
     const getMonthlyRevenue = async () => {
-      const dateFilter = {
-        "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date":
-          {
-            $gte: startOfMonth,
-            $lte: endOfMonth,
-          },
-        "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date":
-          {
-            $gte: startOfMonth,
-            $lte: endOfMonth,
-          },
+      const teethDateFilter = {
+        "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": {
+          $gte: startOfMonth,
+          $lte: endOfMonth,
+        },
       };
-      return await getRevenue(dateFilter);
+      const groupDateFilter = {
+        "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date": {
+          $gte: startOfMonth,
+          $lte: endOfMonth,
+        },
+      };
+      return await getRevenue(teethDateFilter, groupDateFilter);
     };
 
     const getTotalRevenue = async () => {
-      return await getRevenue({});
+      return await getRevenue({}, {});
     };
 
     const getRevenueTrend = async () => {
-      const dateFilter = isAllTimeRequest
+      const teethDateFilter = isAllTimeRequest
         ? {}
         : {
-            "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date":
-              {
-                $gte: fromDate,
-                $lte: toDate,
-              },
-            "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date":
-              {
-                $gte: fromDate,
-                $lte: toDate,
-              },
+            "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.date": {
+              $gte: fromDate,
+              $lte: toDate,
+            },
           };
-      return await getRevenue(dateFilter, true);
+      const groupDateFilter = isAllTimeRequest
+        ? {}
+        : {
+            "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.date": {
+              $gte: fromDate,
+              $lte: toDate,
+            },
+          };
+      return await getRevenue(teethDateFilter, groupDateFilter, true);
     };
 
     // Service payment revenue functions

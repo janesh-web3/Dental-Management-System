@@ -60,6 +60,7 @@ interface FinancialData {
   daily: number;
   weekly: number;
   monthly: number;
+  yearly: number;
   total: number;
   revenueByDoctor: Array<{
     doctorName: string;
@@ -113,88 +114,19 @@ export function FinancialInsights() {
     setIsCustomDateRange(false);
   };
 
-  const calculateDailyRevenue = (data: FinancialSummaryData) => {
-    const today = new Date();
-    const servicePayments = Array.isArray(data.recentServicePayments) ? data.recentServicePayments : [];
-    const incomeRecords = Array.isArray(data.recentIncome) ? data.recentIncome : [];
-    
-    const todayRecords = [...servicePayments, ...incomeRecords].filter(
-      record => {
-        if (!record) return false;
-        const recordDate = new Date(record.date || record.createdAt);
-        return recordDate.toDateString() === today.toDateString();
-      }
-    );
-    return todayRecords.reduce((sum, record) => sum + (record.amount || 0), 0);
-  };
-
-  const calculateWeeklyRevenue = (data: FinancialSummaryData) => {
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    
-    const servicePayments = Array.isArray(data.recentServicePayments) ? data.recentServicePayments : [];
-    const incomeRecords = Array.isArray(data.recentIncome) ? data.recentIncome : [];
-    
-    const weekRecords = [...servicePayments, ...incomeRecords].filter(
-      record => {
-        if (!record) return false;
-        const recordDate = new Date(record.date || record.createdAt);
-        return recordDate >= oneWeekAgo;
-      }
-    );
-    return weekRecords.reduce((sum, record) => sum + (record.amount || 0), 0);
-  };
-
-  const calculateMonthlyRevenue = (data: FinancialSummaryData) => {
-    const oneMonthAgo = new Date();
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-    
-    const servicePayments = Array.isArray(data.recentServicePayments) ? data.recentServicePayments : [];
-    const incomeRecords = Array.isArray(data.recentIncome) ? data.recentIncome : [];
-    
-    const monthRecords = [...servicePayments, ...incomeRecords].filter(
-      record => {
-        if (!record) return false;
-        const recordDate = new Date(record.date || record.createdAt);
-        return recordDate >= oneMonthAgo;
-      }
-    );
-    return monthRecords.reduce((sum, record) => sum + (record.amount || 0), 0);
-  };
-
-  const generateRevenueTrend = (data: FinancialSummaryData) => {
-    const servicePayments = Array.isArray(data.recentServicePayments) ? data.recentServicePayments : [];
-    const incomeRecords = Array.isArray(data.recentIncome) ? data.recentIncome : [];
-    const allRecords = [...servicePayments, ...incomeRecords];
-    const trendMap = new Map<string, number>();
-    
-    allRecords.forEach(record => {
-      if (!record) return;
-      const date = new Date(record.date || record.createdAt);
-      const dateKey = date.toISOString().split('T')[0];
-      trendMap.set(dateKey, (trendMap.get(dateKey) || 0) + (record.amount || 0));
-    });
-    
-    return Array.from(trendMap.entries())
-      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
-      .map(([date, revenue]) => ({ date, revenue }));
-  };
-
-  const processFinancialData = (summaryData: FinancialSummaryData): FinancialData => {
-    const summary = summaryData.summary || { income: 0, expense: 0, balance: 0, servicePayment: 0 };
-    const serviceByType = Array.isArray(summaryData.serviceByType) ? summaryData.serviceByType : [];
+  // Process financial data from dashboard metrics (includes all revenue sources)
+  const processFinancialData = (dashboardData: any): FinancialData => {
+    const financialAnalysis = dashboardData.financialAnalysis || {};
     
     return {
-      daily: calculateDailyRevenue(summaryData),
-      weekly: calculateWeeklyRevenue(summaryData),
-      monthly: calculateMonthlyRevenue(summaryData),
-      total: summary.income + summary.servicePayment,
-      revenueByDoctor: [],
-      revenueByTreatment: serviceByType.map(item => ({
-        treatmentType: item._id || 'Unknown',
-        revenue: item.total || 0
-      })),
-      revenueTrend: generateRevenueTrend(summaryData),
+      daily: financialAnalysis.daily || 0,
+      weekly: financialAnalysis.weekly || 0,
+      monthly: financialAnalysis.monthly || 0,
+      yearly: financialAnalysis.yearly || 0,
+      total: financialAnalysis.total || 0,
+      revenueByDoctor: financialAnalysis.revenueByDoctor || [],
+      revenueByTreatment: financialAnalysis.revenueByTreatment || [],
+      revenueTrend: financialAnalysis.revenueTrend || [],
       paymentMethods: []
     };
   };
@@ -204,72 +136,71 @@ export function FinancialInsights() {
       try {
         setLoading(true);
         
-        const fetchWithErrorHandling = async (url: string, name: string) => {
-          try {
-            return await crudRequest("GET", url);
-          } catch (error) {
-            console.warn(`Failed to fetch ${name}:`, error);
-            return { data: { summary: { income: 0, expense: 0, balance: 0, servicePayment: 0 }, incomeByCategory: [], expenseByCategory: [], serviceByType: [], recentIncome: [], recentExpenses: [], recentServicePayments: [] } };
-          }
-        };
+        // Fetch dashboard metrics which includes all revenue sources (service payments, selected teeth, group treatments)
+        const dashboardUrl = `${server}/patient/dashboard-metrics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&viewMode=${viewMode}`;
+        const dashboardResponse = await crudRequest("GET", dashboardUrl);
+        const dashboardData = dashboardResponse.data;
         
-        // Fetch financial summary with date filters
-        const summaryUrl = `${server}/finance/summary?startDate=${dateRange.from.toISOString()}&endDate=${dateRange.to.toISOString()}`;
-        const [summaryResponse, servicePaymentsResponse, appointmentsResponse] = await Promise.all([
-          fetchWithErrorHandling(summaryUrl, 'financial summary'),
-          fetchWithErrorHandling(`${server}/service-payment`, 'service payments'),
-          fetchWithErrorHandling(`${server}/appointment/get-appointments`, 'appointments')
-        ]);
+        // Get service payments for payment method analysis
+        const servicePaymentsResponse = await crudRequest("GET", `${server}/service-payment`);
+        const servicePayments = Array.isArray(servicePaymentsResponse.data) ? servicePaymentsResponse.data : [];
         
-        const summaryData = (summaryResponse as { data: FinancialSummaryData }).data;
-        setRawFinancialData(summaryData);
-        
-        // Process payment methods from service payments with null checks
-        const servicePayments = Array.isArray((servicePaymentsResponse as { data: any }).data) ? (servicePaymentsResponse as { data: any }).data as any[] : [];
+        // Process payment methods from service payments with date filtering
         const paymentMethodsMap = new Map<string, number>();
+        const filteredServicePayments = servicePayments.filter(payment => {
+          if (!payment || !payment.date) return false;
+          const paymentDate = new Date(payment.date);
+          return paymentDate >= dateRange.from && paymentDate <= dateRange.to;
+        });
         
-        servicePayments.forEach(payment => {
+        filteredServicePayments.forEach(payment => {
           if (payment && payment.paymentMethod && payment.amount) {
             const method = payment.paymentMethod;
             paymentMethodsMap.set(method, (paymentMethodsMap.get(method) || 0) + payment.amount);
           }
         });
         
-        // Process doctor revenue from appointments and service payments with null checks
-        const appointments = Array.isArray((appointmentsResponse as { data: any }).data) ? (appointmentsResponse as { data: any }).data as any[] : [];
-        const doctorRevenueMap = new Map<string, number>();
-        
-        // Calculate revenue by doctor from appointments with fees
-        appointments.forEach(appointment => {
-          if (appointment && appointment.doctorName && appointment.fee) {
-            const doctorName = appointment.doctorName;
-            doctorRevenueMap.set(doctorName, (doctorRevenueMap.get(doctorName) || 0) + appointment.fee);
-          }
-        });
-        
-        // Also include service payments that have doctor information
-        servicePayments.forEach(payment => {
-          if (payment && payment.doctor && payment.amount) {
-            const doctorName = payment.doctor.name || payment.doctorName;
-            if (doctorName) {
-              doctorRevenueMap.set(doctorName, (doctorRevenueMap.get(doctorName) || 0) + payment.amount);
-            }
-          }
-        });
-        
-        const processedData = processFinancialData(summaryData);
+        const processedData = processFinancialData(dashboardData);
         processedData.paymentMethods = Array.from(paymentMethodsMap.entries()).map(([method, amount]) => ({
           method,
           amount
         }));
-        processedData.revenueByDoctor = Array.from(doctorRevenueMap.entries()).map(([doctorName, revenue]) => ({
-          doctorName,
-          revenue
-        }));
         
         setFinancialData(processedData);
+        
+        // Also set raw data for backward compatibility (though we're not using the old endpoint anymore)
+        setRawFinancialData({
+          summary: { 
+            income: processedData.total, 
+            expense: 0, 
+            balance: processedData.total, 
+            servicePayment: 0 
+          },
+          incomeByCategory: [],
+          expenseByCategory: [],
+          serviceByType: processedData.revenueByTreatment.map(item => ({
+            _id: item.treatmentType,
+            total: item.revenue
+          })),
+          recentIncome: [],
+          recentExpenses: [],
+          recentServicePayments: filteredServicePayments
+        });
+        
       } catch (error) {
         console.error("Error fetching financial data:", error);
+        // Set default data on error
+        setFinancialData({
+          daily: 0,
+          weekly: 0,
+          monthly: 0,
+          yearly: 0,
+          total: 0,
+          revenueByDoctor: [],
+          revenueByTreatment: [],
+          revenueTrend: [],
+          paymentMethods: []
+        });
       } finally {
         setLoading(false);
       }
@@ -285,11 +216,34 @@ export function FinancialInsights() {
   const handleExportCSV = () => {
     if (!financialData) return [];
     
-    // Prepare data for CSV export based on current tab
-    const csvData = financialData.revenueTrend.map((item) => ({
-      Date: format(new Date(item.date), "yyyy-MM-dd"),
-      Revenue: item.revenue,
-    }));
+    // Prepare comprehensive financial data for CSV export
+    const csvData = [
+      {
+        Metric: "Daily Revenue",
+        Amount: financialData.daily,
+        Period: "Today"
+      },
+      {
+        Metric: "Weekly Revenue", 
+        Amount: financialData.weekly,
+        Period: "Last 7 days"
+      },
+      {
+        Metric: "Monthly Revenue",
+        Amount: financialData.monthly,
+        Period: "Last 30 days"
+      },
+      {
+        Metric: "Yearly Revenue",
+        Amount: financialData.yearly,
+        Period: "Annual"
+      },
+      {
+        Metric: "Total Revenue",
+        Amount: financialData.total,
+        Period: `${format(dateRange.from, "yyyy-MM-dd")} to ${format(dateRange.to, "yyyy-MM-dd")}`
+      }
+    ];
     
     return csvData;
   };
@@ -360,7 +314,7 @@ export function FinancialInsights() {
           )}
         </div>
         
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Daily Revenue</CardTitle>
@@ -436,6 +390,23 @@ export function FinancialInsights() {
                     </span>
                   )
                 ) : null}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Yearly Revenue</CardTitle>
+              <IndianRupee className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                रु {financialData?.yearly.toLocaleString("en-IN") || 0}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                <span className="flex items-center">
+                  <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+                  Annual projection
+                </span>
               </p>
             </CardContent>
           </Card>

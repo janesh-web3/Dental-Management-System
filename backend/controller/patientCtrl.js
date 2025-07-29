@@ -3248,6 +3248,146 @@ const getDashboardMetrics = async (req, res) => {
       }
     };
 
+    // Income revenue functions
+    const getDailyIncomeRevenue = async () => {
+      try {
+        const result = await Income.aggregate([
+          {
+            $match: {
+              date: { $gte: currentDay, $lt: tomorrow },
+              amount: {
+                $ne: null,
+                $type: ["double", "decimal", "int", "long"],
+              },
+              isDeleted: { $ne: true },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              revenue: { $sum: { $toDouble: "$amount" } },
+              documentCount: { $sum: 1 },
+            },
+          },
+        ]);
+
+        const revenue = result.length > 0 ? result[0].revenue : 0;
+        console.log(
+          `Daily income revenue: ${revenue}, documents: ${
+            result.length > 0 ? result[0].documentCount : 0
+          }`
+        );
+        return revenue;
+      } catch (error) {
+        console.error(`Error calculating daily income revenue:`, error);
+        return 0;
+      }
+    };
+
+    const getWeeklyIncomeRevenue = async () => {
+      try {
+        const result = await Income.aggregate([
+          {
+            $match: {
+              date: { $gte: startOfWeek, $lt: tomorrow },
+              amount: {
+                $ne: null,
+                $type: ["double", "decimal", "int", "long"],
+              },
+              isDeleted: { $ne: true },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              revenue: { $sum: { $toDouble: "$amount" } },
+              documentCount: { $sum: 1 },
+            },
+          },
+        ]);
+
+        const revenue = result.length > 0 ? result[0].revenue : 0;
+        console.log(
+          `Weekly income revenue: ${revenue}, documents: ${
+            result.length > 0 ? result[0].documentCount : 0
+          }`
+        );
+        return revenue;
+      } catch (error) {
+        console.error(`Error calculating weekly income revenue:`, error);
+        return 0;
+      }
+    };
+
+    const getMonthlyIncomeRevenue = async () => {
+      try {
+        const result = await Income.aggregate([
+          {
+            $match: {
+              date: { $gte: startOfMonth, $lte: endOfMonth },
+              amount: {
+                $ne: null,
+                $type: ["double", "decimal", "int", "long"],
+              },
+              isDeleted: { $ne: true },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              revenue: { $sum: { $toDouble: "$amount" } },
+              documentCount: { $sum: 1 },
+            },
+          },
+        ]);
+
+        const revenue = result.length > 0 ? result[0].revenue : 0;
+        console.log(
+          `Monthly income revenue: ${revenue}, documents: ${
+            result.length > 0 ? result[0].documentCount : 0
+          }`
+        );
+        return revenue;
+      } catch (error) {
+        console.error(`Error calculating monthly income revenue:`, error);
+        return 0;
+      }
+    };
+
+    const getTotalIncomeRevenue = async () => {
+      try {
+        const result = await Income.aggregate([
+          {
+            $match: {
+              amount: {
+                $ne: null,
+                $type: ["double", "decimal", "int", "long"],
+              },
+              isDeleted: { $ne: true },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              revenue: { $sum: { $toDouble: "$amount" } },
+              documentCount: { $sum: 1 },
+            },
+          },
+        ]);
+
+        const revenue = result.length > 0 ? result[0].revenue : 0;
+        console.log(
+          `Total income revenue: ${revenue}, documents: ${
+            result.length > 0 ? result[0].documentCount : 0
+          }`
+        );
+        return revenue;
+      } catch (error) {
+        console.error(`Error calculating total income revenue:`, error);
+        return 0;
+      }
+    };
+
     // Get revenue data using Promise.all for better performance
     const [
       dailyRevenue,
@@ -3259,6 +3399,10 @@ const getDashboardMetrics = async (req, res) => {
       weeklyServiceRevenue,
       monthlyServiceRevenue,
       totalServiceRevenue,
+      dailyIncomeRevenue,
+      weeklyIncomeRevenue,
+      monthlyIncomeRevenue,
+      totalIncomeRevenue,
     ] = await Promise.all([
       getDailyRevenue(),
       getWeeklyRevenue(),
@@ -3269,10 +3413,14 @@ const getDashboardMetrics = async (req, res) => {
       getWeeklyServicePaymentRevenue(),
       getMonthlyServicePaymentRevenue(),
       getTotalServicePaymentRevenue(),
+      getDailyIncomeRevenue(),
+      getWeeklyIncomeRevenue(),
+      getMonthlyIncomeRevenue(),
+      getTotalIncomeRevenue(),
     ]);
 
     // Calculate derived values
-    const yearlyRevenue = (monthlyRevenue + monthlyServiceRevenue) * 12;
+    const yearlyRevenue = (monthlyRevenue + monthlyServiceRevenue + monthlyIncomeRevenue) * 12;
 
     // Get recent treatments (exclude soft-deleted)
     const recentTreatments = await Patient.aggregate([
@@ -3475,7 +3623,7 @@ const getDashboardMetrics = async (req, res) => {
         todayAppointmentsCount: 0,
         today: {
           appointments: [],
-          revenue: dailyRevenue + dailyServiceRevenue,
+          revenue: dailyRevenue + dailyServiceRevenue + dailyIncomeRevenue,
           newPatients:
             patientGrowth.find(
               (p) => p.date === todayDate.toISOString().split("T")[0]
@@ -3485,11 +3633,11 @@ const getDashboardMetrics = async (req, res) => {
         appointmentDistribution,
         doctorPerformance,
         financialAnalysis: {
-          daily: dailyRevenue + dailyServiceRevenue,
-          weekly: weeklyRevenue + weeklyServiceRevenue,
-          monthly: monthlyRevenue + monthlyServiceRevenue,
+          daily: dailyRevenue + dailyServiceRevenue + dailyIncomeRevenue,
+          weekly: weeklyRevenue + weeklyServiceRevenue + weeklyIncomeRevenue,
+          monthly: monthlyRevenue + monthlyServiceRevenue + monthlyIncomeRevenue,
           yearly: yearlyRevenue,
-          total: totalRevenue + totalServiceRevenue,
+          total: totalRevenue + totalServiceRevenue + totalIncomeRevenue,
           revenueByDoctor: doctorPerformance.map((doctor) => ({
             doctorName: doctor.doctorName,
             revenue: doctor.revenue || 0,
@@ -3500,7 +3648,7 @@ const getDashboardMetrics = async (req, res) => {
           profitMargin: 30,
           averageTransactionValue:
             totalAppointments > 0
-              ? (totalRevenue + totalServiceRevenue) / totalAppointments
+              ? (totalRevenue + totalServiceRevenue + totalIncomeRevenue) / totalAppointments
               : 0,
         },
         analytics: {

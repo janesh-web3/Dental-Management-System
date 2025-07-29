@@ -10,19 +10,19 @@ export const navGroups: NavGroup[] = [
     title: "Overview",
     items: [
       {
-        title: "Dashboard 1",
+        title: "Dashboard",
         href: "/",
         icon: "dashboard",
         label: "Dashboard",
         notificationEnabled: true,
       },
-      {
-        title: "Dashboard 2",
-        href: "/advanced-dashboard",
-        icon: "dashboard",
-        label: "Dashboard 2",
-        notificationEnabled: true,
-      },
+      // {
+      //   title: "Dashboard 2",
+      //   href: "/advanced-dashboard",
+      //   icon: "dashboard",
+      //   label: "Dashboard 2",
+      //   notificationEnabled: true,
+      // },
     ]
   },
   {

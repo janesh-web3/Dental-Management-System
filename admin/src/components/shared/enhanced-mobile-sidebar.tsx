@@ -147,7 +147,7 @@ export default function EnhancedMobileSidebar({
     <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
       <SheetContent 
         side="left" 
-        className="flex flex-col p-0 w-80 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 dark:bg-background/95 dark:supports-[backdrop-filter]:bg-background/80"
+        className="flex flex-col p-0 w-80 bg-background/95 "
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">

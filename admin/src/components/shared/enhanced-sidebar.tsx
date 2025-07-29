@@ -1,4 +1,4 @@
-"use client";
+  "use client";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { navGroups, NavGroup } from "@/constants/data";
@@ -273,63 +273,6 @@ export default function EnhancedSidebar({ className }: SidebarProps) {
             ))}
           </div>
         </ScrollArea>
-
-        {/* Footer */}
-        <div className="p-3 border-t space-y-2">
-          {/* Theme Toggle */}
-          {!isMinimized && (
-            <div className="flex items-center justify-between px-2">
-              <span className="text-xs text-muted-foreground uppercase tracking-wider">Theme</span>
-              <ModeToggle />
-            </div>
-          )}
-          
-          {isMinimized && (
-            <div className="flex justify-center">
-              <ModeToggle />
-            </div>
-          )}
-          
-          {/* User Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start gap-3 h-auto p-3 hover:bg-accent transition-colors",
-                  isMinimized && "justify-center px-2"
-                )}
-              >
-                <div className="h-8 w-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
-                  <User className="h-4 w-4" />
-                </div>
-                {!isMinimized && (
-                  <div className="flex flex-col items-start text-left">
-                    <span className="text-sm font-medium">Admin User</span>
-                    <span className="text-xs text-muted-foreground">admin@dms.com</span>
-                  </div>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent 
-              align={isMinimized ? "center" : "start"} 
-              side={isMinimized ? "right" : "top"}
-              className="w-56"
-            >
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600 dark:text-red-400">
-                <LogOut className="mr-2 h-4 w-4" />
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </motion.nav>
     </TooltipProvider>
   );

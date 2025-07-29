@@ -337,15 +337,15 @@ export function Analytics() {
               <DollarSign className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               Revenue
             </TabsTrigger>
-            <TabsTrigger value="appointments" className="flex items-center text-xs sm:text-sm">
+            <TabsTrigger value="appointments" className="hidden items-center text-xs sm:text-sm ">
               <Calendar className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               Appointments
             </TabsTrigger>
-            <TabsTrigger value="doctors" className="flex items-center text-xs sm:text-sm">
+            <TabsTrigger value="doctors" className="hidden items-center text-xs sm:text-sm">
               <UserCheck className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               Doctors
             </TabsTrigger>
-            <TabsTrigger value="patients" className="flex items-center text-xs sm:text-sm">
+            <TabsTrigger value="patients" className="hidden items-center text-xs sm:text-sm">
               <Users className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               Patients
             </TabsTrigger>

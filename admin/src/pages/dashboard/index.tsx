@@ -601,7 +601,7 @@ const Dashboard = () => {
         />
         <StatCard
           title={t("Total Income")}
-          value={`रु${(revenueData?.financialAnalysis?.total || 0) + (financialSummary?.summary.income || 0)}`}
+          value={`रु${(revenueData?.financialAnalysis?.total || 0) }`}
           description={t("Total income ")}
           icon={
             <TrendingUp className="h-4 w-4 md:h-8 md:w-8 text-emerald-200" />
@@ -619,7 +619,7 @@ const Dashboard = () => {
         />
         <StatCard
           title={t("Net Balance")}
-          value={`रु${((revenueData?.financialAnalysis?.total || 0) + (financialSummary?.summary.income || 0) - (financialSummary?.summary.expense || 0)).toLocaleString()}`}
+          value={`रु${((revenueData?.financialAnalysis?.total || 0) - (financialSummary?.summary.expense || 0)).toLocaleString()}`}
           description={t("Total balance after expenses")}
           icon={
             <Wallet className="h-4 w-4 md:h-8 md:w-8 text-blue-200 dark:text-blue-400" />

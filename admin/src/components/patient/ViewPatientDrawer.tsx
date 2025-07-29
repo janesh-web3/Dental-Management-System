@@ -275,8 +275,8 @@ export function ViewPatientDrawer({
       : []
   );
 
-  // Calculate totals based on daily treatments data
-  const totalAmount = allDailyTreatments.reduce(
+  // Calculate totals based on daily treatments data from selected teeth
+  const selectedTeethTotalAmount = allDailyTreatments.reduce(
     (sum, dailyTreatment: DailyTreatment) => {
       // Handle null, undefined, or non-numeric values
       const amount = dailyTreatment.treatmentAmount;
@@ -288,7 +288,7 @@ export function ViewPatientDrawer({
     0
   );
 
-  const paidAmount = allDailyTreatments.reduce(
+  const selectedTeethPaidAmount = allDailyTreatments.reduce(
     (sum, dailyTreatment: DailyTreatment) => {
       // Handle null, undefined, or non-numeric values
       const amount = dailyTreatment.paidAmount;
@@ -300,10 +300,52 @@ export function ViewPatientDrawer({
     0
   );
 
+  // Calculate group treatment totals
+  const groupTreatmentTotalAmount = allTreatments.reduce(
+    (sum, treatment) => {
+      if (treatment.groupTreatmentDetails) {
+        return sum + treatment.groupTreatmentDetails.reduce(
+          (groupSum, group) => groupSum + (group.totalTreatmentAmount || 0),
+          0
+        );
+      }
+      return sum;
+    },
+    0
+  );
+
+  const groupTreatmentPaidAmount = allTreatments.reduce(
+    (sum, treatment) => {
+      if (treatment.groupTreatmentDetails) {
+        return sum + treatment.groupTreatmentDetails.reduce(
+          (groupSum, group) => groupSum + (group.totalPaidAmount || 0),
+          0
+        );
+      }
+      return sum;
+    },
+    0
+  );
+
+  // Calculate service payments total
+  const servicePaymentsTotalAmount = servicePayments.reduce(
+    (sum, payment) => sum + payment.amount,
+    0
+  );
+
+  // Calculate combined totals (selected teeth + group treatments + service payments)
+  const totalAmount = selectedTeethTotalAmount + groupTreatmentTotalAmount + servicePaymentsTotalAmount;
+  const paidAmount = selectedTeethPaidAmount + groupTreatmentPaidAmount + servicePaymentsTotalAmount;
+
   // Calculate remaining amount
   const remainingAmount = totalAmount - paidAmount;
 
-  console.log("Treatment totals from daily treatments:", {
+  console.log("Treatment totals breakdown:", {
+    selectedTeethTotalAmount,
+    selectedTeethPaidAmount,
+    groupTreatmentTotalAmount,
+    groupTreatmentPaidAmount,
+    servicePaymentsTotalAmount,
     totalAmount,
     paidAmount,
     remainingAmount,
@@ -3406,6 +3448,99 @@ export function ViewPatientDrawer({
                                       {Object.entries(serviceTypeCounts).sort(
                                         (a, b) => b[1] - a[1]
                                       )[0]?.[0] || "N/A"}
+                                    </p>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </div>
+
+                        {/* Total Treatment Cost Summary */}
+                        <div className="mt-6 p-4 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/10 dark:to-amber-900/10 rounded-lg border border-orange-200 dark:border-orange-800/50">
+                          <h3 className="text-sm font-medium mb-4 text-orange-800 dark:text-orange-200 flex items-center gap-2">
+                            <FileDigit className="h-4 w-4" />
+                            Total Treatment Cost Breakdown
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {(() => {
+                              // Calculate service payments total
+                              const totalServicePayments = servicePayments.reduce(
+                                (sum, payment) => sum + payment.amount,
+                                0
+                              );
+
+                              // Calculate selected teeth treatment total
+                              const totalSelectedTeethTreatment = localPatient.medicalDetails.reduce(
+                                (medicalSum, medical) => {
+                                  return medicalSum + medical.treatmentPlanning.reduce(
+                                    (planSum, plan) => {
+                                      return planSum + (plan.selectedTeethDetails || []).reduce(
+                                        (teethSum, tooth) => {
+                                          return teethSum + (tooth.totalTreatmentAmount || 0);
+                                        },
+                                        0
+                                      );
+                                    },
+                                    0
+                                  );
+                                },
+                                0
+                              );
+
+                              // Calculate group treatment total
+                              const totalGroupTreatment = localPatient.medicalDetails.reduce(
+                                (medicalSum, medical) => {
+                                  return medicalSum + medical.treatmentPlanning.reduce(
+                                    (planSum, plan) => {
+                                      return planSum + (plan.groupTreatmentDetails || []).reduce(
+                                        (groupSum, group) => {
+                                          return groupSum + (group.totalTreatmentAmount || 0);
+                                        },
+                                        0
+                                      );
+                                    },
+                                    0
+                                  );
+                                },
+                                0
+                              );
+
+                              // Calculate grand total
+                              const grandTotal = totalServicePayments + totalSelectedTeethTreatment + totalGroupTreatment;
+
+                              return (
+                                <>
+                                  <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800/50">
+                                    <p className="text-xs text-muted-foreground mb-1">
+                                      Service Payments
+                                    </p>
+                                    <p className="font-bold text-lg text-blue-600 dark:text-blue-400">
+                                      ₹{totalServicePayments}
+                                    </p>
+                                  </div>
+                                  <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800/50">
+                                    <p className="text-xs text-muted-foreground mb-1">
+                                      Selected Teeth Treatment
+                                    </p>
+                                    <p className="font-bold text-lg text-green-600 dark:text-green-400">
+                                      ₹{totalSelectedTeethTreatment}
+                                    </p>
+                                  </div>
+                                  <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-md border border-purple-200 dark:border-purple-800/50">
+                                    <p className="text-xs text-muted-foreground mb-1">
+                                      Group Treatment
+                                    </p>
+                                    <p className="font-bold text-lg text-purple-600 dark:text-purple-400">
+                                      ₹{totalGroupTreatment}
+                                    </p>
+                                  </div>
+                                  <div className="text-center p-3 bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 rounded-md border-2 border-orange-300 dark:border-orange-700/50 shadow-md">
+                                    <p className="text-xs text-muted-foreground mb-1 font-medium">
+                                      Total Treatment Cost
+                                    </p>
+                                    <p className="font-bold text-xl text-orange-700 dark:text-orange-300">
+                                      ₹{grandTotal}
                                     </p>
                                   </div>
                                 </>

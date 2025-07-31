@@ -1,16 +1,7 @@
 import { useState } from "react";
-import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Select,
   SelectContent,
@@ -18,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
 interface DateRangeFilterProps {
   onFilterChange: (filter: string, range?: DateRange) => void;
@@ -30,13 +22,24 @@ export function DateRangeFilter({
   dateFilter,
   dateRange,
 }: DateRangeFilterProps) {
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [startDate, setStartDate] = useState(dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : "");
+  const [endDate, setEndDate] = useState(dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : "");
 
   const handleFilterChange = (value: string) => {
-    if (value === "custom") {
-      setIsCalendarOpen(true);
-    } else {
+    if (value !== "custom") {
       onFilterChange(value);
+      setStartDate("");
+      setEndDate("");
+    }
+  };
+
+  const handleDateRangeChange = () => {
+    if (startDate && endDate) {
+      const range: DateRange = {
+        from: new Date(startDate),
+        to: new Date(endDate)
+      };
+      onFilterChange("custom", range);
     }
   };
 
@@ -56,46 +59,38 @@ export function DateRangeFilter({
       </Select>
 
       {dateFilter === "custom" && (
-        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full md:w-auto justify-start text-left font-normal",
-                !dateRange && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {dateRange?.from ? (
-                dateRange.to ? (
-                  <>
-                    {format(dateRange.from, "LLL dd, y")} -{" "}
-                    {format(dateRange.to, "LLL dd, y")}
-                  </>
-                ) : (
-                  format(dateRange.from, "LLL dd, y")
-                )
-              ) : (
-                <span>Pick a date range</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={dateRange?.from}
-              selected={dateRange}
-              onSelect={(range) => {
-                if (range?.from && range?.to) {
-                  onFilterChange("custom", range);
-                  setIsCalendarOpen(false);
+        <div className="flex flex-col md:flex-row gap-2 items-start md:items-center">
+          <div className="flex flex-col">
+            <label htmlFor="start-date" className="text-sm font-medium mb-1">From:</label>
+            <Input
+              id="start-date"
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                if (e.target.value && endDate) {
+                  setTimeout(handleDateRangeChange, 100);
                 }
               }}
-              numberOfMonths={2}
+              className="w-full md:w-auto"
             />
-          </PopoverContent>
-        </Popover>
+          </div>
+          <div className="flex flex-col">
+            <label htmlFor="end-date" className="text-sm font-medium mb-1">To:</label>
+            <Input
+              id="end-date"
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                if (startDate && e.target.value) {
+                  setTimeout(handleDateRangeChange, 100);
+                }
+              }}
+              className="w-full md:w-auto"
+            />
+          </div>
+        </div>
       )}
     </div>
   );

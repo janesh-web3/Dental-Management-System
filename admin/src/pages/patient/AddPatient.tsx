@@ -1421,7 +1421,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                             </SelectItem>
                             <SelectItem value="Medicine">Medicine</SelectItem>
                             <SelectItem value="Lab Test">Lab Test</SelectItem>
-                            <SelectItem value="Cleaning">Cleaning</SelectItem>
+                            <SelectItem value="Cleaning (Scaling)">Cleaning (Scaling)</SelectItem>
                             <SelectItem value="Other">Other</SelectItem>
                           </SelectContent>
                         </Select>
@@ -1443,31 +1443,31 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                      <div className="space-y-2"> 
                         <Label htmlFor="paymentMethod">Payment Method</Label>
-                        <Select
+                        <Select 
                           value={servicePayment.paymentMethod}
                           onValueChange={(value) =>
                             handleServicePaymentChange("paymentMethod", value)
                           }
-                        >
-                          <SelectTrigger>
+                        > 
+                          <SelectTrigger> 
                             <SelectValue placeholder="Select payment method" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Cash">Cash</SelectItem>
-                            <SelectItem value="Credit Card">
-                              Credit Card
-                            </SelectItem>
-                            <SelectItem value="Debit Card">
-                              Debit Card
-                            </SelectItem>
+                          </SelectTrigger> 
+                          <SelectContent> 
+                            <SelectItem value="Cash">Cash</SelectItem> 
+                            <SelectItem value="Credit Card"> 
+                              Credit Card 
+                            </SelectItem>  
+                            <SelectItem value="Debit Card"> 
+                              Debit Card 
+                            </SelectItem> 
                             <SelectItem value="Insurance">Insurance</SelectItem>
-                            <SelectItem value="Bank Transfer">
+                            <SelectItem value="Bank Transfer"> 
                               Bank Transfer
-                            </SelectItem>
+                            </SelectItem>  
                             <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
+                          </SelectContent> 
                         </Select>
                       </div>
 
@@ -1491,7 +1491,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                   </div>
                 )}
               </Card>
-
                 </div>
                 </div>
               </Card>

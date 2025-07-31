@@ -20,19 +20,7 @@ import {
   ChevronDown,
   PanelLeftClose,
   PanelLeftOpen,
-  Settings,
-  User,
-  LogOut,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ModeToggle } from "@/components/shared/theme-toggle";
 
 type SidebarProps = {
   className?: string;

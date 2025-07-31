@@ -138,22 +138,22 @@ export function FinancialInsights() {
         
         // Fetch dashboard metrics which includes all revenue sources (service payments, selected teeth, group treatments)
         const dashboardUrl = `${server}/patient/dashboard-metrics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&viewMode=${viewMode}`;
-        const dashboardResponse = await crudRequest("GET", dashboardUrl);
+        const dashboardResponse = await crudRequest<{data: any}>("GET", dashboardUrl);
         const dashboardData = dashboardResponse.data;
         
         // Get service payments for payment method analysis
-        const servicePaymentsResponse = await crudRequest("GET", `${server}/service-payment`);
+        const servicePaymentsResponse = await crudRequest<{data: any}>("GET", `${server}/service-payment`);
         const servicePayments = Array.isArray(servicePaymentsResponse.data) ? servicePaymentsResponse.data : [];
         
         // Process payment methods from service payments with date filtering
         const paymentMethodsMap = new Map<string, number>();
-        const filteredServicePayments = servicePayments.filter(payment => {
+        const filteredServicePayments = servicePayments.filter((payment: any) => {
           if (!payment || !payment.date) return false;
           const paymentDate = new Date(payment.date);
           return paymentDate >= dateRange.from && paymentDate <= dateRange.to;
         });
         
-        filteredServicePayments.forEach(payment => {
+        filteredServicePayments.forEach((payment: any) => {
           if (payment && payment.paymentMethod && payment.amount) {
             const method = payment.paymentMethod;
             paymentMethodsMap.set(method, (paymentMethodsMap.get(method) || 0) + payment.amount);

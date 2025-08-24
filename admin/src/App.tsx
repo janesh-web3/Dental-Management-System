@@ -7,6 +7,7 @@ import { NotificationCenter } from "./components/notifications/NotificationCente
 import { Toaster } from "./components/ui/toaster";
 import { NotificationInitializer } from "./components/shared/NotificationInitializer";
 import { VoiceInputProvider } from "./contexts/VoiceInputContext";
+import { SoundProvider } from "./contexts/SoundContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 
@@ -19,8 +20,9 @@ export default function App() {
             <DoctorProvider>
               <NotificationProvider>
                 <SocketProvider>
-                  <VoiceInputProvider>
-                    <NotificationInitializer />
+                  <SoundProvider>
+                    <VoiceInputProvider>
+                      <NotificationInitializer />
                     <ToastContainer
                       position="top-right"
                       autoClose={3000}
@@ -39,7 +41,8 @@ export default function App() {
                       <Toaster />
                       {/* <AuthDebugger /> */}
                     </TooltipProvider>
-                  </VoiceInputProvider>
+                    </VoiceInputProvider>
+                  </SoundProvider>
                 </SocketProvider>
               </NotificationProvider>
             </DoctorProvider>

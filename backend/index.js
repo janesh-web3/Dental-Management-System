@@ -26,6 +26,7 @@ const geminiRouter = require("./routes/geminiRoute.js");
 const notificationRouter = require("./routes/notificationRoutes.js");
 const invoiceRouter = require("./routes/invoiceRoutes.js");
 const recycleBinRouter = require("./routes/recycleBinRoutes.js");
+const userPreferencesRouter = require("./routes/userPreferencesRoutes.js");
 
 // Import utilities
 const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
@@ -87,6 +88,7 @@ app.use("/api/gemini", geminiRouter);
 app.use("/api/notifications", notificationRouter);
 app.use("/api/invoices", invoiceRouter);
 app.use("/api/recycle-bin", recycleBinRouter);
+app.use("/api/user-preferences", userPreferencesRouter);
 
 const port = process.env.PORT || 8080;
 

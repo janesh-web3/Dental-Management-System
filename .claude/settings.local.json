@@ -17,7 +17,8 @@
       "Bash(timeout 5s npm run dev)",
       "Bash(npm run:*)",
       "Bash(taskkill:*)",
-      "Bash(timeout 5 npm run dev)"
+      "Bash(timeout 5 npm run dev)",
+      "Bash(npx kill-port:*)"
     ],
     "deny": []
   }

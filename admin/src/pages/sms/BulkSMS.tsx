@@ -46,7 +46,6 @@ export default function BulkSMSPage() {
   // Apply filters from the filter component
   const applyFilters = async (appliedFilters: Filters) => {
     try {
-      console.log('Applied filters:', appliedFilters);
       
       // Convert filter values to undefined if they are 'all' or empty
       const cleanFilters = Object.entries(appliedFilters).reduce<Record<string, any>>((acc, [key, value]) => {
@@ -71,7 +70,6 @@ export default function BulkSMSPage() {
         return { ...acc, [key]: value };
       }, {});
 
-      console.log('Clean filters:', cleanFilters);
       
       // Check if any filters are active
       const hasActiveFilters = Object.keys(cleanFilters).length > 0;
@@ -114,7 +112,7 @@ export default function BulkSMSPage() {
       
       const url = isFilterActive 
         ? `/patient/get-filtered-patients?${params.toString()}`
-        : `/patient/get-filtered-patients?limit=100`;
+        : `/patient/get-filtered-patients?limit=1000`;
     
       const response = await crudRequest<{ patients: any[], totalPatients?: number }>('GET', url);
       

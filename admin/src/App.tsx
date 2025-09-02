@@ -10,7 +10,6 @@ import { VoiceInputProvider } from "./contexts/VoiceInputContext";
 import { SoundProvider } from "./contexts/SoundContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-
 export default function App() {
   return (
     <AppProvider>

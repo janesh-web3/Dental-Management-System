@@ -42,4 +42,17 @@ router.post('/process-scheduled', (req, res) => smsController.processScheduledSM
 // Status callback endpoint - public endpoint (for future use with provider webhooks)
 router.post('/status-callback', (req, res) => smsController.smsStatusCallback(req, res));
 
+// Class-based SMS endpoints - protected by authentication
+router.get('/class-configs', protectAdminRoute, (req, res) => smsController.getSMSClassConfigs(req, res));
+router.put('/class-configs/:className', protectAdminRoute, (req, res) => smsController.updateSMSClassConfig(req, res));
+
+// Campaign management endpoints
+router.post('/campaigns', protectAdminRoute, (req, res) => smsController.createSMSCampaign(req, res));
+router.get('/campaigns', protectAdminRoute, (req, res) => smsController.getSMSCampaigns(req, res));
+router.get('/campaigns/:campaignId', protectAdminRoute, (req, res) => smsController.getCampaignDetails(req, res));
+router.post('/campaigns/:campaignId/send/:className', protectAdminRoute, (req, res) => smsController.sendSMSToClass(req, res));
+
+// Class-based SMS history
+router.get('/history-by-class', protectAdminRoute, (req, res) => smsController.getSMSHistoryByClass(req, res));
+
 module.exports = router;

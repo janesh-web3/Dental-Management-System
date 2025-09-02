@@ -29,15 +29,15 @@ const specializations = [
   { value: 'maxillofacial', label: 'Maxillofacial Surgery', emoji: '🏥', color: 'bg-gray-100 text-gray-800' }
 ];
 
-const workingDays = [
-  { value: 'monday', label: 'Monday' },
-  { value: 'tuesday', label: 'Tuesday' },
-  { value: 'wednesday', label: 'Wednesday' },
-  { value: 'thursday', label: 'Thursday' },
-  { value: 'friday', label: 'Friday' },
-  { value: 'saturday', label: 'Saturday' },
-  { value: 'sunday', label: 'Sunday' }
-];
+// const workingDays = [
+//   { value: 'monday', label: 'Monday' },
+//   { value: 'tuesday', label: 'Tuesday' },
+//   { value: 'wednesday', label: 'Wednesday' },
+//   { value: 'thursday', label: 'Thursday' },
+//   { value: 'friday', label: 'Friday' },
+//   { value: 'saturday', label: 'Saturday' },
+//   { value: 'sunday', label: 'Sunday' }
+// ];
 
 const DelightfulDoctorForm: React.FC<DelightfulDoctorFormProps> = ({
   onSuccess,
@@ -77,8 +77,8 @@ const DelightfulDoctorForm: React.FC<DelightfulDoctorFormProps> = ({
       
       const response = await crudRequest(method, endpoint, doctorData);
       
-      if (response.success) {
-        onSuccess?.(response.data);
+      if ((response as any).success) {
+        onSuccess?.((response as any).data);
         modalClose?.();
       }
     } catch (error: any) {
@@ -108,7 +108,7 @@ const DelightfulDoctorForm: React.FC<DelightfulDoctorFormProps> = ({
           title={editingDoctor ? "👨‍⚕️ Update Doctor Profile" : "👨‍⚕️ Add New Doctor"}
           submitLabel={editingDoctor ? "Update Doctor" : "Add Doctor"}
           formType="doctor"
-          submitIcon={UserPlus}
+          submitIcon={UserPlus as any}
           celebrateOnSuccess={true}
           playfulFeedback={true}
           className="w-full max-w-none"

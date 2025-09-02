@@ -8,14 +8,12 @@ import {
   Edit,
   Trash2,
   Eye,
-  Save,
-  Plus
+  // Save,
+  // Plus
 } from 'lucide-react';
 import DelightfulActionWrapper, { useDelightfulActions } from '@/components/ui/DelightfulActionWrapper';
 import AccessibleDelightfulButton from '@/components/ui/AccessibleDelightfulButton';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { crudRequest } from '@/lib/api';
 
 const DelightfulIntegrationExample: React.FC = () => {
   const [patients, setPatients] = useState([
@@ -259,7 +257,9 @@ const DelightfulIntegrationExample: React.FC = () => {
                       animation="scale"
                       icon={Eye}
                       className="h-8 w-8 p-0"
-                    />
+                    >
+                      View
+                    </AccessibleDelightfulButton>
                   }
                 />
 
@@ -276,7 +276,9 @@ const DelightfulIntegrationExample: React.FC = () => {
                       animation="pulse"
                       icon={Edit}
                       className="h-8 w-8 p-0"
-                    />
+                    >
+                      Edit
+                    </AccessibleDelightfulButton>
                   }
                 />
 
@@ -299,7 +301,9 @@ const DelightfulIntegrationExample: React.FC = () => {
                       animation="shake"
                       icon={Trash2}
                       className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                    />
+                    >
+                      Delete
+                    </AccessibleDelightfulButton>
                   }
                 />
               </div>

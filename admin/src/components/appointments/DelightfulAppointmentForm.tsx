@@ -59,7 +59,7 @@ const DelightfulAppointmentForm: React.FC<DelightfulAppointmentFormProps> = ({
 }) => {
   const [selectedAppointmentType, setSelectedAppointmentType] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const [, setSelectedDoctor] = useState<Doctor | null>(null);
 
   useEffect(() => {
     if (editingAppointment) {
@@ -89,8 +89,8 @@ const DelightfulAppointmentForm: React.FC<DelightfulAppointmentFormProps> = ({
       
       const response = await crudRequest(method, endpoint, appointmentData);
       
-      if (response.success) {
-        onSuccess?.(response.data);
+      if ((response as any).success) {
+        onSuccess?.((response as any).data);
         modalClose?.();
       }
     } catch (error: any) {
@@ -114,7 +114,7 @@ const DelightfulAppointmentForm: React.FC<DelightfulAppointmentFormProps> = ({
           title={editingAppointment ? "📅 Update Appointment" : "📅 Schedule New Appointment"}
           submitLabel={editingAppointment ? "Update Appointment" : "Schedule Appointment"}
           formType="appointment"
-          submitIcon={CalendarPlus}
+          submitIcon={CalendarPlus as any}
           celebrateOnSuccess={true}
           playfulFeedback={true}
           className="w-full max-w-none"

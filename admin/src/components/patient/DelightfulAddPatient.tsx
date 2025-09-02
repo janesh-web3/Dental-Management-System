@@ -51,8 +51,8 @@ const DelightfulAddPatient: React.FC<DelightfulAddPatientProps> = ({
 
       const response = await crudRequest('post', '/patient', patientData);
       
-      if (response.success) {
-        onSuccess?.(response.data);
+      if ((response as any).success) {
+        onSuccess?.((response as any).data);
         modalClose?.();
         toast.success('🦷 Patient added successfully! Welcome to our dental family!');
       }
@@ -79,7 +79,7 @@ const DelightfulAddPatient: React.FC<DelightfulAddPatientProps> = ({
           title="🦷 Add New Patient"
           submitLabel="Add Patient"
           formType="patient"
-          submitIcon={UserPlus}
+          submitIcon={UserPlus as any}
           celebrateOnSuccess={true}
           playfulFeedback={true}
           className="w-full max-w-none"

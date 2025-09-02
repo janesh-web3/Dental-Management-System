@@ -5,7 +5,7 @@ const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const { initSocket } = require("./socket");
+const { initSocket } = require("./socket"); 
 
 // Import routes
 const userRouter = require("./routes/userRoute.js");
@@ -47,12 +47,12 @@ app.use(cookieParser());
 app.use(
   cors({
     origin: [
-      "http://localhost:5173",
+      // "http://localhost:5173",
       // "http://localhost:5174",
       // "https://dms.crownagi.com",
       // "https://order.crownagi.com",
-      // "https://admin.om-shreenagar-dental-clinic.com",
-      // "https://om-shreenagar-dental-clinic.com",
+      "https://admin.om-shreenagar-dental-clinic.com",
+      "https://om-shreenagar-dental-clinic.com",
       // "https://muskan.crownagi.com",
     ],
   })

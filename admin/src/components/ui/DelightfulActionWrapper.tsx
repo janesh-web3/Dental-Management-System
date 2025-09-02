@@ -1,6 +1,6 @@
 import React, { useState, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, CheckCircle, AlertCircle, Trash2, Edit, Plus, Eye } from 'lucide-react';
+import { CheckCircle, AlertCircle, Trash2, Edit, Plus, Eye } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,

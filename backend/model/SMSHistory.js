@@ -50,6 +50,14 @@ const SMSHistorySchema = new mongoose.Schema(
       type: String,
       enum: ['payment', 'followup', 'custom', 'appointment', 'other'],
       default: 'other'
+    },
+    campaignId: {
+      type: String
+    },
+    patientClass: {
+      type: String,
+      enum: ['A', 'B', 'C'],
+      default: null
     }
   },
   {

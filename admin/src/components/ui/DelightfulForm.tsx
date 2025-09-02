@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, AlertCircle, Save, Send } from 'lucide-react';
+import { CheckCircle, AlertCircle, Save } from 'lucide-react';
 import PlayfulLoader from './PlayfulLoader';
 import ConfettiCelebration from './ConfettiCelebration';
 import AccessibleDelightfulButton from './AccessibleDelightfulButton';
@@ -14,7 +14,7 @@ interface DelightfulFormProps {
   submitLabel?: string;
   loadingMessages?: string[];
   successMessage?: string;
-  submitIcon?: React.ComponentType<{ size?: number; className?: string }>;
+  submitIcon?: any;
   className?: string;
   celebrateOnSuccess?: boolean;
   playfulFeedback?: boolean;

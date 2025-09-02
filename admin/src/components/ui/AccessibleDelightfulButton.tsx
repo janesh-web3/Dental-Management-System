@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, MotionProps } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
 import useAccessibility from '@/hooks/useAccessibility';
@@ -103,7 +103,6 @@ const AccessibleDelightfulButton: React.FC<AccessibleDelightfulButtonProps> = ({
     prefersHighContrast,
     respectMotionPreference,
     respectSoundPreference,
-    getAccessibleColor,
     announceToScreenReader 
   } = useAccessibility();
   
@@ -157,11 +156,10 @@ const AccessibleDelightfulButton: React.FC<AccessibleDelightfulButtonProps> = ({
     ? highContrastVariants[variant] 
     : buttonVariants[variant];
 
-  const MotionButton = motion.button as React.FC<MotionProps & React.ButtonHTMLAttributes<HTMLButtonElement>>;
-
   return (
     <div className="relative inline-block">
-      <MotionButton
+      <motion.button
+        {...(props as any)}
         className={cn(
           'relative font-medium transition-all duration-200 focus:outline-none',
           'focus:ring-4 focus:ring-offset-2 focus:ring-blue-500',
@@ -181,7 +179,6 @@ const AccessibleDelightfulButton: React.FC<AccessibleDelightfulButtonProps> = ({
         aria-pressed={false}
         aria-busy={loading}
         role="button"
-        {...props}
       >
         <div className="flex items-center justify-center gap-2">
           {Icon && iconPosition === 'left' && (
@@ -242,7 +239,7 @@ const AccessibleDelightfulButton: React.FC<AccessibleDelightfulButtonProps> = ({
           {loading && "Loading"}
           {disabled && "Disabled"}
         </span>
-      </MotionButton>
+      </motion.button>
 
       {/* Playful click message - only shown if motion is not reduced */}
       {showMessage && playful && !prefersReducedMotion && (

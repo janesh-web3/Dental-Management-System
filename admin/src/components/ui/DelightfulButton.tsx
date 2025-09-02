@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, MotionProps } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
 
@@ -107,11 +107,10 @@ const DelightfulButton: React.FC<DelightfulButtonProps> = ({
     onClick?.(e);
   };
 
-  const MotionButton = motion.button as React.FC<MotionProps & React.ButtonHTMLAttributes<HTMLButtonElement>>;
-
   return (
     <div className="relative inline-block">
-      <MotionButton
+      <motion.button
+        {...(props as any)}
         className={cn(
           'relative font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
           'disabled:opacity-50 disabled:cursor-not-allowed',
@@ -119,12 +118,11 @@ const DelightfulButton: React.FC<DelightfulButtonProps> = ({
           sizeVariants[size],
           className
         )}
-        variants={animationVariants[animation]}
+        variants={animationVariants[animation] as any}
         whileHover={!disabled && !loading ? "hover" : undefined}
         whileTap={!disabled && !loading ? "tap" : undefined}
         onClick={handleClick}
         disabled={disabled || loading}
-        {...props}
       >
         <div className="flex items-center justify-center gap-2">
           {Icon && iconPosition === 'left' && (
@@ -161,7 +159,7 @@ const DelightfulButton: React.FC<DelightfulButtonProps> = ({
             className="absolute bottom-0 left-0 h-0.5 bg-white/30 rounded-full"
           />
         )}
-      </MotionButton>
+      </motion.button>
 
       {/* Playful click message */}
       {showMessage && playful && (

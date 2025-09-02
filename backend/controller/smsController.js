@@ -3,6 +3,8 @@ const aakashSmsConfig = require('../config/aakashSms');
 const Patient = require('../model/Patient');
 const SMSTemplate = require('../model/SMSTemplate');
 const SMSHistory = require('../model/SMSHistory');
+const SMSClassConfig = require('../model/SMSClassConfig');
+const SMSCampaign = require('../model/SMSCampaign');
 const mongoose = require('mongoose');
 const aakashSmsUtils = require('../utils/aakashSmsUtils');
 
@@ -1530,6 +1532,501 @@ const sendCustomSMS = async (req, res) => {
     }
 };
 
+// Get SMS class configurations
+const getSMSClassConfigs = async (req, res) => {
+    try {
+        const configs = await SMSClassConfig.getClassConfigs();
+        
+        res.status(200).json({
+            success: true,
+            data: configs
+        });
+    } catch (error) {
+        console.error('Error getting SMS class configurations:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get SMS class configurations',
+            error: error.message
+        });
+    }
+};
+
+// Update SMS class configuration
+const updateSMSClassConfig = async (req, res) => {
+    try {
+        const { className } = req.params;
+        const { patientLimit, description, isActive } = req.body;
+        
+        if (!['A', 'B', 'C'].includes(className)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid class name. Must be A, B, or C'
+            });
+        }
+        
+        const config = await SMSClassConfig.findOneAndUpdate(
+            { className },
+            { 
+                patientLimit: patientLimit || 50,
+                description: description || '',
+                isActive: isActive !== undefined ? isActive : true,
+                lastModifiedBy: req.user?._id || req.admin?.id
+            },
+            { new: true, upsert: true }
+        );
+        
+        res.status(200).json({
+            success: true,
+            data: config
+        });
+    } catch (error) {
+        console.error('Error updating SMS class configuration:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update SMS class configuration',
+            error: error.message
+        });
+    }
+};
+
+// Create SMS campaign with class-based patient division
+const createSMSCampaign = async (req, res) => {
+    try {
+        const {
+            message,
+            templateId,
+            variables = {},
+            filters = {},
+            scheduledFor,
+            campaignName
+        } = req.body;
+        
+        if (!message && !templateId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Either message or template ID is required'
+            });
+        }
+        
+        // Get message content from template if templateId is provided
+        let messageContent = message;
+        let templateUsed = null;
+        
+        if (templateId) {
+            const template = await SMSTemplate.findById(templateId);
+            if (!template) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Template not found'
+                });
+            }
+            
+            messageContent = replaceTemplateVariables(template.content, variables);
+            templateUsed = template._id;
+        }
+        
+        // Build patient query
+        let query = {
+            'personalDetails.contactNumber': {
+                $exists: true,
+                $ne: null,
+                $regex: /^(\+)?[0-9]{10,15}$/
+            }
+        };
+        
+        // Apply filters
+        if (filters) {
+            if (filters.gender && filters.gender !== "all") {
+                query["personalDetails.gender"] = filters.gender;
+            }
+            if (filters.group && filters.group !== "all") {
+                query["medicalDetails.group"] = filters.group;
+            }
+            if (filters.procedure && filters.procedure !== "all") {
+                query["medicalDetails.treatmentPlanning.selectedTeethDetails"] = {
+                    $elemMatch: {
+                        "dailyTreatments.procedure": filters.procedure
+                    }
+                };
+            }
+            if (filters.doctor && filters.doctor !== "all") {
+                query["assignedDoctor"] = new mongoose.Types.ObjectId(filters.doctor);
+            }
+            if (filters.dateRange) {
+                const dateQuery = {};
+                if (filters.dateRange.from) {
+                    dateQuery.$gte = new Date(filters.dateRange.from);
+                }
+                if (filters.dateRange.to) {
+                    dateQuery.$lte = new Date(filters.dateRange.to);
+                    dateQuery.$lte.setHours(23, 59, 59, 999);
+                }
+                if (Object.keys(dateQuery).length > 0) {
+                    query.createdAt = dateQuery;
+                }
+            }
+        }
+        
+        // Get all matching patients
+        const patients = await Patient.find(query).sort({ createdAt: 1 });
+        
+        if (patients.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No patients found matching the criteria'
+            });
+        }
+        
+        // Get class configurations
+        const classConfigs = await SMSClassConfig.getClassConfigs();
+        const activeClasses = classConfigs.filter(c => c.isActive).sort((a, b) => a.className.localeCompare(b.className));
+        
+        if (activeClasses.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No active patient classes configured'
+            });
+        }
+        
+        // Divide patients into classes
+        const classes = [];
+        let startIndex = 0;
+        
+        for (const classConfig of activeClasses) {
+            const classPatients = patients.slice(startIndex, startIndex + classConfig.patientLimit);
+            
+            if (classPatients.length > 0) {
+                classes.push({
+                    className: classConfig.className,
+                    patientCount: classPatients.length,
+                    patientIds: classPatients.map(p => p._id),
+                    sentCount: 0,
+                    failedCount: 0,
+                    isSent: false
+                });
+                
+                startIndex += classConfig.patientLimit;
+            }
+            
+            if (startIndex >= patients.length) break;
+        }
+        
+        // Create campaign
+        const campaign = new SMSCampaign({
+            name: campaignName || `Campaign_${Date.now()}`,
+            message: messageContent,
+            filters,
+            totalPatients: patients.length,
+            createdBy: req.user?._id || req.admin?.id,
+            classes,
+            templateUsed,
+            scheduledFor: scheduledFor ? new Date(scheduledFor) : null,
+            status: 'draft'
+        });
+        
+        await campaign.save();
+        
+        res.status(201).json({
+            success: true,
+            data: campaign,
+            message: `Campaign created with ${classes.length} classes and ${patients.length} total patients`
+        });
+    } catch (error) {
+        console.error('Error creating SMS campaign:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create SMS campaign',
+            error: error.message
+        });
+    }
+};
+
+// Get all SMS campaigns
+const getSMSCampaigns = async (req, res) => {
+    try {
+        const { page = 1, limit = 20, status } = req.query;
+        
+        const query = {};
+        if (status) {
+            query.status = status;
+        }
+        
+        const total = await SMSCampaign.countDocuments(query);
+        const campaigns = await SMSCampaign.find(query)
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit))
+            .populate('createdBy', 'name email')
+            .populate('templateUsed', 'name');
+        
+        res.status(200).json({
+            success: true,
+            data: {
+                campaigns,
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                pages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        console.error('Error getting SMS campaigns:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get SMS campaigns',
+            error: error.message
+        });
+    }
+};
+
+// Get campaign details
+const getCampaignDetails = async (req, res) => {
+    try {
+        const { campaignId } = req.params;
+        
+        const campaign = await SMSCampaign.findById(campaignId)
+            .populate('createdBy', 'name email')
+            .populate('templateUsed', 'name')
+            .populate('classes.patientIds', 'personalDetails.name personalDetails.contactNumber');
+        
+        if (!campaign) {
+            return res.status(404).json({
+                success: false,
+                message: 'Campaign not found'
+            });
+        }
+        
+        res.status(200).json({
+            success: true,
+            data: campaign
+        });
+    } catch (error) {
+        console.error('Error getting campaign details:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get campaign details',
+            error: error.message
+        });
+    }
+};
+
+// Send SMS to specific class
+const sendSMSToClass = async (req, res) => {
+    try {
+        const { campaignId, className } = req.params;
+        
+        const campaign = await SMSCampaign.findById(campaignId)
+            .populate('classes.patientIds', 'personalDetails.name personalDetails.contactNumber');
+        
+        if (!campaign) {
+            return res.status(404).json({
+                success: false,
+                message: 'Campaign not found'
+            });
+        }
+        
+        const classData = campaign.classes.find(c => c.className === className);
+        if (!classData) {
+            return res.status(404).json({
+                success: false,
+                message: 'Class not found in campaign'
+            });
+        }
+        
+        if (classData.isSent) {
+            return res.status(400).json({
+                success: false,
+                message: 'SMS already sent to this class'
+            });
+        }
+        
+        // Prepare arrays for bulk SMS
+        const phoneNumbers = [];
+        const messages = [];
+        const patientMap = {};
+        
+        for (const patient of classData.patientIds) {
+            try {
+                const phoneNumber = formatPhoneNumber(patient.personalDetails.contactNumber);
+                
+                if (!phoneNumber.match(/^9[678]\d{8}$/)) {
+                    continue;
+                }
+                
+                // Personalize message
+                let personalizedMessage = campaign.message;
+                if (personalizedMessage.includes('{{patientName}}') || personalizedMessage.includes('{{name}}')) {
+                    personalizedMessage = personalizedMessage
+                        .replace(/{{patientName}}/g, patient.personalDetails.name)
+                        .replace(/{{name}}/g, patient.personalDetails.name);
+                }
+                
+                phoneNumbers.push(phoneNumber);
+                messages.push(personalizedMessage);
+                patientMap[phoneNumber] = patient._id;
+            } catch (error) {
+                console.error(`Error processing patient ${patient._id}:`, error.message);
+            }
+        }
+        
+        if (phoneNumbers.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No valid phone numbers found in this class'
+            });
+        }
+        
+        // Generate unique campaign identifier
+        const campaignIdentifier = `${campaignId}_${className}_${Date.now()}`;
+        
+        // Send bulk SMS
+        const result = await aakashSmsUtils.sendBulkSMS(phoneNumbers, messages);
+        
+        if (!result.success) {
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to send bulk SMS',
+                error: result.error
+            });
+        }
+        
+        // Save to SMS history
+        const historyRecords = [];
+        
+        // Process successful sends
+        if (result.validMessages) {
+            for (const validMsg of result.validMessages) {
+                const patientId = patientMap[validMsg.recipient] || null;
+                historyRecords.push({
+                    recipient: validMsg.recipient,
+                    message: messages[phoneNumbers.indexOf(validMsg.recipient)],
+                    status: validMsg.status || 'sent',
+                    messageId: validMsg.messageId,
+                    networkProvider: validMsg.network,
+                    credit: validMsg.credit,
+                    sentBy: req.user?._id || req.admin?.id,
+                    patient: patientId,
+                    templateUsed: campaign.templateUsed,
+                    isBulk: true,
+                    campaignId: campaignIdentifier,
+                    patientClass: className
+                });
+            }
+        }
+        
+        // Process failed sends
+        if (result.invalidMessages) {
+            for (const invalidMsg of result.invalidMessages) {
+                const patientId = patientMap[invalidMsg.recipient] || null;
+                historyRecords.push({
+                    recipient: invalidMsg.recipient,
+                    message: messages[phoneNumbers.indexOf(invalidMsg.recipient)],
+                    status: 'failed',
+                    errorMessage: invalidMsg.reason || 'Failed to send',
+                    sentBy: req.user?._id || req.admin?.id,
+                    patient: patientId,
+                    templateUsed: campaign.templateUsed,
+                    isBulk: true,
+                    campaignId: campaignIdentifier,
+                    patientClass: className
+                });
+            }
+        }
+        
+        // Save all history records
+        if (historyRecords.length > 0) {
+            await SMSHistory.insertMany(historyRecords);
+        }
+        
+        // Update campaign class status
+        const classIndex = campaign.classes.findIndex(c => c.className === className);
+        campaign.classes[classIndex].sentCount = result.totalSent;
+        campaign.classes[classIndex].failedCount = result.totalFailed;
+        campaign.classes[classIndex].isSent = true;
+        campaign.classes[classIndex].sentAt = new Date();
+        
+        // Update campaign status
+        const allClassesSent = campaign.classes.every(c => c.isSent);
+        if (allClassesSent) {
+            campaign.status = 'completed';
+        } else {
+            campaign.status = 'in_progress';
+        }
+        
+        await campaign.save();
+        
+        res.status(200).json({
+            success: true,
+            totalSent: result.totalSent,
+            totalFailed: result.totalFailed,
+            campaignId: campaignIdentifier,
+            className,
+            message: `SMS sent to Class ${className}: ${result.totalSent} successful, ${result.totalFailed} failed`
+        });
+    } catch (error) {
+        console.error('Error sending SMS to class:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to send SMS to class',
+            error: error.message
+        });
+    }
+};
+
+// Get SMS history by class/campaign
+const getSMSHistoryByClass = async (req, res) => {
+    try {
+        const { 
+            campaignId, 
+            className,
+            page = 1, 
+            limit = 20,
+            status 
+        } = req.query;
+        
+        const query = {};
+        
+        if (campaignId) {
+            query.campaignId = { $regex: campaignId, $options: 'i' };
+        }
+        
+        if (className) {
+            query.patientClass = className;
+        }
+        
+        if (status) {
+            query.status = status;
+        }
+        
+        const total = await SMSHistory.countDocuments(query);
+        const history = await SMSHistory.find(query)
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit))
+            .populate('patient', 'personalDetails.name personalDetails.contactNumber')
+            .populate('sentBy', 'name email')
+            .populate('templateUsed', 'name');
+        
+        res.status(200).json({
+            success: true,
+            data: {
+                history,
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                pages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        console.error('Error getting SMS history by class:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get SMS history by class',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     sendSingleSMS,
     sendBulkSMS,
@@ -1547,5 +2044,13 @@ module.exports = {
     sendPaymentReminder,
     getPatientsWithFollowUp,
     sendBulkFollowUpReminders,
-    sendCustomSMS // Add the new function to exports
+    sendCustomSMS,
+    // Class-based SMS functions
+    getSMSClassConfigs,
+    updateSMSClassConfig,
+    createSMSCampaign,
+    getSMSCampaigns,
+    getCampaignDetails,
+    sendSMSToClass,
+    getSMSHistoryByClass
 };

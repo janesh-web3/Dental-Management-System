@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { toast } from 'react-toastify';
-import { Send, RefreshCw, Users, MessageSquare, CheckCircle } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Send, RefreshCw, MessageSquare, CheckCircle, Settings, History, Plus, Edit3 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { crudRequest } from '@/lib/api';
 import { BulkSMSFilter } from '@/components/sms/BulkSMSFilter';
 
@@ -25,408 +27,482 @@ interface Filters {
   [key: string]: any;
 }
 
-interface Patient {
+interface SMSClassConfig {
   _id: string;
-  personalDetails: {
-    name: string;
-    contactNumber: string;
-  };
+  className: 'A' | 'B' | 'C';
+  patientLimit: number;
+  description: string;
+  isActive: boolean;
+}
+
+interface SMSCampaign {
+  _id: string;
   name: string;
-  contactNumber: string;
+  message: string;
+  filters: Filters;
+  totalPatients: number;
+  status: 'draft' | 'in_progress' | 'completed' | 'failed';
+  classes: Array<{
+    className: 'A' | 'B' | 'C';
+    patientCount: number;
+    sentCount: number;
+    failedCount: number;
+    isSent: boolean;
+    sentAt?: string;
+    patientIds: string[];
+  }>;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function BulkSMSPage() {
+  const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
-  const [selectedPatients, setSelectedPatients] = useState<Patient[]>([]);
-  const [isSending, setIsSending] = useState(false);
+  const [campaignName, setCampaignName] = useState('');
   const [filters, setFilters] = useState<Filters>({});
-  const [filteredCount, setFilteredCount] = useState<number | null>(null);
-  const [isFilterActive, setIsFilterActive] = useState(false);
+  const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
+  const [currentCampaign, setCurrentCampaign] = useState<SMSCampaign | null>(null);
+  const [showClassSettings, setShowClassSettings] = useState(false);
+  const [editingClass, setEditingClass] = useState<SMSClassConfig | null>(null);
 
-  // Apply filters from the filter component
-  const applyFilters = async (appliedFilters: Filters) => {
-    try {
-      
-      // Convert filter values to undefined if they are 'all' or empty
-      const cleanFilters = Object.entries(appliedFilters).reduce<Record<string, any>>((acc, [key, value]) => {
-        if (value === 'all' || value === '' || value === null) {
-          return acc; // Skip this filter
-        }
-        
-        // Handle date range filter specifically
-        if (key === 'dateRange' && value && typeof value === 'object') {
-          if ('from' in value || 'to' in value) {
-            const dateRange: any = {};
-            if (value.from) dateRange.from = value.from;
-            if (value.to) dateRange.to = value.to;
-            
-            if (Object.keys(dateRange).length > 0) {
-              acc.dateRange = dateRange;
-            }
-            return acc;
-          }
-        }
-        
-        return { ...acc, [key]: value };
-      }, {});
-
-      
-      // Check if any filters are active
-      const hasActiveFilters = Object.keys(cleanFilters).length > 0;
-      setIsFilterActive(hasActiveFilters);
-      
-      setFilters(cleanFilters);
-      setSelectedPatients([]); // Reset selected patients when filters change
-    } catch (error) {
-      console.error('Error applying filters:', error);
-      toast.error('Failed to apply filters');
-    }
-  };
-
-  // Reset all filters
-  const resetFilters = () => {
-    setFilters({});
-    setFilteredCount(null);
-    setSelectedPatients([]);
-    setIsFilterActive(false);
-  };
-
-  // Fetch patients based on filters
-  const { data: filteredPatients = [], isLoading } = useQuery({
-    queryKey: ['filteredPatients', filters, isFilterActive],
+  // Fetch SMS class configurations
+  const { data: classConfigs = [], isLoading: loadingConfigs } = useQuery({
+    queryKey: ['smsClassConfigs'],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      
-      // Add filters if they exist
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value === 'all' || value === undefined || value === null) return;
-        
-        if (key === 'dateRange' && value && typeof value === 'object') {
-          if (value.from) params.append('from', value.from);
-          if (value.to) params.append('to', value.to);
-        } else {
-          params.append(key, String(value));
-        }
-      });
-      
-      
-      const url = isFilterActive 
-        ? `/patient/get-filtered-patients?${params.toString()}`
-        : `/patient/get-filtered-patients?limit=1000`;
-    
-      const response = await crudRequest<{ patients: any[], totalPatients?: number }>('GET', url);
-      
-      if (!response?.patients) {
-        throw new Error('Failed to fetch patients');
-      }
-      
-      const patients = response.patients;
-      const total = response.totalPatients || patients.length;
-      
-      // Map the patient data to match the expected format
-      const mappedPatients = patients.map(patient => ({
-        _id: patient._id,
-        personalDetails: {
-          name: patient.personalDetails?.name || 'No Name',
-          contactNumber: patient.personalDetails?.contactNumber || 'No Contact',
-          gender: patient.personalDetails?.gender || 'Other',
-          ...patient.personalDetails
-        },
-        medicalDetails: {
-          group: patient.medicalDetails?.group || 'General',
-          ...patient.medicalDetails
-        },
-        ...patient
-      }));
-      
-      setFilteredCount(total);
-      return mappedPatients;
-    },
-    // Always enabled - will fetch all patients when no filters are applied
-    enabled: true,
+      const response = await crudRequest<{ data: SMSClassConfig[] }>('GET', '/sms/class-configs');
+      return response?.data || [];
+    }
   });
 
-  // Handle sending bulk SMS
-  const handleSendBulkSMS = async () => {
+  // Fetch campaigns
+  const { data: campaignsData, isLoading: loadingCampaigns } = useQuery({
+    queryKey: ['smsCampaigns'],
+    queryFn: async () => {
+      const response = await crudRequest<{ data: { campaigns: SMSCampaign[] } }>('GET', '/sms/campaigns?limit=10');
+      return response?.data?.campaigns || [];
+    }
+  });
+
+  // Create campaign mutation
+  const createCampaignMutation = useMutation({
+    mutationFn: async (campaignData: any) => {
+      return await crudRequest('POST', '/sms/campaigns', campaignData);
+    },
+    onSuccess: (response: any) => {
+      queryClient.invalidateQueries({ queryKey: ['smsCampaigns'] });
+      toast.success('Campaign created successfully!');
+      setCurrentCampaign(response?.data);
+      setMessage('');
+      setCampaignName('');
+      setFilters({});
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to create campaign');
+    }
+  });
+
+  // Send SMS to class mutation
+  const sendToClassMutation = useMutation({
+    mutationFn: async ({ campaignId, className }: { campaignId: string; className: string }) => {
+      return await crudRequest('POST', `/sms/campaigns/${campaignId}/send/${className}`, {});
+    },
+    onSuccess: (response: any) => {
+      queryClient.invalidateQueries({ queryKey: ['smsCampaigns'] });
+      if (currentCampaign) {
+        setCurrentCampaign(prev => {
+          if (!prev) return null;
+          const updatedClasses = prev.classes.map(cls => 
+            cls.className === response?.className 
+              ? { ...cls, isSent: true, sentCount: response?.totalSent || 0, failedCount: response?.totalFailed || 0, sentAt: new Date().toISOString() }
+              : cls
+          );
+          return { ...prev, classes: updatedClasses };
+        });
+      }
+      toast.success(response?.message || 'SMS sent successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to send SMS');
+    }
+  });
+
+  // Update class config mutation
+  const updateClassMutation = useMutation({
+    mutationFn: async ({ className, ...data }: { className: string; patientLimit: number; description: string }) => {
+      return await crudRequest('PUT', `/sms/class-configs/${className}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['smsClassConfigs'] });
+      toast.success('Class configuration updated successfully!');
+      setEditingClass(null);
+      setShowClassSettings(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update class configuration');
+    }
+  });
+
+  const handleCreateCampaign = async () => {
     if (!message.trim()) {
       toast.error('Please enter a message');
       return;
     }
 
-    if (selectedPatients.length === 0) {
-      toast.error('Please select at least one recipient');
-      return;
-    }
-
-    setIsSending(true);
+    setIsCreatingCampaign(true);
     
     try {
-      // Prepare the SMS data
-      const smsData = {
-        patientIds: selectedPatients.map(p => p._id),
+      await createCampaignMutation.mutateAsync({
         message: message.trim(),
-        // Include filters for analytics
-        filters: filters
-      };
-
-      console.log('Sending bulk SMS to patients:', smsData);
-      
-      const response = await crudRequest<{ 
-        success: boolean; 
-        totalSent: number; 
-        totalFailed: number;
-        message?: string;
-        invalidMessages?: Array<{ recipient: string; reason: string }>;
-      }>('POST', '/sms/bulk', smsData);
-
-      if (response?.success) {
-        const successMessage = `SMS sent successfully to ${response.totalSent} ${response.totalSent === 1 ? 'recipient' : 'recipients'}`;
-        const failedMessage = response.totalFailed > 0 
-          ? ` (${response.totalFailed} failed)` 
-          : '';
-        
-        toast.success(successMessage + failedMessage);
-        
-        // Reset the form if everything was successful
-        if (response.totalFailed === 0) {
-          setMessage('');
-          setSelectedPatients([]);
-        }
-        
-        // If there were invalid messages, log them
-        if (response.invalidMessages?.length) {
-          console.error('Failed to send SMS to some recipients:', response.invalidMessages);
-        }
-      } else {
-        throw new Error(response?.message || 'Failed to send SMS');
-      }
-    } catch (error: any) {
-      console.error('Error sending bulk SMS:', error);
-      toast.error(error.message || 'Failed to send SMS');
+        filters,
+        campaignName: campaignName.trim() || undefined
+      });
     } finally {
-      setIsSending(false);
+      setIsCreatingCampaign(false);
     }
   };
 
-  // Toggle patient selection
-  const togglePatientSelection = (patient: Patient) => {
-    setSelectedPatients(prev => {
-      const isSelected = prev.some(p => p._id === patient._id);
-      if (isSelected) {
-        return prev.filter(p => p._id !== patient._id);
-      } else {
-        return [...prev, patient];
-      }
+  const handleSendToClass = async (className: string) => {
+    if (!currentCampaign) return;
+    
+    await sendToClassMutation.mutateAsync({
+      campaignId: currentCampaign._id,
+      className
     });
   };
 
-  // Select all filtered patients
-  const selectAllPatients = () => {
-    if (selectedPatients.length === filteredPatients.length) {
-      setSelectedPatients([]);
-    } else {
-      setSelectedPatients([...filteredPatients]);
-    }
+  const handleUpdateClass = async (data: { patientLimit: number; description: string }) => {
+    if (!editingClass) return;
+    
+    await updateClassMutation.mutateAsync({
+      className: editingClass.className,
+      ...data
+    });
   };
 
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Bulk SMS</h1>
+          <h1 className="text-2xl font-bold">Class-Based Bulk SMS</h1>
           <p className="text-muted-foreground">
-            Send SMS to multiple patients at once
+            Send SMS to patients organized in classes (A, B, C)
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => window.history.back()}>
-            Back
-          </Button>
           <Button 
-            onClick={handleSendBulkSMS} 
-            disabled={isSending || selectedPatients.length === 0}
+            variant="outline" 
+            onClick={() => setShowClassSettings(true)}
             className="gap-2"
           >
-            {isSending ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Send className="h-4 w-4" />
-                Send to {selectedPatients.length} {selectedPatients.length === 1 ? 'Patient' : 'Patients'}
-              </>
-            )}
+            <Settings className="h-4 w-4" />
+            Class Settings
+          </Button>
+          <Button variant="outline" onClick={() => window.history.back()}>
+            Back
           </Button>
         </div>
       </div>
 
       <div className="grid gap-6">
+        {/* Create New Campaign */}
         <Card>
           <CardHeader>
-            <CardTitle>Recipients</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Create SMS Campaign
+            </CardTitle>
             <CardDescription>
-              Filter and select patients to receive the SMS
+              Create a new SMS campaign and divide patients into classes
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="campaignName">Campaign Name (Optional)</Label>
+                <Input
+                  id="campaignName"
+                  value={campaignName}
+                  onChange={(e) => setCampaignName(e.target.value)}
+                  placeholder="Enter campaign name..."
+                />
+              </div>
+            </div>
+
             <BulkSMSFilter 
-              onFilter={applyFilters} 
-              onReset={resetFilters}
-              loading={isLoading}
+              onFilter={setFilters} 
+              onReset={() => setFilters({})}
+              loading={false}
             />
 
-            <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  {isLoading ? (
-                    <span className="font-medium">Loading patients...</span>
-                  ) : (
-                    <span className="font-medium">
-                      {filteredCount !== null ? (
-                        <>
-                          {filteredCount} {filteredCount === 1 ? 'patient' : 'patients'} found
-                          {isFilterActive && <span className="ml-1 text-muted-foreground">(filtered)</span>}
-                        </>
-                      ) : (
-                        'No patients loaded'
-                      )}
-                    </span>
-                  )}
-                </div>
-                {filteredCount !== null && filteredCount > 0 && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={selectAllPatients}
-                  >
-                    {selectedPatients.length === filteredPatients.length ? 'Deselect All' : 'Select All'}
-                  </Button>
-                )}
+            <div className="space-y-2">
+              <Label htmlFor="message">Message Content</Label>
+              <Textarea
+                id="message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Type your message here..."
+                className="min-h-[120px]"
+                maxLength={160}
+              />
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>{message.length}/160 characters</span>
+                <span>Available: {`{{patientName}}, {{date}}, {{time}}, {{clinicName}}`}</span>
               </div>
-
-              {filteredCount !== null && filteredCount > 0 && (
-                <div className="mt-4 max-h-60 overflow-y-auto">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {filteredPatients.map((patient: Patient) => {
-                      const isSelected = selectedPatients.some(p => p._id === patient._id);
-                      return (
-                        <div 
-                          key={patient._id}
-                          className={`p-3 rounded-md border cursor-pointer transition-colors ${
-                            isSelected 
-                              ? 'bg-primary/10 border-primary' 
-                              : 'hover:bg-muted/50'
-                          }`}
-                          onClick={() => togglePatientSelection(patient)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium">{patient.personalDetails.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {patient.personalDetails.contactNumber}
-                              </p>
-                            </div>
-                            {isSelected ? (
-                              <CheckCircle className="h-5 w-5 text-primary" />
-                            ) : (
-                              <div className="h-5 w-5 rounded-full border" />
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {filteredCount === 0 && (
-                <div className="mt-4 p-4 text-center bg-muted rounded-md">
-                  <p className="text-muted-foreground">No patients match the selected filters.</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setFilters({});
-                      setFilteredCount(null);
-                    }}
-                    className="mt-2"
-                  >
-                    Clear Filters
-                  </Button>
-                </div>
-              )}
             </div>
+
+            <Button 
+              onClick={handleCreateCampaign} 
+              disabled={isCreatingCampaign || !message.trim()}
+              className="gap-2 w-full"
+            >
+              {isCreatingCampaign ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Creating Campaign...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  Create Campaign & Divide into Classes
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Message</CardTitle>
-            <CardDescription>
-              Compose your SMS message (max 160 characters)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="message">Message Content</Label>
-                <Textarea
-                  id="message"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type your message here..."
-                  className="min-h-[150px]"
-                  maxLength={160}
-                />
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>{message.length}/160 characters</span>
-                  <span>
-                    {Math.ceil(message.length / 160)} message
-                    {message.length > 160 ? 's' : ''}
-                  </span>
+        {/* Current Campaign */}
+        {currentCampaign && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Current Campaign: {currentCampaign.name}
+              </CardTitle>
+              <CardDescription>
+                Total Patients: {currentCampaign.totalPatients} | Status: 
+                <Badge variant={
+                  currentCampaign.status === 'completed' ? 'default' :
+                  currentCampaign.status === 'in_progress' ? 'secondary' :
+                  currentCampaign.status === 'failed' ? 'destructive' : 'outline'
+                } className="ml-2">
+                  {currentCampaign.status}
+                </Badge>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <p className="font-medium mb-2">Message:</p>
+                  <p className="text-sm">{currentCampaign.message}</p>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  <Label>Available Variables</Label>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { name: '{{patientName}}', description: 'Patient\'s full name' },
-                    { name: '{{date}}', description: 'Current date' },
-                    { name: '{{time}}', description: 'Current time' },
-                    { name: '{{clinicName}}', description: 'Your clinic name' },
-                  ].map((variable) => (
-                    <Tooltip key={variable.name}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {currentCampaign.classes.map((classData) => (
+                    <Card key={classData.className}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg flex items-center justify-between">
+                          Class {classData.className}
+                          {classData.isSent && <CheckCircle className="h-5 w-5 text-green-600" />}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0 space-y-3">
+                        <div className="text-sm space-y-1">
+                          <p><strong>Patients:</strong> {classData.patientCount}</p>
+                          {classData.isSent && (
+                            <>
+                              <p className="text-green-600"><strong>Sent:</strong> {classData.sentCount}</p>
+                              {classData.failedCount > 0 && (
+                                <p className="text-red-600"><strong>Failed:</strong> {classData.failedCount}</p>
+                              )}
+                              <p className="text-muted-foreground text-xs">
+                                Sent: {new Date(classData.sentAt!).toLocaleString()}
+                              </p>
+                            </>
+                          )}
+                        </div>
+                        
+                        <Button 
+                          onClick={() => handleSendToClass(classData.className)}
+                          disabled={classData.isSent || sendToClassMutation.isPending}
                           size="sm"
-                          className="h-8"
-                          onClick={() => {
-                            setMessage(prev => prev + ' ' + variable.name);
-                          }}
+                          className="w-full gap-2"
+                          variant={classData.isSent ? "secondary" : "default"}
                         >
-                          {variable.name}
+                          {sendToClassMutation.isPending ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                          ) : classData.isSent ? (
+                            <CheckCircle className="h-4 w-4" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                          {classData.isSent ? 'Sent' : `Send to Class ${classData.className}`}
                         </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{variable.description}</p>
-                      </TooltipContent>
-                    </Tooltip>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recent Campaigns */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Recent Campaigns
+            </CardTitle>
+            <CardDescription>
+              View and manage previous SMS campaigns
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingCampaigns ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="h-6 w-6 animate-spin" />
+                <span className="ml-2">Loading campaigns...</span>
+              </div>
+            ) : campaignsData && campaignsData.length > 0 ? (
+              <div className="space-y-4">
+                {campaignsData.slice(0, 5).map((campaign) => (
+                  <div key={campaign._id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex-1">
+                      <h4 className="font-medium">{campaign.name}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {campaign.totalPatients} patients | {campaign.classes.length} classes | 
+                        <Badge variant="outline" className="ml-2">
+                          {campaign.status}
+                        </Badge>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Created: {new Date(campaign.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setCurrentCampaign(campaign)}
+                        className="gap-2"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        View
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">
+                No campaigns found. Create your first campaign above.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Class Settings Dialog */}
+      <Dialog open={showClassSettings} onOpenChange={setShowClassSettings}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>SMS Class Settings</DialogTitle>
+            <DialogDescription>
+              Configure patient limits for each SMS class
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {loadingConfigs ? (
+              <div className="flex items-center justify-center py-4">
+                <RefreshCw className="h-5 w-5 animate-spin" />
+                <span className="ml-2">Loading...</span>
+              </div>
+            ) : (
+              classConfigs.map((config) => (
+                <div key={config.className} className="flex items-center justify-between p-3 border rounded">
+                  <div>
+                    <h4 className="font-medium">Class {config.className}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Limit: {config.patientLimit} patients
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingClass(config)}
+                    className="gap-2"
+                  >
+                    <Edit3 className="h-4 w-4" />
+                    Edit
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Class Dialog */}
+      <Dialog open={!!editingClass} onOpenChange={() => setEditingClass(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Class {editingClass?.className}</DialogTitle>
+            <DialogDescription>
+              Modify the patient limit for this class
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingClass && (
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target as HTMLFormElement);
+              handleUpdateClass({
+                patientLimit: Number(formData.get('patientLimit')),
+                description: String(formData.get('description'))
+              });
+            }} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="patientLimit">Patient Limit</Label>
+                <Input
+                  id="patientLimit"
+                  name="patientLimit"
+                  type="number"
+                  min="1"
+                  max="1000"
+                  defaultValue={editingClass.patientLimit}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  name="description"
+                  defaultValue={editingClass.description}
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => setEditingClass(null)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={updateClassMutation.isPending}
+                  className="flex-1 gap-2"
+                >
+                  {updateClassMutation.isPending ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : null}
+                  Save Changes
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -10,19 +10,13 @@ import {
   UserPlus,
   Search,
   Filter,
-  MoreVertical,
+  // MoreVertical,
   Heart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,7 +60,7 @@ const DelightfulPatientTable: React.FC<DelightfulPatientTableProps> = ({
   onDelete,
   onView,
   onAdd,
-  isLoading = false
+  // isLoading = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -390,7 +384,9 @@ const DelightfulPatientTable: React.FC<DelightfulPatientTableProps> = ({
                           icon={Eye}
                           onClick={() => handleActionClick('view', patient)}
                           className="h-8 w-8 p-0"
-                        />
+                        >
+                          View
+                        </AccessibleDelightfulButton>
                         
                         <AccessibleDelightfulButton
                           variant="ghost"
@@ -399,7 +395,9 @@ const DelightfulPatientTable: React.FC<DelightfulPatientTableProps> = ({
                           icon={Edit}
                           onClick={() => handleActionClick('edit', patient)}
                           className="h-8 w-8 p-0"
-                        />
+                        >
+                          Edit
+                        </AccessibleDelightfulButton>
                         
                         <AccessibleDelightfulButton
                           variant="ghost"
@@ -408,7 +406,9 @@ const DelightfulPatientTable: React.FC<DelightfulPatientTableProps> = ({
                           icon={Trash2}
                           onClick={() => handleDeleteClick(patient)}
                           className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                        />
+                        >
+                          Delete
+                        </AccessibleDelightfulButton>
                       </div>
                     </td>
                   </motion.tr>

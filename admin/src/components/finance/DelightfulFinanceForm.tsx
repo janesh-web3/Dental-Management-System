@@ -7,9 +7,9 @@ import {
   Calendar,
   FileText,
   CreditCard,
-  Banknote,
+  // Banknote,
   PiggyBank,
-  Receipt,
+  // Receipt,
   Calculator
 } from 'lucide-react';
 import DelightfulForm from '@/components/ui/DelightfulForm';
@@ -71,7 +71,7 @@ const DelightfulFinanceForm: React.FC<DelightfulFinanceFormProps> = ({
   editingRecord,
   modalClose,
   patients = [],
-  services = []
+  // services = []
 }) => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
@@ -126,8 +126,8 @@ const DelightfulFinanceForm: React.FC<DelightfulFinanceFormProps> = ({
       const method = editingRecord ? 'put' : 'post';
       const response = await crudRequest(method, endpoint, recordData);
       
-      if (response.success) {
-        onSuccess?.(response.data);
+      if ((response as any).success) {
+        onSuccess?.((response as any).data);
         modalClose?.();
       }
     } catch (error: any) {
@@ -194,7 +194,7 @@ const DelightfulFinanceForm: React.FC<DelightfulFinanceFormProps> = ({
           title={getFormTitle()}
           submitLabel={editingRecord ? `Update ${formType}` : `Add ${formType}`}
           formType="financial"
-          submitIcon={getFormIcon()}
+          submitIcon={getFormIcon() as any}
           celebrateOnSuccess={true}
           playfulFeedback={true}
           className="w-full max-w-none"

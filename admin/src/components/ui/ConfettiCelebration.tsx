@@ -48,7 +48,7 @@ const ConfettiCelebration: React.FC<ConfettiCelebrationProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
-  const [particles, setParticles] = useState<Particle[]>([]);
+  const [, setParticles] = useState<Particle[]>([]);
   const [showMessage, setShowMessage] = useState(false);
   const [displayMessage, setDisplayMessage] = useState('');
 

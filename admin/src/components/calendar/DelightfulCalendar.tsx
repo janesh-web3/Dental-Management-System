@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Calendar as CalendarIcon, 
@@ -6,26 +6,13 @@ import {
   ChevronRight,
   Plus,
   Clock,
-  User,
   Stethoscope,
-  MapPin,
-  Phone,
   CheckCircle,
-  XCircle,
   Edit,
   Trash2
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import AccessibleDelightfulButton from '@/components/ui/AccessibleDelightfulButton';
 import ConfettiCelebration from '@/components/ui/ConfettiCelebration';
 import { useCommonSounds } from '@/contexts/SoundContext';
@@ -96,7 +83,7 @@ const DelightfulCalendar: React.FC<DelightfulCalendarProps> = ({
   onDeleteAppointment
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [, setSelectedDate] = useState<Date | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [confettiMessage, setConfettiMessage] = useState('');
   const [hoveredAppointment, setHoveredAppointment] = useState<string | null>(null);
@@ -122,7 +109,7 @@ const DelightfulCalendar: React.FC<DelightfulCalendarProps> = ({
     const month = currentDate.getMonth();
     
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
+    // const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
     
@@ -249,7 +236,9 @@ const DelightfulCalendar: React.FC<DelightfulCalendarProps> = ({
             icon={ChevronLeft}
             onClick={() => navigateMonth('prev')}
             className="p-2"
-          />
+          >
+            Previous
+          </AccessibleDelightfulButton>
           
           <motion.h3
             initial={{ scale: 0 }}
@@ -266,7 +255,9 @@ const DelightfulCalendar: React.FC<DelightfulCalendarProps> = ({
             icon={ChevronRight}
             onClick={() => navigateMonth('next')}
             className="p-2"
-          />
+          >
+            Next
+          </AccessibleDelightfulButton>
         </motion.div>
 
         {/* Calendar Grid */}
@@ -469,7 +460,9 @@ const DelightfulCalendar: React.FC<DelightfulCalendarProps> = ({
                         icon={Edit}
                         onClick={() => handleAppointmentAction('edit', appointment)}
                         className="h-8 w-8 p-0"
-                      />
+                      >
+                        Edit
+                      </AccessibleDelightfulButton>
                       
                       <AccessibleDelightfulButton
                         variant="ghost"
@@ -477,8 +470,9 @@ const DelightfulCalendar: React.FC<DelightfulCalendarProps> = ({
                         animation="shake"
                         icon={Trash2}
                         onClick={() => handleAppointmentAction('delete', appointment)}
-                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                      />
+                      >
+                        Delete
+                      </AccessibleDelightfulButton>
                     </div>
                   </div>
                 </motion.div>

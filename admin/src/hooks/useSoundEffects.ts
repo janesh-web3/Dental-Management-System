@@ -35,10 +35,12 @@ const useSoundEffects = (): SoundEffectsHook => {
   const audioBuffersRef = useRef<Map<string, AudioBuffer>>(new Map());
   const activeSourcesRef = useRef<Map<string, AudioBufferSourceNode[]>>(new Map());
   const masterVolumeRef = useRef<number>(0.3);
-  const soundEnabledRef = useRef<boolean>(() => {
-    const saved = localStorage.getItem('dms-sound-enabled');
-    return saved !== null ? JSON.parse(saved) : true;
-  });
+  const soundEnabledRef = useRef<boolean>(
+    (() => {
+      const saved = localStorage.getItem('dms-sound-enabled');
+      return saved !== null ? JSON.parse(saved) : true;
+    })()
+  );
 
   // Initialize Web Audio Context
   useEffect(() => {
@@ -116,8 +118,9 @@ const useSoundEffects = (): SoundEffectsHook => {
           console.warn(`Sound file not found: ${soundName}`);
           return;
         }
-        audioBuffer = await loadAudioBuffer(url);
-        if (audioBuffer) {
+        const loadedBuffer = await loadAudioBuffer(url);
+        if (loadedBuffer) {
+          audioBuffer = loadedBuffer;
           audioBuffersRef.current.set(soundName, audioBuffer);
         } else {
           return;

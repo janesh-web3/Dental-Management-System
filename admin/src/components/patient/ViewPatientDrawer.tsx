@@ -193,47 +193,39 @@ const DateDisplay = ({
   icon?: any;
   color?: string;
 }) => (
-  <motion.div
-    className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    whileHover={{ scale: 1.01 }}
-    transition={{ duration: 0.3 }}
-  >
-    <div
-      className={`p-2 sm:p-2.5 rounded-xl ${color} bg-opacity-10 dark:bg-opacity-20`}
-    >
-      <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+  <div className="flex items-start gap-2 p-2 rounded-lg bg-white/80 dark:bg-gray-800/80 border border-gray-100 dark:border-gray-700">
+    <div className={`p-1.5 rounded-lg ${color} bg-opacity-10 dark:bg-opacity-20`}>
+      <Icon className="w-3 h-3" />
     </div>
     <div className="flex-1 min-w-0">
-      <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+      <p className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
         {label}
       </p>
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {englishDate && (
-          <div className="flex items-center gap-1 sm:gap-2">
-            <Globe className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-600" />
-            <span className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words">
+          <div className="flex items-center gap-1">
+            <Globe className="w-2 h-2 text-green-600" />
+            <span className="text-xs text-gray-900 dark:text-gray-100">
               {formatSafeDate(englishDate)}
             </span>
           </div>
         )}
         {nepaliDate && (
-          <div className="flex items-center gap-1 sm:gap-2">
-            <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-orange-600" />
-            <span className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words">
+          <div className="flex items-center gap-1">
+            <Star className="w-2 h-2 text-orange-600" />
+            <span className="text-xs text-gray-900 dark:text-gray-100">
               {nepaliDate}
             </span>
           </div>
         )}
         {!englishDate && !nepaliDate && (
-          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+          <span className="text-xs text-gray-600 dark:text-gray-300">
             Not provided
           </span>
         )}
       </div>
     </div>
-  </motion.div>
+  </div>
 );
 
 export function ViewPatientDrawer({
@@ -1206,176 +1198,146 @@ export function ViewPatientDrawer({
   };
   return (
     <Drawer open={isOpen} onOpenChange={() => onClose()}>
-      <DrawerContent className="h-[98vh] sm:h-[95vh] max-h-[98vh] sm:max-h-[95vh]">
+      <DrawerContent className="h-[95vh] max-h-[95vh]">
         <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-950">
-          <DrawerHeader className="border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm p-3 sm:p-4">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-              <div className="items-center gap-3 hidden md:flex">
-                <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-primary/20 shrink-0">
-                  <AvatarFallback className="bg-primary/10 text-primary text-base sm:text-lg">
+          <DrawerHeader className="border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm p-2">
+            <div className="flex flex-row items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8 border border-primary/20 shrink-0">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs">
                     {getInitials(localPatient.personalDetails.name)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                       {localPatient.personalDetails.name}
                     </h2>
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       onClick={toggleSpeech}
-                      className={`rounded-full w-8 h-8 ${isSpeaking ? "bg-blue-100 dark:bg-blue-900" : ""}`}
+                      className={`rounded-full w-6 h-6 ${isSpeaking ? "bg-blue-100 dark:bg-blue-900" : ""}`}
                       title={
                         isSpeaking ? "Stop reading" : "Read patient details"
                       }
                     >
                       <Volume2
-                        className={`w-4 h-4 ${isSpeaking ? "text-blue-600 dark:text-blue-300" : "text-gray-500"}`}
+                        className={`w-3 h-3 ${isSpeaking ? "text-blue-600 dark:text-blue-300" : "text-gray-500"}`}
                       />
                     </Button>
                   </div>
-                  <DrawerTitle className="text-lg sm:text-xl font-bold truncate">
-                    {localPatient.personalDetails.name}
-                  </DrawerTitle>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1 text-muted-foreground text-xs sm:text-sm">
-                    <div className="flex items-center gap-1">
-                      <FileDigit className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                      <span className="truncate">ID: {patient._id}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                      <span className="truncate">
-                        Added: {formatSafeDate(localPatient.createdAt)}
-                      </span>
-                    </div>
-                    <div className="flex mt-1 sm:mt-0 gap-2">
-                      {localPatient.personalDetails.gender && (
-                        <Badge variant="outline" className="bg-card text-xs">
-                          {localPatient.personalDetails.gender}
-                        </Badge>
-                      )}
-                      {localPatient.personalDetails.age && (
-                        <Badge variant="outline" className="bg-card text-xs">
-                          {localPatient.personalDetails.age} years
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-300">
+                    ID: {patient._id}
+                  </p>
                 </div>
               </div>
-              <div className="flex gap-2 mt-2 sm:mt-0">
+              <div className="flex gap-2">
                 <Button
-                  variant="outline"
+                  variant="default"
                   size="sm"
                   onClick={exportPatientPDF}
-                  className="flex items-center gap-1 text-xs h-8 px-2 sm:h-9 sm:px-3 sm:text-sm"
+                  className="h-8 px-2 text-xs bg-primary hover:bg-primary/90"
                 >
-                  <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  <span className="sm:inline">Export PDF</span>
+                  <Download className="w-3 h-3 mr-1" />
+                  PDF
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={onClose}
-                  className="h-8 px-2 sm:h-9 sm:px-3 text-xs sm:text-sm"
+                  className="h-8 px-2 text-xs"
                 >
-                  <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  <span className="sm:inline">Close</span>
+                  <X className="w-3 h-3 mr-1" />
+                  Close
                 </Button>
               </div>
             </div>
           </DrawerHeader>
 
-          <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-2">
-            <Tabs defaultValue="overview" className="space-y-4 sm:space-y-6">
-              <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm pt-1 pb-2 sm:pb-3 -mx-2 sm:-mx-4 px-2 sm:px-4 border-b border-gray-100 dark:border-gray-800">
-                <TabsList className="w-full overflow-x-auto h-20 md:h-auto flex flex-wrap md:flex-nowrap sm:grid sm:grid-cols-6 bg-gray-100 dark:bg-gray-800/50 p-1 sm:p-1.5 rounded-lg gap-1">
+          <div className="flex-1 overflow-y-auto px-2 py-1">
+            <Tabs defaultValue="overview" className="space-y-2">
+              <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm py-1 -mx-2 px-2 border-b border-gray-100 dark:border-gray-800">
+                <TabsList className="w-full h-auto grid grid-cols-6 bg-gray-100 dark:bg-gray-800/50 p-0.5 rounded-md gap-0.5">
                   <TabsTrigger
                     value="overview"
-                    className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3"
+                    className="text-xs whitespace-nowrap px-1 py-1.5"
                   >
                     Overview
                   </TabsTrigger>
                   <TabsTrigger
                     value="medical"
-                    className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3"
+                    className="text-xs whitespace-nowrap px-1 py-1.5"
                   >
-                    Medical Records
+                    Medical
                   </TabsTrigger>
                   <TabsTrigger
                     value="timeline"
-                    className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3"
+                    className="text-xs whitespace-nowrap px-1 py-1.5"
                   >
                     Timeline
                   </TabsTrigger>
                   <TabsTrigger
-                    value="documents"
-                    className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3"
-                  >
-                    Documents
-                  </TabsTrigger>
-                  <TabsTrigger
                     value="prescriptions"
-                    className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3"
+                    className="text-xs whitespace-nowrap px-1 py-1.5"
                   >
-                    Prescriptions
+                    Rx
                   </TabsTrigger>
                   <TabsTrigger
                     value="service-payments"
-                    className="text-xs sm:text-sm whitespace-nowrap flex-1 px-2 py-1.5 sm:py-1.5 sm:px-3"
+                    className="text-xs whitespace-nowrap px-1 py-1.5"
                   >
-                    Service Payments
+                    Payments
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="documents"
+                    className="text-xs whitespace-nowrap px-1 py-1.5"
+                  >
+                    Docs
                   </TabsTrigger>
                 </TabsList>
               </div>
 
-              <TabsContent value="overview" className="space-y-6 pb-6">
+              <TabsContent value="overview" className="space-y-3 pb-3">
                 {/* Enhanced Personal Information */}
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
+                  transition={{ duration: 0.3 }}
                 >
-                  <Card className="border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl overflow-hidden">
-                    <CardHeader className="pb-4 border-b border-gray-100 dark:border-gray-800">
-                      <CardTitle className="text-xl flex items-center gap-3 text-gray-800 dark:text-gray-100">
-                        <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md">
-                          <User className="h-5 w-5" />
+                  <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
+                    <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-3">
+                      <CardTitle className="text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                        <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                          <User className="h-4 w-4" />
                         </div>
-                        <span className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                        <span className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent font-semibold">
                           Personal Information
                         </span>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="gap-4 p-3 sm:p-6">
+                    <CardContent className="p-3">
                       {/* Personal Information Cards */}
                       <motion.div
-                        className="grid grid-cols-1 gap-3 sm:gap-4 min-[480px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-3"
+                        className="grid grid-cols-2 lg:grid-cols-3 gap-2"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ staggerChildren: 0.1 }}
+                        transition={{ staggerChildren: 0.05 }}
                       >
                         <motion.div
-                          className="group border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800/50 p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 hover:border-blue-100 dark:hover:border-blue-900/50 hover:bg-blue-50/30 dark:hover:bg-blue-900/10"
-                          initial={{ opacity: 0, y: 20 }}
+                          className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                          initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          whileHover={{ scale: 1.02 }}
-                          transition={{
-                            duration: 0.3,
-                            type: "spring",
-                            stiffness: 200,
-                          }}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
-                              <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                              <FileText className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                             </div>
-                            <div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
                                 Patient ID
                               </p>
-                              <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                 {patient._id}
                               </p>
                             </div>
@@ -1383,26 +1345,20 @@ export function ViewPatientDrawer({
                         </motion.div>
 
                         <motion.div
-                          className="group border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800/50 p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 hover:border-green-100 dark:hover:border-green-900/50 hover:bg-green-50/30 dark:hover:bg-green-900/10"
-                          initial={{ opacity: 0, y: 20 }}
+                          className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                          initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          whileHover={{ scale: 1.02 }}
-                          transition={{
-                            duration: 0.3,
-                            type: "spring",
-                            stiffness: 200,
-                            delay: 0.1,
-                          }}
+                          transition={{ delay: 0.05 }}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center group-hover:bg-green-100 dark:group-hover:bg-green-900/50 transition-colors">
-                              <UserCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-lg bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
+                              <UserCheck className="h-3 w-3 text-green-600 dark:text-green-400" />
                             </div>
-                            <div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
                                 Full Name
                               </p>
-                              <p className="font-semibold text-gray-900 dark:text-gray-100">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                 {localPatient.personalDetails.name}
                               </p>
                             </div>
@@ -1410,26 +1366,20 @@ export function ViewPatientDrawer({
                         </motion.div>
 
                         <motion.div
-                          className="group border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800/50 p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 hover:border-purple-100 dark:hover:border-purple-900/50 hover:bg-purple-50/30 dark:hover:bg-purple-900/10"
-                          initial={{ opacity: 0, y: 20 }}
+                          className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                          initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          whileHover={{ scale: 1.02 }}
-                          transition={{
-                            duration: 0.3,
-                            type: "spring",
-                            stiffness: 200,
-                            delay: 0.2,
-                          }}
+                          transition={{ delay: 0.1 }}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center group-hover:bg-purple-100 dark:group-hover:bg-purple-900/50 transition-colors">
-                              <Phone className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-lg bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
+                              <Phone className="h-3 w-3 text-purple-600 dark:text-purple-400" />
                             </div>
-                            <div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
                                 Contact
                               </p>
-                              <p className="font-semibold text-gray-900 dark:text-gray-100">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {localPatient.personalDetails.contactNumber}
                               </p>
                             </div>
@@ -1437,26 +1387,20 @@ export function ViewPatientDrawer({
                         </motion.div>
 
                         <motion.div
-                          className="group border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800/50 p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 hover:border-orange-100 dark:hover:border-orange-900/50 hover:bg-orange-50/30 dark:hover:bg-orange-900/10"
-                          initial={{ opacity: 0, y: 20 }}
+                          className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                          initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          whileHover={{ scale: 1.02 }}
-                          transition={{
-                            duration: 0.3,
-                            type: "spring",
-                            stiffness: 200,
-                            delay: 0.3,
-                          }}
+                          transition={{ delay: 0.15 }}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center group-hover:bg-orange-100 dark:group-hover:bg-orange-900/50 transition-colors">
-                              <Mail className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-lg bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center">
+                              <Mail className="h-3 w-3 text-orange-600 dark:text-orange-400" />
                             </div>
-                            <div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
                                 Email
                               </p>
-                              <p className="font-semibold text-gray-900 dark:text-gray-100">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                 {localPatient.personalDetails.emailAddress ||
                                   "Not provided"}
                               </p>
@@ -1465,26 +1409,20 @@ export function ViewPatientDrawer({
                         </motion.div>
 
                         <motion.div
-                          className="group border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800/50 p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 hover:border-red-100 dark:hover:border-red-900/50 hover:bg-red-50/30 dark:hover:bg-red-900/10"
-                          initial={{ opacity: 0, y: 20 }}
+                          className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                          initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          whileHover={{ scale: 1.02 }}
-                          transition={{
-                            duration: 0.3,
-                            type: "spring",
-                            stiffness: 200,
-                            delay: 0.4,
-                          }}
+                          transition={{ delay: 0.2 }}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center group-hover:bg-red-100 dark:group-hover:bg-red-900/50 transition-colors">
-                              <MapPin className="h-5 w-5 text-red-600 dark:text-red-400" />
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-lg bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
+                              <MapPin className="h-3 w-3 text-red-600 dark:text-red-400" />
                             </div>
-                            <div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
                                 Address
                               </p>
-                              <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                 {localPatient.personalDetails.address ||
                                   "Not provided"}
                               </p>
@@ -1493,36 +1431,30 @@ export function ViewPatientDrawer({
                         </motion.div>
 
                         <motion.div
-                          className="group border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800/50 p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 hover:border-teal-100 dark:hover:border-teal-900/50 hover:bg-teal-50/30 dark:hover:bg-teal-900/10"
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          whileHover={{ scale: 1.02 }}
-                          transition={{
-                            duration: 0.3,
-                            type: "spring",
-                            stiffness: 200,
-                            delay: 0.5,
-                          }}
+                          className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}  
+                          transition={{ delay: 0.25 }}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors">
-                              <Users className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-lg bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center">
+                              <Users className="h-3 w-3 text-teal-600 dark:text-teal-400" />
                             </div>
-                            <div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
                                 Demographics
                               </p>
-                              <div className="flex flex-wrap gap-2 mt-1">
+                              <div className="flex flex-wrap gap-1 mt-0.5">
                                 <Badge
                                   variant="outline"
-                                  className="bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 text-xs px-2 py-1 rounded-lg"
+                                  className="bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs px-1 py-0.5 rounded"
                                 >
                                   {localPatient.personalDetails.gender ||
                                     "Not specified"}
                                 </Badge>
-                                <Badge
+                                <Badge 
                                   variant="outline"
-                                  className="bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 text-xs px-2 py-1 rounded-lg"
+                                  className="bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs px-1 py-0.5 rounded"
                                 >
                                   {localPatient.personalDetails.age
                                     ? `Age: ${localPatient.personalDetails.age}`
@@ -1539,22 +1471,23 @@ export function ViewPatientDrawer({
 
                 {/* Enhanced Date Information */}
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                  className="mt-3"
                 >
-                  <Card className="border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl overflow-hidden">
-                    <CardHeader className="pb-4 border-b border-gray-100 dark:border-gray-800">
-                      <CardTitle className="text-xl flex items-center gap-3 text-gray-800 dark:text-gray-100">
-                        <div className="p-2 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-md">
-                          <Calendar className="h-5 w-5" />
+                  <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
+                    <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-3">
+                      <CardTitle className="text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                        <div className="p-1.5 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+                          <Calendar className="h-4 w-4" />
                         </div>
-                        <span className="bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
+                        <span className="bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent font-semibold">
                           Important Dates
                         </span>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 p-3 sm:p-6">
+                    <CardContent className="grid grid-cols-2 lg:grid-cols-4 gap-2 p-3">
                       <DateDisplay
                         englishDate={localPatient.personalDetails.dob}
                         nepaliDate=""
@@ -1600,9 +1533,9 @@ export function ViewPatientDrawer({
 
                 {/* Treatment Progress */}
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.4 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
                 >
                   <TreatmentProgress
                     totalAmount={totalAmount}
@@ -1613,12 +1546,12 @@ export function ViewPatientDrawer({
                 </motion.div>
               </TabsContent>
 
-              <TabsContent value="medical" className="pb-6">
+              <TabsContent value="medical" className="pb-3">
                 <motion.div
-                  className="space-y-6"
+                  className="space-y-3"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5 }}
+                  transition={{ duration: 0.3 }}
                 >
                   {/* Individual Medical Records */}
                   {localPatient.medicalDetails.length === 0 ? (
@@ -1646,37 +1579,37 @@ export function ViewPatientDrawer({
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: index * 0.1 }}
                       >
-                        <Card className="border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl overflow-hidden">
-                          <CardHeader className="border-b border-gray-100 dark:border-gray-800">
-                            <CardTitle className="flex items-center gap-3">
-                              <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md">
-                                <Calendar className="h-5 w-5" />
+                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
+                          <CardHeader className="border-b border-gray-100 dark:border-gray-800 p-3">
+                            <CardTitle className="flex items-center gap-2 text-base">
+                              <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                                <Calendar className="h-4 w-4" />
                               </div>
-                              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent font-semibold">
                                 Medical Record #{index + 1}
                               </span>
-                              <Badge className="ml-auto bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+                              <Badge className="ml-auto bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs px-2 py-1">
                                 {formatSafeDate(record.checkUpDate)}
                               </Badge>
                             </CardTitle>
                           </CardHeader>
-                          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-2 p-3 sm:p-6">
-                            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3 sm:gap-4">
+                          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 p-3">
+                            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-2">
                               <motion.div
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                transition={{ duration: 0.3, delay: 0.1 }}
-                                className="group border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800/50 p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300"
+                                transition={{ duration: 0.3, delay: 0.05 }}
+                                className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-3 rounded-lg"
                               >
-                                <div className="flex items-start gap-3">
-                                  <div className="p-2 rounded-full bg-yellow-100 text-yellow-600">
-                                    <AlertTriangle className="w-4 h-4" />
+                                <div className="flex items-start gap-2">
+                                  <div className="p-1.5 rounded-full bg-yellow-100 text-yellow-600">
+                                    <AlertTriangle className="w-3 h-3" />
                                   </div>
                                   <div className="flex-1">
-                                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
+                                    <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                                       Chief Complaint
                                     </h4>
-                                    <p className="text-gray-700 dark:text-gray-200 text-sm">
+                                    <p className="text-xs text-gray-700 dark:text-gray-200">
                                       {record.chiefComplaint || "Not provided"}
                                     </p>
                                   </div>
@@ -1686,18 +1619,18 @@ export function ViewPatientDrawer({
                               <motion.div
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                transition={{ duration: 0.3, delay: 0.2 }}
-                                className="p-4 rounded-lg bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border border-white/20 dark:border-gray-700"
+                                transition={{ duration: 0.3, delay: 0.1 }}
+                                className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-3 rounded-lg"
                               >
-                                <div className="flex items-start gap-3">
-                                  <div className="p-2 rounded-full bg-green-100 text-green-600">
-                                    <CheckCircle className="w-4 h-4" />
+                                <div className="flex items-start gap-2">
+                                  <div className="p-1.5 rounded-full bg-green-100 text-green-600">
+                                    <CheckCircle className="w-3 h-3" />
                                   </div>
                                   <div className="flex-1">
-                                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
+                                    <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                                       Diagnosis
                                     </h4>
-                                    <p className="text-gray-700 dark:text-gray-200 text-sm">
+                                    <p className="text-xs text-gray-700 dark:text-gray-200">
                                       {record.diagnosis || "Not provided"}
                                     </p>
                                   </div>
@@ -1709,7 +1642,7 @@ export function ViewPatientDrawer({
                               initial={{ opacity: 0, scale: 0.9 }}
                               animate={{ opacity: 1, scale: 1 }}
                               transition={{ duration: 0.3 }}
-                              className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3 sm:gap-4"
+                              className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-2"
                             >
                               {record.group === "Ortho" ? (
                                 <DateDisplay
@@ -1737,25 +1670,19 @@ export function ViewPatientDrawer({
                                 />
                               )}
 
-                              <motion.div
-                                className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                whileHover={{ scale: 1.01 }}
-                                transition={{ duration: 0.3 }}
-                              >
-                                <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
-                                  <User className="w-4 h-4" />
+                              <div className="flex items-start gap-2 p-2 rounded-lg bg-white/80 dark:bg-gray-800/80 border border-gray-100 dark:border-gray-700">
+                                <div className="p-1.5 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                                  <User className="w-3 h-3" />
                                 </div>
                                 <div className="flex-1">
-                                  <h4 className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                  <h4 className="text-xs text-gray-500 dark:text-gray-400">
                                     Patient Group
                                   </h4>
-                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                     {record.group || "General"}
                                   </p>
                                 </div>
-                              </motion.div>
+                              </div>
 
                               {record.group === "Ortho" ? (
                                 <DateDisplay
@@ -1789,19 +1716,19 @@ export function ViewPatientDrawer({
                             <motion.div
                               initial={{ opacity: 0, scale: 0.9 }}
                               animate={{ opacity: 1, scale: 1 }}
-                              transition={{ duration: 0.3, delay: 0.3 }}
-                              className="space-y-4 col-span-2 mt-6"
+                              transition={{ duration: 0.3, delay: 0.15 }}
+                              className="space-y-3 col-span-2 mt-4"
                             >
-                              <div className="flex items-center justify-between w-full pr-4">
+                              <div className="flex items-center justify-between w-full">
                                 <div className="flex items-center gap-2">
                                   <Microscope className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                  <span className="font-medium">
+                                  <span className="text-sm font-medium">
                                     Investigation & Test Results
                                   </span>
                                   {record.investigation && (
                                     <Badge
                                       variant="outline"
-                                      className="ml-2 text-xs"
+                                      className="text-xs"
                                     >
                                       {
                                         Object.keys(
@@ -1815,35 +1742,28 @@ export function ViewPatientDrawer({
                                   )}
                                 </div>
                               </div>
-                              <div className="space-y-6 ">
+                              <div className="space-y-3">
                                 {record.investigation ? (
-                                  <div className="grid md:grid-cols-3 gap-4">
+                                  <div className="grid md:grid-cols-3 gap-3">
                                     {/* Blood Test */}
                                     {record.investigation.blood && (
-                                      <div className="bg-gradient-to-r from-red-50 to-red-50/50 dark:from-red-900/10 dark:to-red-900/5 p-4 rounded-lg border border-red-200 dark:border-red-800/50 shadow-sm">
-                                        <div className="flex items-center gap-3 mb-3">
-                                          <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300">
-                                            <Droplets className="w-5 h-5" />
+                                      <div className="bg-gradient-to-r from-red-50 to-red-50/50 dark:from-red-900/10 dark:to-red-900/5 p-3 rounded-lg border border-red-200 dark:border-red-800/50">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <div className="p-1.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300">
+                                            <Droplets className="w-3 h-3" />
                                           </div>
-                                          <h4 className="font-medium text-red-800 dark:text-red-100">
-                                            Hematology Report
-                                          </h4>
-                                          <Badge
-                                            variant="secondary"
-                                            className="ml-auto bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200"
-                                          >
+                                          <h4 className="text-sm font-medium text-red-800 dark:text-red-100">
                                             Blood Test
-                                          </Badge>
+                                          </h4>
                                         </div>
-                                        <div className="bg-white dark:bg-gray-900/30 p-3 rounded border border-red-100 dark:border-red-900/50">
-                                          <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-sans">
+                                        <div className="bg-white dark:bg-gray-900/30 p-2 rounded border border-red-100 dark:border-red-900/50">
+                                          <p className="text-xs text-gray-700 dark:text-gray-300">
                                             {record.investigation.blood}
-                                          </pre>
+                                          </p>
                                         </div>
                                         {record.investigation.bloodTestDate && (
-                                          <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
-                                            <Calendar className="w-3 h-3" />
-                                            Test Date:{" "}
+                                          <div className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
+                                            <Calendar className="w-2 h-2" />
                                             {formatSafeDate(
                                               record.investigation.bloodTestDate
                                             )}
@@ -3082,15 +3002,15 @@ export function ViewPatientDrawer({
                 </motion.div>
               </TabsContent>
 
-              <TabsContent value="timeline" className="pb-6">
+              <TabsContent value="timeline" className="pb-3">
                 <Card className="border-none shadow-sm bg-card">
-                  <CardHeader className="pb-2">
+                  <CardHeader className="pb-2 p-3">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <CalendarDays className="h-5 w-5 text-primary" />
+                      <CalendarDays className="h-4 w-4 text-primary" />
                       Medical History Timeline
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-3">
                     <MedicalTimeline
                       medicalDetails={localPatient.medicalDetails}
                       onSelectRecord={(id) => {
@@ -3107,15 +3027,15 @@ export function ViewPatientDrawer({
                 </Card>
               </TabsContent>
 
-              <TabsContent value="documents" className="pb-6">
+              <TabsContent value="documents" className="pb-3">
                 <Card className="border-none shadow-sm bg-card">
-                  <CardHeader className="pb-2">
+                  <CardHeader className="pb-2 p-3">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <FileDigit className="h-5 w-5 text-primary" />
+                      <FileDigit className="h-4 w-4 text-primary" />
                       Documents
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-3">
                     {allDocuments.length === 0 &&
                     patientDocuments.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-10 text-center bg-muted/30 rounded-lg">
@@ -3149,15 +3069,15 @@ export function ViewPatientDrawer({
                 </Card>
               </TabsContent>
 
-              <TabsContent value="prescriptions" className="pb-6">
+              <TabsContent value="prescriptions" className="pb-3">
                 <Card className="border-none shadow-sm bg-card">
-                  <CardHeader className="pb-2">
+                  <CardHeader className="pb-2 p-3">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <Pill className="h-5 w-5 text-primary" />
+                      <Pill className="h-4 w-4 text-primary" />
                       Prescriptions
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-3">
                     {loadingPrescriptions ? (
                       <div className="flex justify-center items-center py-10">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -3316,15 +3236,15 @@ export function ViewPatientDrawer({
                 </Card>
               </TabsContent>
 
-              <TabsContent value="service-payments" className="pb-6">
+              <TabsContent value="service-payments" className="pb-3">
                 <Card className="border-none shadow-sm bg-card">
-                  <CardHeader className="pb-2">
+                  <CardHeader className="pb-2 p-3">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <FileDigit className="h-5 w-5 text-primary" />
+                      <FileDigit className="h-4 w-4 text-primary" />
                       Service Payments
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-3">
                     {loadingServicePayments ? (
                       <div className="flex justify-center items-center py-10">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

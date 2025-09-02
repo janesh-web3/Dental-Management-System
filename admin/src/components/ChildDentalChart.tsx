@@ -93,13 +93,13 @@ const Tooth: React.FC<ToothProps> = ({
       <Tooltip>
         <TooltipTrigger>
           <div className={`
-            w-14 h-20 flex flex-col items-center cursor-pointer
+            w-8 h-12 md:w-10 md:h-14 flex flex-col items-center cursor-pointer
             ${selected ? 'text-primary' : 'text-gray-600'}
           `}>
-            <div className={`text-xs ${position === 'upper' ? 'order-1' : 'order-3'}`}>
+            <div className={`text-[10px] md:text-xs ${position === 'upper' ? 'order-1' : 'order-3'}`}>
               {number}
             </div>
-            <div className="relative h-5 w-5 md:w-12 md:h-14 order-2 mt-1">
+            <div className="relative h-4 w-4 md:w-8 md:h-10 order-2 mt-0.5">
               <svg 
                 width="100%" 
                 height="100%" 
@@ -167,12 +167,12 @@ const ChildDentalChart: React.FC<DentalChartProps> = ({
   const lowerTeeth = ['85','84','83','82','81','71','72','73','74','75'];
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 border rounded-lg bg-background">
-      <div className="text-center mb-4 font-semibold">Child Dental Chart (Primary Teeth)</div>
+    <div className="w-full max-w-3xl mx-auto p-2 border rounded-lg bg-background shadow-sm">
+      <div className="text-center mb-2 text-sm font-semibold text-gray-700">Child Dental Chart (Primary Teeth)</div>
       
       <div className="flex flex-col gap-0">
         {/* Upper teeth with separator */}
-        <div className="flex justify-center gap-1">
+        <div className="flex justify-center gap-0.5 md:gap-1">
           {upperTeeth.map((number, index) => (
             <React.Fragment key={number}>
               <Tooth
@@ -183,18 +183,18 @@ const ChildDentalChart: React.FC<DentalChartProps> = ({
                 details={selectedTeeth[number]?.details}
                 readOnly={readOnly}
               />
-              {index === 4 && <div className="border-l-2 border-gray-400 mx-1" />}
+              {index === 4 && <div className="border-l border-gray-300 mx-0.5 md:mx-1" />}
             </React.Fragment>
           ))}
         </div>
         
         {/* Horizontal separator */}
-        <div className="flex justify-center">
-          <div className="border-t-2 border-gray-400 w-[500px]" />
+        <div className="flex justify-center py-1">
+          <div className="border-t border-gray-300 w-full max-w-xs md:max-w-lg" />
         </div>
         
         {/* Lower teeth with separator */}
-        <div className="flex justify-center gap-1">
+        <div className="flex justify-center gap-0.5 md:gap-1">
           {lowerTeeth.map((number, index) => (
             <React.Fragment key={number}>
               <Tooth
@@ -205,7 +205,7 @@ const ChildDentalChart: React.FC<DentalChartProps> = ({
                 details={selectedTeeth[number]?.details}
                 readOnly={readOnly}
               />
-              {index === 4 && <div className="border-l-2 border-gray-400 mx-1" />}
+              {index === 4 && <div className="border-l border-gray-300 mx-0.5 md:mx-1" />}
             </React.Fragment>
           ))}
         </div>

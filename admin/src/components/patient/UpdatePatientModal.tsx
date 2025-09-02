@@ -1229,25 +1229,25 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
             className="flex flex-col h-[calc(100vh-5rem)]"
           >
             <TabsList
-              className="grid w-full grid-cols-3 gap-1 px-3 py-2 bg-gradient-to-r from-muted/40 via-muted/30 to-muted/40 backdrop-blur-xl sticky top-[4rem] z-40 border-b border-border/30 shadow-lg"
+              className="grid w-full grid-cols-3 gap-1 px-2 py-1.5 bg-gradient-to-r from-muted/40 via-muted/30 to-muted/40 backdrop-blur-xl sticky top-[4rem] z-40 border-b border-border/30 shadow-lg"
               onKeyDown={handleKeyPress}
             >
               <Tooltip>
                 <TooltipTrigger asChild>
                   <TabsTrigger
                     value="personal"
-                    className="relative flex flex-col items-center gap-1 text-xs transition-all duration-200 hover:bg-accent/80 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/90 data-[state=active]:text-primary-foreground p-2 rounded-lg border border-transparent data-[state=active]:border-primary/30 data-[state=active]:shadow-lg"
+                    className="relative flex flex-col items-center gap-0.5 text-xs transition-all duration-200 hover:bg-accent/80 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/90 data-[state=active]:text-primary-foreground p-1.5 rounded-lg border border-transparent data-[state=active]:border-primary/30 data-[state=active]:shadow-lg"
                     onFocus={() => setFocusedTab("personal")}
                     autoFocus
                   >
                     <div className="flex items-center gap-1">
-                      <div className="w-4 h-4 rounded-full bg-current/15 flex items-center justify-center">
-                        <User className="w-2.5 h-2.5" />
+                      <div className="w-3 h-3 rounded-full bg-current/15 flex items-center justify-center">
+                        <User className="w-2 h-2" />
                       </div>
                       <span className="font-medium text-xs">Personal</span>
                     </div>
                     <div className="w-full">
-                      <Progress value={progress.personal} className="w-full h-1 bg-current/10" />
+                      <Progress value={progress.personal} className="w-full h-0.5 bg-current/10" />
                       <span className="text-xs opacity-80">{progress.personal}%</span>
                     </div>
                   </TabsTrigger>
@@ -1285,16 +1285,16 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                 <TooltipTrigger asChild>
                   <TabsTrigger
                     value="documents"
-                    className="relative flex flex-col items-center gap-1 text-xs transition-all duration-200 hover:bg-accent/80 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/90 data-[state=active]:text-primary-foreground p-2 rounded-lg border border-transparent data-[state=active]:border-primary/30 data-[state=active]:shadow-lg"
+                    className="relative flex flex-col items-center gap-0.5 text-xs transition-all duration-200 hover:bg-accent/80 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/90 data-[state=active]:text-primary-foreground p-1.5 rounded-lg border border-transparent data-[state=active]:border-primary/30 data-[state=active]:shadow-lg"
                   >
                     <div className="flex items-center gap-1">
-                      <div className="w-4 h-4 rounded-full bg-current/15 flex items-center justify-center">
-                        <FileDigit className="w-2.5 h-2.5" />
+                      <div className="w-3 h-3 rounded-full bg-current/15 flex items-center justify-center">
+                        <FileDigit className="w-2 h-2" />
                       </div>
                       <span className="font-medium text-xs">Files</span>
                     </div>
                     <div className="w-full">
-                      <Progress value={progress.documents} className="w-full h-1 bg-current/10" />
+                      <Progress value={progress.documents} className="w-full h-0.5 bg-current/10" />
                       <span className="text-xs opacity-80">{progress.documents}%</span>
                     </div>
                   </TabsTrigger>
@@ -1308,7 +1308,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
           <ScrollArea className="flex-1 scroll-smooth">
             <TabsContent
               value="personal"
-              className="mt-0 focus-visible:outline-none focus-visible:ring-0 space-y-4 p-3 sm:p-4"
+              className="mt-0 focus-visible:outline-none focus-visible:ring-0 space-y-3 p-2 sm:p-3"
             >
               {/* Basic Information Section */}
               <Collapsible 
@@ -1317,18 +1317,18 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
               >
                 <Card className="border border-border/40 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm ring-1 ring-border/20">
                   <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover:bg-gradient-to-r hover:from-muted/40 hover:to-muted/20 transition-all duration-300 p-5 sm:p-7 border-b border-border/30 group">
+                    <CardHeader className="cursor-pointer hover:bg-gradient-to-r hover:from-muted/40 hover:to-muted/20 transition-all duration-300 p-3 sm:p-4 border-b border-border/30 group">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-5">
-                          <div className="relative w-14 h-14 bg-gradient-to-br from-primary/25 via-primary/15 to-primary/10 rounded-2xl flex items-center justify-center shadow-lg ring-2 ring-primary/10 group-hover:ring-primary/20 transition-all duration-300">
-                            <User className="h-7 w-7 text-primary drop-shadow-sm" />
-                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-green-400 to-green-500 rounded-full border-2 border-background shadow-sm"></div>
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-10 h-10 bg-gradient-to-br from-primary/25 via-primary/15 to-primary/10 rounded-xl flex items-center justify-center shadow-lg ring-2 ring-primary/10 group-hover:ring-primary/20 transition-all duration-300">
+                            <User className="h-5 w-5 text-primary drop-shadow-sm" />
+                            <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-gradient-to-br from-green-400 to-green-500 rounded-full border border-background shadow-sm"></div>
                           </div>
-                          <div className="space-y-1">
-                            <CardTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+                          <div className="space-y-0.5">
+                            <CardTitle className="text-lg sm:text-xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
                               Basic Information
                             </CardTitle>
-                            <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+                            <p className="text-xs text-muted-foreground font-medium leading-relaxed">
                               Personal details and contact information
                             </p>
                           </div>
@@ -1346,8 +1346,8 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                           </Badge>
                           <div className="p-1.5 rounded-full bg-muted/40 group-hover:bg-primary/10 transition-colors duration-200">
                             {expandedSections.personalInfo ? 
-                              <ChevronUp className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" /> : 
-                              <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                              <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /> : 
+                              <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                             }
                           </div>
                         </div>
@@ -1355,8 +1355,8 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                     </CardHeader>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <CardContent className="p-5 sm:p-7 pt-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+                    <CardContent className="p-3 sm:p-4 pt-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
                         <div className="space-y-3 group">
                           <Label htmlFor="sn" className="text-sm font-semibold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
                             Serial Number
@@ -1424,10 +1424,10 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                           )}
                         </div>
 
-                        <div className="space-y-3 group">
-                          <Label htmlFor="contactNumber" className="text-sm font-semibold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
+                        <div className="space-y-2 group">
+                          <Label htmlFor="contactNumber" className="text-xs font-semibold flex items-center gap-2 text-foreground group-hover:text-primary transition-colors">
                             Contact Number
-                            <Badge variant="destructive" className="text-xs px-2 py-0.5 bg-red-50/80 text-red-700 border-red-200 shadow-sm">Required</Badge>
+                            <Badge variant="destructive" className="text-xs px-1.5 py-0.5 bg-red-50/80 text-red-700 border-red-200 shadow-sm">Required</Badge>
                           </Label>
                           <div className="relative">
                             <Input
@@ -1442,8 +1442,8 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                               placeholder="Enter phone number"
                               required
                             />
-                            <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                              <Phone className="h-3.5 w-3.5 text-green-600" />
+                            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-5 h-5 bg-green-100 rounded-full flex items-center justify-center">
+                              <Phone className="h-3 w-3 text-green-600" />
                             </div>
                           </div>
                         </div>
@@ -2134,14 +2134,14 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
               </div>
             )}
             
-            <div className="p-3">
-              <div className="flex items-center justify-between gap-3">
+            <div className="p-2">
+              <div className="flex items-center justify-between gap-2">
                 {/* Compact Navigation Buttons */}
                 <div className="flex items-center gap-2 flex-1">
                   <Button
                     variant="outline"
                     onClick={onClose}
-                    className="flex items-center gap-1 h-8 px-3 text-xs font-semibold hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+                    className="flex items-center gap-1 h-7 px-2 text-xs font-semibold hover:bg-red-50 hover:text-red-600 transition-all duration-200"
                   >
                     <X className="h-3 w-3" />
                     <span className="hidden sm:inline">Cancel</span>
@@ -2150,7 +2150,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                   {activeTab === "personal" && (
                     <Button
                       onClick={() => setActiveTab("medical")}
-                      className="flex items-center gap-1 h-8 px-3 text-xs font-semibold bg-gradient-to-r from-primary to-primary/90 transition-all duration-200"
+                      className="flex items-center gap-1 h-7 px-2 text-xs font-semibold bg-gradient-to-r from-primary to-primary/90 transition-all duration-200"
                     >
                       <span className="hidden sm:inline">Next: Medical</span>
                       <span className="sm:hidden">Next</span>
@@ -2163,7 +2163,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                       <Button
                         variant="outline"
                         onClick={() => setActiveTab("personal")}
-                        className="flex items-center gap-1 h-8 px-3 text-xs font-semibold hover:bg-muted/60 transition-all duration-200"
+                        className="flex items-center gap-1 h-7 px-2 text-xs font-semibold hover:bg-muted/60 transition-all duration-200"
                       >
                         <ArrowLeft className="h-3 w-3" />
                         <span className="hidden sm:inline">Personal</span>
@@ -2171,7 +2171,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                       </Button>
                       <Button
                         onClick={() => setActiveTab("documents")}
-                        className="flex items-center gap-1 h-8 px-3 text-xs font-semibold bg-gradient-to-r from-primary to-primary/90 transition-all duration-200"
+                        className="flex items-center gap-1 h-7 px-2 text-xs font-semibold bg-gradient-to-r from-primary to-primary/90 transition-all duration-200"
                       >
                         <span className="hidden sm:inline">Next: Documents</span>
                         <span className="sm:hidden">Next</span>
@@ -2184,7 +2184,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                     <Button
                       variant="outline"
                       onClick={() => setActiveTab("medical")}
-                      className="flex items-center gap-1 h-8 px-3 text-xs font-semibold hover:bg-muted/60 transition-all duration-200"
+                      className="flex items-center gap-1 h-7 px-2 text-xs font-semibold hover:bg-muted/60 transition-all duration-200"
                     >
                       <ArrowLeft className="h-3 w-3" />
                       <span className="hidden sm:inline">Medical</span>
@@ -2194,12 +2194,12 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                 </div>
                 
                 {/* Compact Progress and Save */}
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <div className="hidden md:flex items-center gap-2 bg-muted/30 rounded-lg px-2 py-1">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="hidden md:flex items-center gap-1 bg-muted/30 rounded-md px-1.5 py-0.5">
                     <div className="text-xs text-muted-foreground font-medium">
-                      Step {activeTab === 'personal' ? '1' : activeTab === 'medical' ? '2' : '3'}/3
+                      {activeTab === 'personal' ? '1' : activeTab === 'medical' ? '2' : '3'}/3
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5">
                       {[1, 2, 3].map((step) => {
                         const isActive = (step === 1 && activeTab === 'personal') ||
                                         (step === 2 && activeTab === 'medical') ||

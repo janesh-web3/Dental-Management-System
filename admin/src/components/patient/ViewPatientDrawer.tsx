@@ -1631,7 +1631,7 @@ export function ViewPatientDrawer({
                                     Follow-ups
                                   </CardTitle>
                                 </CardHeader>
-                                <CardContent className="flex-grow overflow-y-auto min-h-0 px-2 py-1">
+                                <CardContent className="flex-grow min-h-0 px-2 py-1">
                                   <FollowUpDisplay 
                                     followUps={
                                       localPatient.medicalDetails[0].treatmentPlanning

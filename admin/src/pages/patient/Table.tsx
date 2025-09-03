@@ -17,7 +17,7 @@ import {
   CreditCard,
   UserCircle,
   Calendar,
-  Phone,  
+  Phone,
   LayoutGrid,
   LayoutList,
   FilePlus,
@@ -239,14 +239,21 @@ export function PatientTable() {
         findings: treatment.treatmentFindings || "No findings recorded",
         doctor: treatment.treatedByDoctor?.name || "N/A",
         clinicalFindings: treatment.clinicalFindings?.join(", ") || "None",
-        followUpDate: treatment.followUps && treatment.followUps.length > 0
-          ? treatment.followUps
-              .filter(fu => !fu.completed)
-              .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-              .slice(0, 1)
-              .map(fu => `${new Date(fu.date).toLocaleDateString()} (${fu.type})`)
-              .join(', ')
-          : "No follow-up scheduled",
+        followUpDate:
+          treatment.followUps && treatment.followUps.length > 0
+            ? treatment.followUps
+                .filter((fu) => !fu.completed)
+                .sort(
+                  (a, b) =>
+                    new Date(a.date).getTime() - new Date(b.date).getTime()
+                )
+                .slice(0, 1)
+                .map(
+                  (fu) =>
+                    `${new Date(fu.date).toLocaleDateString()} (${fu.type})`
+                )
+                .join(", ")
+            : "No follow-up scheduled",
       }));
 
       // Prepare medical history summary
@@ -1351,16 +1358,22 @@ export function PatientTable() {
                                 </span>
                               </TableCell>
                             )}
-                            
+
                             {/* Follow-up Cell */}
                             <TableCell>
                               {(() => {
                                 const allFollowUps = patient.medicalDetails
-                                  .flatMap(record => record.treatmentPlanning || [])
-                                  .flatMap(plan => plan.followUps || [])
-                                  .filter(followUp => !followUp.completed)
-                                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                                
+                                  .flatMap(
+                                    (record) => record.treatmentPlanning || []
+                                  )
+                                  .flatMap((plan) => plan.followUps || [])
+                                  .filter((followUp) => !followUp.completed)
+                                  .sort(
+                                    (a, b) =>
+                                      new Date(a.date).getTime() -
+                                      new Date(b.date).getTime()
+                                  );
+
                                 if (allFollowUps.length === 0) {
                                   return (
                                     <span className="text-xs text-muted-foreground">
@@ -1368,16 +1381,23 @@ export function PatientTable() {
                                     </span>
                                   );
                                 }
-                                
+
                                 const nextFollowUp = allFollowUps[0];
-                                const isOverdue = new Date(nextFollowUp.date) < new Date();
-                                
+                                const isOverdue =
+                                  new Date(nextFollowUp.date) < new Date();
+
                                 return (
                                   <div className="flex flex-col">
-                                    <span className={`text-xs font-medium ${
-                                      isOverdue ? 'text-red-600' : 'text-blue-600'
-                                    }`}>
-                                      {new Date(nextFollowUp.date).toLocaleDateString()}
+                                    <span
+                                      className={`text-xs font-medium ${
+                                        isOverdue
+                                          ? "text-red-600"
+                                          : "text-blue-600"
+                                      }`}
+                                    >
+                                      {new Date(
+                                        nextFollowUp.date
+                                      ).toLocaleDateString()}
                                     </span>
                                     <span className="text-xs text-muted-foreground truncate max-w-[100px]">
                                       {nextFollowUp.type}
@@ -1391,7 +1411,7 @@ export function PatientTable() {
                                 );
                               })()}
                             </TableCell>
-                            
+
                             <TableCell className="table-cell">
                               <button
                                 className={`relative overflow-hidden group flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-sm font-medium transition-all duration-500 rounded-lg
@@ -1431,14 +1451,14 @@ export function PatientTable() {
                                   </div>
                                 ) : (
                                   <>
-                                    <div className="relative z-10 flex items-center gap-1.5">
+                                    <div className="relative z-10 flex items-center gap-1">
                                       <div className="relative">
-                                        <Zap className="w-4 h-4 text-blue-950 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300" />
+                                        <Zap className="w-3 h-3 text-blue-950 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300" />
                                         <span className="absolute -inset-1 bg-white/20 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                                       </div>
                                       <span className="text-blue-950 font-medium tracking-wide relative text-xs">
                                         <span className="relative z-10">
-                                          AI Report
+                                          Report
                                         </span>
                                         <span className="absolute -bottom-0.5 left-0 w-0 h-[1px] bg-white/50 group-hover:w-full transition-all duration-400"></span>
                                       </span>
@@ -1536,7 +1556,7 @@ export function PatientTable() {
                                     >
                                       <QrCode className="h-4 w-4" />
                                     </Button>
-                                    
+
                                     {/* SMS Button */}
                                     <Button
                                       variant="ghost"
@@ -1547,7 +1567,9 @@ export function PatientTable() {
                                         e.stopPropagation();
                                         handleSMSClick(patient);
                                       }}
-                                      disabled={!patient.personalDetails.contactNumber}
+                                      disabled={
+                                        !patient.personalDetails.contactNumber
+                                      }
                                     >
                                       <MessageSquare className="h-4 w-4" />
                                     </Button>
@@ -1802,7 +1824,7 @@ export function PatientTable() {
           </div>
 
           <Pagination className="justify-center mt-4 sm:mt-0">
-            <PaginationContent >
+            <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
                   onClick={(e) => {
@@ -1816,11 +1838,14 @@ export function PatientTable() {
                   }
                 />
               </PaginationItem>
-              
+
               {totalPages <= 7 ? (
                 // Show all pages if there are 7 or fewer
                 [...Array(totalPages)].map((_, index) => (
-                  <PaginationItem key={index} className="hidden sm:inline-flex xs:inline-flex">
+                  <PaginationItem
+                    key={index}
+                    className="hidden sm:inline-flex xs:inline-flex"
+                  >
                     <PaginationLink
                       onClick={(e) => {
                         e.preventDefault();
@@ -1849,22 +1874,25 @@ export function PatientTable() {
                       1
                     </PaginationLink>
                   </PaginationItem>
-                  
+
                   {/* Show ellipsis if not in the first part */}
                   {currentPage > 3 && (
                     <PaginationItem className="hidden sm:inline-flex xs:inline-flex">
-                      <PaginationLink className="cursor-default">...</PaginationLink>
+                      <PaginationLink className="cursor-default">
+                        ...
+                      </PaginationLink>
                     </PaginationItem>
                   )}
-                  
+
                   {/* Pages around current page */}
                   {[...Array(totalPages)].map((_, index) => {
                     const pageNumber = index + 1;
                     // Show current page and 1 page before/after on mobile
                     // Show current page and 2 pages before/after on larger screens
                     return (
-                      (pageNumber === currentPage || 
-                       (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)) && (
+                      (pageNumber === currentPage ||
+                        (pageNumber >= currentPage - 1 &&
+                          pageNumber <= currentPage + 1)) && (
                         <PaginationItem key={index}>
                           <PaginationLink
                             onClick={(e) => {
@@ -1880,14 +1908,16 @@ export function PatientTable() {
                       )
                     );
                   })}
-                  
+
                   {/* Show ellipsis if not in the last part */}
                   {currentPage < totalPages - 2 && (
                     <PaginationItem className="hidden sm:inline-flex xs:inline-flex">
-                      <PaginationLink className="cursor-default">...</PaginationLink>
+                      <PaginationLink className="cursor-default">
+                        ...
+                      </PaginationLink>
                     </PaginationItem>
                   )}
-                  
+
                   {/* Last page always visible */}
                   {totalPages > 1 && (
                     <PaginationItem className="hidden sm:inline-flex xs:inline-flex">
@@ -1905,7 +1935,7 @@ export function PatientTable() {
                   )}
                 </>
               )}
-              
+
               <PaginationItem>
                 <PaginationNext
                   onClick={(e) => {
@@ -2713,8 +2743,11 @@ export function PatientTable() {
               (acc, medicalDetail, medicalDetailIndex) => {
                 medicalDetail.treatmentPlanning.forEach((plan, planIndex) => {
                   const mapKey = `${medicalDetailIndex}-${planIndex}`;
-                  
-                  if (plan.groupTreatmentDetails && plan.groupTreatmentDetails.length > 0) {
+
+                  if (
+                    plan.groupTreatmentDetails &&
+                    plan.groupTreatmentDetails.length > 0
+                  ) {
                     acc[mapKey] = plan.groupTreatmentDetails;
                   }
                 });
@@ -2782,30 +2815,39 @@ export function PatientTable() {
                   updatedPatient.medicalDetails[medicalDetailIndex]
                     ?.treatmentPlanning[planIndex]?.groupTreatmentDetails &&
                   updatedPatient.medicalDetails[medicalDetailIndex]
-                    .treatmentPlanning[planIndex].groupTreatmentDetails[groupIndex]
+                    .treatmentPlanning[planIndex].groupTreatmentDetails[
+                    groupIndex
+                  ]
                 ) {
-                  const groupTreatment = updatedPatient.medicalDetails[
-                    medicalDetailIndex
-                  ].treatmentPlanning[planIndex].groupTreatmentDetails[groupIndex];
-                  
+                  const groupTreatment =
+                    updatedPatient.medicalDetails[medicalDetailIndex]
+                      .treatmentPlanning[planIndex].groupTreatmentDetails[
+                      groupIndex
+                    ];
+
                   if (
                     groupTreatment.dailyTreatments &&
                     groupTreatment.dailyTreatments[treatmentIndex]
                   ) {
-                    const treatment = groupTreatment.dailyTreatments[treatmentIndex];
+                    const treatment =
+                      groupTreatment.dailyTreatments[treatmentIndex];
                     treatment.paidAmount = newPaidAmount;
-                    treatment.remainingAmount = treatment.treatmentAmount - newPaidAmount;
-                    
+                    treatment.remainingAmount =
+                      treatment.treatmentAmount - newPaidAmount;
+
                     // Update group totals
                     const totalPaid = groupTreatment.dailyTreatments.reduce(
-                      (sum, t) => sum + (t.paidAmount || 0), 0
+                      (sum, t) => sum + (t.paidAmount || 0),
+                      0
                     );
                     const totalAmount = groupTreatment.dailyTreatments.reduce(
-                      (sum, t) => sum + (t.treatmentAmount || 0), 0
+                      (sum, t) => sum + (t.treatmentAmount || 0),
+                      0
                     );
-                    
+
                     groupTreatment.totalPaidAmount = totalPaid;
-                    groupTreatment.totalRemainingAmount = totalAmount - totalPaid;
+                    groupTreatment.totalRemainingAmount =
+                      totalAmount - totalPaid;
                   }
                 }
 
@@ -2841,20 +2883,16 @@ export function PatientTable() {
         />
       )}
 
-
-
-      {
-        selectedPatientForSMS && (
-          <SMSModal
-            isOpen={isSMSModalOpen}
-            onClose={() => {
-              setIsSMSModalOpen(false);
-              setSelectedPatientForSMS(null);
-            }}
-            patient={selectedPatientForSMS}
-          />
-        )
-      }
+      {selectedPatientForSMS && (
+        <SMSModal
+          isOpen={isSMSModalOpen}
+          onClose={() => {
+            setIsSMSModalOpen(false);
+            setSelectedPatientForSMS(null);
+          }}
+          patient={selectedPatientForSMS}
+        />
+      )}
 
       {renderExportDialog()}
       {renderDateRangePicker()}

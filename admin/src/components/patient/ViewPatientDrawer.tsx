@@ -1344,7 +1344,7 @@ export function ViewPatientDrawer({
             </div>
           </DrawerHeader>
 
-          <div className="flex-1 overflow-y-auto px-2 py-1">
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-2 py-1">
             <Tabs defaultValue="overview" className="space-y-2">
               <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm py-1 -mx-2 px-2 border-b border-gray-100 dark:border-gray-800">
                 <TabsList className="w-full h-auto grid grid-cols-6 bg-gray-100 dark:bg-gray-800/50 p-0.5 rounded-md gap-0.5">
@@ -1595,7 +1595,7 @@ export function ViewPatientDrawer({
                             </span>
                           </CardTitle>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 gap-2 p-2 flex-grow overflow-y-auto max-h-[calc(100vh-250px)]">
+                        <CardContent className="grid grid-cols-1 gap-2 p-2 flex-grow overflow-y-auto custom-scrollbar max-h-[calc(100vh-250px)]">
                           <DateDisplay
                             englishDate={localPatient.personalDetails.dob}
                             nepaliDate=""

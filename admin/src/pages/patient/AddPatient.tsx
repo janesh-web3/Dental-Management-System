@@ -29,7 +29,9 @@ import {
   ToothData,
   ClinicalFinding,
   DailyTreatment,
+  FollowUp,
 } from "@/types/patient";
+import CompactFollowUpManager from "@/components/patient/CompactFollowUpManager";
 import { ServiceType, PaymentMethod } from "@/types/finance";
 import ChildDentalChart from "@/components/ChildDentalChart";
 import { useDoctorContext } from "@/contexts/DoctorContext";
@@ -115,6 +117,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
         followUpDateNp: "",
         completionDate: "",
         completionDateNp: "",
+        followUps: [], // Initialize followUps as empty array
       },
     ],
   });
@@ -365,17 +368,32 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
       } else if (field === "treatmentDateNp") {
         const englishDate = convertToEnglishDate(value);
         newTreatmentPlans[index].treatmentDate = englishDate;
-      } else if (field === "followUpDate") {
-        newTreatmentPlans[index].followUpDateNp = convertToNepaliDate(value);
-      } else if (field === "followUpDateNp") {
-        const englishDate = convertToEnglishDate(value);
-        newTreatmentPlans[index].followUpDate = englishDate;
       } else if (field === "completionDate") {
         newTreatmentPlans[index].completionDateNp = convertToNepaliDate(value);
       } else if (field === "completionDateNp") {
         const englishDate = convertToEnglishDate(value);
         newTreatmentPlans[index].completionDate = englishDate;
+      } else if (field === "followUpDate") {
+        newTreatmentPlans[index].followUpDateNp = convertToNepaliDate(value);
+      } else if (field === "followUpDateNp") {
+        const englishDate = convertToEnglishDate(value);
+        newTreatmentPlans[index].followUpDate = englishDate;
       }
+
+      return {
+        ...prev,
+        treatmentPlans: newTreatmentPlans,
+      };
+    });
+  };
+
+  const handleFollowUpChange = (index: number, followUps: FollowUp[]) => {
+    setFormData((prev) => {
+      const newTreatmentPlans = [...prev.treatmentPlans];
+      newTreatmentPlans[index] = {
+        ...newTreatmentPlans[index],
+        followUps: followUps,
+      };
 
       return {
         ...prev,
@@ -395,7 +413,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
       totalPaidAmount: "",
       totalRemainingAmount: "0",
       startDate: format(new Date(), "yyyy-MM-dd"),
-      followUpDate: "",
       completionDate: "",
       treatedByDoctor: "",
       isCompleted: false,
@@ -591,7 +608,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
         totalPaidAmount: "",
         totalRemainingAmount: "0",
         startDate: format(new Date(), "yyyy-MM-dd"),
-        followUpDate: "",
         completionDate: "",
         treatedByDoctor: "",
         isCompleted: false,
@@ -630,7 +646,10 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                 : null,
               notes: treatment.notes || "",
               procedure: toothData.procedure || "",
-            })) || [],
+              // Remove temporary id field that could cause ObjectId casting errors
+            }))
+            // Remove the id field from the final object to prevent ObjectId casting errors
+            .map(({ _id, ...rest }) => rest) || [],
           totalTreatmentAmount: toothData.totalTreatmentAmount || 0,
           totalPaidAmount: toothData.totalPaidAmount || 0,
           totalRemainingAmount: toothData.totalRemainingAmount || 0,
@@ -670,7 +689,10 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                 notes: treatment.notes || "",
                 treatedByDoctor: treatment.treatedByDoctor || null,
                 isCompleted: treatment.isCompleted || false
-              }));
+                // Remove temporary id fields that could cause ObjectId casting errors
+              }))
+              // Remove the id field from the final object to prevent ObjectId casting errors
+              ;
 
             return {
               groupName: data.medicalDetails.group || "General",
@@ -679,25 +701,26 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
               totalPaidAmount: Number(groupTreatment.totalPaidAmount) || 0,
               totalRemainingAmount: Number(groupTreatment.totalRemainingAmount) || 0,
               startDate: groupTreatment.startDate ? format(new Date(groupTreatment.startDate), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
-              followUpDate: groupTreatment.followUpDate ? format(new Date(groupTreatment.followUpDate), "yyyy-MM-dd") : undefined,
               completionDate: groupTreatment.completionDate ? format(new Date(groupTreatment.completionDate), "yyyy-MM-dd") : undefined,
               treatedByDoctor: groupTreatment.treatedByDoctor || null,
               isCompleted: groupTreatment.isCompleted || false,
               dailyTreatments: formattedDailyTreatments
+              // Remove temporary id field that could cause ObjectId casting errors
             };
-          });
+          })
+          // Remove the id field from the final object to prevent ObjectId casting errors
+          ;
 
         return {
           patientType: plan.patientType,
           isCompleted: false,
           treatmentDate: format(new Date(plan.treatmentDate), "yyyy-MM-dd"),
+          followUpDate: plan.followUpDate ? format(new Date(plan.followUpDate), "yyyy-MM-dd") : undefined,
+          followUpDateNp: plan.followUpDateNp || undefined,
           treatmentFindings: plan.treatmentFindings,
           teethNumber: plan.teethNumber,
           clinicalFindings: plan.clinicalFindings,
           otherFindings: plan.otherFindings,
-          followUpDate: plan.followUpDate
-            ? format(new Date(plan.followUpDate), "yyyy-MM-dd")
-            : undefined,
           selectedTeethDetails: selectedTeethDetails,
           // Include group treatment details for all groups, not just Ortho
           groupTreatmentDetails: formattedGroupTreatmentDetails,
@@ -2025,15 +2048,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                             />
                           </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor={`followUpDate-${groupTreatment.id}`}>Follow-up Date</Label>
-                            <Input
-                              id={`followUpDate-${groupTreatment.id}`}
-                              type="date"
-                              value={groupTreatment.followUpDate}
-                              onChange={(e) => updateGroupTreatment(groupTreatment.id, 'followUpDate', e.target.value)}
-                            />
-                          </div>
 
                           <div className="space-y-2">
                             <Label htmlFor={`totalTreatmentAmount-${groupTreatment.id}`}>Total Treatment Amount</Label>
@@ -2598,6 +2612,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                           />
                         </div>
 
+                        {/* Follow-up Date Section */}
                         <div className="space-y-1 col-span-3 md:col-span-1">
                           <Label>Follow-up Date</Label>
                           <Input
@@ -2630,6 +2645,15 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                               )
                             }
                             placeholder="Select Nepali date"
+                          />
+                        </div>
+
+                        {/* Follow-up Management Section */}
+                        <div className="col-span-3 border-t pt-3 mt-3">
+                          <CompactFollowUpManager
+                            followUps={plan.followUps || []}
+                            onFollowUpChange={(followUps) => handleFollowUpChange(index, followUps)}
+                            treatmentPlanId={`treatment-plan-${index}`}
                           />
                         </div>
 
@@ -2839,7 +2863,6 @@ type GroupTreatmentDetail = {
   totalPaidAmount: string;
   totalRemainingAmount: string;
   startDate: string;
-  followUpDate: string;
   completionDate: string;
   treatedByDoctor: string;
   isCompleted: boolean;

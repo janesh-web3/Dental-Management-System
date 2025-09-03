@@ -2,7 +2,34 @@ const mongoose = require("mongoose");
 const validator = require("validator");
 const bcrypt = require("bcrypt");
 
-// First, create a schema for daily treatments
+// First, create a schema for follow-ups
+const followUpSchema = new mongoose.Schema({
+  date: { type: Date, required: true },
+  reason: { type: String },
+  type: { 
+    type: String, 
+    enum: ["Treatment Review", "Orthodontic Check", "Pain Assessment", "Routine Check", "Post-Surgery", "Cleaning", "X-Ray Review", "Other"],
+    default: "Routine Check"
+  },
+  linkedTo: {
+    type: { 
+      type: String, 
+      enum: ["treatment", "groupTreatment", "tooth", "medicalRecord"],
+      required: true
+    },
+    entityId: { type: String } // ID of the linked entity
+  },
+  completed: { type: Boolean, default: false },
+  completedDate: { type: Date },
+  notes: { type: String },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
+  createdAt: { type: Date, default: Date.now }
+});
+
+// Create a schema for daily treatments
 const dailyTreatmentSchema = new mongoose.Schema({
   date: { type: Date, required: true },
   treatmentAmount: { type: Number, default: 0 },
@@ -30,7 +57,6 @@ const groupTreatmentDetailsSchema = new mongoose.Schema({
   totalPaidAmount: { type: Number, default: 0 },
   totalRemainingAmount: { type: Number, default: 0 },
   startDate: { type: Date },
-  followUpDate: { type: Date },
   completionDate: { type: Date },
   treatedByDoctor: { type: mongoose.Schema.Types.ObjectId, ref: "Doctor" },
   isCompleted: { type: Boolean, default: false },
@@ -142,6 +168,8 @@ const treatmentPlanningSchema = new mongoose.Schema({
   teethNumber: { type: String },
   treatmentDate: { type: Date },
   treatmentDateNp: { type: String }, // Add Nepali date field
+  followUpDate: { type: Date }, // Add follow-up date field
+  followUpDateNp: { type: String }, // Add Nepali follow-up date field
   treatmentDocuments: [
     {
       fileName: String,
@@ -154,8 +182,7 @@ const treatmentPlanningSchema = new mongoose.Schema({
   treatmentFindings: { type: String },
   clinicalFindings: [{ type: String }],
   otherFindings: { type: String },
-  followUpDate: { type: Date },
-  followUpDateNp: { type: String }, // Add Nepali date field
+  followUps: [followUpSchema], // Add follow-ups array
   totalPlanAmount: { type: Number, default: 0 },
   totalPaidAmount: { type: Number, default: 0 },
   totalRemainingAmount: { type: Number, default: 0 },
@@ -281,7 +308,6 @@ const medicalDetailsSchema = new mongoose.Schema({
     default: "Adult",
   },
   treatmentPlanning: [treatmentPlanningSchema],
-  followUpDate: { type: Date },
 });
 
 // Schema for Personal Details
@@ -434,3 +460,5 @@ patientSchema.pre("save", function (next) {
 });
 
 module.exports = mongoose.model("Patient", patientSchema);
+
+

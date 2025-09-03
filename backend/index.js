@@ -27,6 +27,7 @@ const notificationRouter = require("./routes/notificationRoutes.js");
 const invoiceRouter = require("./routes/invoiceRoutes.js");
 const recycleBinRouter = require("./routes/recycleBinRoutes.js");
 const userPreferencesRouter = require("./routes/userPreferencesRoutes.js");
+const followUpRouter = require("./routes/followUpRoutes.js");
 
 // Import utilities
 const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
@@ -89,6 +90,7 @@ app.use("/api/notifications", notificationRouter);
 app.use("/api/invoices", invoiceRouter);
 app.use("/api/recycle-bin", recycleBinRouter);
 app.use("/api/user-preferences", userPreferencesRouter);
+app.use("/api/follow-ups", followUpRouter);
 
 const port = process.env.PORT || 8080;
 

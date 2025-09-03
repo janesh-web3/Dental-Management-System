@@ -185,6 +185,15 @@ const addPatient = async (req, res) => {
           medicalDetail.treatmentPlanning.length > 0
         ) {
           medicalDetail.treatmentPlanning.forEach((plan) => {
+            // Process followUpDate fields at treatment planning level
+            if (plan.followUpDate) {
+              plan.followUpDate = new Date(plan.followUpDate);
+            }
+            if (plan.followUpDateNp) {
+              // followUpDateNp is a string, so no conversion needed
+              // Just ensure it's properly set
+            }
+
             // Process group treatment details
             if (
               plan.groupTreatmentDetails &&

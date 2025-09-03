@@ -85,7 +85,7 @@ import Loading from "@/pages/not-found/loading";
 import ViewPatientDrawer from "@/components/patient/ViewPatientDrawer";
 import UpdatePatientModal from "@/components/patient/UpdatePatientModal";
 import DeletePatientDialog from "@/components/patient/DeletePatientDialog";
-import type { Patient } from "@/types/patient";
+import type { Patient, FollowUp } from "@/types/patient";
 import { useAdminContext } from "@/contexts/adminContext";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -239,8 +239,13 @@ export function PatientTable() {
         findings: treatment.treatmentFindings || "No findings recorded",
         doctor: treatment.treatedByDoctor?.name || "N/A",
         clinicalFindings: treatment.clinicalFindings?.join(", ") || "None",
-        followUpDate: treatment.followUpDate
-          ? new Date(treatment.followUpDate).toLocaleDateString()
+        followUpDate: treatment.followUps && treatment.followUps.length > 0
+          ? treatment.followUps
+              .filter(fu => !fu.completed)
+              .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+              .slice(0, 1)
+              .map(fu => `${new Date(fu.date).toLocaleDateString()} (${fu.type})`)
+              .join(', ')
           : "No follow-up scheduled",
       }));
 
@@ -1219,6 +1224,12 @@ export function PatientTable() {
 
                         <TableHead className="text-sm font-semibold text-muted-foreground">
                           <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            <span>Next Follow-up</span>
+                          </div>
+                        </TableHead>
+                        <TableHead className="text-sm font-semibold text-muted-foreground">
+                          <div className="flex items-center gap-1">
                             <span>Report</span>
                           </div>
                         </TableHead>
@@ -1340,6 +1351,47 @@ export function PatientTable() {
                                 </span>
                               </TableCell>
                             )}
+                            
+                            {/* Follow-up Cell */}
+                            <TableCell>
+                              {(() => {
+                                const allFollowUps = patient.medicalDetails
+                                  .flatMap(record => record.treatmentPlanning || [])
+                                  .flatMap(plan => plan.followUps || [])
+                                  .filter(followUp => !followUp.completed)
+                                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                                
+                                if (allFollowUps.length === 0) {
+                                  return (
+                                    <span className="text-xs text-muted-foreground">
+                                      No follow-up
+                                    </span>
+                                  );
+                                }
+                                
+                                const nextFollowUp = allFollowUps[0];
+                                const isOverdue = new Date(nextFollowUp.date) < new Date();
+                                
+                                return (
+                                  <div className="flex flex-col">
+                                    <span className={`text-xs font-medium ${
+                                      isOverdue ? 'text-red-600' : 'text-blue-600'
+                                    }`}>
+                                      {new Date(nextFollowUp.date).toLocaleDateString()}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground truncate max-w-[100px]">
+                                      {nextFollowUp.type}
+                                    </span>
+                                    {allFollowUps.length > 1 && (
+                                      <span className="text-xs text-muted-foreground">
+                                        +{allFollowUps.length - 1} more
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </TableCell>
+                            
                             <TableCell className="table-cell">
                               <button
                                 className={`relative overflow-hidden group flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-sm font-medium transition-all duration-500 rounded-lg

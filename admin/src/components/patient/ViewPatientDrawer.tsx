@@ -149,7 +149,7 @@ const CalendarDays = Calendar;
 import { TreatmentProgress } from "./TreatmentProgress";
 import { MedicalTimeline } from "./MedicalTimeline";
 import { DocumentComparison } from "./DocumentComparison";
-import { Patient, DailyTreatment } from "@/types/patient";
+import { Patient, DailyTreatment, FollowUp } from "@/types/patient";
 import { Badge } from "../ui/badge";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import jsPDF from "jspdf";
@@ -227,6 +227,98 @@ const DateDisplay = ({
     </div>
   </div>
 );
+
+// Follow-up Display Component
+const FollowUpDisplay = ({ followUps }: { followUps: FollowUp[] }) => {
+  if (!followUps || followUps.length === 0) {
+    return (
+      <div className="text-center py-4 text-gray-500">
+        <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
+        <p className="text-sm">No follow-ups scheduled</p>
+      </div>
+    );
+  }
+
+  const getTypeColor = (type: string) => {
+    const colors = {
+      "Treatment Review": "bg-blue-100 text-blue-800",
+      "Orthodontic Check": "bg-purple-100 text-purple-800",
+      "Pain Assessment": "bg-red-100 text-red-800",
+      "Routine Check": "bg-green-100 text-green-800",
+      "Post-Surgery": "bg-orange-100 text-orange-800",
+      "Cleaning": "bg-cyan-100 text-cyan-800",
+      "X-Ray Review": "bg-gray-100 text-gray-800",
+      "Other": "bg-yellow-100 text-yellow-800"
+    };
+    return colors[type as keyof typeof colors] || "bg-gray-100 text-gray-800";
+  };
+
+  // Sort follow-ups by date (upcoming first)
+  const sortedFollowUps = [...followUps].sort((a, b) => 
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  return (
+    <div className="space-y-3">
+      {sortedFollowUps.map((followUp) => (
+        <Card key={followUp._id} className="border-l-4 border-l-blue-500">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge className={getTypeColor(followUp.type)}>
+                    {followUp.type}
+                  </Badge>
+                  {followUp.completed && (
+                    <Badge variant="outline" className="bg-green-50 text-green-700">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Completed
+                    </Badge>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="w-4 h-4" />
+                    {new Date(followUp.date).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </div>
+                </div>
+
+                {followUp.reason && (
+                  <p className="text-sm text-gray-700 font-medium">{followUp.reason}</p>
+                )}
+
+                {followUp.notes && (
+                  <p className="text-xs text-gray-500 italic">{followUp.notes}</p>
+                )}
+
+                {followUp.completedDate && (
+                  <p className="text-xs text-green-600">
+                    Completed on {new Date(followUp.completedDate).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+
+              <div className="ml-4">
+                {new Date(followUp.date) > new Date() ? (
+                  <Clock className="w-5 h-5 text-orange-500" />
+                ) : followUp.completed ? (
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5 text-red-500" />
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+};
 
 export function ViewPatientDrawer({
   patient,
@@ -821,7 +913,6 @@ export function ViewPatientDrawer({
 
           const treatmentData = [
             ["Date", formatSafeDate(plan.treatmentDate || "")],
-            ["Follow-up Date", formatSafeDate(plan.followUpDate || "")],
             ["Amount", `Rs. ${plan.totalPlanAmount || 0}`],
             ["Paid", `Rs. ${plan.totalPaidAmount || 0}`],
             ["Balance", `Rs. ${plan.totalRemainingAmount || 0}`],
@@ -1512,20 +1603,25 @@ export function ViewPatientDrawer({
                         color="text-green-500"
                       />
 
-                      {localPatient.medicalDetails.length > 0 && (
-                        <DateDisplay
-                          englishDate={
-                            localPatient.medicalDetails[0].treatmentPlanning[0]
-                              .followUpDate
-                          }
-                          nepaliDate={
-                            localPatient.medicalDetails[0].treatmentPlanning[0]
-                              .followUpDateNp
-                          }
-                          label="Next Follow-up"
-                          icon={CalendarX}
-                          color="text-orange-500"
-                        />
+                      {/* Follow-ups Section */}
+                      {localPatient.medicalDetails.length > 0 && 
+                       localPatient.medicalDetails[0].treatmentPlanning.length > 0 && (
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <CalendarCheck className="w-5 h-5 text-blue-500" />
+                              Follow-ups
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <FollowUpDisplay 
+                              followUps={
+                                localPatient.medicalDetails[0].treatmentPlanning
+                                  .flatMap(plan => plan.followUps || [])
+                              } 
+                            />
+                          </CardContent>
+                        </Card>
                       )}
                     </CardContent>
                   </Card>
@@ -1684,31 +1780,35 @@ export function ViewPatientDrawer({
                                 </div>
                               </div>
 
-                              {record.group === "Ortho" ? (
-                                <DateDisplay
-                                  englishDate={
-                                    record.treatmentPlanning[0]
-                                      ?.groupTreatmentDetails[0]?.followUpDate
-                                  }
-                                  // nepaliDate={
-                                  //   record.treatmentPlanning[0]?.followUpDateNp
-                                  // }
-                                  label="Follow-up Date"
-                                  icon={CalendarCheck}
-                                  color="text-blue-500"
-                                />
-                              ) : (
-                                <DateDisplay
-                                  englishDate={
-                                    record.treatmentPlanning[0]?.followUpDate
-                                  }
-                                  nepaliDate={
-                                    record.treatmentPlanning[0]?.followUpDateNp
-                                  }
-                                  label="Follow-up Date"
-                                  icon={CalendarPlus}
-                                  color="text-purple-500"
-                                />
+                              {/* Display follow-ups for this treatment */}
+                              {record.treatmentPlanning[0]?.followUps && 
+                               record.treatmentPlanning[0].followUps.length > 0 && (
+                                <div className="mt-4">
+                                  <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                    <Calendar className="w-4 h-4" />
+                                    Follow-ups
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {record.treatmentPlanning[0].followUps.slice(0, 2).map((followUp) => (
+                                      <div key={followUp._id} className="text-xs p-2 bg-gray-50 rounded">
+                                        <div className="flex items-center justify-between">
+                                          <span className="font-medium">{followUp.type}</span>
+                                          <span className="text-gray-500">
+                                            {new Date(followUp.date).toLocaleDateString()}
+                                          </span>
+                                        </div>
+                                        {followUp.reason && (
+                                          <p className="text-gray-600 mt-1">{followUp.reason}</p>
+                                        )}
+                                      </div>
+                                    ))}
+                                    {record.treatmentPlanning[0].followUps.length > 2 && (
+                                      <div className="text-xs text-gray-500 text-center">
+                                        +{record.treatmentPlanning[0].followUps.length - 2} more
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               )}
                             </motion.div>
 

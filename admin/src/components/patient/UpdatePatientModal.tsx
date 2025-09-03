@@ -224,6 +224,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
       checkUpDateNp: "", // Add Nepali date field
     },
     medicalDetails: {
+      chiefComplaint: "",
       followUpDate: "",
       followUpDateNp: "", // Add Nepali date field
       diagnosis: "",
@@ -245,7 +246,6 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
         noMedicalIssues: false,
       },
       treatmentPlanning: [],
-      chiefComplaint: "",
     },
   });
 
@@ -291,8 +291,6 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
               ...plan,
               treatmentDate: formatSafeDate(plan.treatmentDate),
               treatmentDateNp: convertToNepaliDate(formatSafeDate(plan.treatmentDate)),
-              followUpDate: formatSafeDate(plan.followUpDate),
-              followUpDateNp: convertToNepaliDate(formatSafeDate(plan.followUpDate)),
               completionDate: formatSafeDate(plan.completionDate),
               completionDateNp: plan.completionDate ? convertToNepaliDate(formatSafeDate(plan.completionDate)) : "",
               treatmentAmount: plan.totalPlanAmount?.toString() || "0",
@@ -639,9 +637,6 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                 balanceAmount: Number(plan.balanceAmount) || 0,
                 selectedTeethDetails,
                 groupTreatmentDetails: formattedGroupTreatmentDetails,
-                followUpDate: plan.followUpDate
-                  ? formatSafeDate(plan.followUpDate)
-                  : undefined,
                 isCompleted: plan.isCompleted,
                 // Explicitly set the calculated totals for the plan
                 totalPlanAmount: planTotalTreatmentAmount,
@@ -2059,9 +2054,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                           onAddGroupTreatment={(groupTreatment) =>
                             handleGroupTreatmentAdd(planIndex, groupTreatment)
                           }
-                          onUpdateGroupTreatment={(groupIndex, groupTreatment) =>
-                            handleGroupTreatmentUpdate(planIndex, groupIndex, groupTreatment)
-                          }
+                          onUpdateGroupTreatment={(groupIndex, groupTreatment) => handleGroupTreatmentUpdate(planIndex, groupIndex, groupTreatment)}
                           onRemoveGroupTreatment={(groupIndex) =>
                             handleGroupTreatmentRemove(planIndex, groupIndex)
                           }

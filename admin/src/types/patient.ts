@@ -40,6 +40,22 @@ export type groupTreatmentDetailsSchema = {
   dailyTreatments: DailyTreatment[];
 }
 
+export interface FollowUp {
+  _id?: string;
+  date: string;
+  reason?: string;
+  type: "Treatment Review" | "Orthodontic Check" | "Pain Assessment" | "Routine Check" | "Post-Surgery" | "Cleaning" | "X-Ray Review" | "Other";
+  linkedTo: {
+    type: "treatment" | "groupTreatment" | "tooth" | "medicalRecord";
+    entityId: string;
+  };
+  completed: boolean;
+  completedDate?: string;
+  notes?: string;
+  createdBy?: string;
+  createdAt?: string;
+}
+
 export type TreatmentPlanning = {
   _id: string;
   patientType : "Child" | "Adult";
@@ -60,8 +76,7 @@ export type TreatmentPlanning = {
   treatmentFindings: string;
   clinicalFindings: string[];
   otherFindings: string;
-  followUpDate?: string;
-  followUpDateNp?: string;
+  followUps: FollowUp[];
   treatedByDoctor: Doctor;
   totalPlanAmount: string | number;
   totalPaidAmount: string | number;
@@ -199,6 +214,7 @@ export type FormData = {
       fileUrl: string;
       uploadDate: string;
     }>;
+    followUps?: FollowUp[]; // Add followUps property
   }>;
 };
 

@@ -40,7 +40,8 @@ interface AppointmentEvent extends Event {
   start: Date;
   end: Date;
   resource?: {
-    appointment: any;
+    appointment?: any;
+    followUp?: any;
     patient: {
       firstName: string;
       lastName: string;
@@ -55,6 +56,7 @@ interface AppointmentEvent extends Event {
     paymentStatus: string;
     chair?: string;
     room?: string;
+    isFollowUp?: boolean;
   };
 }
 
@@ -85,6 +87,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   
   // Data state
   const [appointments, setAppointments] = useState<any[]>([]);
+  const [followUps, setFollowUps] = useState<any[]>([]); // Add follow-ups state
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -126,6 +129,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   // Load data on component mount
   useEffect(() => {
     fetchAppointments();
+    fetchFollowUps(); // Add fetch follow-ups
     if (isAdmin) {
       fetchDoctors();
     }
@@ -148,6 +152,23 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch follow-ups
+  const fetchFollowUps = async () => {
+    try {
+      const response = await crudRequest<any>("GET", "/follow-ups/");
+      if (response && response.data) {
+        setFollowUps(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching follow-ups:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load follow-ups. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -185,7 +206,8 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   // Transform appointments data for React Big Calendar
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const events: AppointmentEvent[] = useMemo(() => {
-    return appointments
+    // Process regular appointments
+    const appointmentEvents = appointments
       .filter(apt => {
         // Basic filters
         if (selectedDoctor !== 'all' && apt.doctor?._id !== selectedDoctor) return false;
@@ -239,13 +261,63 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
           room: appointment.room
         }
       }));
-  }, [appointments, selectedDoctor, selectedStatus, selectedTreatment, selectedPriority, paymentFilter, searchTerm, startDate, endDate]);
+
+    // Process follow-up events
+    const followUpEvents = followUps
+      .filter(followUp => {
+        // Apply the same date range filter
+        if (startDate || endDate) {
+          const followUpDate = new Date(followUp.date);
+          
+          if (startDate && followUpDate < new Date(startDate)) return false;
+          if (endDate && followUpDate > new Date(endDate)) return false;
+        }
+        
+        // Apply search filter to patient name
+        if (searchTerm) {
+          const search = searchTerm.toLowerCase();
+          const patientName = (followUp.patientName || '').toLowerCase();
+          
+          if (!patientName.includes(search)) {
+            return false;
+          }
+        }
+        
+        return true;
+      })
+      .map(followUp => {
+        const followUpDate = new Date(followUp.date);
+        return {
+          id: `followup-${followUp._id}`,
+          title: `Follow-up: ${followUp.patientName}`,
+          start: followUpDate,
+          end: new Date(followUpDate.getTime() + 30 * 60000), // 30 minutes duration
+          resource: {
+            followUp,
+            patient: {
+              firstName: followUp.patientName.split(' ')[0] || '',
+              lastName: followUp.patientName.split(' ').slice(1).join(' ') || '',
+              phoneNumber: followUp.patientContact || ''
+            },
+            doctor: { name: 'Unassigned' }, // Follow-ups aren't tied to specific doctors in this model
+            treatmentType: 'Follow-up',
+            status: 'Follow-up',
+            priority: 'standard',
+            paymentStatus: 'N/A',
+            isFollowUp: true // Flag to identify follow-up events
+          }
+        };
+      });
+
+    // Combine both arrays
+    return [...appointmentEvents, ...followUpEvents];
+  }, [appointments, followUps, selectedDoctor, selectedStatus, selectedTreatment, selectedPriority, paymentFilter, searchTerm, startDate, endDate]);
 
   // Custom event style getter
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const eventStyleGetter = useCallback((event: AppointmentEvent) => {
     const { status, priority } = event.resource || {};
-    const isFollowUp = event.resource?.appointment?.isFollowUp;
+    const isFollowUp = event.resource?.isFollowUp || event.resource?.appointment?.isFollowUp;
     
     let backgroundColor = '#3174ad';
     let borderColor = '#3174ad';
@@ -306,7 +378,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   // Custom event component
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const EventComponent = ({ event }: { event: AppointmentEvent }) => {
-    const { treatmentType, priority, paymentStatus } = event.resource || {};
+    const { treatmentType, priority, paymentStatus, isFollowUp, followUp } = event.resource || {};
     
     return (
       <div className="text-xs p-1">
@@ -318,9 +390,14 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
           >
             {treatmentType}
           </Badge>
-          {paymentStatus !== 'paid' && (
+          {!isFollowUp && paymentStatus !== 'paid' && (
             <Badge variant="outline" className="text-[10px] px-1 py-0">
               ${paymentStatus}
+            </Badge>
+          )}
+          {isFollowUp && followUp?.type && (
+            <Badge variant="outline" className="text-[10px] px-1 py-0">
+              {followUp.type}
             </Badge>
           )}
         </div>
@@ -344,9 +421,17 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSelectEvent = useCallback((event: AppointmentEvent) => {
     const appointment = event.resource?.appointment;
+    const isFollowUpEvent = event.resource?.isFollowUp;
+    const followUp = event.resource?.followUp;
     
     // Check if this is a follow-up event
-    if (appointment?.isFollowUp || event.resource?.status === 'Follow-up') {
+    if (isFollowUpEvent || event.resource?.status === 'Follow-up') {
+      // For follow-up events, show patient details
+      const patientId = followUp?.patientId;
+      if (patientId) {
+        fetchPatientDetails(patientId);
+      }
+    } else if (appointment?.isFollowUp || event.resource?.status === 'Follow-up') {
       // For follow-up events, show patient details instead of appointment details
       const patientId = appointment?.patientId || event.resource?.appointment?.patientId;
       if (patientId) {
@@ -371,6 +456,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   // Handle appointment saved
   const handleAppointmentSaved = useCallback(() => {
     fetchAppointments(); // Refresh appointments
+    fetchFollowUps(); // Refresh follow-ups
   }, []);
 
   // Handle status change for appointments
@@ -455,16 +541,23 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   }, []);
 
   // Handle mobile event selection
-  const handleMobileEventSelect = useCallback((appointment: any) => {
+  const handleMobileEventSelect = useCallback((event: any) => {
     // Check if this is a follow-up event
-    if (appointment?.isFollowUp || appointment?.status === 'Follow-up') {
+    if (event?.resource?.isFollowUp || event?.resource?.status === 'Follow-up') {
+      // For follow-up events, show patient details
+      const patientId = event?.resource?.followUp?.patientId;
+      if (patientId) {
+        fetchPatientDetails(patientId);
+      }
+    } else if (event?.resource?.appointment?.isFollowUp || event?.resource?.status === 'Follow-up') {
       // For follow-up events, show patient details instead of appointment details
-      const patientId = appointment?.patientId;
+      const patientId = event?.resource?.appointment?.patientId;
       if (patientId) {
         fetchPatientDetails(patientId);
       }
     } else {
       // For regular appointments, show appointment drawer with status change capability
+      const appointment = event?.resource?.appointment;
       setSelectedAppointment(appointment);
       setAppointmentDrawerOpen(true);
     }
@@ -473,8 +566,9 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   // Check if an appointment can be dragged
   const canDragAppointment = useCallback((event: AppointmentEvent) => {
     const appointment = event.resource?.appointment;
+    const isFollowUpEvent = event.resource?.isFollowUp;
     const status = appointment?.status || event.resource?.status;
-    const isFollowUp = appointment?.isFollowUp || event.title.toLowerCase().includes('follow-up');
+    const isFollowUp = isFollowUpEvent || appointment?.isFollowUp || event.title.toLowerCase().includes('follow-up');
     
     // Prevent dragging of follow-up appointments
     if (isFollowUp || status === 'Follow-up') {
@@ -619,6 +713,7 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
       <div className="space-y-4">
         <MobileCalendarView
           appointments={appointments}
+          followUps={followUps} // Pass follow-ups to mobile view
           onSelectEvent={handleMobileEventSelect}
           onSelectSlot={handleMobileSlotSelect}
           onCreateAppointment={handleNewAppointment}
@@ -685,7 +780,10 @@ const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={fetchAppointments}
+                onClick={() => {
+                  fetchAppointments();
+                  fetchFollowUps();
+                }}
                 disabled={loading}
               >
                 <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />

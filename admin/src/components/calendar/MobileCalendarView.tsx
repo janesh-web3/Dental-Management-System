@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 
 interface MobileCalendarViewProps {
   appointments: any[];
+  followUps: any[]; // Add follow-ups prop
   onSelectEvent?: (event: any) => void;
   onSelectSlot?: (date: Date, time?: string) => void;
   onCreateAppointment?: () => void;
@@ -38,10 +39,15 @@ interface DayAppointment {
     name: string;
   };
   startDateTime?: string;
+  // Add follow-up specific properties
+  isFollowUp?: boolean;
+  followUpType?: string;
+  patientName?: string;
 }
 
 const MobileCalendarView: React.FC<MobileCalendarViewProps> = ({
   appointments = [],
+  followUps = [], // Add follow-ups prop
   onSelectEvent,
   onSelectSlot,
   onCreateAppointment
@@ -50,14 +56,40 @@ const MobileCalendarView: React.FC<MobileCalendarViewProps> = ({
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [view, setView] = useState<'month' | 'agenda'>('month');
 
-  // Get appointments for a specific date
+  // Get appointments for a specific date (including follow-ups)
   const getAppointmentsForDate = (date: Date): DayAppointment[] => {
-    return appointments.filter(apt => {
+    // Get regular appointments
+    const regularAppointments = appointments.filter(apt => {
       const appointmentDate = apt.startDateTime 
         ? new Date(apt.startDateTime)
         : new Date(`${apt.appointmentDate}T${apt.appointmentTime || '00:00'}`);
       return isSameDay(appointmentDate, date);
-    }).sort((a, b) => {
+    }).map(apt => ({
+      ...apt,
+      isFollowUp: false
+    }));
+
+    // Get follow-ups
+    const dateFollowUps = followUps.filter(followUp => {
+      const followUpDate = new Date(followUp.date);
+      return isSameDay(followUpDate, date);
+    }).map(followUp => ({
+      _id: `followup-${followUp._id}`,
+      firstName: followUp.patientName?.split(' ')[0] || '',
+      lastName: followUp.patientName?.split(' ').slice(1).join(' ') || '',
+      appointmentTime: format(new Date(followUp.date), 'HH:mm'),
+      treatmentType: 'Follow-up',
+      status: 'Follow-up',
+      priority: 'standard',
+      doctor: { name: 'Unassigned' },
+      isFollowUp: true,
+      followUpType: followUp.type,
+      patientName: followUp.patientName
+    }));
+
+    // Combine and sort by time
+    const allEvents = [...regularAppointments, ...dateFollowUps];
+    return allEvents.sort((a, b) => {
       const timeA = a.appointmentTime || a.startDateTime;
       const timeB = b.appointmentTime || b.startDateTime;
       return timeA.localeCompare(timeB);
@@ -307,6 +339,7 @@ const AppointmentsList: React.FC<AppointmentsListProps> = ({
       case 'Accepted': return 'bg-green-100 text-green-800';
       case 'Completed': return 'bg-blue-100 text-blue-800';
       case 'Cancelled': return 'bg-red-100 text-red-800';
+      case 'Follow-up': return 'bg-purple-100 text-purple-800'; // Add follow-up color
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -342,7 +375,7 @@ const AppointmentsList: React.FC<AppointmentsListProps> = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className={cn("font-medium", compact ? "text-sm" : "text-base")}>
-                  {appointment.firstName} {appointment.lastName}
+                  {appointment.isFollowUp ? appointment.patientName : `${appointment.firstName} ${appointment.lastName}`}
                 </span>
                 <Badge className={cn("text-xs", getStatusColor(appointment.status))}>
                   {appointment.status}
@@ -358,12 +391,24 @@ const AppointmentsList: React.FC<AppointmentsListProps> = ({
                     <span>{appointment.treatmentType}</span>
                   </>
                 )}
+                {appointment.isFollowUp && appointment.followUpType && (
+                  <>
+                    <span>•</span>
+                    <span>{appointment.followUpType}</span>
+                  </>
+                )}
               </div>
               
-              {appointment.doctor && (
+              {!appointment.isFollowUp && appointment.doctor && (
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <User className="h-3 w-3" />
                   <span>Dr. {appointment.doctor.name}</span>
+                </div>
+              )}
+              {appointment.isFollowUp && (
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <User className="h-3 w-3" />
+                  <span>Follow-up Appointment</span>
                 </div>
               )}
             </div>

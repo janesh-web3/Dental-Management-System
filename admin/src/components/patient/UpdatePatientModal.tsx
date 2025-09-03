@@ -46,7 +46,7 @@ import {
 import { crudRequest } from "@/lib/api";
 import { useDoctorContext } from "@/contexts/DoctorContext";
 import { getToothPosition, getToothSide } from "@/helper/PatientHelper";
-import { Patient, ToothData, DailyTreatment } from "@/types/patient";
+import { Patient, ToothData, DailyTreatment, FollowUp } from "@/types/patient";
 import { EnhancedTreatmentPlanCard } from "./EnhancedTreatmentPlanCard";
 import { TreatmentSummary } from "./TreatmentSummary";
 import { PaymentHistoryDialog } from "./PaymentHistoryDialog";
@@ -77,10 +77,9 @@ interface TreatmentPlan {
   isCompleted?: boolean;
   clinicalFindings: string[];
   otherFindings: string;
-  followUpDate?: string;
-  followUpDateNp?: string; // Add Nepali date field
   completionDate?: string;
   completionDateNp?: string; // Add Nepali date field
+  followUps?: FollowUp[]; // Centralized follow-up management
   treatmentDocuments?: Array<{
     fileName: string;
     fileUrl: string;
@@ -114,8 +113,6 @@ interface TreatmentPlan {
     totalPaidAmount: number;
     totalRemainingAmount: number;
     startDate?: string;
-    followUpDate?: string;
-    followUpDateNp?: string;
     completionDate?: string;
     completionDateNp?: string;
     treatedByDoctor: string | null;
@@ -161,8 +158,6 @@ type FormData = {
     referredBy: string;
   };
   medicalDetails: {
-    followUpDate: string;
-    followUpDateNp: string; // Add Nepali date field
     diagnosis: string;
     investigation: {
       blood: string;
@@ -226,8 +221,6 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
     },
     medicalDetails: {
       chiefComplaint: "",
-      followUpDate: "",
-      followUpDateNp: "", // Add Nepali date field
       diagnosis: "",
       investigation: {
         blood: "",
@@ -267,8 +260,6 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
         },
         medicalDetails: {
           chiefComplaint: patient.medicalDetails[0]?.chiefComplaint || "",
-          followUpDate: formatSafeDate(patient.medicalDetails[0]?.followUpDate),
-          followUpDateNp: convertToNepaliDate(formatSafeDate(patient.medicalDetails[0]?.followUpDate)),
           diagnosis: patient.medicalDetails[0]?.diagnosis || "",
           investigation: {
             blood: patient.medicalDetails[0]?.investigation?.blood || "",
@@ -288,7 +279,27 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
             noMedicalIssues: patient.medicalDetails[0]?.medicalHistory?.noMedicalIssues || false,
           },
           treatmentPlanning:
-            patient.medicalDetails[0]?.treatmentPlanning?.map((plan) => ({
+            (patient.medicalDetails[0]?.treatmentPlanning?.length > 0 
+              ? patient.medicalDetails[0].treatmentPlanning 
+              : [{ 
+                  _id: undefined,
+                  treatmentDate: format(new Date(), "yyyy-MM-dd"),
+                  treatmentDateNp: "",
+                  treatmentDetails: "",
+                  treatmentFindings: "",
+                  treatmentAmount: "0",
+                  advancedAmount: "0",
+                  balanceAmount: "0",
+                  teethNumber: "",
+                  treatedByDoctor: "",
+                  isCompleted: false,
+                  clinicalFindings: [],
+                  otherFindings: "",
+                  completionDate: "",
+                  completionDateNp: "",
+                  followUps: [] // Ensure default treatment plan has followUps
+                }]
+            ).map((plan) => ({
               ...plan,
               treatmentDate: formatSafeDate(plan.treatmentDate),
               treatmentDateNp: convertToNepaliDate(formatSafeDate(plan.treatmentDate)),
@@ -298,6 +309,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
               advancedAmount: plan.totalPaidAmount?.toString() || "0",
               balanceAmount: plan.totalRemainingAmount?.toString() || "0",
               treatedByDoctor: plan.treatedByDoctor?._id || "",
+              followUps: plan.followUps || [], // Include follow-ups array
               selectedTeethDetails: plan.selectedTeethDetails?.map(tooth => ({
                 ...tooth,
                 dailyTreatments: tooth.dailyTreatments?.map(dt => ({
@@ -321,8 +333,6 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                 totalPaidAmount: Number(group.totalPaidAmount) || 0,
                 totalRemainingAmount: Number(group.totalRemainingAmount) || 0,
                 startDate: group.startDate ? format(new Date(group.startDate), "yyyy-MM-dd") : "",
-                followUpDate: group.followUpDate ? format(new Date(group.followUpDate), "yyyy-MM-dd") : "",
-                followUpDateNp: group.followUpDate ? convertToNepaliDate(format(new Date(group.followUpDate), "yyyy-MM-dd")) : "",
                 completionDate: group.completionDate ? format(new Date(group.completionDate), "yyyy-MM-dd") : "",
                 completionDateNp: group.completionDate ? convertToNepaliDate(format(new Date(group.completionDate), "yyyy-MM-dd")) : "",
                 treatedByDoctor: (group.treatedByDoctor as any)?._id || group.treatedByDoctor || null,
@@ -427,12 +437,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
       };
 
       // Auto-convert English date to Nepali date
-      if (field === "followUpDate") {
-        newData.medicalDetails.followUpDateNp = convertToNepaliDate(value);
-      } else if (field === "followUpDateNp") {
-        const englishDate = convertToEnglishDate(value);
-        newData.medicalDetails.followUpDate = englishDate;
-      }
+
 
       return newData;
     });
@@ -524,9 +529,6 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
           patientType: data.medicalDetails.patientType,
           group: data.medicalDetails.group,
           medicalHistory: data.medicalDetails.medicalHistory,
-          followUpDate: data.medicalDetails.followUpDate
-            ? formatSafeDate(data.medicalDetails.followUpDate)
-            : undefined,
           treatmentPlanning: data.medicalDetails.treatmentPlanning.map(
             (plan, planIndex) => {
               // Get the corresponding teeth data for this treatment plan
@@ -609,7 +611,6 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                   totalPaidAmount: groupTotalPaidAmount,
                   totalRemainingAmount: groupTotalTreatmentAmount - groupTotalPaidAmount,
                   startDate: group.startDate ? formatSafeDate(group.startDate) : undefined,
-                  followUpDate: group.followUpDate ? formatSafeDate(group.followUpDate) : undefined,
                   completionDate: group.completionDate ? formatSafeDate(group.completionDate) : undefined,
                   treatedByDoctor: group.treatedByDoctor || null,
                   isCompleted: group.isCompleted || false,
@@ -643,6 +644,10 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                 totalPlanAmount: planTotalTreatmentAmount,
                 totalPaidAmount: planTotalPaidAmount,
                 totalRemainingAmount: planTotalRemainingAmount,
+                // Include follow-ups array (remove temporary IDs for new items)
+                followUps: (plan.followUps || []).map(({ _id, ...followUp }) => 
+                  _id?.startsWith('temp-') ? followUp : { _id, ...followUp }
+                ),
               };
             }
           ),
@@ -717,6 +722,11 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
       setIsSubmitting(true);
 
       const formattedData = formatDataForBackend(formData);
+      
+      // Debug logging to check follow-ups
+      console.log("🔍 FormData before formatting:", formData);
+      console.log("🔍 Formatted data for backend:", formattedData);
+      console.log("🔍 Follow-ups in formatted data:", formattedData.medicalDetails[0]?.treatmentPlanning[0]?.followUps);
 
       // Send the API request
       await crudRequest(
@@ -1897,30 +1907,6 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                             </Select>
                           </div>
 
-                          <div className="space-y-2">
-                            <Label>Follow-up Date</Label>
-                            <Input
-                              type="date"
-                              value={formData.medicalDetails.followUpDate}
-                              onChange={(e) =>
-                                handleMedicalChange(
-                                  "followUpDate",
-                                  e.target.value
-                                )
-                              }
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label htmlFor="followUpDateNp" className="text-sm font-medium">
-                            Follow-up Date (Nepali)
-                          </Label>
-                          <NepaliDatePickerComponent
-                            value={formData.medicalDetails.followUpDateNp}
-                            onChange={(date: string) => handleMedicalChange("followUpDateNp", date)}
-                            placeholder="Select Nepali date"
-                          />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2152,26 +2138,58 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
             </CardHeader>
             <CardContent className="p-4">
               {(() => {
-                // Get all follow-ups from all treatment plans
-                const allFollowUps = patient.medicalDetails
-                  .flatMap(record => record.treatmentPlanning || [])
-                  .flatMap(plan => plan.followUps || []);
+                // Get follow-ups from the first treatment plan in form data
+                console.log("📋 Treatment plans in formData:", formData.medicalDetails.treatmentPlanning);
+                const firstTreatmentPlan = formData.medicalDetails.treatmentPlanning[0];
+                const currentFollowUps = firstTreatmentPlan?.followUps || [];
+                const treatmentPlanId = firstTreatmentPlan?._id || "";
+                console.log("📋 First treatment plan:", firstTreatmentPlan);
+                console.log("📋 Current follow-ups:", currentFollowUps);
 
-                const treatmentPlanId = patient.medicalDetails[0]?.treatmentPlanning[0]?._id || "";
+                const handleFollowUpChange = (followUps: FollowUp[]) => {
+                  console.log("🔄 Follow-ups changing:", followUps);
+                  setFormData((prev) => {
+                    // Ensure we have at least one treatment plan
+                    const treatmentPlanning = prev.medicalDetails.treatmentPlanning.length > 0 
+                      ? prev.medicalDetails.treatmentPlanning 
+                      : [{
+                          _id: undefined,
+                          treatmentDate: format(new Date(), "yyyy-MM-dd"),
+                          treatmentDateNp: "",
+                          treatmentDetails: "",
+                          treatmentFindings: "",
+                          treatmentAmount: "0",
+                          advancedAmount: "0",
+                          balanceAmount: "0",
+                          teethNumber: "",
+                          treatedByDoctor: "",
+                          isCompleted: false,
+                          clinicalFindings: [],
+                          otherFindings: "",
+                          completionDate: "",
+                          completionDateNp: "",
+                          followUps: []
+                        }];
+
+                    const newFormData = {
+                      ...prev,
+                      medicalDetails: {
+                        ...prev.medicalDetails,
+                        treatmentPlanning: treatmentPlanning.map((plan, index) => 
+                          index === 0 ? { ...plan, followUps } : plan
+                        )
+                      }
+                    };
+                    console.log("🔄 Updated formData:", newFormData);
+                    return newFormData;
+                  });
+                  setHasUnsavedChanges(true);
+                };
 
                 return (
                   <CompactFollowUpManager
-                    followUps={allFollowUps}
-                    onFollowUpChange={(followUps) => {
-                      // Update the first treatment plan's follow-ups
-                      // In a real implementation, you might want to specify which treatment plan
-                      if (patient.medicalDetails[0]?.treatmentPlanning[0]) {
-                        const updatedPatient = { ...patient };
-                        updatedPatient.medicalDetails[0].treatmentPlanning[0].followUps = followUps;
-                        // Here you would typically update the patient data
-                        console.log('Updated follow-ups:', followUps);
-                      }
-                    }}
+                    followUps={currentFollowUps}
+                    onFollowUpChange={handleFollowUpChange}
                     treatmentPlanId={treatmentPlanId}
                     className="w-full"
                   />

@@ -917,6 +917,8 @@ const updatePatient = async (req, res) => {
             followUpDate: treatment.followUpDate
               ? new Date(treatment.followUpDate)
               : undefined,
+            // Handle follow-ups array
+            followUps: treatment.followUps || [],
             // Handle groupTreatmentDetails
             groupTreatmentDetails:
               treatment.groupTreatmentDetails?.map((group) => ({

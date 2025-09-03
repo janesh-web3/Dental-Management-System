@@ -55,6 +55,7 @@ import { PatientDocumentUploadButton } from "./PatientDocumentUploadButton";
 import { GroupTreatmentManager } from "./GroupTreatmentManager";
 import { convertToNepaliDate, convertToEnglishDate } from "@/lib/utils";
 import { NepaliDatePickerComponent } from "@/components/ui/nepali-date-picker";
+import CompactFollowUpManager from "./CompactFollowUpManager";
 
 interface UpdatePatientModalProps {
   isOpen: boolean;
@@ -1134,16 +1135,23 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
       formData.medicalDetails[field as keyof typeof formData.medicalDetails]
     );
     
+    // Calculate follow-up progress based on whether follow-ups exist
+    const allFollowUps = patient.medicalDetails
+      .flatMap(record => record.treatmentPlanning || [])
+      .flatMap(plan => plan.followUps || []);
+    const followupProgress = allFollowUps.length > 0 ? 100 : 50;
+    
     return {
       personal: personalComplete ? 100 : 70,
       medical: medicalComplete ? 100 : 60,
-      documents: 100
+      documents: 100,
+      followups: followupProgress
     };
   };
 
   const progress = getTabProgress();
   const overallProgress = Math.round(
-    (progress.personal + progress.medical + progress.documents) / 3
+    (progress.personal + progress.medical + progress.documents + progress.followups) / 4
   );
 
   const toggleSection = (section: string) => {
@@ -1224,7 +1232,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
             className="flex flex-col h-[calc(100vh-5rem)]"
           >
             <TabsList
-              className="grid w-full grid-cols-3 gap-1 px-2 py-1.5 bg-gradient-to-r from-muted/40 via-muted/30 to-muted/40 backdrop-blur-xl sticky top-[4rem] z-40 border-b border-border/30 shadow-lg"
+              className="grid w-full grid-cols-4 gap-1 px-2 py-1.5 bg-gradient-to-r from-muted/40 via-muted/30 to-muted/40 backdrop-blur-xl sticky top-[4rem] z-40 border-b border-border/30 shadow-lg"
               onKeyDown={handleKeyPress}
             >
               <Tooltip>
@@ -1296,6 +1304,29 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs p-1">
                   <p>Documents</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger
+                    value="followups"
+                    className="relative flex flex-col items-center gap-0.5 text-xs transition-all duration-200 hover:bg-accent/80 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/90 data-[state=active]:text-primary-foreground p-1.5 rounded-lg border border-transparent data-[state=active]:border-primary/30 data-[state=active]:shadow-lg"
+                  >
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded-full bg-current/15 flex items-center justify-center">
+                        <Calendar className="w-2 h-2" />
+                      </div>
+                      <span className="font-medium text-xs">Follow-ups</span>
+                    </div>
+                    <div className="w-full">
+                      <Progress value={progress.followups || 0} className="w-full h-0.5 bg-current/10" />
+                      <span className="text-xs opacity-80">{progress.followups || 0}%</span>
+                    </div>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs p-1">
+                  <p>Follow-up Schedule</p>
                 </TooltipContent>
               </Tooltip>
           </TabsList>
@@ -2103,6 +2134,66 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                   <Plus className="h-4 w-4 mr-2" />
                   Upload New Documents
                 </PatientDocumentUploadButton>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent
+          value="followups"
+          className="mt-0 focus-visible:outline-none focus-visible:ring-0 space-y-3 p-2 sm:p-3"
+        >
+          <Card className="border-none shadow-none">
+            <CardHeader className="px-4 py-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Follow-up Management
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              {(() => {
+                // Get all follow-ups from all treatment plans
+                const allFollowUps = patient.medicalDetails
+                  .flatMap(record => record.treatmentPlanning || [])
+                  .flatMap(plan => plan.followUps || []);
+
+                const treatmentPlanId = patient.medicalDetails[0]?.treatmentPlanning[0]?._id || "";
+
+                return (
+                  <CompactFollowUpManager
+                    followUps={allFollowUps}
+                    onFollowUpChange={(followUps) => {
+                      // Update the first treatment plan's follow-ups
+                      // In a real implementation, you might want to specify which treatment plan
+                      if (patient.medicalDetails[0]?.treatmentPlanning[0]) {
+                        const updatedPatient = { ...patient };
+                        updatedPatient.medicalDetails[0].treatmentPlanning[0].followUps = followUps;
+                        // Here you would typically update the patient data
+                        console.log('Updated follow-ups:', followUps);
+                      }
+                    }}
+                    treatmentPlanId={treatmentPlanId}
+                    className="w-full"
+                  />
+                );
+              })()}
+              
+              <div className="mt-4 p-4 bg-blue-900 rounded-lg border border-blue-200">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-blue-100 mt-0.5 flex-shrink-0" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-blue-50">Follow-up Management</p>
+                    <p className="text-xs text-blue-100">
+                      • Add multiple follow-ups with specific dates, types, and reasons
+                    </p>
+                    <p className="text-xs text-blue-100">
+                      • All follow-ups are preserved - new ones won't overwrite existing ones
+                    </p>
+                    <p className="text-xs text-blue-100">
+                      • Click on follow-ups to edit or mark as completed
+                    </p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

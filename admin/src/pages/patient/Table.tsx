@@ -85,6 +85,7 @@ import Loading from "@/pages/not-found/loading";
 import ViewPatientDrawer from "@/components/patient/ViewPatientDrawer";
 import UpdatePatientModal from "@/components/patient/UpdatePatientModal";
 import DeletePatientDialog from "@/components/patient/DeletePatientDialog";
+import FollowUpTableDialog from "@/components/patient/FollowUpTableDialog";
 import type { Patient } from "@/types/patient";
 import { useAdminContext } from "@/contexts/adminContext";
 import * as XLSX from "xlsx";
@@ -176,6 +177,8 @@ export function PatientTable() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const [isFollowUpDialogOpen, setIsFollowUpDialogOpen] = useState(false);
+  const [selectedPatientForFollowUp, setSelectedPatientForFollowUp] = useState<Patient | null>(null);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [isCompactView, setIsCompactView] = useState<boolean>(false);
   const [viewMode, _setViewMode] = useState<"table" | "grid" | "list">("table");
@@ -1374,11 +1377,21 @@ export function PatientTable() {
                                       new Date(b.date).getTime()
                                   );
 
+                                const handleFollowUpClick = (e: React.MouseEvent) => {
+                                  e.stopPropagation(); // Prevent row click
+                                  setSelectedPatientForFollowUp(patient);
+                                  setIsFollowUpDialogOpen(true);
+                                };
+
                                 if (allFollowUps.length === 0) {
                                   return (
-                                    <span className="text-xs text-muted-foreground">
+                                    <button
+                                      onClick={handleFollowUpClick}
+                                      className="text-xs text-muted-foreground hover:text-primary hover:bg-gray-50 px-2 py-1 rounded transition-colors cursor-pointer"
+                                      title="Click to manage follow-ups"
+                                    >
                                       No follow-up
-                                    </span>
+                                    </button>
                                   );
                                 }
 
@@ -1387,7 +1400,11 @@ export function PatientTable() {
                                   new Date(nextFollowUp.date) < new Date();
 
                                 return (
-                                  <div className="flex flex-col">
+                                  <button
+                                    onClick={handleFollowUpClick}
+                                    className="flex flex-col hover:bg-gray-50 px-2 py-1 rounded transition-colors cursor-pointer text-left w-full"
+                                    title="Click to manage follow-ups"
+                                  >
                                     <span
                                       className={`text-xs font-medium ${
                                         isOverdue
@@ -1407,7 +1424,7 @@ export function PatientTable() {
                                         +{allFollowUps.length - 1} more
                                       </span>
                                     )}
-                                  </div>
+                                  </button>
                                 );
                               })()}
                             </TableCell>
@@ -2555,6 +2572,18 @@ export function PatientTable() {
           onDeleteSuccess={() => {
             fetchPatient(currentPage, itemsPerPage, searchQuery);
           }}
+        />
+      )}
+      
+      {selectedPatientForFollowUp && (
+        <FollowUpTableDialog
+          isOpen={isFollowUpDialogOpen}
+          onClose={() => {
+            setIsFollowUpDialogOpen(false);
+            setSelectedPatientForFollowUp(null);
+          }}
+          patient={selectedPatientForFollowUp}
+          onRefresh={() => fetchPatient(currentPage, itemsPerPage, searchQuery)}
         />
       )}
 

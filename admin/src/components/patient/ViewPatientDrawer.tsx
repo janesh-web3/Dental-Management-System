@@ -192,11 +192,11 @@ const DateDisplay = ({
   color?: string;
 }) => (
   <div className="flex items-start gap-2 p-2 rounded-lg bg-white/80 dark:bg-gray-800/80 border border-gray-100 dark:border-gray-700">
-    <div className={`p-1.5 rounded-lg ${color} bg-opacity-10 dark:bg-opacity-20`}>
+    <div className={`p-1 rounded-md ${color} bg-opacity-10 dark:bg-opacity-20`}>
       <Icon className="w-3 h-3" />
     </div>
     <div className="flex-1 min-w-0">
-      <p className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
+      <p className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-0.5">
         {label}
       </p>
       <div className="space-y-0.5">
@@ -257,57 +257,57 @@ const FollowUpDisplay = ({ followUps }: { followUps: FollowUp[] }) => {
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2 max-h-64 pr-1">
       {sortedFollowUps.map((followUp) => (
-        <Card key={followUp._id} className="border-l-4 border-l-blue-500">
-          <CardContent className="p-4">
+        <Card key={followUp._id} className="border-l-2 border-l-blue-500">
+          <CardContent className="p-2">
             <div className="flex items-start justify-between">
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Badge className={getTypeColor(followUp.type)}>
+              <div className="flex-1 space-y-1">
+                <div className="flex flex-wrap items-center gap-1">
+                  <Badge className={cn(getTypeColor(followUp.type), "text-xs px-1 py-0")}>
                     {followUp.type}
                   </Badge>
                   {followUp.completed && (
-                    <Badge variant="outline" className="bg-green-50 text-green-700">
-                      <CheckCircle className="w-3 h-3 mr-1" />
+                    <Badge variant="outline" className="bg-green-50 text-green-700 text-xs px-1 py-0">
+                      <CheckCircle className="w-2 h-2 mr-0.5" />
                       Completed
                     </Badge>
                   )}
                 </div>
                 
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
+                <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
+                  <Calendar className="w-3 h-3" />
+                  <span>
                     {new Date(followUp.date).toLocaleDateString('en-US', {
                       year: 'numeric',
-                      month: 'long',
+                      month: 'short',
                       day: 'numeric'
                     })}
-                  </div>
+                  </span>
                 </div>
 
                 {followUp.reason && (
-                  <p className="text-sm text-gray-700 font-medium">{followUp.reason}</p>
+                  <p className="text-xs text-gray-700 dark:text-gray-200 font-medium truncate">{followUp.reason}</p>
                 )}
 
                 {followUp.notes && (
-                  <p className="text-xs text-gray-500 italic">{followUp.notes}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 italic truncate">{followUp.notes}</p>
                 )}
 
                 {followUp.completedDate && (
-                  <p className="text-xs text-green-600">
+                  <p className="text-xs text-green-600 dark:text-green-400">
                     Completed on {new Date(followUp.completedDate).toLocaleDateString()}
                   </p>
                 )}
               </div>
 
-              <div className="ml-4">
+              <div className="ml-2">
                 {new Date(followUp.date) > new Date() ? (
-                  <Clock className="w-5 h-5 text-orange-500" />
+                  <Clock className="w-3.5 h-3.5 text-orange-500" />
                 ) : followUp.completed ? (
-                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <CheckCircle className="w-3.5 h-3.5 text-green-500" />
                 ) : (
-                  <AlertTriangle className="w-5 h-5 text-red-500" />
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
                 )}
               </div>
             </div>
@@ -1387,257 +1387,266 @@ export function ViewPatientDrawer({
                 </TabsList>
               </div>
 
-              <TabsContent value="overview" className="space-y-3 pb-3">
-                {/* Enhanced Personal Information */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
-                    <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-3">
-                      <CardTitle className="text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
-                        <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
-                          <User className="h-4 w-4" />
-                        </div>
-                        <span className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent font-semibold">
-                          Personal Information
-                        </span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3">
-                      {/* Personal Information Cards */}
-                      <motion.div
-                        className="grid grid-cols-2 lg:grid-cols-3 gap-2"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ staggerChildren: 0.05 }}
-                      >
-                        <motion.div
-                          className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="h-6 w-6 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                              <FileText className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+              <TabsContent value="overview" className="pb-3">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                  {/* Left column - Personal Info and Treatment Progress (70-80% width) */}
+                  <div className="lg:col-span-3 space-y-4">
+                    {/* Enhanced Personal Information */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
+                        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-3">
+                          <CardTitle className="text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                            <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                              <User className="h-4 w-4" />
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Patient ID
-                              </p>
-                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                {patient._id}
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-
-                        <motion.div
-                          className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.05 }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="h-6 w-6 rounded-lg bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
-                              <UserCheck className="h-3 w-3 text-green-600 dark:text-green-400" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Full Name
-                              </p>
-                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                {localPatient.personalDetails.name}
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-
-                        <motion.div
-                          className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.1 }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="h-6 w-6 rounded-lg bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
-                              <Phone className="h-3 w-3 text-purple-600 dark:text-purple-400" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Contact
-                              </p>
-                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {localPatient.personalDetails.contactNumber}
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-
-                        <motion.div
-                          className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.15 }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="h-6 w-6 rounded-lg bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center">
-                              <Mail className="h-3 w-3 text-orange-600 dark:text-orange-400" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Email
-                              </p>
-                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                {localPatient.personalDetails.emailAddress ||
-                                  "Not provided"}
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-
-                        <motion.div
-                          className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.2 }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="h-6 w-6 rounded-lg bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
-                              <MapPin className="h-3 w-3 text-red-600 dark:text-red-400" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Address
-                              </p>
-                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                {localPatient.personalDetails.address ||
-                                  "Not provided"}
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-
-                        <motion.div
-                          className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}  
-                          transition={{ delay: 0.25 }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="h-6 w-6 rounded-lg bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center">
-                              <Users className="h-3 w-3 text-teal-600 dark:text-teal-400" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Demographics
-                              </p>
-                              <div className="flex flex-wrap gap-1 mt-0.5">
-                                <Badge
-                                  variant="outline"
-                                  className="bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs px-1 py-0.5 rounded"
-                                >
-                                  {localPatient.personalDetails.gender ||
-                                    "Not specified"}
-                                </Badge>
-                                <Badge 
-                                  variant="outline"
-                                  className="bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs px-1 py-0.5 rounded"
-                                >
-                                  {localPatient.personalDetails.age
-                                    ? `Age: ${localPatient.personalDetails.age}`
-                                    : "Adult"}
-                                </Badge>
+                            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent font-semibold">
+                              Personal Information
+                            </span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-3">
+                          {/* Personal Information Cards */}
+                          <motion.div
+                            className="grid grid-cols-2 lg:grid-cols-3 gap-2"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ staggerChildren: 0.05 }}
+                          >
+                            <motion.div
+                              className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                                  <FileText className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Patient ID
+                                  </p>
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                    {patient._id}
+                                  </p>
+                                </div>
                               </div>
+                            </motion.div>
+
+                            <motion.div
+                              className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.05 }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-lg bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
+                                  <UserCheck className="h-3 w-3 text-green-600 dark:text-green-400" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Full Name
+                                  </p>
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                    {localPatient.personalDetails.name}
+                                  </p>
+                                </div>
+                              </div>
+                            </motion.div>
+
+                            <motion.div
+                              className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.1 }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-lg bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
+                                  <Phone className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Contact
+                                  </p>
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    {localPatient.personalDetails.contactNumber}
+                                  </p>
+                                </div>
+                              </div>
+                            </motion.div>
+
+                            <motion.div
+                              className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.15 }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-lg bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center">
+                                  <Mail className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Email
+                                  </p>
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                    {localPatient.personalDetails.emailAddress ||
+                                      "Not provided"}
+                                  </p>
+                                </div>
+                              </div>
+                            </motion.div>
+
+                            <motion.div
+                              className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.2 }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-lg bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
+                                  <MapPin className="h-3 w-3 text-red-600 dark:text-red-400" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Address
+                                  </p>
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                    {localPatient.personalDetails.address ||
+                                      "Not provided"}
+                                  </p>
+                                </div>
+                              </div>
+                            </motion.div>
+
+                            <motion.div
+                              className="group border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}  
+                              transition={{ delay: 0.25 }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-lg bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center">
+                                  <Users className="h-3 w-3 text-teal-600 dark:text-teal-400" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Demographics
+                                  </p>
+                                  <div className="flex flex-wrap gap-1 mt-0.5">
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs px-1 py-0.5 rounded"
+                                    >
+                                      {localPatient.personalDetails.gender ||
+                                        "Not specified"}
+                                    </Badge>
+                                    <Badge 
+                                      variant="outline"
+                                      className="bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs px-1 py-0.5 rounded"
+                                    >
+                                      {localPatient.personalDetails.age
+                                        ? `Age: ${localPatient.personalDetails.age}`
+                                        : "Adult"}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </motion.div>
+                          </motion.div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+
+                    {/* Treatment Progress */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.2 }}
+                    >
+                      <TreatmentProgress
+                        totalAmount={totalAmount}
+                        paidAmount={paidAmount}
+                        remainingAmount={remainingAmount}
+                        treatments={allTreatments}
+                      />
+                    </motion.div>
+                  </div>
+
+                  {/* Right column - Important Dates (20-30% width) */}
+                  <div className="lg:col-span-1">
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
+                      className="h-full"
+                    >
+                      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden h-full flex flex-col">
+                        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
+                          <CardTitle className="text-sm flex items-center gap-1.5 text-gray-800 dark:text-gray-100">
+                            <div className="p-1 rounded-md bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+                              <Calendar className="h-3.5 w-3.5" />
                             </div>
-                          </div>
-                        </motion.div>
-                      </motion.div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
+                            <span className="bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent font-semibold">
+                              Important Dates
+                            </span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 gap-2 p-2 flex-grow overflow-y-auto max-h-[calc(100vh-250px)]">
+                          <DateDisplay
+                            englishDate={localPatient.personalDetails.dob}
+                            nepaliDate=""
+                            label="Date of Birth"
+                            icon={CalendarDays}
+                            color="text-purple-500"
+                          />
 
-                {/* Enhanced Date Information */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.1 }}
-                  className="mt-3"
-                >
-                  <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
-                    <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-3">
-                      <CardTitle className="text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
-                        <div className="p-1.5 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
-                          <Calendar className="h-4 w-4" />
-                        </div>
-                        <span className="bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent font-semibold">
-                          Important Dates
-                        </span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 lg:grid-cols-4 gap-2 p-3">
-                      <DateDisplay
-                        englishDate={localPatient.personalDetails.dob}
-                        nepaliDate=""
-                        label="Date of Birth"
-                        icon={CalendarDays}
-                        color="text-purple-500"
-                      />
+                          <DateDisplay
+                            englishDate={localPatient.personalDetails.checkUpDate}
+                            nepaliDate={localPatient.personalDetails.checkUpDateNp}
+                            label="First Check-up Date"
+                            icon={CalendarCheck}
+                            color="text-blue-500"
+                          />
 
-                      <DateDisplay
-                        englishDate={localPatient.personalDetails.checkUpDate}
-                        nepaliDate={localPatient.personalDetails.checkUpDateNp}
-                        label="First Check-up Date"
-                        icon={CalendarCheck}
-                        color="text-blue-500"
-                      />
+                          <DateDisplay
+                            englishDate={localPatient.createdAt}
+                            nepaliDate=""
+                            label="Registration Date"
+                            icon={CalendarPlus}
+                            color="text-green-500"
+                          />
 
-                      <DateDisplay
-                        englishDate={localPatient.createdAt}
-                        nepaliDate=""
-                        label="Registration Date"
-                        icon={CalendarPlus}
-                        color="text-green-500"
-                      />
-
-                      {/* Follow-ups Section */}
-                      {localPatient.medicalDetails.length > 0 && 
-                       localPatient.medicalDetails[0].treatmentPlanning.length > 0 && (
-                        <Card>
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center gap-2">
-                              <CalendarCheck className="w-5 h-5 text-blue-500" />
-                              Follow-ups
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <FollowUpDisplay 
-                              followUps={
-                                localPatient.medicalDetails[0].treatmentPlanning
-                                  .flatMap(plan => plan.followUps || [])
-                              } 
-                            />
-                          </CardContent>
-                        </Card>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-
-                {/* Treatment Progress */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.2 }}
-                >
-                  <TreatmentProgress
-                    totalAmount={totalAmount}
-                    paidAmount={paidAmount}
-                    remainingAmount={remainingAmount}
-                    treatments={allTreatments}
-                  />
-                </motion.div>
+                          {/* Follow-ups Section - Scrollable container for many follow-ups */}
+                          {localPatient.medicalDetails.length > 0 && 
+                           localPatient.medicalDetails[0].treatmentPlanning.length > 0 && (
+                            <div className="flex-grow min-h-0">
+                              <Card className="h-full flex flex-col">
+                                <CardHeader className="pb-2 pt-2 px-2">
+                                  <CardTitle className="text-sm flex items-center gap-1">
+                                    <CalendarCheck className="w-3.5 h-3.5 text-blue-500" />
+                                    Follow-ups
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent className="flex-grow overflow-y-auto min-h-0 px-2 py-1">
+                                  <FollowUpDisplay 
+                                    followUps={
+                                      localPatient.medicalDetails[0].treatmentPlanning
+                                        .flatMap(plan => plan.followUps || [])
+                                    } 
+                                  />
+                                </CardContent>
+                              </Card>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="medical" className="pb-3">

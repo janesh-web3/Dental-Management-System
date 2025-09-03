@@ -81,10 +81,17 @@ export function NepaliDatePickerComponent({
               readOnlyInput: disabled
             } as NepaliDatePickerOptions);
 
-            // Set the value after initialization if we have one
-            if (value && inputRef.current) {
-              $(inputRef.current).val(value);
-              setInputValue(value);
+            // Set the value after initialization if we have a valid one
+            if (value && value.trim() && inputRef.current) {
+              try {
+                $(inputRef.current).val(value);
+                setInputValue(value);
+              } catch (e) {
+                // If setting the value fails, clear it and use current date
+                console.warn('Invalid Nepali date value, clearing:', value);
+                $(inputRef.current).val('');
+                setInputValue('');
+              }
             }
             
             setIsPluginLoaded(true);
@@ -101,9 +108,15 @@ export function NepaliDatePickerComponent({
         // Remove the date picker when component unmounts
         if (inputRef.current && typeof $.fn.nepaliDatePicker === 'function') {
           try {
+            // Clear the input value first to avoid "Invalid nepali number" errors
+            $(inputRef.current).val('');
+            // Then remove the date picker
             $(inputRef.current).nepaliDatePicker('remove');
           } catch (e) {
-            console.error('Error removing nepali date picker', e);
+            // Silently handle cleanup errors as they don't affect functionality
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('Nepali date picker cleanup warning:', (e as Error).message || e);
+            }
           }
         }
       };

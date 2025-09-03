@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Calendar, Clock, User, FileText, Trash2, Edit3, Check } from 'lucide-react';
+import { Plus, Calendar, Clock, Trash2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { FollowUp } from '@/types/patient';
 
@@ -26,7 +26,6 @@ const FollowUpManager: React.FC<FollowUpManagerProps> = ({
   className = ""
 }) => {
   const [isAddingFollowUp, setIsAddingFollowUp] = useState(false);
-  const [editingFollowUp, setEditingFollowUp] = useState<FollowUp | null>(null);
   
   const followUpTypes = [
     "Treatment Review",
@@ -37,13 +36,6 @@ const FollowUpManager: React.FC<FollowUpManagerProps> = ({
     "Cleaning",
     "X-Ray Review",
     "Other"
-  ];
-
-  const linkedToTypes = [
-    { value: "treatment", label: "Treatment Plan" },
-    { value: "groupTreatment", label: "Group Treatment" },
-    { value: "tooth", label: "Specific Tooth" },
-    { value: "medicalRecord", label: "Medical Record" }
   ];
 
   const [newFollowUp, setNewFollowUp] = useState<Partial<FollowUp>>({

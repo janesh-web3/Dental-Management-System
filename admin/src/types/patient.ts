@@ -204,8 +204,6 @@ export type FormData = {
     treatmentFindings: string;
     clinicalFindings: ClinicalFinding[];
     otherFindings: string;
-    followUpDate: string;
-    followUpDateNp: string;
     completionDate: string;
     completionDateNp: string;
     isCompleted?: boolean;
@@ -214,7 +212,7 @@ export type FormData = {
       fileUrl: string;
       uploadDate: string;
     }>;
-    followUps?: FollowUp[]; // Add followUps property
+    followUps: FollowUp[]; // Centralized follow-up management
   }>;
 };
 

@@ -113,11 +113,9 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
         teethNumber: "",
         clinicalFindings: [],
         otherFindings: "",
-        followUpDate: "",
-        followUpDateNp: "",
         completionDate: "",
         completionDateNp: "",
-        followUps: [], // Initialize followUps as empty array
+        followUps: [], // Centralized follow-ups array
       },
     ],
   });
@@ -373,11 +371,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
       } else if (field === "completionDateNp") {
         const englishDate = convertToEnglishDate(value);
         newTreatmentPlans[index].completionDate = englishDate;
-      } else if (field === "followUpDate") {
-        newTreatmentPlans[index].followUpDateNp = convertToNepaliDate(value);
-      } else if (field === "followUpDateNp") {
-        const englishDate = convertToEnglishDate(value);
-        newTreatmentPlans[index].followUpDate = englishDate;
       }
 
       return {
@@ -715,8 +708,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
           patientType: plan.patientType,
           isCompleted: false,
           treatmentDate: format(new Date(plan.treatmentDate), "yyyy-MM-dd"),
-          followUpDate: plan.followUpDate ? format(new Date(plan.followUpDate), "yyyy-MM-dd") : undefined,
-          followUpDateNp: plan.followUpDateNp || undefined,
           treatmentFindings: plan.treatmentFindings,
           teethNumber: plan.teethNumber,
           clinicalFindings: plan.clinicalFindings,
@@ -725,6 +716,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
           // Include group treatment details for all groups, not just Ortho
           groupTreatmentDetails: formattedGroupTreatmentDetails,
           treatmentDocuments: [],
+          // Include the new centralized follow-ups array (remove temporary IDs)
+          followUps: (plan.followUps || []).map(({ _id, ...followUp }) => followUp),
         };
       }
     );
@@ -801,6 +794,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     try {
       setIsSubmitting(true);
       const formattedData = formatDataForBackend(formData);
+      console.log("Formatted data:", formattedData);
       const response = await crudRequest<{
         data?: { _id: string };
         _id?: string;
@@ -844,10 +838,10 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
         }
       }
 
-      modalClose();
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      // modalClose();
+      // setTimeout(() => {
+      //   window.location.reload();
+      // }, 1000);
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.error || "Failed to add patient";
@@ -2609,42 +2603,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                               )
                             }
                             placeholder="Enter any other clinical findings not listed above"
-                          />
-                        </div>
-
-                        {/* Follow-up Date Section */}
-                        <div className="space-y-1 col-span-3 md:col-span-1">
-                          <Label>Follow-up Date</Label>
-                          <Input
-                            type="date"
-                            value={plan.followUpDate}
-                            onChange={(e) =>
-                              handleTreatmentPlanChange(
-                                index,
-                                "followUpDate",
-                                e.target.value
-                              )
-                            }
-                          />
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label
-                            htmlFor="followUpDateNp"
-                            className="text-sm font-medium"
-                          >
-                            Follow-up Date (Nepali)
-                          </Label>
-                          <NepaliDatePickerComponent
-                            value={plan.followUpDateNp}
-                            onChange={(date) =>
-                              handleTreatmentPlanChange(
-                                index,
-                                "followUpDateNp",
-                                date
-                              )
-                            }
-                            placeholder="Select Nepali date"
                           />
                         </div>
 

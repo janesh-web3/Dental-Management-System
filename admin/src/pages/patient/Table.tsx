@@ -85,7 +85,7 @@ import Loading from "@/pages/not-found/loading";
 import ViewPatientDrawer from "@/components/patient/ViewPatientDrawer";
 import UpdatePatientModal from "@/components/patient/UpdatePatientModal";
 import DeletePatientDialog from "@/components/patient/DeletePatientDialog";
-import type { Patient, FollowUp } from "@/types/patient";
+import type { Patient } from "@/types/patient";
 import { useAdminContext } from "@/contexts/adminContext";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";

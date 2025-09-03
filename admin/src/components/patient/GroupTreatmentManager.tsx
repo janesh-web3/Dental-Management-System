@@ -175,16 +175,16 @@ export function GroupTreatmentManager({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Group Treatment Details</h3>
+        <h3 className="text-sm font-medium">Group Treatment Details</h3>
         <Button
           variant="outline"
           size="sm"
           onClick={() => setShowAddForm(true)}
-          className="gap-2"
+          className="gap-1.5 h-7 px-2 text-xs"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3 w-3" />
           Add Group Treatment
         </Button>
       </div>
@@ -192,13 +192,13 @@ export function GroupTreatmentManager({
       {/* Add Group Treatment Form */}
       {showAddForm && (
         <Card className="border-dashed border-2">
-          <CardHeader>
-            <CardTitle className="text-base">Add New Group Treatment</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Add New Group Treatment</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Group Name</Label>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Group Name</Label>
                 <Select
                   value={newGroupTreatment.groupName}
                   onValueChange={(value: any) =>
@@ -220,8 +220,8 @@ export function GroupTreatmentManager({
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Procedure</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Procedure</Label>
                 <Input
                   value={newGroupTreatment.procedure}
                   onChange={(e) =>
@@ -231,8 +231,8 @@ export function GroupTreatmentManager({
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Total Treatment Amount</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Total Treatment Amount</Label>
                 <Input
                   type="number"
                   value={newGroupTreatment.totalTreatmentAmount}
@@ -245,8 +245,8 @@ export function GroupTreatmentManager({
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Total Paid Amount</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Total Paid Amount</Label>
                 <Input
                   type="number"
                   value={newGroupTreatment.totalPaidAmount}
@@ -259,8 +259,8 @@ export function GroupTreatmentManager({
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Start Date</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Start Date</Label>
                 <Input
                   type="date"
                   value={newGroupTreatment.startDate}
@@ -270,8 +270,8 @@ export function GroupTreatmentManager({
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Follow-up Date</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Follow-up Date</Label>
                 <Input
                   type="date"
                   value={newGroupTreatment.followUpDate}
@@ -281,8 +281,8 @@ export function GroupTreatmentManager({
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Treated By Doctor</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Treated By Doctor</Label>
                 <Select
                   value={newGroupTreatment.treatedByDoctor || ""}
                   onValueChange={(value) =>
@@ -304,16 +304,16 @@ export function GroupTreatmentManager({
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={handleAddGroupTreatment} className="gap-2">
-                <Check className="h-4 w-4" />
+              <Button onClick={handleAddGroupTreatment} className="gap-1.5 h-7 px-3 text-xs">
+                <Check className="h-3 w-3" />
                 Add Group Treatment
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setShowAddForm(false)}
-                className="gap-2"
+                className="gap-1.5 h-7 px-3 text-xs"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3 w-3" />
                 Cancel
               </Button>
             </div>
@@ -324,43 +324,45 @@ export function GroupTreatmentManager({
       {/* Existing Group Treatments */}
       {groupTreatments.map((groupTreatment, groupIndex) => (
         <Card key={groupIndex} className="overflow-hidden">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CardTitle className="text-base">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-sm">
                   {groupTreatment.groupName} Treatment
                 </CardTitle>
                 {groupTreatment.isCompleted && (
-                  <Badge variant="default" className="bg-green-600">
+                  <Badge variant="default" className="bg-green-600 text-xs px-1.5 py-0.5">
                     Completed
                   </Badge>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() =>
                     setEditingIndex(editingIndex === groupIndex ? null : groupIndex)
                   }
+                  className="h-7 w-7 p-0"
                 >
-                  <Edit className="h-4 w-4" />
+                  <Edit className="h-3 w-3" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => onRemoveGroupTreatment(groupIndex)}
+                  className="h-7 w-7 p-0"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
             </div>
 
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               Procedure: {groupTreatment.procedure || "Not specified"}
             </div>
 
-            <div className="flex gap-4 text-sm">
+            <div className="flex gap-3 text-xs">
               <span className="flex items-center gap-1">
                 <DollarSign className="h-3 w-3" />
                 Total: ${groupTreatment.totalTreatmentAmount}
@@ -376,14 +378,14 @@ export function GroupTreatmentManager({
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             {/* Group Treatment Edit Form */}
             {editingIndex === groupIndex && (
-              <div className="p-4 bg-muted/50 rounded-lg space-y-4">
-                <h4 className="font-medium">Edit Group Treatment Details</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Procedure</Label>
+              <div className="p-3 bg-muted/50 rounded-lg space-y-3">
+                <h4 className="font-medium text-xs">Edit Group Treatment Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Procedure</Label>
                     <Input
                       value={groupTreatment.procedure}
                       onChange={(e) => {
@@ -392,8 +394,8 @@ export function GroupTreatmentManager({
                       }}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Total Treatment Amount</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Total Treatment Amount</Label>
                     <Input
                       type="number"
                       value={groupTreatment.totalTreatmentAmount}
@@ -408,8 +410,8 @@ export function GroupTreatmentManager({
                       }}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Total Paid Amount</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Total Paid Amount</Label>
                     <Input
                       type="number"
                       value={groupTreatment.totalPaidAmount}
@@ -424,8 +426,8 @@ export function GroupTreatmentManager({
                       }}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Treated By Doctor</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Treated By Doctor</Label>
                     <Select
                       value={groupTreatment.treatedByDoctor || ""}
                       onValueChange={(value) => {
@@ -450,30 +452,30 @@ export function GroupTreatmentManager({
             )}
 
             {/* Daily Treatments Section */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h4 className="font-medium">Daily Treatments</h4>
+                <h4 className="font-medium text-xs">Daily Treatments</h4>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => addDailyTreatment(groupIndex)}
-                  className="gap-2"
+                  className="gap-1.5 h-6 px-2 text-xs"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-3 w-3" />
                   Add Daily Treatment
                 </Button>
               </div>
 
               {groupTreatment.dailyTreatments.length === 0 ? (
-                <div className="text-center py-4 text-muted-foreground">
+                <div className="text-center py-3 text-muted-foreground text-xs">
                   No daily treatments recorded
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {groupTreatment.dailyTreatments.map((treatment, treatmentIndex) => (
-                    <Card key={treatmentIndex} className="p-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-3">
-                        <div className="space-y-1">
+                    <Card key={treatmentIndex} className="p-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-2">
+                        <div className="space-y-0.5">
                           <Label className="text-xs">Date</Label>
                           <Input
                             type="date"
@@ -489,7 +491,7 @@ export function GroupTreatmentManager({
                             className="text-sm"
                           />
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           <Label className="text-xs">Treatment Amount</Label>
                           <Input
                             type="number"
@@ -512,7 +514,7 @@ export function GroupTreatmentManager({
                             placeholder="0.00"
                           />
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           <Label className="text-xs">Paid Amount</Label>
                           <Input
                             type="number"
@@ -536,7 +538,7 @@ export function GroupTreatmentManager({
                             placeholder="0.00"
                           />
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           <Label className="text-xs">Payment Date</Label>
                           <Input
                             type="date"
@@ -561,16 +563,16 @@ export function GroupTreatmentManager({
                             max={format(new Date(), "yyyy-MM-dd")}
                           />
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           <Label className="text-xs">Remaining</Label>
                           <Input
                             type="number"
                             value={treatment.remainingAmount}
                             readOnly
-                            className="text-sm bg-muted"
+                            className="text-xs bg-muted"
                           />
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           <Label className="text-xs">Doctor</Label>
                           <Select
                             value={treatment.treatedByDoctor || ""}
@@ -583,7 +585,7 @@ export function GroupTreatmentManager({
                               )
                             }
                           >
-                            <SelectTrigger className="text-sm">
+                            <SelectTrigger className="text-xs">
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -595,21 +597,21 @@ export function GroupTreatmentManager({
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           <Label className="text-xs">Actions</Label>
                           <Button
                             variant="destructive"
                             size="sm"
                             onClick={() => removeDailyTreatment(groupIndex, treatmentIndex)}
-                            className="w-full"
+                            className="w-full h-6 px-2"
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </div>
                       
-                      <div className="mt-3 space-y-2">
-                        <div className="space-y-1">
+                      <div className="mt-2 space-y-1.5">
+                        <div className="space-y-0.5">
                           <Label className="text-xs">Procedure</Label>
                           <Input
                             value={treatment.procedure}
@@ -625,7 +627,7 @@ export function GroupTreatmentManager({
                             className="text-sm"
                           />
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           <Label className="text-xs">Daily Notes & Observations</Label>
                           <Textarea
                             value={treatment.notes}
@@ -642,7 +644,7 @@ export function GroupTreatmentManager({
                               }
                             }}
                             placeholder="Enter daily notes: pain level, wire change, aligner number, patient response, treatment progress, observations..."
-                            className="text-sm min-h-[80px] resize-none border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            className="text-xs min-h-[60px] resize-none border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                             maxLength={500}
                           />
                           <div className="text-xs text-gray-500">
@@ -660,16 +662,16 @@ export function GroupTreatmentManager({
       ))}
 
       {groupTreatments.length === 0 && !showAddForm && (
-        <div className="text-center py-8 border border-dashed rounded-lg">
-          <div className="text-muted-foreground">
+        <div className="text-center py-6 border border-dashed rounded-lg">
+          <div className="text-muted-foreground text-xs">
             No group treatments added yet
           </div>
           <Button
             variant="outline"
-            className="mt-4"
+            className="mt-3 h-7 px-3 text-xs"
             onClick={() => setShowAddForm(true)}
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-3 w-3 mr-1" />
             Add First Group Treatment
           </Button>
         </div>

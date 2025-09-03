@@ -66,32 +66,32 @@ export function EnhancedTreatmentPlanCard({
   const selectedTeethCount = Object.keys(selectedTeethMap).length;
 
   return (
-    <Card className="mb-4 overflow-hidden" id={`treatment-0-${treatmentIndex}`}>
-      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-2 space-y-2 sm:space-y-0 px-3 sm:px-6">
+    <Card className="mb-3 overflow-hidden" id={`treatment-0-${treatmentIndex}`}>
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-1.5 space-y-1.5 sm:space-y-0 px-2 sm:px-4">
         <div className="flex flex-col">
-          <div className="flex items-center gap-2 flex-wrap">
-            <CardTitle className="text-base sm:text-lg text-primary">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <CardTitle className="text-sm sm:text-base text-primary">
               X-Ray Plan {treatmentIndex + 1} Details
             </CardTitle>
             {plan.isCompleted && (
-              <Badge variant="default" className="bg-green-600">
+              <Badge variant="default" className="bg-green-600 text-xs px-1.5 py-0.5">
                 Completed
               </Badge>
             )}
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Date: {format(new Date(plan.treatmentDate), "dd MMM yyyy")}
           </p>
         </div>
 
-        <div className="flex gap-2 self-end sm:self-auto">
-          <Button variant="ghost" size="sm" onClick={onRemove}>
-            <Trash2 className="h-4 w-4" />
+        <div className="flex gap-1.5 self-end sm:self-auto">
+          <Button variant="ghost" size="sm" onClick={onRemove} className="h-7 w-7 p-0">
+            <Trash2 className="h-3 w-3" />
           </Button>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4 px-3 sm:px-6">
+      <CardContent className="space-y-3 px-2 sm:px-4">
         <Tabs
           defaultValue="details"
           value={activeTab}
@@ -99,13 +99,13 @@ export function EnhancedTreatmentPlanCard({
           className="w-full"
         >
           <TabsList className="grid w-full grid-cols-3 h-auto">
-            <TabsTrigger value="details" className="text-xs sm:text-sm py-2 px-1 sm:px-3">
+            <TabsTrigger value="details" className="text-xs py-1.5 px-1 sm:px-2">
               Details
             </TabsTrigger>
-            <TabsTrigger value="teeth" className="text-xs sm:text-sm py-2 px-1 sm:px-3">
+            <TabsTrigger value="teeth" className="text-xs py-1.5 px-1 sm:px-2">
               Teeth ({selectedTeethCount})
             </TabsTrigger>
-            <TabsTrigger value="documents" className="text-xs sm:text-sm py-2 px-1 sm:px-3">
+            <TabsTrigger value="documents" className="text-xs py-1.5 px-1 sm:px-2">
               Docs{" "}
               {plan.treatmentDocuments &&
                 plan.treatmentDocuments.length > 0 &&
@@ -113,10 +113,10 @@ export function EnhancedTreatmentPlanCard({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="details" className="space-y-4 pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs sm:text-sm">Treatment Date</Label>
+          <TabsContent value="details" className="space-y-3 pt-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Treatment Date</Label>
                 <Input
                   type="date"
                   value={plan.treatmentDate}
@@ -127,8 +127,8 @@ export function EnhancedTreatmentPlanCard({
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs sm:text-sm">Clinical Findings</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Clinical Findings</Label>
                 <Select
                   value={plan.clinicalFindings[0] || ""}
                   onValueChange={(value) =>
@@ -140,10 +140,10 @@ export function EnhancedTreatmentPlanCard({
                     )
                   }
                 >
-                  <SelectTrigger className="text-sm">
+                  <SelectTrigger className="text-xs">
                     <SelectValue placeholder="Select findings" />
                   </SelectTrigger>
-                  <SelectContent className="text-sm">
+                  <SelectContent className="text-xs">
                     {[
                       "Caries",
                       "Decayed",
@@ -167,8 +167,8 @@ export function EnhancedTreatmentPlanCard({
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs sm:text-sm">
+              <div className="space-y-1.5">
+                <Label className="text-xs">
                   Treatment Procedure
                 </Label>
                 <Textarea
@@ -176,23 +176,23 @@ export function EnhancedTreatmentPlanCard({
                   onChange={(e) =>
                     onTreatmentChange("treatmentFindings", e.target.value)
                   }
-                  className="min-h-[80px] sm:min-h-[100px] text-sm resize-y"
+                  className="min-h-[60px] sm:min-h-[80px] text-xs resize-y"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs sm:text-sm">Other Findings</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Other Findings</Label>
                 <Textarea
                   value={plan.otherFindings}
                   onChange={(e) =>
                     onTreatmentChange("otherFindings", e.target.value)
                   }
-                  className="min-h-[80px] sm:min-h-[100px] text-sm resize-y"
+                  className="min-h-[60px] sm:min-h-[80px] text-xs resize-y"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs sm:text-sm">Follow-up Date</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Follow-up Date</Label>
                 <Input
                   type="date"
                   value={plan.followUpDate}
@@ -205,9 +205,9 @@ export function EnhancedTreatmentPlanCard({
             </div>
           </TabsContent>
 
-          <TabsContent value="teeth" className="space-y-4 pt-4">
-            <div className="border rounded-lg p-2 sm:p-4  overflow-x-auto">
-              <div className="w-[300px] mx-auto ">
+          <TabsContent value="teeth" className="space-y-3 pt-3">
+            <div className="border rounded-lg p-1.5 sm:p-3 overflow-x-auto">
+              <div className="w-[280px] mx-auto">
                 {patientType === "Child" ? (
                   <ChildDentalChart
                     selectedTeeth={selectedTeethMap}
@@ -224,20 +224,20 @@ export function EnhancedTreatmentPlanCard({
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
-              <h3 className="text-sm sm:text-lg font-normal">Selected Teeth ({selectedTeethCount})</h3>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-1.5 sm:space-y-0">
+              <h3 className="text-xs sm:text-sm font-normal">Selected Teeth ({selectedTeethCount})</h3>
               <Button
                 variant={showTeethDetails ? "destructive" : "default"}
                 size="sm"
                 onClick={() => setShowTeethDetails(!showTeethDetails)}
-                className="text-xs sm:text-sm"
+                className="text-xs h-7 px-2"
               >
                 {showTeethDetails ? "Hide Details" : "Show Details"}
               </Button>
             </div>
 
             <Collapsible open={showTeethDetails}>
-              <CollapsibleContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <CollapsibleContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {Object.entries(selectedTeethMap).map(([number, toothData]) => {
                   // Update tooth data with required IDs
                   const updatedToothData = {
@@ -262,42 +262,42 @@ export function EnhancedTreatmentPlanCard({
             </Collapsible>
           </TabsContent>
 
-          <TabsContent value="documents" className="space-y-4 pt-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-              <h3 className="text-base sm:text-lg font-medium">Treatment Documents</h3>
-              <Button onClick={() => setShowDocumentUpload(true)} size="sm" className="whitespace-nowrap">
-                <Upload className="h-4 w-4 mr-2" /> Upload Files
+          <TabsContent value="documents" className="space-y-3 pt-3">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5">
+              <h3 className="text-sm font-medium">Treatment Documents</h3>
+              <Button onClick={() => setShowDocumentUpload(true)} size="sm" className="whitespace-nowrap h-7 px-2 text-xs">
+                <Upload className="h-3 w-3 mr-1" /> Upload Files
               </Button>
             </div>
 
             {(!plan.treatmentDocuments ||
               plan.treatmentDocuments.length === 0) && (
-              <div className="text-center py-6 sm:py-8 border border-dashed rounded-lg">
-                <FileText className="h-6 w-6 sm:h-8 sm:w-8 mx-auto text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground text-sm">No documents yet</p>
+              <div className="text-center py-4 sm:py-6 border border-dashed rounded-lg">
+                <FileText className="h-5 w-5 sm:h-6 sm:w-6 mx-auto text-muted-foreground" />
+                <p className="mt-1.5 text-muted-foreground text-xs">No documents yet</p>
                 <Button
                   variant="outline"
-                  className="mt-4 text-xs sm:text-sm"
+                  className="mt-3 text-xs h-7 px-2"
                   onClick={() => setShowDocumentUpload(true)}
                 >
-                  <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" /> Upload Files
+                  <Upload className="h-3 w-3 mr-1" /> Upload Files
                 </Button>
               </div>
             )}
 
             {plan.treatmentDocuments && plan.treatmentDocuments.length > 0 && (
-              <div className="grid gap-2">
+              <div className="grid gap-1.5">
                 {plan.treatmentDocuments.map((doc, idx) => (
                   <a
                     key={idx}
                     href={doc.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 p-3 border rounded hover:bg-accent/20"
+                    className="flex items-center gap-1.5 p-2 border rounded hover:bg-accent/20"
                   >
-                    <FileText className="h-5 w-5 text-blue-500" />
+                    <FileText className="h-4 w-4 text-blue-500" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
+                      <p className="text-xs font-medium truncate">
                         {doc.fileName}
                       </p>
                       {doc.description && (

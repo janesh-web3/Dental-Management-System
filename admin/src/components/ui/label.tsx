@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const labelVariants = cva(
-  'text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-60',
+  'text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-60',
   {
     variants: {
       variant: {
@@ -18,8 +18,8 @@ const labelVariants = cva(
       },
       size: {
         sm: 'text-xs',
-        md: 'text-sm',
-        lg: 'text-base',
+        md: 'text-xs',
+        lg: 'text-sm',
       },
     },
     defaultVariants: {

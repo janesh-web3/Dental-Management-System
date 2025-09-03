@@ -305,14 +305,14 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
               treatmentDateNp: convertToNepaliDate(formatSafeDate(plan.treatmentDate)),
               completionDate: formatSafeDate(plan.completionDate),
               completionDateNp: plan.completionDate ? convertToNepaliDate(formatSafeDate(plan.completionDate)) : "",
-              treatmentAmount: plan.totalPlanAmount?.toString() || "0",
-              advancedAmount: plan.totalPaidAmount?.toString() || "0",
-              balanceAmount: plan.totalRemainingAmount?.toString() || "0",
-              treatedByDoctor: plan.treatedByDoctor?._id || "",
+              treatmentAmount: ('totalPlanAmount' in plan ? plan.totalPlanAmount?.toString() : plan.treatmentAmount?.toString()) || "0",
+              advancedAmount: ('totalPaidAmount' in plan ? plan.totalPaidAmount?.toString() : plan.advancedAmount?.toString()) || "0",
+              balanceAmount: ('totalRemainingAmount' in plan ? plan.totalRemainingAmount?.toString() : plan.balanceAmount?.toString()) || "0",
+              treatedByDoctor: typeof plan.treatedByDoctor === "object" && plan.treatedByDoctor !== null ? plan.treatedByDoctor._id : plan.treatedByDoctor || "",
               followUps: plan.followUps || [], // Include follow-ups array
-              selectedTeethDetails: plan.selectedTeethDetails?.map(tooth => ({
+              selectedTeethDetails: ('selectedTeethDetails' in plan ? plan.selectedTeethDetails?.map((tooth: any) => ({
                 ...tooth,
-                dailyTreatments: tooth.dailyTreatments?.map(dt => ({
+                dailyTreatments: tooth.dailyTreatments?.map((dt: any) => ({
                   _id: dt._id || "",
                   date: dt.date ? format(new Date(dt.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
                   treatmentAmount: Number(dt.treatmentAmount) || 0,
@@ -324,8 +324,8 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                   notes: dt.notes || "",
                   isCompleted: dt.isCompleted || false,
                 })) || []
-              })) || [],
-              groupTreatmentDetails: plan.groupTreatmentDetails?.map(group => ({
+              })) : []) || [],
+              groupTreatmentDetails: ('groupTreatmentDetails' in plan ? plan.groupTreatmentDetails?.map((group: any) => ({
                 _id: (group as any)._id || "",
                 groupName: (group.groupName as "Ortho" | "Endo" | "Perio" | "Prostho" | "Surgery" | "General" | "Other") || "General",
                 procedure: group.procedure || "",
@@ -337,7 +337,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                 completionDateNp: group.completionDate ? convertToNepaliDate(format(new Date(group.completionDate), "yyyy-MM-dd")) : "",
                 treatedByDoctor: (group.treatedByDoctor as any)?._id || group.treatedByDoctor || null,
                 isCompleted: group.isCompleted || false,
-                dailyTreatments: group.dailyTreatments?.map(dt => ({
+                dailyTreatments: group.dailyTreatments?.map((dt: any) => ({
                   _id: (dt as any)._id || "",
                   date: dt.date ? format(new Date(dt.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
                   treatmentAmount: Number(dt.treatmentAmount) || 0,
@@ -349,7 +349,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                   notes: dt.notes || "",
                   isCompleted: dt.isCompleted || false,
                 })) || []
-              })) || []
+              })) : []) || []
             })) || [],
         },
       });

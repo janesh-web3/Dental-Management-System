@@ -38,6 +38,10 @@
       "Read(/E:\\DMS\\backend\\model/**)",
       "Read(/E:\\DMS\\backend/**)",
       "Read(/E:\\DMS\\backend/**)",
+      "Read(/E:\\DMS\\backend/**)",
+      "Read(/E:\\DMS\\backend\\routes/**)",
+      "Read(/E:\\DMS\\backend\\controller/**)",
+      "Read(/E:\\DMS\\backend/**)",
       "Read(/E:\\DMS\\backend/**)"
     ],
     "deny": []

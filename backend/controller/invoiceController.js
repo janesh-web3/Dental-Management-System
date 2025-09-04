@@ -85,6 +85,7 @@ exports.getInvoices = async (req, res) => {
       doctorId,
       status,
       treatmentType,
+      search,
       page = 1,
       limit = 10,
       sortBy = "invoiceDate",
@@ -92,6 +93,16 @@ exports.getInvoices = async (req, res) => {
     } = req.query;
 
     const query = { isDeleted: { $ne: true } };
+
+    // Add search functionality
+    if (search) {
+      query.$or = [
+        { invoiceNumber: { $regex: search, $options: 'i' } },
+        { patientName: { $regex: search, $options: 'i' } },
+        { doctorName: { $regex: search, $options: 'i' } },
+        { notes: { $regex: search, $options: 'i' } }
+      ];
+    }
 
     if (startDate || endDate) {
       query.invoiceDate = {};

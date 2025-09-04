@@ -414,7 +414,8 @@ const addPatient = async (req, res) => {
                   doctorId,
                   treatmentsWithPayments,
                   paymentDetails,
-                  req.admin?.id
+                  req.admin?.id,
+                  null  // Add null for sourceId to maintain backward compatibility
                 );
 
               } else {
@@ -1119,19 +1120,11 @@ const updatePatient = async (req, res) => {
       // Get the updated patient with populated doctor information
       const populatedPatient = await Patient.findById(patient._id)
         .populate({
-          path: "medicalDetails.treatmentPlanning.treatedByDoctor",
-          model: "Doctor",
-        })
-        .populate({
           path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
           model: "Doctor",
         })
         .populate({
-          path: "medicalDetails.treatmentPlanning.groupTreatmentDetails.treatedByDoctor",
-          model: "Doctor",
-        })
-        .populate({
-          path: "medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatedByDoctor",
+          path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
           model: "Doctor",
         });
 
@@ -1191,7 +1184,7 @@ const getSinglePatient = async (req, res) => {
     try {
       await patient.populate([
         {
-          path: "medicalDetails.treatmentPlanning.treatedByDoctor",
+          path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
           model: "Doctor",
           options: { strictPopulate: false }
         },
@@ -1460,6 +1453,7 @@ const getFilteredPatients = async (req, res) => {
       query = { $and: andConditions };
     }
 
+    // Get patients sorted by createdAt in descending order
     const patients = await Patient.find(query)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
@@ -1468,6 +1462,8 @@ const getFilteredPatients = async (req, res) => {
         path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
         model: "Doctor",
       });
+
+    console.log(`Found ${patients.length} patients. Checking createdAt dates:`);
 
     const totalPatients = await Patient.countDocuments(query);
     const totalPages = Math.ceil(totalPatients / limit);
@@ -1754,7 +1750,7 @@ const updateTreatmentStatus = async (req, res) => {
       // Get the updated patient with populated doctor information
       const populatedPatient = await Patient.findById(patient._id)
         .populate({
-          path: "medicalDetails.treatmentPlanning.treatedByDoctor",
+          path: "medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor",
           model: "Doctor",
         })
         .populate({
@@ -4485,10 +4481,37 @@ const updateTreatmentPlan = async (req, res) => {
 
           const invoice = await createTreatmentPaymentInvoice(
             patientId,
+            addedTreatmentPlan.treatedByDoctor,
+            treatmentsWithPayments,
+            paymentDetails,
+            req.admin?.id,
+            null  // Add null for sourceId to maintain backward compatibility
+          );
+
+          console.log(`Invoice ${invoice.invoiceNumber} generated for added treatment plan ${addedTreatmentPlan._id}`);
+        }
+      }
+    } catch (invoiceError) {
+      console.error("Error generating invoice for treatment plan addition:", invoiceError);
+      // Don't fail the entire operation if invoice generation fails
+    }
+
+    try {
+      if (updatedTreatmentPlan) {
+        const treatmentsWithPayments = updatedTreatmentPlan.treatments.filter(
+          (treatment) => treatment.paymentDetails
+        );
+
+        if (treatmentsWithPayments.length > 0) {
+          const paymentDetails = treatmentsWithPayments.map((treatment) => treatment.paymentDetails);
+
+          const invoice = await createTreatmentPaymentInvoice(
+            patientId,
             updatedTreatmentPlan.treatedByDoctor,
             treatmentsWithPayments,
             paymentDetails,
-            req.admin?.id
+            req.admin?.id,
+            null  // Add null for sourceId to maintain backward compatibility
           );
 
           console.log(`Invoice ${invoice.invoiceNumber} generated for updated treatment plan ${updatedTreatmentPlan._id}`);

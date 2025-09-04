@@ -33,22 +33,34 @@ const generateInvoiceNumber = async () => {
 
 
 /**
- * Create invoice for treatment payment
+ * Create or update invoice for treatment payment
  */
-const createTreatmentPaymentInvoice = async (patientId, doctorId, treatmentDetails, paymentDetails, createdBy) => {
+const createTreatmentPaymentInvoice = async (patientId, doctorId, treatmentDetails, paymentDetails, createdBy, sourceId = null) => {
   try {
-    console.log(`Creating treatment payment invoice for patient: ${patientId}, doctor: ${doctorId}`);
+    console.log(`Creating/updating treatment payment invoice for patient: ${patientId}, doctor: ${doctorId}`);
+    
+    // Validate required parameters
+    if (!patientId) {
+      throw new Error("Patient ID is required");
+    }
     
     const patient = await Patient.findById(patientId);
-    const doctor = await Doctor.findById(doctorId);
-    
     if (!patient) {
       console.error(`Patient not found with ID: ${patientId}`);
       throw new Error(`Patient not found with ID: ${patientId}`);
     }
 
     console.log(`Patient found: ${patient.personalDetails?.name || 'Unknown'}`);
-    console.log(`Doctor found: ${doctor?.name || 'Unknown'}`);
+    
+    // Doctor can be null/undefined for some treatments
+    let doctor = null;
+    if (doctorId) {
+      doctor = await Doctor.findById(doctorId);
+      console.log(`Doctor found: ${doctor?.name || 'Unknown'}`);
+    } else {
+      console.log("No doctor ID provided, creating invoice without doctor");
+    }
+    
     console.log(`Treatment details count: ${Array.isArray(treatmentDetails) ? treatmentDetails.length : 1}`);
     console.log(`Payment details:`, paymentDetails);
 
@@ -86,39 +98,92 @@ const createTreatmentPaymentInvoice = async (patientId, doctorId, treatmentDetai
         notes: treatmentDetails.notes || ""
       });
       subtotal = itemTotal - (treatmentDetails.discount || 0);
+    } else {
+      throw new Error("Treatment details are required");
     }
 
     const totalDiscount = paymentDetails.discount || 0;
     const finalTotal = subtotal - totalDiscount;
     const amountPaid = paymentDetails.paidAmount || paymentDetails.amount || 0;
 
-    const invoiceData = {
-      patient: patientId,
-      patientName: patient.personalDetails?.name || "Unknown Patient",
-      doctor: doctorId,
-      doctorName: doctor?.name || "Unknown Doctor",
-      invoiceNumber: await generateInvoiceNumber(),
-      invoiceDate: new Date(),
-      dueDate: paymentDetails.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-      items: items,
-      subtotal: subtotal,
-      tax: 0,
-      taxRate: 0,
-      discount: totalDiscount,
-      total: finalTotal,
-      amountPaid: amountPaid,
-      balance: finalTotal - amountPaid,
-      status: amountPaid >= finalTotal ? "Paid" : (amountPaid > 0 ? "Partially Paid" : "Sent"),
-      paymentMethod: paymentDetails.paymentMethod || "Cash",
-      notes: paymentDetails.notes || "Automatically generated invoice for treatment payment",
-      sourceType: "Patient",
-      sourceId: patientId
-    };
+    // Try to find an existing invoice for the same treatment/source
+    let existingInvoice = null;
+    if (sourceId) {
+      // For payment updates, try to find an existing invoice for the same source
+      existingInvoice = await Invoice.findOne({
+        sourceType: "Patient",
+        sourceId: sourceId,
+        status: { $in: ["Sent", "Partially Paid"] }
+      }).sort({ createdAt: -1 });
+    }
 
-    const invoice = await Invoice.create(invoiceData);
-    return invoice;
+    if (existingInvoice) {
+      // Update existing invoice with new payment amount
+      console.log(`Found existing invoice ${existingInvoice.invoiceNumber}, updating payment`);
+      
+      const updatedAmountPaid = existingInvoice.amountPaid + amountPaid;
+      const updatedBalance = finalTotal - updatedAmountPaid;
+      const updatedStatus = updatedAmountPaid >= finalTotal ? "Paid" : (updatedAmountPaid > 0 ? "Partially Paid" : "Sent");
+      
+      // Handle notes field properly - it's defined as String in the schema, not Array
+      let updateData = {
+        amountPaid: updatedAmountPaid,
+        balance: updatedBalance,
+        status: updatedStatus
+      };
+      
+      // Append the new note to existing notes string
+      const newNote = `\nPayment update on ${new Date().toISOString()}: Added ${amountPaid} via ${paymentDetails.paymentMethod || "Cash"}`;
+      if (existingInvoice.notes) {
+        updateData["notes"] = existingInvoice.notes + newNote;
+      } else {
+        updateData["notes"] = `Automatically generated invoice for treatment payment` + newNote;
+      }
+      
+      const updatedInvoice = await Invoice.findByIdAndUpdate(
+        existingInvoice._id,
+        updateData,
+        { new: true }
+      );
+      
+      console.log("Invoice updated successfully with ID:", updatedInvoice._id);
+      return updatedInvoice;
+    } else {
+      // Create new invoice
+      const invoiceData = {
+        patient: patientId,
+        patientName: patient.personalDetails?.name || "Unknown Patient",
+        doctor: doctorId,
+        doctorName: doctor?.name || "Unknown Doctor",
+        invoiceNumber: await generateInvoiceNumber(),
+        invoiceDate: paymentDetails.paymentDate || new Date(), // Use paymentDate from paymentDetails
+        dueDate: paymentDetails.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        items: items,
+        subtotal: subtotal,
+        tax: 0,
+        taxRate: 0,
+        discount: totalDiscount,
+        total: finalTotal,
+        amountPaid: amountPaid,
+        balance: finalTotal - amountPaid,
+        status: amountPaid >= finalTotal ? "Paid" : (amountPaid > 0 ? "Partially Paid" : "Sent"),
+        paymentMethod: paymentDetails.paymentMethod || "Cash",
+        notes: paymentDetails.notes || "Automatically generated invoice for treatment payment",
+        sourceType: "Patient",
+        sourceId: sourceId || patientId
+      };
+
+      console.log("Creating invoice with data:", invoiceData);
+      const invoice = await Invoice.create(invoiceData);
+      console.log("Invoice created successfully with ID:", invoice._id);
+      return invoice;
+    }
   } catch (error) {
-    console.error("Error creating treatment payment invoice:", error);
+    console.error("Error creating/updating treatment payment invoice:", error);
+    // Log more detailed error information
+    if (error.stack) {
+      console.error("Error stack:", error.stack);
+    }
     throw error;
   }
 };

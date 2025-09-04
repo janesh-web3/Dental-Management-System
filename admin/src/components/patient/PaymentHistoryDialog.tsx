@@ -116,16 +116,18 @@ export function PaymentHistoryDialog({
   });
 
   const handlePaymentChange = (key: string, value: string, remainingAmount: number) => {
-    const numValue = parseFloat(value);
-    if (!isNaN(numValue) && numValue >= 0) {
+    // Allow string input for better user experience and precision
+    if (value === "" || /^(\d+\.?\d*|\.\d+)$/.test(value)) {
       // Ensure the input doesn't exceed the remaining amount
+      const numValue = value === "" ? 0 : parseFloat(value);
       const limitedValue = Math.min(numValue, remainingAmount);
       
       if (numValue > remainingAmount) {
         toast.warning("Payment cannot exceed the remaining balance");
       }
       
-      setNewPayments((prev) => ({ ...prev, [key]: limitedValue }));
+      // Store as number with 2 decimal places for precision
+      setNewPayments((prev) => ({ ...prev, [key]: parseFloat(limitedValue.toFixed(2)) }));
     }
   };
 
@@ -174,12 +176,22 @@ export function PaymentHistoryDialog({
       const paymentMethod = paymentMethods[key] || "Cash";
       
       // Call backend API to update payment
-       await crudRequest(
+      const response = await crudRequest<{
+        success: boolean;
+        data?: {
+          invoice?: {
+            invoiceNumber: string;
+          };
+          invoiceError?: string;
+        };
+        message?: string;
+      }>(
         "PATCH",
         `/patient/update-payment/${patientId}/${medicalDetailId}/${treatmentId}/${toothNumber}/${dailyTreatmentId}`,
         { 
-          paidAmount: currentPaid + newAmount,
-          paymentMethod: paymentMethod
+          paidAmount: currentPaid + newAmount, // Send the total paid amount
+          paymentMethod: paymentMethod,
+          paymentDate: new Date().toISOString()
         }
       );
       
@@ -193,7 +205,14 @@ export function PaymentHistoryDialog({
         return rest;
       });
       
-      toast.success("Payment updated successfully");
+      // Show success message with invoice information if available
+      if (response.data?.invoice) {
+        toast.success(`Payment updated successfully. Invoice ${response.data.invoice.invoiceNumber} generated.`);
+      } else if (response.data?.invoiceError) {
+        toast.warn(`Payment updated successfully, but invoice generation failed: ${response.data.invoiceError}`);
+      } else {
+        toast.success("Payment updated successfully");
+      }
     } catch (error) {
       console.error("Payment update error:", error);
       toast.error("Failed to update payment: " + (error as Error).message);
@@ -245,12 +264,22 @@ export function PaymentHistoryDialog({
       const paymentMethod = paymentMethods[key] || "Cash";
       
       // Call backend API to update group treatment payment
-      await crudRequest(
+      const response = await crudRequest<{
+        success: boolean;
+        data?: {
+          invoice?: {
+            invoiceNumber: string;
+          };
+          invoiceError?: string;
+        };
+        message?: string;
+      }>(
         "PATCH",
         `/patient/update-group-payment/${patientId}/${medicalDetailId}/${treatmentId}/${groupIndex}/${dailyTreatmentId}`,
         { 
-          paidAmount: currentPaid + newAmount,
-          paymentMethod: paymentMethod
+          paidAmount: currentPaid + newAmount, // Send the total paid amount
+          paymentMethod: paymentMethod,
+          paymentDate: new Date().toISOString()
         }
       );
       
@@ -266,7 +295,14 @@ export function PaymentHistoryDialog({
         return rest;
       });
       
-      toast.success("Group treatment payment updated successfully");
+      // Show success message with invoice information if available
+      if (response.data?.invoice) {
+        toast.success(`Group payment updated successfully. Invoice ${response.data.invoice.invoiceNumber} generated.`);
+      } else if (response.data?.invoiceError) {
+        toast.warn(`Group payment updated successfully, but invoice generation failed: ${response.data.invoiceError}`);
+      } else {
+        toast.success("Group treatment payment updated successfully");
+      }
     } catch (error) {
       console.error("Group payment update error:", error);
       toast.error("Failed to update group payment: " + (error as Error).message);
@@ -329,19 +365,19 @@ export function PaymentHistoryDialog({
                           <div>
                             <p className="text-muted-foreground">Total</p>
                             <p className="font-medium">
-                              ₹{item.treatment.treatmentAmount}
+                              ₹{Number(item.treatment.treatmentAmount).toFixed(2)}
                             </p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">Paid</p>
                             <p className="font-medium text-green-600">
-                              ₹{item.treatment.paidAmount}
+                              ₹{Number(item.treatment.paidAmount).toFixed(2)}
                             </p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">Due</p>
                             <p className="font-medium text-red-600">
-                              ₹{item.treatment.remainingAmount}
+                              ₹{Number(item.treatment.remainingAmount).toFixed(2)}
                             </p>
                           </div>
                         </div>
@@ -349,11 +385,13 @@ export function PaymentHistoryDialog({
                         <div className="space-y-2">
                           <div className="grid grid-cols-2 gap-2">
                             <Input
-                              type="number"
+                              type="text" // Change to text for better user experience
+                              inputMode="decimal" // Show decimal keyboard on mobile
                               placeholder="Add payment"
                               value={newPayments[key] || ""}
                               onChange={(e) => handlePaymentChange(key, e.target.value, item.treatment.remainingAmount)}
                               max={item.treatment.remainingAmount}
+                              step="0.01" // Allow decimal inputs
                             />
                             <Select
                               value={paymentMethods[key] || "Cash"}

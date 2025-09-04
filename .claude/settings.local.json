@@ -19,7 +19,13 @@
       "Bash(taskkill:*)",
       "Bash(timeout 5 npm run dev)",
       "Bash(npx kill-port:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Read(/E:\\DMS\\backend\\controller/**)",
+      "Read(/E:\\DMS\\backend\\routes/**)",
+      "Read(/E:\\DMS\\backend\\routes/**)",
+      "Read(/E:\\DMS\\backend\\routes/**)",
+      "Read(/E:\\DMS\\backend\\routes/**)",
+      "Read(/E:\\DMS\\backend\\routes/**)"
     ],
     "deny": []
   }

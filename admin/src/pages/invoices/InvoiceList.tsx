@@ -167,6 +167,8 @@ const InvoiceList: React.FC = () => {
         return 'text-green-600 font-medium';
       case 'Expense':
         return 'text-red-600 font-medium';
+      case 'Patient':
+        return 'text-blue-600 font-medium';
       default:
         return 'font-medium';
     }
@@ -321,6 +323,7 @@ const InvoiceList: React.FC = () => {
         .status-unpaid { background-color: #f8d7da; color: #721c24; }
         .income-amount { color: #28a745; font-weight: bold; }
         .expense-amount { color: #dc3545; font-weight: bold; }
+        .patient-amount { color: #007bff; font-weight: bold; }
         .footer { 
             margin-top: 30px; 
             text-align: center; 
@@ -387,7 +390,7 @@ const InvoiceList: React.FC = () => {
                 </tr>
             </thead>
             <tbody>
-                ${invoice.items.map(item => `
+                ${invoice.items.map((item: { description: any; notes: any; teethNumbers: any[]; unitPrice: number; quantity: any; total: number; }) => `
                 <tr>
                     <td>
                         <strong>${item.description}</strong>
@@ -396,7 +399,7 @@ const InvoiceList: React.FC = () => {
                     </td>
                     <td class="text-right">${formatCurrency(item.unitPrice)}</td>
                     <td class="text-right">${item.quantity}</td>
-                    <td class="text-right ${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : ''}">${formatCurrency(item.total)}</td>
+                    <td class="text-right ${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : invoice.sourceType === 'Patient' ? 'patient-amount' : ''}">${formatCurrency(item.total)}</td>
                 </tr>
                 `).join('')}
             </tbody>
@@ -406,7 +409,7 @@ const InvoiceList: React.FC = () => {
         <div class="totals">
             <div class="total-row">
                 <span>Subtotal:</span>
-                <span class="${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : ''}">${formatCurrency(invoice.subtotal)}</span>
+                <span class="${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : invoice.sourceType === 'Patient' ? 'patient-amount' : ''}">${formatCurrency(invoice.subtotal)}</span>
             </div>
             ${invoice.tax > 0 ? `
             <div class="total-row">
@@ -420,11 +423,11 @@ const InvoiceList: React.FC = () => {
             </div>` : ''}
             <div class="total-row final">
                 <span>Total:</span>
-                <span class="${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : ''}">${formatCurrency(invoice.total)}</span>
+                <span class="${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : invoice.sourceType === 'Patient' ? 'patient-amount' : ''}">${formatCurrency(invoice.total)}</span>
             </div>
             <div class="total-row">
                 <span>Amount Paid:</span>
-                <span class="${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : ''}">${formatCurrency(invoice.amountPaid)}</span>
+                <span class="${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : invoice.sourceType === 'Patient' ? 'patient-amount' : ''}">${formatCurrency(invoice.amountPaid)}</span>
             </div>
         </div>
 

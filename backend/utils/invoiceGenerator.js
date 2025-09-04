@@ -110,7 +110,9 @@ const createTreatmentPaymentInvoice = async (patientId, doctorId, treatmentDetai
       balance: finalTotal - amountPaid,
       status: amountPaid >= finalTotal ? "Paid" : (amountPaid > 0 ? "Partially Paid" : "Sent"),
       paymentMethod: paymentDetails.paymentMethod || "Cash",
-      notes: paymentDetails.notes || "Automatically generated invoice for treatment payment"
+      notes: paymentDetails.notes || "Automatically generated invoice for treatment payment",
+      sourceType: "Patient",
+      sourceId: patientId
     };
 
     const invoice = await Invoice.create(invoiceData);

@@ -126,7 +126,7 @@ const invoiceSchema = new mongoose.Schema(
     // Source tracking for cascade delete functionality
     sourceType: {
       type: String,
-      enum: ["Income", "Expense", "ServicePayment", "Treatment", "Registration", "Manual"],
+      enum: ["Income", "Expense", "ServicePayment", "Treatment", "Registration", "Manual", "Patient"],
       required: false // Optional for backward compatibility
     },
     sourceId: {

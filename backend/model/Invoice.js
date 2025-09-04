@@ -126,11 +126,11 @@ const invoiceSchema = new mongoose.Schema(
     // Source tracking for cascade delete functionality
     sourceType: {
       type: String,
-      enum: ["Income", "Expense", "ServicePayment", "Treatment", "Registration", "Manual", "Patient"],
+      enum: ["Income", "Expense", "ServicePayment", "Treatment", "Registration", "Manual", "Patient", "Payment"],
       required: false // Optional for backward compatibility
     },
     sourceId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed, // Mixed type to support both ObjectId and string
       required: false // Optional for backward compatibility
     },
     // Soft delete functionality

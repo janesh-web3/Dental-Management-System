@@ -25,7 +25,20 @@
       "Read(/E:\\DMS\\backend\\routes/**)",
       "Read(/E:\\DMS\\backend\\routes/**)",
       "Read(/E:\\DMS\\backend\\routes/**)",
-      "Read(/E:\\DMS\\backend\\routes/**)"
+      "Read(/E:\\DMS\\backend\\routes/**)",
+      "Read(/E:\\DMS\\backend\\routes/**)",
+      "Read(/E:\\DMS\\backend\\routes/**)",
+      "Read(/E:\\DMS\\backend\\routes/**)",
+      "Read(/E:\\DMS/**)",
+      "Read(/E:\\DMS\\backend/**)",
+      "Read(/E:\\DMS\\backend/**)",
+      "Read(/E:\\DMS\\backend/**)",
+      "Read(/E:\\DMS\\backend/**)",
+      "Read(/E:\\DMS\\backend/**)",
+      "Read(/E:\\DMS\\backend\\model/**)",
+      "Read(/E:\\DMS\\backend/**)",
+      "Read(/E:\\DMS\\backend/**)",
+      "Read(/E:\\DMS\\backend/**)"
     ],
     "deny": []
   }

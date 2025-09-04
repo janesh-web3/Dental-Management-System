@@ -531,14 +531,15 @@ router.patch(
           notes: `Payment update for tooth ${toothNumber} treatment`
         };
         
-        // Use the dailyTreatmentId as sourceId to identify the same treatment
+        // Generate unique sourceId for each payment transaction
+        const uniqueSourceId = `payment-tooth-${dailyTreatmentId}-${Date.now()}`;
         const invoice = await createTreatmentPaymentInvoice(
           patientId, 
           dailyTreatment.treatedByDoctor?._id || dailyTreatment.treatedByDoctor, 
           treatmentDetails, 
           paymentDetails,
           req.user?._id || updatedPatient._id,
-          dailyTreatmentId  // Pass the dailyTreatmentId as sourceId
+          uniqueSourceId  // Use unique payment sourceId
         );
         
         // Add invoice information to the response
@@ -857,14 +858,15 @@ router.patch(
           notes: `Payment update for ${groupTreatment.groupName} group treatment`
         };
         
-        // Use the dailyTreatmentId as sourceId to identify the same treatment
+        // Generate unique sourceId for each group payment transaction
+        const uniqueSourceId = `payment-group-${dailyTreatmentId}-${Date.now()}`;
         const invoice = await createTreatmentPaymentInvoice(
           patientId, 
           dailyTreatment.treatedByDoctor?._id || dailyTreatment.treatedByDoctor, 
           treatmentDetails, 
           paymentDetails,
           req.user?._id || updatedPatient._id,
-          dailyTreatmentId  // Pass the dailyTreatmentId as sourceId
+          uniqueSourceId  // Use unique payment sourceId
         );
         
         // Add invoice information to the response

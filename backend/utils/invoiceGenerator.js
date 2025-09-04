@@ -106,78 +106,45 @@ const createTreatmentPaymentInvoice = async (patientId, doctorId, treatmentDetai
     const finalTotal = subtotal - totalDiscount;
     const amountPaid = paymentDetails.paidAmount || paymentDetails.amount || 0;
 
-    // Try to find an existing invoice for the same treatment/source
-    let existingInvoice = null;
-    if (sourceId) {
-      // For payment updates, try to find an existing invoice for the same source
-      existingInvoice = await Invoice.findOne({
-        sourceType: "Patient",
-        sourceId: sourceId,
-        status: { $in: ["Sent", "Partially Paid"] }
-      }).sort({ createdAt: -1 });
-    }
+    // Always create new invoices for payment updates to maintain payment history
+    // This allows for better tracking of individual payments and daily collections
+    console.log("Creating new invoice for payment transaction");
+    
+    // For individual payments, create invoices that show the actual payment amount
+    // rather than the full treatment amount
+    const invoiceData = {
+      patient: patientId,
+      patientName: patient.personalDetails?.name || "Unknown Patient",
+      doctor: doctorId,
+      doctorName: doctor?.name || "Unknown Doctor",
+      invoiceNumber: await generateInvoiceNumber(),
+      invoiceDate: paymentDetails.paymentDate || new Date(),
+      dueDate: paymentDetails.dueDate || new Date(), // Payment invoices are immediate
+      items: items.map(item => ({
+        ...item,
+        // For payment invoices, show the actual payment amount, not the full treatment amount
+        unitPrice: amountPaid,
+        total: amountPaid,
+        description: `Payment for: ${item.description}`
+      })),
+      subtotal: amountPaid,
+      tax: 0,
+      taxRate: 0,
+      discount: 0, // Individual payments don't have discounts
+      total: amountPaid,
+      amountPaid: amountPaid,
+      balance: 0, // Payment invoices are fully paid
+      status: "Paid", // Payment invoices are always paid
+      paymentMethod: paymentDetails.paymentMethod || "Cash",
+      notes: paymentDetails.notes || `Payment received for treatment on ${new Date().toLocaleDateString()}`,
+      sourceType: "Payment", // Change sourceType to distinguish payment invoices
+      sourceId: sourceId || `payment-${Date.now()}` // Unique sourceId for each payment
+    };
 
-    if (existingInvoice) {
-      // Update existing invoice with new payment amount
-      console.log(`Found existing invoice ${existingInvoice.invoiceNumber}, updating payment`);
-      
-      const updatedAmountPaid = existingInvoice.amountPaid + amountPaid;
-      const updatedBalance = finalTotal - updatedAmountPaid;
-      const updatedStatus = updatedAmountPaid >= finalTotal ? "Paid" : (updatedAmountPaid > 0 ? "Partially Paid" : "Sent");
-      
-      // Handle notes field properly - it's defined as String in the schema, not Array
-      let updateData = {
-        amountPaid: updatedAmountPaid,
-        balance: updatedBalance,
-        status: updatedStatus
-      };
-      
-      // Append the new note to existing notes string
-      const newNote = `\nPayment update on ${new Date().toISOString()}: Added ${amountPaid} via ${paymentDetails.paymentMethod || "Cash"}`;
-      if (existingInvoice.notes) {
-        updateData["notes"] = existingInvoice.notes + newNote;
-      } else {
-        updateData["notes"] = `Automatically generated invoice for treatment payment` + newNote;
-      }
-      
-      const updatedInvoice = await Invoice.findByIdAndUpdate(
-        existingInvoice._id,
-        updateData,
-        { new: true }
-      );
-      
-      console.log("Invoice updated successfully with ID:", updatedInvoice._id);
-      return updatedInvoice;
-    } else {
-      // Create new invoice
-      const invoiceData = {
-        patient: patientId,
-        patientName: patient.personalDetails?.name || "Unknown Patient",
-        doctor: doctorId,
-        doctorName: doctor?.name || "Unknown Doctor",
-        invoiceNumber: await generateInvoiceNumber(),
-        invoiceDate: paymentDetails.paymentDate || new Date(), // Use paymentDate from paymentDetails
-        dueDate: paymentDetails.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-        items: items,
-        subtotal: subtotal,
-        tax: 0,
-        taxRate: 0,
-        discount: totalDiscount,
-        total: finalTotal,
-        amountPaid: amountPaid,
-        balance: finalTotal - amountPaid,
-        status: amountPaid >= finalTotal ? "Paid" : (amountPaid > 0 ? "Partially Paid" : "Sent"),
-        paymentMethod: paymentDetails.paymentMethod || "Cash",
-        notes: paymentDetails.notes || "Automatically generated invoice for treatment payment",
-        sourceType: "Patient",
-        sourceId: sourceId || patientId
-      };
-
-      console.log("Creating invoice with data:", invoiceData);
-      const invoice = await Invoice.create(invoiceData);
-      console.log("Invoice created successfully with ID:", invoice._id);
-      return invoice;
-    }
+    console.log("Creating invoice with data:", invoiceData);
+    const invoice = await Invoice.create(invoiceData);
+    console.log("Invoice created successfully with ID:", invoice._id);
+    return invoice;
   } catch (error) {
     console.error("Error creating/updating treatment payment invoice:", error);
     // Log more detailed error information

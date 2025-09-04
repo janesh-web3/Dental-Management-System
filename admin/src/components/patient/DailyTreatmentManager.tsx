@@ -67,7 +67,10 @@ export function DailyTreatmentManager({
     procedure: "RVG X-Ray",
     notes: "",
     isCompleted: false,
+    paymentMethod: "Cash",
   });
+
+  const paymentMethodOptions = ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Credit Card", "Debit Card", "Insurance", "Other"];
 
   const [updatingTreatmentId, setUpdatingTreatmentId] = useState<string | null>(
     null
@@ -123,6 +126,7 @@ export function DailyTreatmentManager({
       procedure: "RVG X-Ray", // Default to RVG X-Ray
       notes: "",
       isCompleted: false,
+      paymentMethod: "Cash",
     });
 
     // Add this to provide user feedback
@@ -349,6 +353,26 @@ export function DailyTreatmentManager({
                     {doctors.map((doctor) => (
                       <SelectItem key={doctor._id} value={doctor._id}>
                         {doctor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Payment Method</Label>
+                <Select
+                  value={newTreatment.paymentMethod || "Cash"}
+                  onValueChange={(value) =>
+                    handleChange("paymentMethod", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select payment method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paymentMethodOptions.map((method) => (
+                      <SelectItem key={method} value={method}>
+                        {method}
                       </SelectItem>
                     ))}
                   </SelectContent>

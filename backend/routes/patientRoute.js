@@ -34,6 +34,7 @@ const cloudinary = require("../config/cloudinary");
 const Patient = require("../model/Patient");
 const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
+const { createTreatmentPaymentInvoice } = require("../utils/invoiceGenerator");
 
 // Patient management routes with RBAC
 router.post("/add-patient", authenticateUser, authorizePermission('patients', 'create'), addPatient);
@@ -274,7 +275,7 @@ router.patch(
   async (req, res) => {
     try {
       const { patientId, medicalDetailId, treatmentId, toothNumber, dailyTreatmentId } = req.params;
-      const { paidAmount, paymentDate } = req.body;
+      const { paidAmount, paymentDate, paymentMethod } = req.body;
 
       if (paidAmount === undefined || isNaN(paidAmount) || paidAmount < 0) {
         return res.status(400).json({
@@ -335,6 +336,11 @@ router.patch(
         "medicalDetails.$[med].treatmentPlanning.$[treat].selectedTeethDetails.$[tooth].dailyTreatments.$[daily].paidAmount": paidAmount,
         "medicalDetails.$[med].treatmentPlanning.$[treat].selectedTeethDetails.$[tooth].dailyTreatments.$[daily].remainingAmount": remainingAmount,
       };
+      
+      // Add payment method if provided
+      if (paymentMethod) {
+        updateFields["medicalDetails.$[med].treatmentPlanning.$[treat].selectedTeethDetails.$[tooth].dailyTreatments.$[daily].paymentMethod"] = paymentMethod;
+      }
 
       // Add payment date if provided, otherwise use current date if payment amount is greater than 0
       if (paymentDate) {
@@ -418,6 +424,42 @@ router.patch(
         );
       }
 
+      // Generate invoice for the payment update
+      try {
+        const fullPatientData = await Patient.findById(patientId).populate("medicalDetails.treatmentPlanning.treatedByDoctor", "name");
+        const medicalDetail = fullPatientData.medicalDetails.find(md => md._id.toString() === medicalDetailId);
+        const treatment = medicalDetail.treatmentPlanning.find(t => t._id.toString() === treatmentId);
+        const tooth = treatment.selectedTeethDetails.find(t => t.number === toothNumber);
+        const dailyTreatment = tooth.dailyTreatments.find(d => d._id.toString() === dailyTreatmentId);
+        
+        const treatmentDetails = {
+          procedure: tooth.procedure || dailyTreatment.procedure || "Treatment",
+          treatmentAmount: dailyTreatment.treatmentAmount,
+          discount: 0,
+          treatmentType: 'general',
+          teethNumbers: [toothNumber],
+          notes: dailyTreatment.notes || `Payment update for tooth ${toothNumber}`
+        };
+        
+        const paymentDetails = {
+          paidAmount: paidAmount,
+          amount: paidAmount,
+          paymentMethod: paymentMethod || "Cash",
+          notes: `Payment update for tooth ${toothNumber} treatment`
+        };
+        
+        await createTreatmentPaymentInvoice(
+          patientId, 
+          treatment.treatedByDoctor?._id || treatment.treatedByDoctor, 
+          treatmentDetails, 
+          paymentDetails,
+          req.user?._id || updatedPatient._id
+        );
+      } catch (invoiceError) {
+        console.error("Error generating invoice for payment update:", invoiceError);
+        // Don't fail the payment update if invoice generation fails
+      }
+
       res.status(200).json({
         success: true,
         message: "Payment updated successfully",
@@ -440,7 +482,7 @@ router.patch(
   async (req, res) => {
     try {
       const { patientId, medicalDetailId, treatmentId, groupIndex, dailyTreatmentId } = req.params;
-      const { paidAmount, paymentDate } = req.body;
+      const { paidAmount, paymentDate, paymentMethod } = req.body;
 
       if (paidAmount === undefined || isNaN(paidAmount) || paidAmount < 0) {
         return res.status(400).json({
@@ -499,6 +541,11 @@ router.patch(
         "medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.$[group].dailyTreatments.$[daily].paidAmount": paidAmount,
         "medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.$[group].dailyTreatments.$[daily].remainingAmount": remainingAmount,
       };
+      
+      // Add payment method if provided
+      if (paymentMethod) {
+        updateFields["medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.$[group].dailyTreatments.$[daily].paymentMethod"] = paymentMethod;
+      }
 
       // Add payment date if provided, otherwise use current date if payment amount is greater than 0
       if (paymentDate) {
@@ -578,6 +625,42 @@ router.patch(
             ]
           }
         );
+      }
+
+      // Generate invoice for the group payment update
+      try {
+        const fullPatientData = await Patient.findById(patientId).populate("medicalDetails.treatmentPlanning.treatedByDoctor", "name");
+        const medicalDetail = fullPatientData.medicalDetails.find(md => md._id.toString() === medicalDetailId);
+        const treatment = medicalDetail.treatmentPlanning.find(t => t._id.toString() === treatmentId);
+        const groupTreatment = treatment.groupTreatmentDetails[parseInt(groupIndex)];
+        const dailyTreatment = groupTreatment.dailyTreatments.find(d => d._id.toString() === dailyTreatmentId);
+        
+        const treatmentDetails = {
+          procedure: groupTreatment.procedure || dailyTreatment.procedure || `${groupTreatment.groupName} Treatment`,
+          treatmentAmount: dailyTreatment.treatmentAmount,
+          discount: 0,
+          treatmentType: 'general',
+          teethNumbers: groupTreatment.teethNumbers || [],
+          notes: dailyTreatment.notes || `Payment update for ${groupTreatment.groupName} group treatment`
+        };
+        
+        const paymentDetails = {
+          paidAmount: paidAmount,
+          amount: paidAmount,
+          paymentMethod: paymentMethod || "Cash",
+          notes: `Payment update for ${groupTreatment.groupName} group treatment`
+        };
+        
+        await createTreatmentPaymentInvoice(
+          patientId, 
+          treatment.treatedByDoctor?._id || treatment.treatedByDoctor, 
+          treatmentDetails, 
+          paymentDetails,
+          req.user?._id || updatedPatient._id
+        );
+      } catch (invoiceError) {
+        console.error("Error generating invoice for group payment update:", invoiceError);
+        // Don't fail the payment update if invoice generation fails
       }
 
       res.status(200).json({

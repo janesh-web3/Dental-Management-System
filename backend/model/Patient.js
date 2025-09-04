@@ -36,6 +36,11 @@ const dailyTreatmentSchema = new mongoose.Schema({
   paidAmount: { type: Number, default: 0 },
   remainingAmount: { type: Number, default: 0 },
   paymentDate: { type: Date }, // Add payment date field
+  paymentMethod: { 
+    type: String, 
+    enum: ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Credit Card", "Debit Card", "Other"], 
+    default: "Cash" 
+  },
   procedure: { type: String }, // Add this new field
   notes: { type: String },
   treatedByDoctor: {

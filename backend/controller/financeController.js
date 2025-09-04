@@ -76,7 +76,7 @@ const getPredefinedDateFilter = (filter) => {
 // Add new income
 const addIncome = async (req, res) => {
   try {
-    const { title, amount, date, category, notes } = req.body;
+    const { title, amount, date, category, notes, paymentMethod } = req.body;
     
     // Validate required fields
     if (!title || !amount || !category) {
@@ -92,6 +92,7 @@ const addIncome = async (req, res) => {
       date: date || new Date(),
       category,
       notes,
+      paymentMethod,
       createdBy: req.user._id,
     });
     
@@ -244,7 +245,7 @@ const getIncomeById = async (req, res) => {
 // Update income
 const updateIncome = async (req, res) => {
   try {
-    const { title, amount, date, category, notes } = req.body;
+    const { title, amount, date, category, notes, paymentMethod } = req.body;
     
     // Find income
     let income = await Income.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
@@ -277,6 +278,7 @@ const updateIncome = async (req, res) => {
         date: date || income.date,
         category,
         notes,
+        paymentMethod,
       },
       { new: true, runValidators: true }
     );
@@ -363,7 +365,7 @@ const deleteIncome = async (req, res) => {
 // Add new expense
 const addExpense = async (req, res) => {
   try {
-    const { title, amount, date, category, notes } = req.body;
+    const { title, amount, date, category, notes, paymentMethod } = req.body;
     
     // Validate required fields
     if (!title || !amount || !category) {
@@ -379,6 +381,7 @@ const addExpense = async (req, res) => {
       date: date || new Date(),
       category,
       notes,
+      paymentMethod,
       createdBy: req.user._id,
     });
     
@@ -531,7 +534,7 @@ const getExpenseById = async (req, res) => {
 // Update expense
 const updateExpense = async (req, res) => {
   try {
-    const { title, amount, date, category, notes } = req.body;
+    const { title, amount, date, category, notes, paymentMethod } = req.body;
     
     // Find expense
     let expense = await Expense.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
@@ -564,6 +567,7 @@ const updateExpense = async (req, res) => {
         date: date || expense.date,
         category,
         notes,
+        paymentMethod,
       },
       { new: true, runValidators: true }
     );

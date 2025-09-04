@@ -369,9 +369,13 @@ const InvoiceNew: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Cash">Cash</SelectItem>
-                    <SelectItem value="Card">Card</SelectItem>
+                    <SelectItem value="Credit Card">Credit Card</SelectItem>
+                    <SelectItem value="Debit Card">Debit Card</SelectItem>
                     <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                    <SelectItem value="E-sewa">E-sewa</SelectItem>
+                    <SelectItem value="Khalti">Khalti</SelectItem>
                     <SelectItem value="Check">Check</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -33,6 +33,11 @@ const incomeSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    paymentMethod: {
+      type: String,
+      enum: ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Credit Card", "Debit Card", "Other"],
+      default: "Cash"
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

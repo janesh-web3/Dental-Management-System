@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { Patient, ToothData } from "@/types/patient";
 import { toast } from "react-toastify";
@@ -43,7 +44,10 @@ export function PaymentHistoryDialog({
   patient
 }: PaymentHistoryDialogProps) {
   const [newPayments, setNewPayments] = useState<Record<string, number>>({});
+  const [paymentMethods, setPaymentMethods] = useState<Record<string, string>>({});
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
+
+  const paymentMethodOptions = ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Credit Card", "Debit Card", "Other"];
 
   // Prepare data for display - treatments with remaining balances
   const treatmentsWithBalance: {
@@ -167,11 +171,16 @@ export function PaymentHistoryDialog({
         return;
       }
       
+      const paymentMethod = paymentMethods[key] || "Cash";
+      
       // Call backend API to update payment
        await crudRequest(
         "PATCH",
         `/patient/update-payment/${patientId}/${medicalDetailId}/${treatmentId}/${toothNumber}/${dailyTreatmentId}`,
-        { paidAmount: currentPaid + newAmount }
+        { 
+          paidAmount: currentPaid + newAmount,
+          paymentMethod: paymentMethod
+        }
       );
       
       // Update UI state via parent component
@@ -233,11 +242,16 @@ export function PaymentHistoryDialog({
         return;
       }
       
+      const paymentMethod = paymentMethods[key] || "Cash";
+      
       // Call backend API to update group treatment payment
       await crudRequest(
         "PATCH",
         `/patient/update-group-payment/${patientId}/${medicalDetailId}/${treatmentId}/${groupIndex}/${dailyTreatmentId}`,
-        { paidAmount: currentPaid + newAmount }
+        { 
+          paidAmount: currentPaid + newAmount,
+          paymentMethod: paymentMethod
+        }
       );
       
       // Update UI state via parent component
@@ -332,15 +346,33 @@ export function PaymentHistoryDialog({
                           </div>
                         </div>
                         
-                        <div className="grid md:grid-cols-2 items-center gap-2">
-                          <Input
-                            type="number"
-                            placeholder="Add payment"
-                            value={newPayments[key] || ""}
-                            onChange={(e) => handlePaymentChange(key, e.target.value, item.treatment.remainingAmount)}
-                            className="w-40"
-                            max={item.treatment.remainingAmount}
-                          />
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input
+                              type="number"
+                              placeholder="Add payment"
+                              value={newPayments[key] || ""}
+                              onChange={(e) => handlePaymentChange(key, e.target.value, item.treatment.remainingAmount)}
+                              max={item.treatment.remainingAmount}
+                            />
+                            <Select
+                              value={paymentMethods[key] || "Cash"}
+                              onValueChange={(value) => {
+                                setPaymentMethods(prev => ({ ...prev, [key]: value }));
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Payment method" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {paymentMethodOptions.map((method) => (
+                                  <SelectItem key={method} value={method}>
+                                    {method}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                           <Button 
                             onClick={() => {
                               if (item.type === 'tooth' && item.toothNumber) {
@@ -364,6 +396,7 @@ export function PaymentHistoryDialog({
                               }
                             }}
                             disabled={!newPayments[key] || processingPayment === key}
+                            className="w-full"
                           >
                             {processingPayment === key ? (
                               <Loader2 className="h-4 w-4 animate-spin mr-2" />

@@ -40,7 +40,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { server } from '@/server';
+import { server, dentalName, dentalAddress } from '@/server';
 import { crudRequest } from '@/lib/api';
 
 // Use environment variable or default to localhost
@@ -55,6 +55,7 @@ interface Invoice {
   balance: number;
   status: string;
   paymentMethod?: string;
+  sourceType?: string; // Income, Expense, ServicePayment, etc.
 }
 
 const InvoiceList: React.FC = () => {
@@ -160,32 +161,313 @@ const InvoiceList: React.FC = () => {
     }).format(amount); // Assuming amounts are stored in cents
   };
 
+  const getAmountColor = (sourceType?: string) => {
+    switch (sourceType) {
+      case 'Income':
+        return 'text-green-600 font-medium';
+      case 'Expense':
+        return 'text-red-600 font-medium';
+      default:
+        return 'font-medium';
+    }
+  };
+
   const handleDownloadPDF = async (invoiceId: string, invoiceNumber: string) => {
     try {
+      // First fetch the invoice details
+      const invoiceResponse = await crudRequest<any>('GET', `${server}/invoices/${invoiceId}`);
+      const invoice = invoiceResponse.data;
 
-      const response = await crudRequest<any>("GET", `${server}/invoices/${invoiceId}/pdf`);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!invoice) {
+        throw new Error('Invoice not found');
       }
 
-      // Get the blob from the response
-      const blob = await response.blob();
-      
-      // Create a URL for the blob and trigger download
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `invoice-${invoiceNumber}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Clean up the URL object
-      window.URL.revokeObjectURL(url);
+      // Generate PDF content
+      const generateInvoicePDF = () => {
+        // Create a new window for printing
+        const printWindow = window.open('', '_blank');
+        
+        if (!printWindow) {
+          throw new Error('Could not open print window');
+        }
+
+        const logoUrl = '/logo.jpg'; // Logo from public folder
+        
+        const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice ${invoiceNumber}</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: white;
+            color: #333;
+        }
+        .invoice-container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            border: 1px solid #ddd;
+            padding: 30px;
+        }
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 30px;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 20px;
+        }
+        .clinic-info { 
+            flex: 1; 
+        }
+        .clinic-name { 
+            font-size: 24px; 
+            font-weight: bold; 
+            color: #0066cc;
+            margin-bottom: 5px;
+        }
+        .clinic-address { 
+            color: #666; 
+            font-size: 14px;
+        }
+        .logo { 
+            width: 80px; 
+            height: 80px; 
+            object-fit: contain;
+        }
+        .invoice-title { 
+            text-align: center; 
+            font-size: 28px; 
+            font-weight: bold; 
+            color: #0066cc;
+            margin: 20px 0;
+        }
+        .invoice-details { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 30px;
+        }
+        .bill-to, .invoice-info { 
+            flex: 1; 
+        }
+        .bill-to { 
+            margin-right: 30px; 
+        }
+        .section-title { 
+            font-weight: bold; 
+            color: #0066cc;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        .info-line { 
+            margin-bottom: 5px; 
+        }
+        .items-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 30px;
+        }
+        .items-table th, .items-table td { 
+            border: 1px solid #ddd; 
+            padding: 12px; 
+            text-align: left;
+        }
+        .items-table th { 
+            background-color: #f8f9fa; 
+            font-weight: bold;
+            color: #0066cc;
+        }
+        .text-right { 
+            text-align: right; 
+        }
+        .totals { 
+            margin-left: auto; 
+            width: 300px;
+        }
+        .total-row { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 8px 0;
+        }
+        .total-row.final { 
+            border-top: 2px solid #0066cc; 
+            font-weight: bold; 
+            font-size: 18px;
+            color: #0066cc;
+            margin-top: 10px;
+            padding-top: 10px;
+        }
+        .payment-info { 
+            margin-top: 20px; 
+            padding: 15px; 
+            background-color: #f8f9fa;
+            border-left: 4px solid #0066cc;
+        }
+        .status-badge { 
+            display: inline-block; 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            font-size: 12px; 
+            font-weight: bold;
+        }
+        .status-paid { background-color: #d4edda; color: #155724; }
+        .status-partial { background-color: #fff3cd; color: #856404; }
+        .status-unpaid { background-color: #f8d7da; color: #721c24; }
+        .income-amount { color: #28a745; font-weight: bold; }
+        .expense-amount { color: #dc3545; font-weight: bold; }
+        .footer { 
+            margin-top: 30px; 
+            text-align: center; 
+            font-size: 12px; 
+            color: #666;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        
+        @media print {
+            body { margin: 0; }
+            .invoice-container { border: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="clinic-info">
+                <div class="clinic-name">${dentalName}</div>
+                <div class="clinic-address">${dentalAddress}</div>
+            </div>
+            <img src="${logoUrl}" alt="Clinic Logo" class="logo" onerror="this.style.display='none'">
+        </div>
+
+        <!-- Invoice Title -->
+        <div class="invoice-title">INVOICE</div>
+
+        <!-- Invoice Details -->
+        <div class="invoice-details">
+            <div class="bill-to">
+                <div class="section-title">Bill To:</div>
+                <div class="info-line"><strong>${invoice.patientName}</strong></div>
+                ${invoice.patient?.personalDetails?.email ? `<div class="info-line">Email: ${invoice.patient.personalDetails.email}</div>` : ''}
+                ${invoice.patient?.personalDetails?.phone ? `<div class="info-line">Phone: ${invoice.patient.personalDetails.phone}</div>` : ''}
+                ${invoice.patient?.personalDetails?.address ? `<div class="info-line">Address: ${invoice.patient.personalDetails.address}</div>` : ''}
+                ${invoice.sourceType ? `<div class="info-line"><em>Type: ${invoice.sourceType}</em></div>` : ''}
+            </div>
+            
+            <div class="invoice-info">
+                <div class="section-title">Invoice Information:</div>
+                <div class="info-line"><strong>Invoice #:</strong> ${invoice.invoiceNumber}</div>
+                <div class="info-line"><strong>Date:</strong> ${format(new Date(invoice.invoiceDate), 'MMM dd, yyyy')}</div>
+                <div class="info-line"><strong>Due Date:</strong> ${format(new Date(invoice.dueDate), 'MMM dd, yyyy')}</div>
+                <div class="info-line">
+                    <strong>Status:</strong> 
+                    <span class="status-badge ${invoice.status === 'Paid' ? 'status-paid' : invoice.status === 'Partially Paid' ? 'status-partial' : 'status-unpaid'}">
+                        ${invoice.status}
+                    </span>
+                </div>
+                ${invoice.doctor?.name || invoice.doctorName ? `<div class="info-line"><strong>Doctor:</strong> ${invoice.doctor?.name || invoice.doctorName}</div>` : ''}
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th class="text-right">Unit Price</th>
+                    <th class="text-right">Qty</th>
+                    <th class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${invoice.items.map(item => `
+                <tr>
+                    <td>
+                        <strong>${item.description}</strong>
+                        ${item.notes ? `<br><small style="color: #666;">${item.notes}</small>` : ''}
+                        ${item.teethNumbers && item.teethNumbers.length > 0 ? `<br><small style="color: #666;">Teeth: ${item.teethNumbers.join(', ')}</small>` : ''}
+                    </td>
+                    <td class="text-right">${formatCurrency(item.unitPrice)}</td>
+                    <td class="text-right">${item.quantity}</td>
+                    <td class="text-right ${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : ''}">${formatCurrency(item.total)}</td>
+                </tr>
+                `).join('')}
+            </tbody>
+        </table>
+
+        <!-- Totals -->
+        <div class="totals">
+            <div class="total-row">
+                <span>Subtotal:</span>
+                <span class="${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : ''}">${formatCurrency(invoice.subtotal)}</span>
+            </div>
+            ${invoice.tax > 0 ? `
+            <div class="total-row">
+                <span>Tax:</span>
+                <span>${formatCurrency(invoice.tax)}</span>
+            </div>` : ''}
+            ${invoice.discount > 0 ? `
+            <div class="total-row">
+                <span>Discount:</span>
+                <span>-${formatCurrency(invoice.discount)}</span>
+            </div>` : ''}
+            <div class="total-row final">
+                <span>Total:</span>
+                <span class="${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : ''}">${formatCurrency(invoice.total)}</span>
+            </div>
+            <div class="total-row">
+                <span>Amount Paid:</span>
+                <span class="${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : ''}">${formatCurrency(invoice.amountPaid)}</span>
+            </div>
+        </div>
+
+        <!-- Payment Information -->
+        ${invoice.paymentMethod ? `
+        <div class="payment-info">
+            <strong>Payment Method:</strong> ${invoice.paymentMethod}
+        </div>` : ''}
+
+        <!-- Notes -->
+        ${invoice.notes ? `
+        <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 4px;">
+            <strong>Notes:</strong><br>
+            ${invoice.notes}
+        </div>` : ''}
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Thank you for choosing ${dentalName}</p>
+            <p>This is a computer-generated invoice.</p>
+        </div>
+    </div>
+    
+    <script>
+        window.onload = function() {
+            window.print();
+            window.onafterprint = function() {
+                window.close();
+            };
+        };
+    </script>
+</body>
+</html>`;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+      };
+
+      generateInvoicePDF();
+
     } catch (error) {
-      console.error('Error downloading PDF:', error);
-      // You could add a toast notification here if needed
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate invoice PDF. Please try again.');
     }
   };
 
@@ -312,7 +594,7 @@ const InvoiceList: React.FC = () => {
                 <TableHead>Patient</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead className="text-right">Paid</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
+                <TableHead>Payment Method</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -353,14 +635,16 @@ const InvoiceList: React.FC = () => {
                       {format(new Date(invoice.dueDate), 'MMM dd, yyyy')}
                     </TableCell>
                     <TableCell className="font-medium">{invoice.patientName}</TableCell>
-                    <TableCell className="text-right font-medium">
+                    <TableCell className={`text-right ${getAmountColor(invoice.sourceType)}`}>
                       {formatCurrency(invoice.total)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className={`text-right ${getAmountColor(invoice.sourceType)}`}>
                       {formatCurrency(invoice.amountPaid)}
                     </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(invoice.balance)}
+                    <TableCell>
+                      <span className="text-sm">
+                        {invoice.paymentMethod || 'N/A'}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(invoice.status)}>

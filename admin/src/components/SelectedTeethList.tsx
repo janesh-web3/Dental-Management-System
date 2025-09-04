@@ -208,6 +208,7 @@ const SelectedTeethList: React.FC<SelectedTeethListProps> = ({
                       treatmentAmount: lastTreatment?.treatmentAmount || 0,
                       paidAmount: lastTreatment?.paidAmount || 0,
                       remainingAmount: lastTreatment?.remainingAmount || 0,
+                      paymentMethod: lastTreatment?.paymentMethod || "Cash",
                       treatedByDoctor: lastTreatment?.treatedByDoctor || "", // Keep existing doctor if any
                       notes: lastTreatment?.notes || "",
                     });
@@ -231,6 +232,7 @@ const SelectedTeethList: React.FC<SelectedTeethListProps> = ({
                         paidAmount: lastTreatment?.paidAmount || 0,
                         remainingAmount:
                           treatmentAmount - (lastTreatment?.paidAmount || 0),
+                        paymentMethod: lastTreatment?.paymentMethod || "Cash", // Keep existing payment method
                         treatedByDoctor: lastTreatment?.treatedByDoctor || "", // Keep existing doctor
                         notes: lastTreatment?.notes || "",
                       });
@@ -265,12 +267,46 @@ const SelectedTeethList: React.FC<SelectedTeethListProps> = ({
                         treatmentAmount,
                         paidAmount,
                         remainingAmount: treatmentAmount - paidAmount,
+                        paymentMethod: lastTreatment?.paymentMethod || "Cash", // Keep existing payment method
                         treatedByDoctor: lastTreatment?.treatedByDoctor || "", // Keep existing doctor
                         notes: lastTreatment?.notes || "",
                       });
                     }}
                   />
                 </div>
+
+                {/* Payment Method - Show only if there's a paid amount in the last treatment */}
+                {data.dailyTreatments && data.dailyTreatments.length > 0 && 
+                 data.dailyTreatments[data.dailyTreatments.length - 1]?.paidAmount > 0 && (
+                  <div className="mt-2">
+                    <Label className="text-xs font-medium text-gray-600">Payment Method</Label>
+                    <Select
+                      value={data.dailyTreatments[data.dailyTreatments.length - 1]?.paymentMethod || "Cash"}
+                      onValueChange={(value) => {
+                        const lastTreatment = data.dailyTreatments?.[data.dailyTreatments.length - 1];
+                        if (lastTreatment) {
+                          onDailyTreatmentAdd(number, {
+                            ...lastTreatment,
+                            paymentMethod: value,
+                          });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-7 text-xs">
+                        <SelectValue placeholder="Select payment method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Cash">Cash</SelectItem>
+                        <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                        <SelectItem value="E-sewa">E-sewa</SelectItem>
+                        <SelectItem value="Khalti">Khalti</SelectItem>
+                        <SelectItem value="Credit Card">Credit Card</SelectItem>
+                        <SelectItem value="Debit Card">Debit Card</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
 
               {/* Notes */}
@@ -286,6 +322,7 @@ const SelectedTeethList: React.FC<SelectedTeethListProps> = ({
                     treatmentAmount: lastTreatment?.treatmentAmount || 0,
                     paidAmount: lastTreatment?.paidAmount || 0,
                     remainingAmount: lastTreatment?.remainingAmount || 0,
+                    paymentMethod: lastTreatment?.paymentMethod || "Cash",
                     treatedByDoctor: lastTreatment?.treatedByDoctor || "",
                     notes: e.target.value,
                   });

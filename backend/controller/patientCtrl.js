@@ -315,7 +315,8 @@ const addPatient = async (req, res) => {
                           treatmentAmount: treatment.paidAmount,
                           teethNumbers: [tooth.number],
                           notes: treatment.notes,
-                          treatmentType: 'general'
+                          treatmentType: 'general',
+                          paymentMethod: treatment.paymentMethod || 'Cash'
                         });
                       }
                     });
@@ -335,7 +336,8 @@ const addPatient = async (req, res) => {
                           treatmentAmount: treatment.paidAmount,
                           teethNumbers: [],
                           notes: treatment.notes,
-                          treatmentType: group.groupName === 'Ortho' ? 'orthodontic' : 'general'
+                          treatmentType: group.groupName === 'Ortho' ? 'orthodontic' : 'general',
+                          paymentMethod: treatment.paymentMethod || 'Cash'
                         });
                       }
                     });
@@ -359,9 +361,18 @@ const addPatient = async (req, res) => {
               console.log(`Total treatments with payments: ${treatmentsWithPayments.length}`);
               if (treatmentsWithPayments.length > 0) {
                 
+                // Get the most common payment method, or default to Cash
+                const paymentMethods = treatmentsWithPayments.map(t => t.paymentMethod || 'Cash');
+                const paymentMethodCount = paymentMethods.reduce((acc, method) => {
+                  acc[method] = (acc[method] || 0) + 1;
+                  return acc;
+                }, {});
+                const mostCommonPaymentMethod = Object.keys(paymentMethodCount)
+                  .reduce((a, b) => paymentMethodCount[a] > paymentMethodCount[b] ? a : b);
+
                 const paymentDetails = {
                   paidAmount: treatmentsWithPayments.reduce((sum, t) => sum + (t.treatmentAmount || 0), 0),
-                  paymentMethod: "Cash", // Default to Cash, could be made configurable
+                  paymentMethod: mostCommonPaymentMethod,
                   notes: "Initial treatment payment - automatically generated invoice"
                 };
 
@@ -4111,7 +4122,8 @@ const addTreatmentPlan = async (req, res) => {
                   treatmentAmount: treatment.paidAmount,
                   teethNumbers: [tooth.number],
                   notes: treatment.notes,
-                  treatmentType: 'individual'
+                  treatmentType: 'individual',
+                  paymentMethod: treatment.paymentMethod || 'Cash'
                 });
               }
             });
@@ -4131,7 +4143,8 @@ const addTreatmentPlan = async (req, res) => {
                   treatmentAmount: treatment.paidAmount,
                   teethNumbers: [],
                   notes: treatment.notes,
-                  treatmentType: 'group'
+                  treatmentType: 'group',
+                  paymentMethod: treatment.paymentMethod || 'Cash'
                 });
               }
             });
@@ -4153,9 +4166,18 @@ const addTreatmentPlan = async (req, res) => {
 
       // Generate invoice if there are any payments
       if (treatmentsWithPayments.length > 0) {
+        // Get the most common payment method, or default to Cash
+        const paymentMethods = treatmentsWithPayments.map(t => t.paymentMethod || 'Cash');
+        const paymentMethodCount = paymentMethods.reduce((acc, method) => {
+          acc[method] = (acc[method] || 0) + 1;
+          return acc;
+        }, {});
+        const mostCommonPaymentMethod = Object.keys(paymentMethodCount)
+          .reduce((a, b) => paymentMethodCount[a] > paymentMethodCount[b] ? a : b);
+
         const paymentDetails = {
           paidAmount: treatmentsWithPayments.reduce((sum, t) => sum + (t.treatmentAmount || 0), 0),
-          paymentMethod: "Cash", // Default to Cash, could be made configurable
+          paymentMethod: mostCommonPaymentMethod,
           notes: "Treatment payment - automatically generated invoice"
         };
 
@@ -4397,7 +4419,8 @@ const updateTreatmentPlan = async (req, res) => {
                   treatmentAmount: treatment.paidAmount, // Use paid amount for invoice
                   teethNumbers: [tooth.number],
                   notes: treatment.notes,
-                  treatmentType: 'individual'
+                  treatmentType: 'individual',
+                  paymentMethod: treatment.paymentMethod || 'Cash'
                 });
               }
             });
@@ -4417,7 +4440,8 @@ const updateTreatmentPlan = async (req, res) => {
                   treatmentAmount: treatment.paidAmount,
                   teethNumbers: [],
                   notes: treatment.notes,
-                  treatmentType: 'group'
+                  treatmentType: 'group',
+                  paymentMethod: treatment.paymentMethod || 'Cash'
                 });
               }
             });
@@ -4444,9 +4468,18 @@ const updateTreatmentPlan = async (req, res) => {
         
         // Only generate invoice if there's actually a payment amount
         if (totalPaidAmount > 0) {
+          // Get the most common payment method, or default to Cash
+          const paymentMethods = treatmentsWithPayments.map(t => t.paymentMethod || 'Cash');
+          const paymentMethodCount = paymentMethods.reduce((acc, method) => {
+            acc[method] = (acc[method] || 0) + 1;
+            return acc;
+          }, {});
+          const mostCommonPaymentMethod = Object.keys(paymentMethodCount)
+            .reduce((a, b) => paymentMethodCount[a] > paymentMethodCount[b] ? a : b);
+
           const paymentDetails = {
             paidAmount: totalPaidAmount,
-            paymentMethod: "Cash", // Default to Cash, could be made configurable
+            paymentMethod: mostCommonPaymentMethod,
             notes: "Treatment payment update - automatically generated invoice"
           };
 

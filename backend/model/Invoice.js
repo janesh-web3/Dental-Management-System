@@ -42,7 +42,7 @@ const paymentLogSchema = new mongoose.Schema({
   paymentMethod: { 
     type: String,
     required: true,
-    enum: ["Cash", "Credit Card", "Debit Card", "Insurance", "Bank Transfer", "Other"]
+    enum: ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Credit Card", "Debit Card", "Insurance", "Other"]
   },
   transactionId: String,
   notes: String,
@@ -115,7 +115,7 @@ const invoiceSchema = new mongoose.Schema(
     },
     paymentMethod: { 
       type: String,
-      enum: ["Cash", "Credit Card", "Debit Card", "Insurance", "Bank Transfer", "Other"],
+      enum: ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Credit Card", "Debit Card", "Insurance", "Other"],
       default: "Cash"
     },
     notes: { type: String },

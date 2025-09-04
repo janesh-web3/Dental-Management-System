@@ -8,6 +8,7 @@ export interface DailyTreatment {
   paidAmount: number;
   remainingAmount: number;
   paymentDate?: string; // Add payment date field
+  paymentMethod?: string; // Add payment method field
   treatedByDoctor: string | null;
   procedure?: string;
   notes?: string;

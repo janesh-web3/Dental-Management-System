@@ -34,6 +34,9 @@ const formSchema = z.object({
   category: z.string({
     required_error: "Category is required",
   }),
+  paymentMethod: z.string({
+    required_error: "Payment method is required",
+  }),
   notes: z.string().optional(),
 });
 
@@ -60,6 +63,16 @@ const expenseCategoryOptions: { value: ExpenseCategory; label: string }[] = [
   { value: "Other", label: "Other" },
 ];
 
+const paymentMethodOptions = [
+  { value: "Cash", label: "Cash" },
+  { value: "Bank Transfer", label: "Bank Transfer" },
+  { value: "E-sewa", label: "E-sewa" },
+  { value: "Khalti", label: "Khalti" },
+  { value: "Credit Card", label: "Credit Card" },
+  { value: "Debit Card", label: "Debit Card" },
+  { value: "Other", label: "Other" },
+];
+
 export function ExpenseForm({
   onSubmit,
   onCancel,
@@ -74,6 +87,7 @@ export function ExpenseForm({
           amount: initialData.amount,
           date: new Date(initialData.date),
           category: initialData.category,
+          paymentMethod: (initialData as any).paymentMethod || "Cash",
           notes: initialData.notes || "",
         }
       : {
@@ -81,6 +95,7 @@ export function ExpenseForm({
           amount: undefined,
           date: new Date(),
           category: undefined,
+          paymentMethod: "Cash",
           notes: "",
         },
   });
@@ -164,6 +179,35 @@ export function ExpenseForm({
                 </FormControl>
                 <SelectContent>
                   {expenseCategoryOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="paymentMethod"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Payment Method</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+                value={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select payment method" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {paymentMethodOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>

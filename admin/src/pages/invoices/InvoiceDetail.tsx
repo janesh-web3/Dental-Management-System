@@ -178,6 +178,17 @@ const InvoiceDetail: React.FC = () => {
     }).format(amount);
   };
 
+  const getAmountColor = (sourceType?: string) => {
+    switch (sourceType) {
+      case 'Income':
+        return 'text-green-600';
+      case 'Expense':
+        return 'text-red-600';
+      default:
+        return '';
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Paid':
@@ -352,6 +363,29 @@ const InvoiceDetail: React.FC = () => {
         </Card>
       </div>
 
+      {/* Payment Method Section */}
+      {invoice.paymentMethod && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Payment Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-between items-center">
+              <span className="font-medium">Payment Method:</span>
+              <span className="font-semibold text-primary">{invoice.paymentMethod}</span>
+            </div>
+            {invoice.sourceType && (
+              <div className="flex justify-between items-center mt-2">
+                <span className="font-medium">Invoice Type:</span>
+                <span className={`font-semibold ${getAmountColor(invoice.sourceType)}`}>
+                  {invoice.sourceType}
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Invoice Items */}
       <Card className="mb-6">
         <CardContent className="p-0">
@@ -398,7 +432,7 @@ const InvoiceDetail: React.FC = () => {
               <TableBody>
                 <TableRow>
                   <TableCell className="font-medium">Subtotal</TableCell>
-                  <TableCell className="text-right">{formatCurrency(invoice.subtotal)}</TableCell>
+                  <TableCell className={`text-right ${getAmountColor(invoice.sourceType)}`}>{formatCurrency(invoice.subtotal)}</TableCell>
                 </TableRow>
                 {invoice.tax > 0 && (
                   <TableRow>
@@ -414,11 +448,11 @@ const InvoiceDetail: React.FC = () => {
                 )}
                 <TableRow>
                   <TableCell className="font-semibold">Total</TableCell>
-                  <TableCell className="text-right font-semibold">{formatCurrency(invoice.total)}</TableCell>
+                  <TableCell className={`text-right font-semibold ${getAmountColor(invoice.sourceType)}`}>{formatCurrency(invoice.total)}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">Amount Paid</TableCell>
-                  <TableCell className="text-right">{formatCurrency(invoice.amountPaid)}</TableCell>
+                  <TableCell className={`text-right ${getAmountColor(invoice.sourceType)}`}>{formatCurrency(invoice.amountPaid)}</TableCell>
                 </TableRow>
                 <TableRow className="border-t-2">
                   <TableCell className="font-bold">Balance Due</TableCell>
@@ -530,6 +564,8 @@ const InvoiceDetail: React.FC = () => {
                   <SelectItem value="Credit Card">Credit Card</SelectItem>
                   <SelectItem value="Debit Card">Debit Card</SelectItem>
                   <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="E-sewa">E-sewa</SelectItem>
+                  <SelectItem value="Khalti">Khalti</SelectItem>
                   <SelectItem value="Check">Check</SelectItem>
                   <SelectItem value="Insurance">Insurance</SelectItem>
                   <SelectItem value="Other">Other</SelectItem>

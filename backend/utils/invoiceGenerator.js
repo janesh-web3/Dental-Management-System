@@ -210,7 +210,7 @@ const createIncomeInvoice = async (incomeData, createdBy) => {
       amountPaid: incomeData.amount,
       balance: 0,
       status: "Paid",
-      paymentMethod: "Cash",
+      paymentMethod: incomeData.paymentMethod || "Cash",
       notes: `Income entry - ${incomeData.category} - automatically generated invoice`,
       sourceType: "Income",
       sourceId: incomeData._id
@@ -255,7 +255,7 @@ const createExpenseInvoice = async (expenseData, createdBy) => {
       amountPaid: expenseData.amount,
       balance: 0,
       status: "Paid",
-      paymentMethod: "Cash",
+      paymentMethod: expenseData.paymentMethod || "Cash",
       notes: `Expense receipt - ${expenseData.category} - automatically generated`,
       sourceType: "Expense",
       sourceId: expenseData._id

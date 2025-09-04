@@ -434,6 +434,7 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                 paidAmount,
                 remainingAmount,
                 paymentDate: format(new Date(), "yyyy-MM-dd"), // Default to today's date
+                paymentMethod: "Cash", // Default payment method
                 notes: "",
                 treatedByDoctor: gt.treatedByDoctor || "",
                 isCompleted: false,
@@ -1473,6 +1474,11 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                           </SelectTrigger> 
                           <SelectContent> 
                             <SelectItem value="Cash">Cash</SelectItem> 
+                            <SelectItem value="Bank Transfer"> 
+                              Bank Transfer
+                            </SelectItem>
+                            <SelectItem value="E-sewa">E-sewa</SelectItem>
+                            <SelectItem value="Khalti">Khalti</SelectItem>  
                             <SelectItem value="Credit Card"> 
                               Credit Card 
                             </SelectItem>  
@@ -1480,9 +1486,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                               Debit Card 
                             </SelectItem> 
                             <SelectItem value="Insurance">Insurance</SelectItem>
-                            <SelectItem value="Bank Transfer"> 
-                              Bank Transfer
-                            </SelectItem>  
                             <SelectItem value="Other">Other</SelectItem>
                           </SelectContent> 
                         </Select>
@@ -2277,6 +2280,37 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                                           </div>
                                         </div>
 
+                                        {/* Payment Method - Show only if there's a paid amount */}
+                                        {(parseFloat(treatment.paidAmount) > 0) && (
+                                          <div className="space-y-1">
+                                            <Label className="text-xs font-medium text-gray-600">Payment Method</Label>
+                                            <Select
+                                              value={treatment.paymentMethod || "Cash"}
+                                              onValueChange={(value) => 
+                                                updateDailyTreatment(
+                                                  groupTreatment.id, 
+                                                  treatment.id, 
+                                                  'paymentMethod', 
+                                                  value
+                                                )
+                                              }
+                                            >
+                                              <SelectTrigger className="h-8">
+                                                <SelectValue placeholder="Select payment method" />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="Cash">Cash</SelectItem>
+                                                <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                                                <SelectItem value="E-sewa">E-sewa</SelectItem>
+                                                <SelectItem value="Khalti">Khalti</SelectItem>
+                                                <SelectItem value="Credit Card">Credit Card</SelectItem>
+                                                <SelectItem value="Debit Card">Debit Card</SelectItem>
+                                                <SelectItem value="Other">Other</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                        )}
+
                                         <div className="grid grid-cols-2 gap-3">
                                           <div className="space-y-1">
                                             <Label className="text-xs font-medium text-gray-600">Payment Date</Label>
@@ -2808,6 +2842,7 @@ type GroupDailyTreatment = {
   paidAmount: string;
   remainingAmount: string;
   paymentDate?: string; // Add payment date field
+  paymentMethod?: string; // Add payment method field
   notes: string;
   treatedByDoctor: string;
   isCompleted: boolean;

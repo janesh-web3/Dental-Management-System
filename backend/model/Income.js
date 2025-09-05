@@ -35,7 +35,7 @@ const incomeSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Credit Card", "Debit Card", "Other"],
+enum: ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Other"],
       default: "Cash"
     },
     createdBy: {

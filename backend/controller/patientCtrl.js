@@ -21,14 +21,14 @@ const createTreatmentInvoice = async (patientId, treatmentId, paidAmount, paymen
   try {
     // Normalize payment method to match enum values
     const normalizePaymentMethod = (method) => {
-      if (!method) return "cash";
+      if (!method) return "Cash";
       const methodLower = method.toLowerCase();
       
       // Handle specific payment methods
-      if (methodLower.includes("khalti") || methodLower.includes("esewa") || methodLower.includes("e-sewa") || methodLower.includes("upi")) return "upi";
+      if (methodLower.includes("Khalti") || methodLower.includes("E-sewa") ) return "upi";
       if (methodLower.includes("bank") || methodLower.includes("transfer")) return "bank";
       if (methodLower.includes("card") || methodLower.includes("credit") || methodLower.includes("debit")) return "card";
-      if (methodLower.includes("cash")) return "cash";
+      if (methodLower.includes("Cash")) return "Cash";
       
       // Default fallback
       return "cash";

@@ -13,7 +13,7 @@ const invoiceSchema = new mongoose.Schema(
     },
     paymentMethod: { 
       type: String,
-      enum: ["cash", "card", "bank", "upi"],
+      enum: ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Other"],
       required: true,
       default: "cash"
     },

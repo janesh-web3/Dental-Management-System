@@ -18,7 +18,7 @@ const paymentLogSchema = new mongoose.Schema({
   paymentMethod: { 
     type: String,
     required: true,
-    enum: ["Cash", "Credit Card", "Debit Card", "Insurance", "Bank Transfer", "Other"]
+   enum: ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Other"],
   },
   transactionId: String,
   notes: String,

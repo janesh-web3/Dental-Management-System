@@ -73,8 +73,6 @@ const paymentMethodOptions = [
   { value: "Bank Transfer", label: "Bank Transfer" },
   { value: "E-sewa", label: "E-sewa" },
   { value: "Khalti", label: "Khalti" },
-  { value: "Credit Card", label: "Credit Card" },
-  { value: "Debit Card", label: "Debit Card" },
   { value: "Other", label: "Other" },
 ];
 

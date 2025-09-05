@@ -32,7 +32,7 @@ exports.createInvoice = async (req, res) => {
     }
 
     // Validate paymentMethod
-    const validPaymentMethods = ["cash", "card", "bank", "upi"];
+    const validPaymentMethods = ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Other"];
     if (!validPaymentMethods.includes(paymentMethod)) {
       return res.status(400).json({
         success: false,

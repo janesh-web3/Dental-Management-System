@@ -5,6 +5,7 @@ const { deleteFile } = require("../middleware/multer");
 const Appointment = require("../model/Appointment.js");
 const ServicePayment = require("../model/ServicePayment");
 const Income = require("../model/Income");
+const Invoice = require("../model/Invoice");
 const {
   generateStrongPassword,
   sendPatientCredentials,
@@ -14,7 +15,41 @@ const { createAndEmitNotification } = require("./notificationCtrl");
 const User = require("../model/User");
 const Doctor = require("../model/Doctor");
 const { getIO } = require("../socket");
-const { createTreatmentPaymentInvoice } = require("../utils/invoiceGenerator");
+
+// Helper function to create invoice via centralized system
+const createTreatmentInvoice = async (patientId, treatmentId, paidAmount, paymentMethod) => {
+  try {
+    // Normalize payment method to match enum values
+    const normalizePaymentMethod = (method) => {
+      if (!method) return "cash";
+      const methodLower = method.toLowerCase();
+      
+      // Handle specific payment methods
+      if (methodLower.includes("khalti") || methodLower.includes("esewa") || methodLower.includes("e-sewa") || methodLower.includes("upi")) return "upi";
+      if (methodLower.includes("bank") || methodLower.includes("transfer")) return "bank";
+      if (methodLower.includes("card") || methodLower.includes("credit") || methodLower.includes("debit")) return "card";
+      if (methodLower.includes("cash")) return "cash";
+      
+      // Default fallback
+      return "cash";
+    };
+
+    const invoice = new Invoice({
+      paidAmount,
+      paymentMethod: normalizePaymentMethod(paymentMethod),
+      sourceType: "Patients",
+      sourceId: treatmentId,
+      patientId,
+      date: new Date()
+    });
+
+    await invoice.save();
+    return invoice;
+  } catch (error) {
+    console.error("Error creating treatment invoice:", error);
+    return null;
+  }
+};
 
 // Helper utility functions for date filtering
 const getDateFilter = (filter, startDate, endDate) => {
@@ -291,24 +326,17 @@ const addPatient = async (req, res) => {
     // Generate invoices for any initial payments in treatment plans
     try {
       if (patient.medicalDetails && patient.medicalDetails.length > 0) {
-        console.log(`Found ${patient.medicalDetails.length} medical details to check`);
         for (const medicalDetail of patient.medicalDetails) {
           if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
-            console.log(`Found ${medicalDetail.treatmentPlanning.length} treatment plans to check`);
             for (const treatmentPlan of medicalDetail.treatmentPlanning) {
               const treatmentsWithPayments = [];
-              console.log(`Checking treatment plan ${treatmentPlan._id}`);
               
               // Check selected teeth details for payments
               if (treatmentPlan.selectedTeethDetails) {
-                console.log(`Found ${treatmentPlan.selectedTeethDetails.length} selected teeth to check`);
                 treatmentPlan.selectedTeethDetails.forEach(tooth => {
                   if (tooth.dailyTreatments) {
-                    console.log(`Checking tooth ${tooth.number} with ${tooth.dailyTreatments.length} daily treatments`);
                     tooth.dailyTreatments.forEach(treatment => {
-                      console.log(`Treatment paidAmount: ${treatment.paidAmount}`);
                       if (treatment.paidAmount && treatment.paidAmount > 0) {
-                        console.log(`Found payment of ${treatment.paidAmount} for tooth ${tooth.number}`);
                         treatmentsWithPayments.push({
                           treatmentName: `${tooth.procedure} - Tooth ${tooth.number}`,
                           procedure: tooth.procedure,
@@ -357,8 +385,7 @@ const addPatient = async (req, res) => {
                 });
               }
 
-              // Generate invoice if there are any payments
-              console.log(`Total treatments with payments: ${treatmentsWithPayments.length}`);
+              // Generate invoice if there are any NEW payments
               if (treatmentsWithPayments.length > 0) {
                 
                 // Get the most common payment method, or default to Cash
@@ -373,7 +400,7 @@ const addPatient = async (req, res) => {
                 const paymentDetails = {
                   paidAmount: treatmentsWithPayments.reduce((sum, t) => sum + (t.treatmentAmount || 0), 0),
                   paymentMethod: mostCommonPaymentMethod,
-                  notes: "Initial treatment payment - automatically generated invoice"
+                  notes: "Treatment payment update - automatically generated invoice"
                 };
 
                 // Get doctor ID from the first treatment with a doctor assigned
@@ -407,19 +434,25 @@ const addPatient = async (req, res) => {
                     }
                   }
                 }
-                
 
-                const invoice = await createTreatmentPaymentInvoice(
-                  patient._id,
-                  doctorId,
-                  treatmentsWithPayments,
-                  paymentDetails,
-                  req.admin?.id,
-                  null  // Add null for sourceId to maintain backward compatibility
-                );
+                // Create a separate invoice for each new payment to avoid combining multiple payments
+                for (const treatment of treatmentsWithPayments) {
+                  const invoice = await createTreatmentInvoice(
+                    patient._id,
+                    treatmentPlan._id,
+                    treatment.treatmentAmount,
+                    treatment.paymentMethod
+                  );
+
+                  if (invoice) {
+                    console.log(`Generated invoice ${invoice.invoiceNumber} for patient update with treatment: ${treatment.treatmentName}`);
+                  } else {
+                    console.error(`Failed to generate invoice for treatment: ${treatment.treatmentName}`);
+                  }
+                }
 
               } else {
-                console.log("No treatments with payments found for this treatment plan");
+                console.log("No NEW treatments with payments found for this treatment plan");
               }
             }
           }
@@ -793,6 +826,9 @@ const updatePatient = async (req, res) => {
       });
     }
 
+    // IMPORTANT: Store the original patient data for invoice comparison BEFORE any updates
+    const originalPatientForInvoices = JSON.parse(JSON.stringify(existingPatient));
+
     // Get existing medical details and treatment documents
     const existingMedicalDetails = existingPatient.medicalDetails || [];
     const existingTreatmentDocuments = {};
@@ -1005,6 +1041,266 @@ const updatePatient = async (req, res) => {
     // IMPORTANT: Recalculate all treatment totals to ensure they're accurate
     patient.recalculateTreatmentTotals();
     await patient.save(); // Save the patient again with recalculated totals
+
+    // Generate invoices for any new payments in updated treatment plans
+    try {
+      if (patient.medicalDetails && patient.medicalDetails.length > 0) {
+        console.log(`🧾 Invoice Generation: Checking ${patient.medicalDetails.length} medical details for new payments...`);
+        
+        // Use the original patient data we stored BEFORE the update for comparison
+        const originalPatient = originalPatientForInvoices;
+        
+        console.log(`🔍 Original patient medical details count: ${originalPatient?.medicalDetails?.length || 0}`);
+        console.log(`🔍 Updated patient medical details count: ${patient.medicalDetails.length}`);
+        
+        if (originalPatient?.medicalDetails?.[0]?.treatmentPlanning) {
+          console.log(`🔍 Original treatment plans count: ${originalPatient.medicalDetails[0].treatmentPlanning.length}`);
+        }
+        if (patient.medicalDetails[0]?.treatmentPlanning) {
+          console.log(`🔍 Updated treatment plans count: ${patient.medicalDetails[0].treatmentPlanning.length}`);
+        }
+        
+        for (const medicalDetail of patient.medicalDetails) {
+          if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
+            console.log(`Checking ${medicalDetail.treatmentPlanning.length} treatment plans for new payments...`);
+            for (const treatmentPlan of medicalDetail.treatmentPlanning) {
+              const treatmentsWithPayments = [];
+              console.log(`Checking treatment plan ${treatmentPlan._id} for payments...`);
+              
+              // Get the original treatment plan for comparison
+              const originalTreatmentPlan = originalPatient?.medicalDetails?.[0]?.treatmentPlanning?.find(
+                tp => tp._id?.toString() === treatmentPlan._id?.toString()
+              );
+              
+              // Check selected teeth details for NEW payments only
+              if (treatmentPlan.selectedTeethDetails) {
+                console.log(`Found ${treatmentPlan.selectedTeethDetails.length} selected teeth to check`);
+                treatmentPlan.selectedTeethDetails.forEach(tooth => {
+                  if (tooth.dailyTreatments) {
+                    console.log(`Checking tooth ${tooth.number} with ${tooth.dailyTreatments.length} daily treatments`);
+                    
+                    // Get the original tooth data for comparison
+                    const originalTooth = originalTreatmentPlan?.selectedTeethDetails?.find(
+                      t => t.number === tooth.number
+                    );
+                    
+                    // Calculate original total paid amount for this tooth
+                    const originalTotalPaid = originalTooth?.dailyTreatments?.reduce(
+                      (sum, dt) => sum + (Number(dt.paidAmount) || 0), 0
+                    ) || 0;
+                    
+                    // Calculate new total paid amount for this tooth
+                    const newTotalPaid = tooth.dailyTreatments.reduce(
+                      (sum, dt) => sum + (Number(dt.paidAmount) || 0), 0
+                    );
+                    
+                    // Only create invoice if there's a new payment (increase in paid amount)
+                    const newPaymentAmount = newTotalPaid - originalTotalPaid;
+                    
+                    console.log(`Tooth ${tooth.number}: Original paid: ${originalTotalPaid}, New paid: ${newTotalPaid}, New payment: ${newPaymentAmount}`);
+                    
+                    if (newPaymentAmount > 0) {
+                      console.log(`Found NEW payment of ${newPaymentAmount} for tooth ${tooth.number}`);
+                      
+                      // Find the specific daily treatment(s) that contain new payments by comparing with original
+                      const newPayments = [];
+                      
+                      // Compare each daily treatment with its original counterpart to find new/increased payments
+                      tooth.dailyTreatments.forEach((dt, dtIndex) => {
+                        let originalDT = null;
+                        let originalPaidAmount = 0;
+                        
+                        // Try to find matching original treatment by ID first, then by index
+                        if (dt._id && originalTooth?.dailyTreatments) {
+                          originalDT = originalTooth.dailyTreatments.find(odt => 
+                            odt._id && odt._id.toString() === dt._id.toString()
+                          );
+                        }
+                        
+                        // If not found by ID, fall back to index-based comparison
+                        if (!originalDT && originalTooth?.dailyTreatments?.[dtIndex]) {
+                          originalDT = originalTooth.dailyTreatments[dtIndex];
+                        }
+                        
+                        if (originalDT) {
+                          originalPaidAmount = Number(originalDT.paidAmount) || 0;
+                        }
+                        
+                        const newPaidAmount = Number(dt.paidAmount) || 0;
+                        const paymentIncrease = newPaidAmount - originalPaidAmount;
+                        
+                        console.log(`  Treatment ${dtIndex}: Original paid: ${originalPaidAmount}, New paid: ${newPaidAmount}, Increase: ${paymentIncrease}`);
+                        
+                        if (paymentIncrease > 0) {
+                          newPayments.push({
+                            treatmentName: `${tooth.procedure || 'Treatment'} - Tooth ${tooth.number}`,
+                            procedure: tooth.procedure || 'Treatment',
+                            treatmentAmount: paymentIncrease, // Only the increase amount
+                            teethNumbers: [tooth.number],
+                            notes: dt.notes || '',
+                            treatmentType: 'general',
+                            paymentMethod: dt.paymentMethod || 'Cash'
+                          });
+                        }
+                      });
+                      
+                      treatmentsWithPayments.push(...newPayments);
+                    }
+                  }
+                });
+              }
+
+              // Check group treatment details for NEW payments only
+              if (treatmentPlan.groupTreatmentDetails) {
+                treatmentPlan.groupTreatmentDetails.forEach((group, groupIndex) => {
+                  if (group.dailyTreatments) {
+                    // Get the original group data for comparison
+                    const originalGroup = originalTreatmentPlan?.groupTreatmentDetails?.[groupIndex];
+                    
+                    // Calculate original total paid amount for this group
+                    const originalTotalPaid = originalGroup?.dailyTreatments?.reduce(
+                      (sum, dt) => sum + (Number(dt.paidAmount) || 0), 0
+                    ) || 0;
+                    
+                    // Calculate new total paid amount for this group
+                    const newTotalPaid = group.dailyTreatments.reduce(
+                      (sum, dt) => sum + (Number(dt.paidAmount) || 0), 0
+                    );
+                    
+                    // Only create invoice if there's a new payment (increase in paid amount)
+                    const newPaymentAmount = newTotalPaid - originalTotalPaid;
+                    
+                    console.log(`Group ${group.groupName}: Original paid: ${originalTotalPaid}, New paid: ${newTotalPaid}, New payment: ${newPaymentAmount}`);
+                    
+                    if (newPaymentAmount > 0) {
+                      console.log(`Found NEW payment of ${newPaymentAmount} for group ${group.groupName}`);
+                      
+                      // Find the specific daily treatment(s) that contain new payments by comparing with original
+                      const newPayments = [];
+                      
+                      // Compare each daily treatment with its original counterpart to find new/increased payments
+                      group.dailyTreatments.forEach((dt, dtIndex) => {
+                        let originalDT = null;
+                        let originalPaidAmount = 0;
+                        
+                        // Try to find matching original treatment by ID first, then by index
+                        if (dt._id && originalGroup?.dailyTreatments) {
+                          originalDT = originalGroup.dailyTreatments.find(odt => 
+                            odt._id && odt._id.toString() === dt._id.toString()
+                          );
+                        }
+                        
+                        // If not found by ID, fall back to index-based comparison
+                        if (!originalDT && originalGroup?.dailyTreatments?.[dtIndex]) {
+                          originalDT = originalGroup.dailyTreatments[dtIndex];
+                        }
+                        
+                        if (originalDT) {
+                          originalPaidAmount = Number(originalDT.paidAmount) || 0;
+                        }
+                        
+                        const newPaidAmount = Number(dt.paidAmount) || 0;
+                        const paymentIncrease = newPaidAmount - originalPaidAmount;
+                        
+                        console.log(`  Group Treatment ${dtIndex}: Original paid: ${originalPaidAmount}, New paid: ${newPaidAmount}, Increase: ${paymentIncrease}`);
+                        
+                        if (paymentIncrease > 0) {
+                          newPayments.push({
+                            treatmentName: `${group.procedure || 'Group Treatment'} - ${group.groupName || 'Group'}`,
+                            procedure: group.procedure || 'Group Treatment',
+                            treatmentAmount: paymentIncrease, // Only the increase amount
+                            teethNumbers: group.teethNumbers || [],
+                            notes: dt.notes || '',
+                            treatmentType: group.groupName === 'Ortho' ? 'orthodontic' : 'general',
+                            paymentMethod: dt.paymentMethod || 'Cash'
+                          });
+                        }
+                      });
+                      
+                      treatmentsWithPayments.push(...newPayments);
+                    }
+                  }
+                });
+              }
+
+              // Generate invoice if there are any NEW payments
+              console.log(`Total treatments with NEW payments: ${treatmentsWithPayments.length}`);
+              if (treatmentsWithPayments.length > 0) {
+                
+                // Get the most common payment method, or default to Cash
+                const paymentMethods = treatmentsWithPayments.map(t => t.paymentMethod || 'Cash');
+                const paymentMethodCount = paymentMethods.reduce((acc, method) => {
+                  acc[method] = (acc[method] || 0) + 1;
+                  return acc;
+                }, {});
+                const mostCommonPaymentMethod = Object.keys(paymentMethodCount)
+                  .reduce((a, b) => paymentMethodCount[a] > paymentMethodCount[b] ? a : b);
+
+                const paymentDetails = {
+                  paidAmount: treatmentsWithPayments.reduce((sum, t) => sum + (t.treatmentAmount || 0), 0),
+                  paymentMethod: mostCommonPaymentMethod,
+                  notes: "Treatment payment update - automatically generated invoice"
+                };
+
+                // Get doctor ID from the first treatment with a doctor assigned
+                let doctorId = treatmentPlan.treatedByDoctor;
+                if (!doctorId) {
+                  // Try to get from selected teeth treatments
+                  for (const tooth of treatmentPlan.selectedTeethDetails || []) {
+                    for (const treatment of tooth.dailyTreatments || []) {
+                      if (treatment.treatedByDoctor) {
+                        doctorId = treatment.treatedByDoctor;
+                        break;
+                      }
+                    }
+                    if (doctorId) break;
+                  }
+                  
+                  // Try to get from group treatments
+                  if (!doctorId) {
+                    for (const group of treatmentPlan.groupTreatmentDetails || []) {
+                      if (group.treatedByDoctor) {
+                        doctorId = group.treatedByDoctor;
+                        break;
+                      }
+                      for (const treatment of group.dailyTreatments || []) {
+                        if (treatment.treatedByDoctor) {
+                          doctorId = treatment.treatedByDoctor;
+                          break;
+                        }
+                      }
+                      if (doctorId) break;
+                    }
+                  }
+                }
+
+                // Create a separate invoice for each new payment to avoid combining multiple payments
+                for (const treatment of treatmentsWithPayments) {
+                  const invoice = await createTreatmentInvoice(
+                    patient._id,
+                    treatmentPlan._id,
+                    treatment.treatmentAmount,
+                    treatment.paymentMethod
+                  );
+
+                  if (invoice) {
+                    console.log(`Generated invoice ${invoice.invoiceNumber} for patient update with treatment: ${treatment.treatmentName}`);
+                  } else {
+                    console.error(`Failed to generate invoice for treatment: ${treatment.treatmentName}`);
+                  }
+                }
+
+              } else {
+                console.log("No NEW treatments with payments found for this treatment plan");
+              }
+            }
+          }
+        }
+      }
+    } catch (invoiceError) {
+      console.error("Error generating invoices for patient update:", invoiceError);
+      // Don't fail patient update if invoice generation fails
+    }
 
     // Track doctors who have treated this patient and update their totalPatients field
     try {
@@ -4171,21 +4467,20 @@ const addTreatmentPlan = async (req, res) => {
         const mostCommonPaymentMethod = Object.keys(paymentMethodCount)
           .reduce((a, b) => paymentMethodCount[a] > paymentMethodCount[b] ? a : b);
 
-        const paymentDetails = {
-          paidAmount: treatmentsWithPayments.reduce((sum, t) => sum + (t.treatmentAmount || 0), 0),
-          paymentMethod: mostCommonPaymentMethod,
-          notes: "Treatment payment - automatically generated invoice"
-        };
+        const totalAmount = treatmentsWithPayments.reduce((sum, t) => sum + (t.treatmentAmount || 0), 0);
 
-        const invoice = await createTreatmentPaymentInvoice(
+        const invoice = await createTreatmentInvoice(
           patientId,
-          addedTreatmentPlan.treatedByDoctor,
-          treatmentsWithPayments,
-          paymentDetails,
-          req.admin?.id
+          addedTreatmentPlan._id,
+          totalAmount,
+          mostCommonPaymentMethod
         );
 
-        console.log(`Invoice ${invoice.invoiceNumber} generated for treatment plan ${addedTreatmentPlan._id}`);
+        if (invoice) {
+          console.log(`Invoice ${invoice.invoiceNumber} generated for treatment plan ${addedTreatmentPlan._id}`);
+        } else {
+          console.error(`Failed to generate invoice for treatment plan ${addedTreatmentPlan._id}`);
+        }
       }
     } catch (invoiceError) {
       console.error("Error generating invoice for treatment plan:", invoiceError);
@@ -4473,22 +4768,18 @@ const updateTreatmentPlan = async (req, res) => {
           const mostCommonPaymentMethod = Object.keys(paymentMethodCount)
             .reduce((a, b) => paymentMethodCount[a] > paymentMethodCount[b] ? a : b);
 
-          const paymentDetails = {
-            paidAmount: totalPaidAmount,
-            paymentMethod: mostCommonPaymentMethod,
-            notes: "Treatment payment update - automatically generated invoice"
-          };
-
-          const invoice = await createTreatmentPaymentInvoice(
+          const invoice = await createTreatmentInvoice(
             patientId,
-            addedTreatmentPlan.treatedByDoctor,
-            treatmentsWithPayments,
-            paymentDetails,
-            req.admin?.id,
-            null  // Add null for sourceId to maintain backward compatibility
+            addedTreatmentPlan._id,
+            totalPaidAmount,
+            mostCommonPaymentMethod
           );
 
-          console.log(`Invoice ${invoice.invoiceNumber} generated for added treatment plan ${addedTreatmentPlan._id}`);
+          if (invoice) {
+            console.log(`Invoice ${invoice.invoiceNumber} generated for added treatment plan ${addedTreatmentPlan._id}`);
+          } else {
+            console.error(`Failed to generate invoice for added treatment plan ${addedTreatmentPlan._id}`);
+          }
         }
       }
     } catch (invoiceError) {
@@ -4503,18 +4794,24 @@ const updateTreatmentPlan = async (req, res) => {
         );
 
         if (treatmentsWithPayments.length > 0) {
-          const paymentDetails = treatmentsWithPayments.map((treatment) => treatment.paymentDetails);
+          const totalAmount = treatmentsWithPayments.reduce((sum, t) => {
+            return sum + (t.paymentDetails?.paidAmount || 0);
+          }, 0);
+          
+          const paymentMethod = treatmentsWithPayments[0]?.paymentDetails?.paymentMethod || "cash";
 
-          const invoice = await createTreatmentPaymentInvoice(
+          const invoice = await createTreatmentInvoice(
             patientId,
-            updatedTreatmentPlan.treatedByDoctor,
-            treatmentsWithPayments,
-            paymentDetails,
-            req.admin?.id,
-            null  // Add null for sourceId to maintain backward compatibility
+            updatedTreatmentPlan._id,
+            totalAmount,
+            paymentMethod
           );
 
-          console.log(`Invoice ${invoice.invoiceNumber} generated for updated treatment plan ${updatedTreatmentPlan._id}`);
+          if (invoice) {
+            console.log(`Invoice ${invoice.invoiceNumber} generated for updated treatment plan ${updatedTreatmentPlan._id}`);
+          } else {
+            console.error(`Failed to generate invoice for updated treatment plan ${updatedTreatmentPlan._id}`);
+          }
         }
       }
     } catch (invoiceError) {
@@ -4845,6 +5142,11 @@ module.exports = {
   updateTreatmentStatus,
   getRecentTransactions,
   getNextSerialNumber,
+  getFinancialInsights,
+  getDashboardMetrics,
+  getSimplifiedDashboardMetrics, // Add the new function
+  getPatientDemographics,
+  getFilteredPatients,
   getFinancialInsights,
   getDashboardMetrics,
   getSimplifiedDashboardMetrics, // Add the new function

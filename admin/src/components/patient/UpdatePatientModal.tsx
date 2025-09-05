@@ -555,6 +555,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                       notes: treatment.notes || "",
                       procedure: treatment.procedure || "",
                       isCompleted: treatment.isCompleted || false,
+                      paymentMethod: treatment.paymentMethod || 'Cash',
                     })) || [];
 
                   // Calculate tooth-level totals
@@ -625,6 +626,7 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                     notes: dt.notes || "",
                     procedure: dt.procedure || "",
                     isCompleted: dt.isCompleted || false,
+                    paymentMethod: dt.paymentMethod || 'Cash',
                   })) || []
                 };
               }) || [];

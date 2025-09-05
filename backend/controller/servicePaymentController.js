@@ -3,7 +3,42 @@ const Patient = require("../model/Patient");
 const Income = require("../model/Income");
 const { default: mongoose } = require("mongoose");
 const { sendNotification, sendRoleNotification } = require("../utils/notificationHelper");
-const { createServicePaymentInvoice } = require("../utils/invoiceGenerator");
+const Invoice = require("../model/Invoice");
+
+// Helper function to create invoice for service payment
+const createServicePaymentInvoice = async (servicePaymentData) => {
+  try {
+    // Normalize payment method to match enum values
+    const normalizePaymentMethod = (method) => {
+      if (!method) return "cash";
+      const methodLower = method.toLowerCase();
+      
+      // Handle specific payment methods
+      if (methodLower.includes("khalti") || methodLower.includes("esewa") || methodLower.includes("e-sewa") || methodLower.includes("upi")) return "upi";
+      if (methodLower.includes("bank") || methodLower.includes("transfer")) return "bank";
+      if (methodLower.includes("card") || methodLower.includes("credit") || methodLower.includes("debit")) return "card";
+      if (methodLower.includes("cash")) return "cash";
+      
+      // Default fallback
+      return "cash";
+    };
+
+    const invoice = new Invoice({
+      paidAmount: servicePaymentData.amount,
+      paymentMethod: normalizePaymentMethod(servicePaymentData.paymentMethod),
+      sourceType: "Services Payment",
+      sourceId: servicePaymentData._id,
+      patientId: servicePaymentData.patientId,
+      date: new Date(servicePaymentData.date)
+    });
+
+    await invoice.save();
+    return invoice;
+  } catch (error) {
+    console.error("Error creating service payment invoice:", error);
+    return null;
+  }
+};
 
 // Helper function to get date filter
 const getDateFilter = (startDate, endDate) => {
@@ -64,8 +99,14 @@ const addServicePayment = async (req, res) => {
     // Generate invoice for this service payment (only if amount > 0)
     if (amount && amount > 0) {
       try {
-        const invoice = await createServicePaymentInvoice(servicePaymentData, req.user?._id);
-        console.log(`Invoice ${invoice.invoiceNumber} generated for service payment ${servicePayment._id}`);
+        // Set the service payment ID for the invoice
+        servicePaymentData._id = servicePayment._id;
+        const invoice = await createServicePaymentInvoice(servicePaymentData);
+        if (invoice) {
+          console.log(`Invoice ${invoice.invoiceNumber} generated for service payment ${servicePayment._id}`);
+        } else {
+          console.error(`Failed to generate invoice for service payment ${servicePayment._id}`);
+        }
       } catch (invoiceError) {
         console.error("Error generating invoice for service payment:", invoiceError);
         // Don't fail the service payment creation if invoice generation fails

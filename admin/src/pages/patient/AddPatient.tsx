@@ -795,7 +795,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     try {
       setIsSubmitting(true);
       const formattedData = formatDataForBackend(formData);
-      console.log("Formatted data:", formattedData);
       const response = await crudRequest<{
         data?: { _id: string };
         _id?: string;

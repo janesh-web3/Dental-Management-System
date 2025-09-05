@@ -3,7 +3,58 @@ const Expense = require("../model/Expense");
 const ServicePayment = require("../model/ServicePayment");
 const { createAndEmitNotification } = require("./notificationCtrl");
 const { getIO } = require("../socket");
-const { createIncomeInvoice, createExpenseInvoice } = require("../utils/invoiceGenerator");
+const Invoice = require("../model/Invoice");
+
+// Helper functions to create invoices via centralized system
+const normalizePaymentMethod = (method) => {
+  if (!method) return "cash";
+  const methodLower = method.toLowerCase();
+  
+  // Handle specific payment methods
+  if (methodLower.includes("khalti") || methodLower.includes("esewa") || methodLower.includes("e-sewa") || methodLower.includes("upi")) return "upi";
+  if (methodLower.includes("bank") || methodLower.includes("transfer")) return "bank";
+  if (methodLower.includes("card") || methodLower.includes("credit") || methodLower.includes("debit")) return "card";
+  if (methodLower.includes("cash")) return "cash";
+  
+  // Default fallback
+  return "cash";
+};
+
+const createIncomeInvoice = async (income) => {
+  try {
+    const invoice = new Invoice({
+      paidAmount: income.amount,
+      paymentMethod: normalizePaymentMethod(income.paymentMethod),
+      sourceType: "Income",
+      sourceId: income._id,
+      date: new Date(income.date)
+    });
+
+    await invoice.save();
+    return invoice;
+  } catch (error) {
+    console.error("Error creating income invoice:", error);
+    return null;
+  }
+};
+
+const createExpenseInvoice = async (expense) => {
+  try {
+    const invoice = new Invoice({
+      paidAmount: expense.amount,
+      paymentMethod: normalizePaymentMethod(expense.paymentMethod),
+      sourceType: "Expenses",
+      sourceId: expense._id,
+      date: new Date(expense.date)
+    });
+
+    await invoice.save();
+    return invoice;
+  } catch (error) {
+    console.error("Error creating expense invoice:", error);
+    return null;
+  }
+};
 
 // Helper function to get date filter
 const getDateFilter = (startDate, endDate) => {
@@ -97,9 +148,15 @@ const addIncome = async (req, res) => {
     });
     
     // Generate invoice for this income entry
+    let invoiceInfo = null;
     try {
-      const invoice = await createIncomeInvoice(income, req.user._id);
-      console.log(`Invoice ${invoice.invoiceNumber} generated for income ${income._id}`);
+      const invoice = await createIncomeInvoice(income);
+      if (invoice) {
+        console.log(`Invoice ${invoice.invoiceNumber} generated for income ${income._id}`);
+        invoiceInfo = { invoiceNumber: invoice.invoiceNumber };
+      } else {
+        console.error(`Failed to generate invoice for income ${income._id}`);
+      }
     } catch (invoiceError) {
       console.error("Error generating invoice for income:", invoiceError);
       // Don't fail the income creation if invoice generation fails
@@ -136,11 +193,17 @@ const addIncome = async (req, res) => {
       });
     }
     
-    res.status(201).json({
+    const response = {
       success: true,
       data: income,
       message: "Income added successfully",
-    });
+    };
+
+    if (invoiceInfo) {
+      response.invoice = invoiceInfo;
+    }
+
+    res.status(201).json(response);
   } catch (error) {
     console.error("Error adding income:", error);
     res.status(500).json({
@@ -386,9 +449,15 @@ const addExpense = async (req, res) => {
     });
     
     // Generate invoice/receipt for this expense entry
+    let invoiceInfo = null;
     try {
-      const invoice = await createExpenseInvoice(expense, req.user._id);
-      console.log(`Expense receipt ${invoice.invoiceNumber} generated for expense ${expense._id}`);
+      const invoice = await createExpenseInvoice(expense);
+      if (invoice) {
+        console.log(`Expense receipt ${invoice.invoiceNumber} generated for expense ${expense._id}`);
+        invoiceInfo = { invoiceNumber: invoice.invoiceNumber };
+      } else {
+        console.error(`Failed to generate invoice for expense ${expense._id}`);
+      }
     } catch (invoiceError) {
       console.error("Error generating invoice for expense:", invoiceError);
       // Don't fail the expense creation if invoice generation fails
@@ -425,11 +494,17 @@ const addExpense = async (req, res) => {
       });
     }
     
-    res.status(201).json({
+    const response = {
       success: true,
       data: expense,
       message: "Expense added successfully",
-    });
+    };
+
+    if (invoiceInfo) {
+      response.invoice = invoiceInfo;
+    }
+
+    res.status(201).json(response);
   } catch (error) {
     console.error("Error adding expense:", error);
     res.status(500).json({

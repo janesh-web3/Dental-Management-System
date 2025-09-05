@@ -30,7 +30,9 @@ const formSchema = z.object({
     (a) => parseFloat(z.string().parse(a)),
     z.number().positive("Amount must be positive")
   ),
-  date: z.string().min(1, "Date is required").transform((dateString) => new Date(dateString)),
+  date: z.date({
+    required_error: "Date is required",
+  }),
   category: z.string({
     required_error: "Category is required",
   }),

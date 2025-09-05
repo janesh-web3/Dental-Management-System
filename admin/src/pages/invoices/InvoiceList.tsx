@@ -47,15 +47,20 @@ import { crudRequest } from '@/lib/api';
 interface Invoice {
   _id: string;
   invoiceNumber: string;
-  invoiceDate: string;
-  dueDate: string;
-  patientName: string;
-  total: number;
-  amountPaid: number;
-  balance: number;
-  status: string;
-  paymentMethod?: string;
-  sourceType?: string; // Income, Expense, ServicePayment, etc.
+  date: string;
+  paidAmount: number;
+  paymentMethod: string;
+  sourceType: "Income" | "Expenses" | "Services Payment" | "Patients";
+  sourceId: string;
+  patientId?: {
+    _id: string;
+    personalDetails: {
+      name: string;
+      contactNumber: string;
+      email?: string;
+    };
+  };
+  sourceData?: any;
 }
 
 const InvoiceList: React.FC = () => {
@@ -65,7 +70,7 @@ const InvoiceList: React.FC = () => {
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   const [totalInvoices, setTotalInvoices] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sourceTypeFilter, setSourceTypeFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<{
     startDate: string;
     endDate: string;
@@ -74,14 +79,12 @@ const InvoiceList: React.FC = () => {
     endDate: ''
   });
 
-  const statusOptions = [
-    { value: 'all', label: 'All Status' },
-    { value: 'Draft', label: 'Draft' },
-    { value: 'Sent', label: 'Sent' },
-    { value: 'Paid', label: 'Paid' },
-    { value: 'Partially Paid', label: 'Partially Paid' },
-    { value: 'Overdue', label: 'Overdue' },
-    { value: 'Cancelled', label: 'Cancelled' },
+  const sourceTypeOptions = [
+    { value: 'all', label: 'All Sources' },
+    { value: 'Income', label: 'Income' },
+    { value: 'Expenses', label: 'Expenses' },
+    { value: 'Services Payment', label: 'Services Payment' },
+    { value: 'Patients', label: 'Patients' },
   ];
 
   const fetchInvoices = async () => {
@@ -91,7 +94,7 @@ const InvoiceList: React.FC = () => {
         page: page.toString(),
         limit: rowsPerPage.toString(),
         search: searchTerm,
-        status: statusFilter !== 'all' ? statusFilter : '',
+        sourceType: sourceTypeFilter !== 'all' ? sourceTypeFilter : '',
         startDate: dateRange.startDate,
         endDate: dateRange.endDate
       });
@@ -108,7 +111,7 @@ const InvoiceList: React.FC = () => {
 
   useEffect(() => {
     fetchInvoices();
-  }, [page, rowsPerPage, statusFilter, searchTerm, dateRange]);
+  }, [page, rowsPerPage, sourceTypeFilter, searchTerm, dateRange]);
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -124,8 +127,8 @@ const InvoiceList: React.FC = () => {
     setPage(1);
   };
 
-  const handleStatusFilterChange = (value: string) => {
-    setStatusFilter(value);
+  const handleSourceTypeFilterChange = (value: string) => {
+    setSourceTypeFilter(value);
     setPage(1);
   };
 
@@ -137,18 +140,16 @@ const InvoiceList: React.FC = () => {
     setPage(1);
   };
 
-  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
-    switch (status) {
-      case 'Paid':
+  const getSourceTypeVariant = (sourceType: string): "default" | "secondary" | "destructive" | "outline" => {
+    switch (sourceType) {
+      case 'Income':
         return 'default';
-      case 'Partially Paid':
-        return 'secondary';
-      case 'Overdue':
+      case 'Expenses':
         return 'destructive';
-      case 'Sent':
-        return 'outline';
-      case 'Draft':
+      case 'Services Payment':
         return 'secondary';
+      case 'Patients':
+        return 'outline';
       default:
         return 'outline';
     }
@@ -158,18 +159,18 @@ const InvoiceList: React.FC = () => {
     return new Intl.NumberFormat('en-NP', {
       style: 'currency',
       currency: 'NPR',
-    }).format(amount); // Assuming amounts are stored in cents
+    }).format(amount);
   };
 
-  const getAmountColor = (sourceType?: string) => {
+  const getAmountColor = (sourceType: string) => {
     switch (sourceType) {
       case 'Income':
         return 'text-green-600 font-medium';
-      case 'Expense':
+      case 'Expenses':
         return 'text-red-600 font-medium';
-      case 'Patient':
+      case 'Services Payment':
         return 'text-blue-600 font-medium';
-      case 'Payment':
+      case 'Patients':
         return 'text-purple-600 font-medium';
       default:
         return 'font-medium';
@@ -360,92 +361,36 @@ const InvoiceList: React.FC = () => {
         <div class="invoice-details">
             <div class="bill-to">
                 <div class="section-title">Bill To:</div>
-                <div class="info-line"><strong>${invoice.patientName}</strong></div>
-                ${invoice.patient?.personalDetails?.email ? `<div class="info-line">Email: ${invoice.patient.personalDetails.email}</div>` : ''}
-                ${invoice.patient?.personalDetails?.phone ? `<div class="info-line">Phone: ${invoice.patient.personalDetails.phone}</div>` : ''}
-                ${invoice.patient?.personalDetails?.address ? `<div class="info-line">Address: ${invoice.patient.personalDetails.address}</div>` : ''}
-                ${invoice.sourceType ? `<div class="info-line"><em>Type: ${invoice.sourceType}</em></div>` : ''}
+                ${invoice.patientId ? `
+                <div class="info-line"><strong>Patient:</strong> ${invoice.patientId.personalDetails?.name || 'Unknown'}</div>
+                ${invoice.patientId.personalDetails?.contactNumber ? `<div class="info-line">Contact: ${invoice.patientId.personalDetails.contactNumber}</div>` : ''}
+                ` : `
+                <div class="info-line"><strong>Source ID:</strong> ${invoice.sourceId}</div>
+                `}
+                <div class="info-line"><strong>Source Type:</strong> ${invoice.sourceType}</div>
             </div>
             
             <div class="invoice-info">
                 <div class="section-title">Invoice Information:</div>
                 <div class="info-line"><strong>Invoice #:</strong> ${invoice.invoiceNumber}</div>
-                <div class="info-line"><strong>Date:</strong> ${format(new Date(invoice.invoiceDate), 'MMM dd, yyyy')}</div>
-                <div class="info-line"><strong>Due Date:</strong> ${format(new Date(invoice.dueDate), 'MMM dd, yyyy')}</div>
-                <div class="info-line">
-                    <strong>Status:</strong> 
-                    <span class="status-badge ${invoice.status === 'Paid' ? 'status-paid' : invoice.status === 'Partially Paid' ? 'status-partial' : 'status-unpaid'}">
-                        ${invoice.status}
-                    </span>
-                </div>
-                ${invoice.doctor?.name || invoice.doctorName ? `<div class="info-line"><strong>Doctor:</strong> ${invoice.doctor?.name || invoice.doctorName}</div>` : ''}
+                <div class="info-line"><strong>Date:</strong> ${format(new Date(invoice.date), 'MMM dd, yyyy')}</div>
+                <div class="info-line"><strong>Payment Method:</strong> ${invoice.paymentMethod?.toUpperCase()}</div>
             </div>
         </div>
 
-        <!-- Items Table -->
-        <table class="items-table">
-            <thead>
-                <tr>
-                    <th>Description</th>
-                    <th class="text-right">Unit Price</th>
-                    <th class="text-right">Qty</th>
-                    <th class="text-right">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${invoice.items.map((item: { description: any; notes: any; teethNumbers: any[]; unitPrice: number; quantity: any; total: number; }) => `
-                <tr>
-                    <td>
-                        <strong>${item.description}</strong>
-                        ${item.notes ? `<br><small style="color: #666;">${item.notes}</small>` : ''}
-                        ${item.teethNumbers && item.teethNumbers.length > 0 ? `<br><small style="color: #666;">Teeth: ${item.teethNumbers.join(', ')}</small>` : ''}
-                    </td>
-                    <td class="text-right">${formatCurrency(item.unitPrice)}</td>
-                    <td class="text-right">${item.quantity}</td>
-                    <td class="text-right ${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : invoice.sourceType === 'Patient' ? 'patient-amount' : invoice.sourceType === 'Payment' ? 'payment-amount' : ''}">${formatCurrency(item.total)}</td>
-                </tr>
-                `).join('')}
-            </tbody>
-        </table>
-
-        <!-- Totals -->
-        <div class="totals">
-            <div class="total-row">
-                <span>Subtotal:</span>
-                <span class="${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : invoice.sourceType === 'Patient' ? 'patient-amount' : invoice.sourceType === 'Payment' ? 'payment-amount' : ''}">${formatCurrency(invoice.subtotal)}</span>
-            </div>
-            ${invoice.tax > 0 ? `
-            <div class="total-row">
-                <span>Tax:</span>
-                <span>${formatCurrency(invoice.tax)}</span>
-            </div>` : ''}
-            ${invoice.discount > 0 ? `
-            <div class="total-row">
-                <span>Discount:</span>
-                <span>-${formatCurrency(invoice.discount)}</span>
-            </div>` : ''}
-            <div class="total-row final">
-                <span>Total:</span>
-                <span class="${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : invoice.sourceType === 'Patient' ? 'patient-amount' : invoice.sourceType === 'Payment' ? 'payment-amount' : ''}">${formatCurrency(invoice.total)}</span>
-            </div>
-            <div class="total-row">
-                <span>Amount Paid:</span>
-                <span class="${invoice.sourceType === 'Income' ? 'income-amount' : invoice.sourceType === 'Expense' ? 'expense-amount' : invoice.sourceType === 'Patient' ? 'patient-amount' : invoice.sourceType === 'Payment' ? 'payment-amount' : ''}">${formatCurrency(invoice.amountPaid)}</span>
+        <!-- Amount Display -->
+        <div style="text-align: center; margin: 30px 0; padding: 30px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #0066cc;">
+            <div style="font-size: 16px; color: #666; margin-bottom: 10px;">Amount Paid</div>
+            <div style="font-size: 32px; font-weight: bold; color: ${
+              invoice.sourceType === 'Income' ? '#28a745' : 
+              invoice.sourceType === 'Expenses' ? '#dc3545' : 
+              invoice.sourceType === 'Services Payment' ? '#6f42c1' : 
+              '#007bff'
+            };">
+                ${formatCurrency(invoice.paidAmount)}
             </div>
         </div>
 
-        <!-- Payment Information -->
-        ${invoice.paymentMethod ? `
-        <div class="payment-info">
-            <strong>Payment Method:</strong> ${invoice.paymentMethod}
-        </div>` : ''}
-
-        <!-- Notes -->
-        ${invoice.notes ? `
-        <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 4px;">
-            <strong>Notes:</strong><br>
-            ${invoice.notes}
-        </div>` : ''}
 
         <!-- Footer -->
         <div class="footer">
@@ -550,13 +495,13 @@ const InvoiceList: React.FC = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+              <Label htmlFor="sourceType">Source Type</Label>
+              <Select value={sourceTypeFilter} onValueChange={handleSourceTypeFilterChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
+                  <SelectValue placeholder="Select source type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {statusOptions.map((option) => (
+                  {sourceTypeOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -596,19 +541,17 @@ const InvoiceList: React.FC = () => {
               <TableRow>
                 <TableHead>Invoice #</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Patient</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Paid</TableHead>
+                <TableHead>Patient/Source</TableHead>
+                <TableHead>Source Type</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
                 <TableHead>Payment Method</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     <div className="flex items-center justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                       <span className="ml-2">Loading...</span>
@@ -617,7 +560,7 @@ const InvoiceList: React.FC = () => {
                 </TableRow>
               ) : invoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     <div className="text-muted-foreground">
                       No invoices found
                     </div>
@@ -635,27 +578,32 @@ const InvoiceList: React.FC = () => {
                       </Link>
                     </TableCell>
                     <TableCell>
-                      {format(new Date(invoice.invoiceDate), 'MMM dd, yyyy')}
+                      {format(new Date(invoice.date), 'MMM dd, yyyy')}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {invoice.patientId ? (
+                        <div>
+                          <div>{invoice.patientId.personalDetails?.name || 'Unknown Patient'}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {invoice.patientId.personalDetails?.contactNumber || ''}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Source ID: {invoice.sourceId}</span>
+                      )}
                     </TableCell>
                     <TableCell>
-                      {format(new Date(invoice.dueDate), 'MMM dd, yyyy')}
-                    </TableCell>
-                    <TableCell className="font-medium">{invoice.patientName}</TableCell>
-                    <TableCell className={`text-right ${getAmountColor(invoice.sourceType)}`}>
-                      {formatCurrency(invoice.total)}
+                      <Badge variant={getSourceTypeVariant(invoice.sourceType)}>
+                        {invoice.sourceType}
+                      </Badge>
                     </TableCell>
                     <TableCell className={`text-right ${getAmountColor(invoice.sourceType)}`}>
-                      {formatCurrency(invoice.amountPaid)}
+                      {formatCurrency(invoice.paidAmount)}
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm">
+                      <span className="text-sm capitalize">
                         {invoice.paymentMethod || 'N/A'}
                       </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(invoice.status)}>
-                        {invoice.status}
-                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -670,13 +618,6 @@ const InvoiceList: React.FC = () => {
                           onClick={() => handleDownloadPDF(invoice._id, invoice.invoiceNumber)}
                         >
                           <Download className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleSendEmail(invoice._id, invoice.invoiceNumber)}
-                        >
-                          <Mail className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>

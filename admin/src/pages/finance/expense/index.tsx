@@ -128,9 +128,13 @@ export default function ExpensePage() {
       }) as ApiResponse<Expense>;
 
       if (response.success) {
+        const message = (response as any).invoice 
+          ? `Expense added successfully. Invoice ${(response as any).invoice.invoiceNumber} generated.`
+          : "Expense added successfully";
+        
         toast({
-          title: "Success", 
-          description: "Expense added successfully",
+          title: "Success",
+          description: message,
         });
         fetchExpenses();
         setIsAddDialogOpen(false);

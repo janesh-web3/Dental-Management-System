@@ -32,9 +32,44 @@ const {
 } = require("../controller/patientCtrl.js");
 const cloudinary = require("../config/cloudinary");
 const Patient = require("../model/Patient");
+const Invoice = require("../model/Invoice");
 const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
-const { createTreatmentPaymentInvoice } = require("../utils/invoiceGenerator");
+
+// Helper function to create invoice via centralized system
+const createTreatmentInvoice = async (patientId, treatmentId, paidAmount, paymentMethod) => {
+  try {
+    // Normalize payment method to match enum values
+    const normalizePaymentMethod = (method) => {
+      if (!method) return "cash";
+      const methodLower = method.toLowerCase();
+      
+      // Handle specific payment methods
+      if (methodLower.includes("khalti") || methodLower.includes("esewa") || methodLower.includes("e-sewa") || methodLower.includes("upi")) return "upi";
+      if (methodLower.includes("bank") || methodLower.includes("transfer")) return "bank";
+      if (methodLower.includes("card") || methodLower.includes("credit") || methodLower.includes("debit")) return "card";
+      if (methodLower.includes("cash")) return "cash";
+      
+      // Default fallback
+      return "cash";
+    };
+
+    const invoice = new Invoice({
+      paidAmount,
+      paymentMethod: normalizePaymentMethod(paymentMethod),
+      sourceType: "Patients",
+      sourceId: treatmentId,
+      patientId,
+      date: new Date()
+    });
+
+    await invoice.save();
+    return invoice;
+  } catch (error) {
+    console.error("Error creating treatment invoice:", error);
+    return null;
+  }
+};
 
 // Patient management routes with RBAC
 router.post("/add-patient", authenticateUser, authorizePermission('patients', 'create'), addPatient);
@@ -531,27 +566,36 @@ router.patch(
           notes: `Payment update for tooth ${toothNumber} treatment`
         };
         
-        // Generate unique sourceId for each payment transaction
-        const uniqueSourceId = `payment-tooth-${dailyTreatmentId}-${Date.now()}`;
-        const invoice = await createTreatmentPaymentInvoice(
-          patientId, 
-          dailyTreatment.treatedByDoctor?._id || dailyTreatment.treatedByDoctor, 
-          treatmentDetails, 
-          paymentDetails,
-          req.user?._id || updatedPatient._id,
-          uniqueSourceId  // Use unique payment sourceId
+        // Create invoice via centralized system
+        const invoice = await createTreatmentInvoice(
+          patientId,
+          dailyTreatmentId,
+          newPaymentAmount,
+          paymentMethod || "cash"
         );
         
         // Add invoice information to the response
-        res.status(200).json({
+        const response = {
           success: true,
           message: "Payment updated successfully",
-          data: updatedPatient,
-          invoice: {
-            id: invoice._id,
-            invoiceNumber: invoice.invoiceNumber
-          }
-        });
+          data: updatedPatient
+        };
+
+        if (invoice) {
+          response.data = {
+            ...response.data,
+            invoice: {
+              invoiceNumber: invoice.invoiceNumber
+            }
+          };
+        } else {
+          response.data = {
+            ...response.data,
+            invoiceError: "Failed to generate invoice"
+          };
+        }
+
+        res.status(200).json(response);
       } catch (invoiceError) {
         console.error("Error generating invoice for payment update:", invoiceError);
         // Log more detailed error information
@@ -858,27 +902,36 @@ router.patch(
           notes: `Payment update for ${groupTreatment.groupName} group treatment`
         };
         
-        // Generate unique sourceId for each group payment transaction
-        const uniqueSourceId = `payment-group-${dailyTreatmentId}-${Date.now()}`;
-        const invoice = await createTreatmentPaymentInvoice(
-          patientId, 
-          dailyTreatment.treatedByDoctor?._id || dailyTreatment.treatedByDoctor, 
-          treatmentDetails, 
-          paymentDetails,
-          req.user?._id || updatedPatient._id,
-          uniqueSourceId  // Use unique payment sourceId
+        // Create invoice via centralized system
+        const invoice = await createTreatmentInvoice(
+          patientId,
+          dailyTreatmentId,
+          newPaymentAmount,
+          paymentMethod || "cash"
         );
         
         // Add invoice information to the response
-        res.status(200).json({
+        const response = {
           success: true,
           message: "Group payment updated successfully",
-          data: updatedPatient,
-          invoice: {
-            id: invoice._id,
-            invoiceNumber: invoice.invoiceNumber
-          }
-        });
+          data: updatedPatient
+        };
+
+        if (invoice) {
+          response.data = {
+            ...response.data,
+            invoice: {
+              invoiceNumber: invoice.invoiceNumber
+            }
+          };
+        } else {
+          response.data = {
+            ...response.data,
+            invoiceError: "Failed to generate invoice"
+          };
+        }
+
+        res.status(200).json(response);
       } catch (invoiceError) {
         console.error("Error generating invoice for group payment update:", invoiceError);
         // Log more detailed error information

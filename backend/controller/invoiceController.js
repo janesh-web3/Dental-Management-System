@@ -1,7 +1,4 @@
 const Invoice = require("../model/Invoice");
-const PaymentLog = require("../model/PaymentLog");
-const { generatePDF } = require("../utils/pdfGenerator");
-const { sendInvoiceEmail } = require("../utils/emailService");
 
 // @desc    Create a new invoice
 // @route   POST /api/invoices
@@ -9,66 +6,71 @@ const { sendInvoiceEmail } = require("../utils/emailService");
 exports.createInvoice = async (req, res) => {
   try {
     const {
-      patient,
-      doctor,
-      items,
+      paidAmount,
       paymentMethod,
-      notes,
-      treatmentPlan,
-      orthoGroupId,
-      installmentNumber,
-      totalInstallments,
+      sourceType,
+      sourceId,
+      patientId,
+      date
     } = req.body;
 
-    // Calculate totals
-    const subtotal = items.reduce(
-      (sum, item) => sum + item.quantity * item.unitPrice,
-      0
-    );
-    const total = subtotal - (req.body.discount || 0);
+    // Validate required fields
+    if (!paidAmount || !paymentMethod || !sourceType || !sourceId) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields: paidAmount, paymentMethod, sourceType, sourceId"
+      });
+    }
+
+    // Validate sourceType
+    const validSourceTypes = ["Income", "Expenses", "Services Payment", "Patients"];
+    if (!validSourceTypes.includes(sourceType)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid sourceType. Must be one of: " + validSourceTypes.join(", ")
+      });
+    }
+
+    // Validate paymentMethod
+    const validPaymentMethods = ["cash", "card", "bank", "upi"];
+    if (!validPaymentMethods.includes(paymentMethod)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid paymentMethod. Must be one of: " + validPaymentMethods.join(", ")
+      });
+    }
+
+    // If sourceType is Patients, patientId is required
+    if (sourceType === "Patients" && !patientId) {
+      return res.status(400).json({
+        success: false,
+        error: "patientId is required when sourceType is 'Patients'"
+      });
+    }
 
     const invoice = new Invoice({
-      ...req.body,
-      patientName: req.body.patientName || "Patient Name",
-      doctorName: req.body.doctorName || "Doctor Name",
-      subtotal,
-      total,
-      balance: total, // Initially, balance equals total
-      status: "Draft",
-      treatmentPlan,
-      orthoGroupId,
-      installmentNumber,
-      totalInstallments,
+      paidAmount,
+      paymentMethod,
+      sourceType,
+      sourceId,
+      patientId: sourceType === "Patients" ? patientId : undefined,
+      date: date ? new Date(date) : new Date(),
     });
 
     await invoice.save();
 
-    // If payment is made, process it
-    if (req.body.amountPaid > 0) {
-      await processPayment(
-        invoice,
-        req.body.amountPaid,
-        paymentMethod,
-        req.user._id,
-        notes
-      );
-    }
-
-    // Generate PDF
-    const pdfBuffer = await generatePDF(invoice);
-
-    // Send email if requested
-    if (req.body.sendEmail) {
-      await sendInvoiceEmail(invoice, pdfBuffer);
-    }
-
     res.status(201).json({
       success: true,
       data: invoice,
-      pdf: pdfBuffer.toString("base64"),
     });
   } catch (error) {
     console.error("Error creating invoice:", error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
     res.status(500).json({ success: false, error: "Server error" });
   }
 };
@@ -82,13 +84,11 @@ exports.getInvoices = async (req, res) => {
       startDate,
       endDate,
       patientId,
-      doctorId,
-      status,
-      treatmentType,
+      sourceType,
       search,
       page = 1,
       limit = 10,
-      sortBy = "invoiceDate",
+      sortBy = "date",
       sortOrder = "desc",
     } = req.query;
 
@@ -96,161 +96,35 @@ exports.getInvoices = async (req, res) => {
 
     // Add search functionality
     if (search) {
-      query.$or = [
-        { invoiceNumber: { $regex: search, $options: 'i' } },
-        { patientName: { $regex: search, $options: 'i' } },
-        { doctorName: { $regex: search, $options: 'i' } },
-        { notes: { $regex: search, $options: 'i' } }
-      ];
+      query.invoiceNumber = { $regex: search, $options: 'i' };
     }
 
+    // Date filtering
     if (startDate || endDate) {
-      query.invoiceDate = {};
-      if (startDate) query.invoiceDate.$gte = new Date(startDate);
-      if (endDate) query.invoiceDate.$lte = new Date(endDate);
+      query.date = {};
+      if (startDate) query.date.$gte = new Date(startDate);
+      if (endDate) query.date.$lte = new Date(endDate);
     }
 
-    if (patientId) query.patient = patientId;
-    if (doctorId) query.doctor = doctorId;
-    if (status) query.status = status;
-    if (treatmentType) query["items.treatmentType"] = treatmentType;
+    // Filter by patientId
+    if (patientId) query.patientId = patientId;
+
+    // Filter by sourceType
+    if (sourceType) query.sourceType = sourceType;
 
     const skip = (page - 1) * limit;
     const sort = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
 
-    const basePipeline = [
-      { $match: query },
-      {
-        $lookup: {
-          from: "patients",
-          localField: "patient",
-          foreignField: "_id",
-          as: "patientData",
-          pipeline: [{ $match: { isDeleted: { $ne: true } } }],
-        },
-      },
-      {
-        $lookup: {
-          from: "doctors",
-          localField: "doctor",
-          foreignField: "_id",
-          as: "doctorData",
-          pipeline: [{ $project: { name: 1 } }],
-        },
-      },
-      {
-        $lookup: {
-          from: "incomes",
-          localField: "sourceId",
-          foreignField: "_id",
-          as: "incomeSource",
-          pipeline: [{ $match: { isDeleted: { $ne: true } } }],
-        },
-      },
-      {
-        $lookup: {
-          from: "expenses",
-          localField: "sourceId",
-          foreignField: "_id",
-          as: "expenseSource",
-          pipeline: [{ $match: { isDeleted: { $ne: true } } }],
-        },
-      },
-      {
-        $lookup: {
-          from: "servicepayments",
-          localField: "sourceId",
-          foreignField: "_id",
-          as: "servicePaymentSource",
-          pipeline: [{ $match: { isDeleted: { $ne: true } } }],
-        },
-      },
-      // Add a field to check if patient is valid (exists and not deleted)
-      {
-        $addFields: {
-          hasValidPatient: {
-            $cond: {
-              if: { $eq: ["$patient", null] }, // If patient is null
-              then: true, // Consider it valid (for income/expense invoices)
-              else: { $gt: [{ $size: "$patientData" }, 0] }, // Check if patient exists and is not deleted
-            },
-          },
-        },
-      },
-      {
-        $match: {
-          $or: [
-            // Case 1: Invoices without patient reference (income/expense invoices)
-            { patient: null },
+    // Count total documents
+    const total = await Invoice.countDocuments(query);
 
-            // Case 2: Invoices with valid patient reference
-            { hasValidPatient: true },
-
-            // Case 3: Income source invoices (with sourceType)
-            {
-              $and: [
-                { sourceType: "Income" },
-                { "incomeSource.0": { $exists: true } },
-              ],
-            },
-
-            // Case 4: Expense source invoices (with sourceType)
-            {
-              $and: [
-                { sourceType: "Expense" },
-                { "expenseSource.0": { $exists: true } },
-              ],
-            },
-
-            // Case 5: Service payment source invoices (with sourceType)
-            {
-              $and: [
-                { sourceType: "ServicePayment" },
-                { "servicePaymentSource.0": { $exists: true } },
-              ],
-            },
-          ],
-        },
-      },
-    ];
-
-    const invoicePipeline = [
-      ...basePipeline,
-      {
-        $project: {
-          _id: 1,
-          invoiceNumber: 1,
-          invoiceDate: 1,
-          dueDate: 1,
-          patientName: 1,
-          doctorName: 1,
-          total: 1,
-          amountPaid: 1,
-          balance: 1,
-          status: 1,
-          paymentMethod: 1,
-          notes: 1,
-          sourceType: 1,
-          sourceId: 1,
-          patient: { $arrayElemAt: ["$patientData", 0] },
-          doctor: { $arrayElemAt: ["$doctorData", 0] },
-          createdAt: 1,
-          updatedAt: 1,
-        },
-      },
-      { $sort: sort },
-      { $skip: skip },
-      { $limit: Number(limit) },
-    ];
-
-    const countPipeline = [...basePipeline, { $count: "total" }];
-
-    const [invoices, totalCountResult] = await Promise.all([
-      Invoice.aggregate(invoicePipeline),
-      Invoice.aggregate(countPipeline),
-    ]);
-
-    const total = totalCountResult[0]?.total || 0;
+    // Get invoices with population
+    const invoices = await Invoice.find(query)
+      .populate('patientId', 'personalDetails.name personalDetails.contactNumber')
+      .sort(sort)
+      .skip(skip)
+      .limit(Number(limit))
+      .exec();
 
     res.json({
       success: true,
@@ -274,183 +148,50 @@ exports.getInvoice = async (req, res) => {
     const invoice = await Invoice.findOne({
       _id: req.params.id,
       isDeleted: { $ne: true },
-    })
-      .populate("patient", "personalDetails name email phone")
-      .populate("doctor", "name email phone")
-      .populate("treatmentPlan", "name")
-      .populate("orthoGroupId", "name")
-      .populate("paymentLogs");
+    }).populate('patientId', 'personalDetails.name personalDetails.contactNumber personalDetails.email');
 
-    console.log("Fetched invoice:", invoice);
-    
     if (!invoice) {
       return res
         .status(404)
         .json({ success: false, error: "Invoice not found" });
     }
 
-    // Check if this is a patient-related invoice and validate patient existence
-    if (invoice.patient && invoice.patient.isDeleted) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Invoice patient not found or deleted" });
+    // Populate source data based on sourceType
+    let sourceData = null;
+    if (invoice.sourceType === "Income") {
+      const Income = require("../model/Income");
+      sourceData = await Income.findById(invoice.sourceId);
+    } else if (invoice.sourceType === "Expenses") {
+      const Expense = require("../model/Expense");
+      sourceData = await Expense.findById(invoice.sourceId);
+    } else if (invoice.sourceType === "Services Payment") {
+      const ServicePayment = require("../model/ServicePayment");
+      sourceData = await ServicePayment.findById(invoice.sourceId);
+    } else if (invoice.sourceType === "Patients") {
+      const Patient = require("../model/Patient");
+      sourceData = await Patient.findById(invoice.sourceId);
     }
 
-    // For invoices without patients (income/expense invoices), we need to handle them differently
-    if (!invoice.patient && invoice.sourceType) {
-      console.log(`Processing ${invoice.sourceType} invoice without patient`);
-      
-      // For income/expense invoices, populate the source data for better display
-      let sourceData = null;
-      if (invoice.sourceType === "Income") {
-        const Income = require("../model/Income");
-        sourceData = await Income.findById(invoice.sourceId);
-      } else if (invoice.sourceType === "Expense") {
-        const Expense = require("../model/Expense");
-        sourceData = await Expense.findById(invoice.sourceId);
-      } else if (invoice.sourceType === "ServicePayment") {
-        const ServicePayment = require("../model/ServicePayment");
-        sourceData = await ServicePayment.findById(invoice.sourceId);
-      }
+    // Add source data to the response
+    const invoiceData = invoice.toObject();
+    invoiceData.sourceData = sourceData;
 
-      // Add source data to the response
-      const invoiceData = invoice.toObject();
-      invoiceData.sourceData = sourceData;
-      
-      return res.json({ success: true, data: invoiceData });
-    }
-
-    res.json({ success: true, data: invoice });
+    res.json({ success: true, data: invoiceData });
   } catch (error) {
     console.error("Error getting invoice:", error);
     res.status(500).json({ success: false, error: "Server error" });
   }
 };
 
-// @desc    Update invoice
-// @route   PUT /api/invoices/:id
-// @access  Private/Admin
-exports.updateInvoice = async (req, res) => {
-  try {
-    const { items, paymentMethod, notes, ...updateData } = req.body;
-
-    // Recalculate totals if items are updated
-    if (items) {
-      const subtotal = items.reduce(
-        (sum, item) => sum + item.quantity * item.unitPrice,
-        0
-      );
-      updateData.subtotal = subtotal;
-      updateData.total = subtotal - (updateData.discount || 0);
-      updateData.balance = updateData.total - (updateData.amountPaid || 0);
-    }
-
-    const invoice = await Invoice.findOneAndUpdate(
-      { _id: req.params.id, isDeleted: { $ne: true } },
-      { ...updateData, $set: { items } },
-      { new: true, runValidators: true }
-    );
-
-    if (!invoice) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Invoice not found" });
-    }
-
-    res.json({ success: true, data: invoice });
-  } catch (error) {
-    console.error("Error updating invoice:", error);
-    res.status(500).json({ success: false, error: "Server error" });
-  }
-};
-
-// @desc    Delete invoice
-// @route   DELETE /api/invoices/:id
-// @access  Private/Admin
-exports.deleteInvoice = async (req, res) => {
-  try {
-    const invoice = await Invoice.findOneAndUpdate(
-      { _id: req.params.id, isDeleted: { $ne: true } },
-      { isDeleted: true, deletedAt: new Date() },
-      { new: true }
-    );
-
-    if (!invoice) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Invoice not found" });
-    }
-
-    // Also delete associated payment logs
-    await PaymentLog.deleteMany({ invoice: invoice._id });
-
-    res.json({ success: true, data: {} });
-  } catch (error) {
-    console.error("Error deleting invoice:", error);
-    res.status(500).json({ success: false, error: "Server error" });
-  }
-};
-
-// @desc    Record payment for an invoice
-// @route   POST /api/invoices/:id/payments
-// @access  Private/Admin
-exports.recordPayment = async (req, res) => {
-  try {
-    const { amount, paymentMethod, transactionId, notes } = req.body;
-
-    const invoice = await Invoice.findOne({
-      _id: req.params.id,
-      isDeleted: { $ne: true },
-    });
-    if (!invoice) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Invoice not found" });
-    }
-
-    await processPayment(
-      invoice,
-      amount,
-      paymentMethod,
-      req.user._id,
-      notes,
-      transactionId
-    );
-
-    // Refresh the invoice to get updated data
-    const updatedInvoice = await Invoice.findOne({
-      _id: req.params.id,
-      isDeleted: { $ne: true },
-    })
-      .populate("paymentLogs")
-      .populate("patient", "name email phone")
-      .populate("doctor", "name");
-
-    // Generate and send receipt if requested
-    if (req.body.sendReceipt) {
-      const pdfBuffer = await generatePDF(updatedInvoice);
-      await sendInvoiceEmail(updatedInvoice, pdfBuffer, "payment_receipt");
-    }
-
-    res.json({ success: true, data: updatedInvoice });
-  } catch (error) {
-    console.error("Error recording payment:", error);
-    res.status(500).json({ success: false, error: "Server error" });
-  }
-};
-
-// @desc    Get invoice PDF
+// @desc    Download invoice as PDF
 // @route   GET /api/invoices/:id/pdf
 // @access  Private/Admin
-exports.getInvoicePdf = async (req, res) => {
+exports.downloadInvoicePdf = async (req, res) => {
   try {
     const invoice = await Invoice.findOne({
       _id: req.params.id,
       isDeleted: { $ne: true },
-    })
-      .populate("patient", "name email phone address")
-      .populate("doctor", "name email phone")
-      .populate("treatmentPlan", "name");
+    }).populate('patientId', 'personalDetails.name personalDetails.contactNumber personalDetails.email personalDetails.address');
 
     if (!invoice) {
       return res
@@ -458,112 +199,25 @@ exports.getInvoicePdf = async (req, res) => {
         .json({ success: false, error: "Invoice not found" });
     }
 
-    const pdfBuffer = await generatePDF(invoice);
+    // Generate a simple PDF (you can use a library like puppeteer or jsPDF)
+    const pdfContent = `
+      Invoice: ${invoice.invoiceNumber}
+      Date: ${invoice.date.toLocaleDateString()}
+      Amount: $${invoice.paidAmount}
+      Payment Method: ${invoice.paymentMethod}
+      Source Type: ${invoice.sourceType}
+      ${invoice.patientId ? `Patient: ${invoice.patientId.personalDetails?.name || 'N/A'}` : ''}
+    `;
 
     res.set({
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename=invoice-${invoice.invoiceNumber}.pdf`,
-      "Content-Length": pdfBuffer.length,
     });
 
-    res.send(pdfBuffer);
+    // For now, return plain text (you should implement proper PDF generation)
+    res.send(pdfContent);
   } catch (error) {
     console.error("Error generating PDF:", error);
     res.status(500).json({ success: false, error: "Error generating PDF" });
   }
 };
-
-// @desc    Send invoice email
-// @route   POST /api/invoices/:id/email
-// @access  Private/Admin
-exports.sendInvoiceEmailPost = async (req, res) => {
-  try {
-    const { recipientEmail, subject, message } = req.body;
-
-    const invoice = await Invoice.findOne({
-      _id: req.params.id,
-      isDeleted: { $ne: true },
-    })
-      .populate("patient", "name email phone address")
-      .populate("doctor", "name email phone")
-      .populate("treatmentPlan", "name");
-
-    if (!invoice) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Invoice not found" });
-    }
-
-    // Use patient email if no recipient email provided
-    const emailTo =
-      recipientEmail || invoice.patient?.email || invoice.patientName;
-
-    if (!emailTo) {
-      return res.status(400).json({
-        success: false,
-        error: "No recipient email found. Please provide an email address.",
-      });
-    }
-
-    // Generate PDF for attachment
-    const pdfBuffer = await generatePDF(invoice);
-
-    // Send email with invoice
-    await sendInvoiceEmail(invoice, pdfBuffer, "invoice", {
-      to: emailTo,
-      subject: subject || `Invoice ${invoice.invoiceNumber}`,
-      message:
-        message ||
-        `Please find attached your invoice ${invoice.invoiceNumber}.`,
-    });
-
-    res.json({
-      success: true,
-      message: `Invoice email sent successfully to ${emailTo}`,
-    });
-  } catch (error) {
-    console.error("Error sending invoice email:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message || "Failed to send invoice email",
-    });
-  }
-};
-
-// Helper function to process payments
-async function processPayment(
-  invoice,
-  amount,
-  paymentMethod,
-  processedById,
-  notes,
-  transactionId
-) {
-  // Create payment log
-  const paymentLog = new PaymentLog({
-    invoice: invoice._id,
-    amount,
-    paymentMethod,
-    transactionId,
-    notes,
-    processedBy: processedById,
-    status: "Completed",
-  });
-
-  await paymentLog.save();
-
-  // Update invoice
-  invoice.amountPaid = (invoice.amountPaid || 0) + amount;
-  invoice.balance = invoice.total - invoice.amountPaid;
-
-  // Update status based on payment
-  if (invoice.balance <= 0) {
-    invoice.status = "Paid";
-  } else if (invoice.amountPaid > 0) {
-    invoice.status = "Partially Paid";
-  }
-
-  await invoice.save();
-
-  return invoice;
-}

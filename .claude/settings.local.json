@@ -42,7 +42,11 @@
       "Read(/E:\\DMS\\backend\\routes/**)",
       "Read(/E:\\DMS\\backend\\controller/**)",
       "Read(/E:\\DMS\\backend/**)",
-      "Read(/E:\\DMS\\backend/**)"
+      "Read(/E:\\DMS\\backend/**)",
+      "Read(/E:\\DMS\\backend\\controller/**)",
+      "Read(/E:\\DMS\\backend\\controller/**)",
+      "Read(/E:\\DMS\\admin\\src\\components\\patient/**)",
+      "Bash(timeout:*)"
     ],
     "deny": []
   }

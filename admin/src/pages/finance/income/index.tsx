@@ -126,9 +126,13 @@ export default function IncomePage() {
       }) as ApiResponse<Income>;
 
       if (response.success) {
+        const message = (response as any).invoice 
+          ? `Income added successfully. Invoice ${(response as any).invoice.invoiceNumber} generated.`
+          : "Income added successfully";
+        
         toast({
           title: "Success",
-          description: "Income added successfully",
+          description: message,
         });
         fetchIncomes();
         setIsAddDialogOpen(false);

@@ -176,24 +176,54 @@ export function PaymentHistoryDialog({
       const paymentMethod = paymentMethods[key] || "Cash";
       
       // Call backend API to update payment
-      const response = await crudRequest<{
-        success: boolean;
-        data?: {
-          invoice?: {
-            invoiceNumber: string;
-          };
-          invoiceError?: string;
-        };
-        message?: string;
-      }>(
+      await crudRequest(
         "PATCH",
         `/patient/update-payment/${patientId}/${medicalDetailId}/${treatmentId}/${toothNumber}/${dailyTreatmentId}`,
         { 
-          paidAmount: currentPaid + newAmount, // Send the total paid amount
+          paidAmount: currentPaid + newAmount,
           paymentMethod: paymentMethod,
           paymentDate: new Date().toISOString()
         }
       );
+
+      // Create invoice via centralized API
+      try {
+        // Normalize payment method to match backend enum
+        const normalizePaymentMethod = (method: string) => {
+          if (!method) return "cash";
+          const methodLower = method.toLowerCase();
+          
+          // Handle specific payment methods
+          if (methodLower.includes("khalti") || methodLower.includes("esewa") || methodLower.includes("e-sewa") || methodLower.includes("upi")) return "upi";
+          if (methodLower.includes("bank") || methodLower.includes("transfer")) return "bank";
+          if (methodLower.includes("card") || methodLower.includes("credit") || methodLower.includes("debit")) return "card";
+          if (methodLower.includes("cash")) return "cash";
+          
+          return "cash";
+        };
+
+        const invoiceResponse = await crudRequest<{ success: boolean; data: { invoiceNumber: string } }>(
+          "POST",
+          "/invoices",
+          {
+            paidAmount: newAmount,
+            paymentMethod: normalizePaymentMethod(paymentMethod),
+            sourceType: "Patients",
+            sourceId: treatmentId,
+            patientId: patientId,
+            date: new Date().toISOString()
+          }
+        );
+
+        if (invoiceResponse.success) {
+          toast.success(`Payment updated successfully. Invoice ${invoiceResponse.data.invoiceNumber} generated.`);
+        } else {
+          toast.warn("Payment updated successfully, but invoice generation failed");
+        }
+      } catch (invoiceError) {
+        console.warn("Invoice generation failed:", invoiceError);
+        toast.warn("Payment updated successfully, but invoice generation failed");
+      }
       
       // Update UI state via parent component
       const totalPaid = currentPaid + newAmount;
@@ -204,15 +234,6 @@ export function PaymentHistoryDialog({
         const { [key]: _, ...rest } = prev;
         return rest;
       });
-      
-      // Show success message with invoice information if available
-      if (response.data?.invoice) {
-        toast.success(`Payment updated successfully. Invoice ${response.data.invoice.invoiceNumber} generated.`);
-      } else if (response.data?.invoiceError) {
-        toast.warn(`Payment updated successfully, but invoice generation failed: ${response.data.invoiceError}`);
-      } else {
-        toast.success("Payment updated successfully");
-      }
     } catch (error) {
       console.error("Payment update error:", error);
       toast.error("Failed to update payment: " + (error as Error).message);
@@ -264,24 +285,54 @@ export function PaymentHistoryDialog({
       const paymentMethod = paymentMethods[key] || "Cash";
       
       // Call backend API to update group treatment payment
-      const response = await crudRequest<{
-        success: boolean;
-        data?: {
-          invoice?: {
-            invoiceNumber: string;
-          };
-          invoiceError?: string;
-        };
-        message?: string;
-      }>(
+      await crudRequest(
         "PATCH",
         `/patient/update-group-payment/${patientId}/${medicalDetailId}/${treatmentId}/${groupIndex}/${dailyTreatmentId}`,
         { 
-          paidAmount: currentPaid + newAmount, // Send the total paid amount
+          paidAmount: currentPaid + newAmount,
           paymentMethod: paymentMethod,
           paymentDate: new Date().toISOString()
         }
       );
+
+      // Create invoice via centralized API
+      try {
+        // Normalize payment method to match backend enum
+        const normalizePaymentMethod = (method: string) => {
+          if (!method) return "cash";
+          const methodLower = method.toLowerCase();
+          
+          // Handle specific payment methods
+          if (methodLower.includes("khalti") || methodLower.includes("esewa") || methodLower.includes("e-sewa") || methodLower.includes("upi")) return "upi";
+          if (methodLower.includes("bank") || methodLower.includes("transfer")) return "bank";
+          if (methodLower.includes("card") || methodLower.includes("credit") || methodLower.includes("debit")) return "card";
+          if (methodLower.includes("cash")) return "cash";
+          
+          return "cash";
+        };
+
+        const invoiceResponse = await crudRequest<{ success: boolean; data: { invoiceNumber: string } }>(
+          "POST",
+          "/invoices",
+          {
+            paidAmount: newAmount,
+            paymentMethod: normalizePaymentMethod(paymentMethod),
+            sourceType: "Patients",
+            sourceId: treatmentId,
+            patientId: patientId,
+            date: new Date().toISOString()
+          }
+        );
+
+        if (invoiceResponse.success) {
+          toast.success(`Group payment updated successfully. Invoice ${invoiceResponse.data.invoiceNumber} generated.`);
+        } else {
+          toast.warn("Group payment updated successfully, but invoice generation failed");
+        }
+      } catch (invoiceError) {
+        console.warn("Invoice generation failed:", invoiceError);
+        toast.warn("Group payment updated successfully, but invoice generation failed");
+      }
       
       // Update UI state via parent component
       const totalPaid = currentPaid + newAmount;
@@ -294,15 +345,6 @@ export function PaymentHistoryDialog({
         const { [key]: _, ...rest } = prev;
         return rest;
       });
-      
-      // Show success message with invoice information if available
-      if (response.data?.invoice) {
-        toast.success(`Group payment updated successfully. Invoice ${response.data.invoice.invoiceNumber} generated.`);
-      } else if (response.data?.invoiceError) {
-        toast.warn(`Group payment updated successfully, but invoice generation failed: ${response.data.invoiceError}`);
-      } else {
-        toast.success("Group treatment payment updated successfully");
-      }
     } catch (error) {
       console.error("Group payment update error:", error);
       toast.error("Failed to update group payment: " + (error as Error).message);

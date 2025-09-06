@@ -47,7 +47,7 @@ export function PaymentHistoryDialog({
   const [paymentMethods, setPaymentMethods] = useState<Record<string, string>>({});
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
 
-  const paymentMethodOptions = ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Credit Card", "Debit Card", "Other"];
+  const paymentMethodOptions = ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Other"];
 
   // Prepare data for display - treatments with remaining balances
   const treatmentsWithBalance: {
@@ -190,16 +190,17 @@ export function PaymentHistoryDialog({
       try {
         // Normalize payment method to match backend enum
         const normalizePaymentMethod = (method: string) => {
-          if (!method) return "cash";
+          if (!method) return "Cash";
           const methodLower = method.toLowerCase();
           
-          // Handle specific payment methods
-          if (methodLower.includes("khalti") || methodLower.includes("esewa") || methodLower.includes("e-sewa") || methodLower.includes("upi")) return "upi";
-          if (methodLower.includes("bank") || methodLower.includes("transfer")) return "bank";
-          if (methodLower.includes("card") || methodLower.includes("credit") || methodLower.includes("debit")) return "card";
-          if (methodLower.includes("cash")) return "cash";
+          // Handle specific payment methods to match enum: ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Other"]
+          if (methodLower.includes("khalti")) return "Khalti";
+          if (methodLower.includes("e-sewa") || methodLower.includes("esewa")) return "E-sewa";
+          if (methodLower.includes("bank") || methodLower.includes("transfer")) return "Bank Transfer";
+          if (methodLower.includes("cash")) return "Cash";
+          if (methodLower.includes("card") || methodLower.includes("credit") || methodLower.includes("debit")) return "Other";
           
-          return "cash";
+          return "Cash";
         };
 
         const invoiceResponse = await crudRequest<{ success: boolean; data: { invoiceNumber: string } }>(
@@ -299,16 +300,17 @@ export function PaymentHistoryDialog({
       try {
         // Normalize payment method to match backend enum
         const normalizePaymentMethod = (method: string) => {
-          if (!method) return "cash";
+          if (!method) return "Cash";
           const methodLower = method.toLowerCase();
           
-          // Handle specific payment methods
-          if (methodLower.includes("khalti") || methodLower.includes("esewa") || methodLower.includes("e-sewa") || methodLower.includes("upi")) return "upi";
-          if (methodLower.includes("bank") || methodLower.includes("transfer")) return "bank";
-          if (methodLower.includes("card") || methodLower.includes("credit") || methodLower.includes("debit")) return "card";
-          if (methodLower.includes("cash")) return "cash";
+          // Handle specific payment methods to match enum: ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Other"]
+          if (methodLower.includes("khalti")) return "Khalti";
+          if (methodLower.includes("e-sewa") || methodLower.includes("esewa")) return "E-sewa";
+          if (methodLower.includes("bank") || methodLower.includes("transfer")) return "Bank Transfer";
+          if (methodLower.includes("cash")) return "Cash";
+          if (methodLower.includes("card") || methodLower.includes("credit") || methodLower.includes("debit")) return "Other";
           
-          return "cash";
+          return "Cash";
         };
 
         const invoiceResponse = await crudRequest<{ success: boolean; data: { invoiceNumber: string } }>(

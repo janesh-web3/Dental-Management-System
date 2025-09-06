@@ -43,7 +43,7 @@ const servicePaymentSchema = new mongoose.Schema(
     },
     paymentMethod: { 
       type: String,
-      enum: ["Cash", "Credit Card", "Debit Card", "Insurance", "Bank Transfer", "Other"],
+      enum: ["Cash", "Bank Transfer", "E-sewa", "Khalti", "Other"],
       default: "Cash"
     },
     createdBy: {

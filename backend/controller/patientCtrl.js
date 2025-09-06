@@ -25,13 +25,14 @@ const createTreatmentInvoice = async (patientId, treatmentId, paidAmount, paymen
       const methodLower = method.toLowerCase();
       
       // Handle specific payment methods
-      if (methodLower.includes("Khalti") || methodLower.includes("E-sewa") ) return "upi";
-      if (methodLower.includes("bank") || methodLower.includes("transfer")) return "bank";
-      if (methodLower.includes("card") || methodLower.includes("credit") || methodLower.includes("debit")) return "card";
-      if (methodLower.includes("Cash")) return "Cash";
+      if (methodLower.includes("khalti")) return "Khalti";
+      if (methodLower.includes("e-sewa") || methodLower.includes("esewa")) return "E-sewa";
+      if (methodLower.includes("bank") || methodLower.includes("transfer")) return "Bank Transfer";
+      if (methodLower.includes("cash")) return "Cash";
+      if (methodLower.includes("card") || methodLower.includes("credit") || methodLower.includes("debit")) return "Other";
       
       // Default fallback
-      return "cash";
+      return "Cash";
     };
 
     const invoice = new Invoice({

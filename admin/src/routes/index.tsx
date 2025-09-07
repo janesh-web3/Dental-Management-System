@@ -140,6 +140,16 @@ const AppRouter: React.FC = () => {
             </Suspense>
           ),
         },
+        {
+          path: "/popups",
+          element: (
+            <Suspense fallback={<Loading />}>
+              {React.createElement(
+                lazy(() => import("@/pages/popups"))
+              )}
+            </Suspense>
+          ),
+        },
       ],
     },
   ];

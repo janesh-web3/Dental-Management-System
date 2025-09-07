@@ -114,6 +114,13 @@ export const navGroups: NavGroup[] = [
     title: "System",
     items: [
       {
+        title: "Popups",
+        href: "/popups",
+        icon: "notification",
+        label: "Popup Notifications",
+        notificationEnabled: false,
+      },
+      {
         title: "Recycle Bin",
         href: "/recycle-bin",
         icon: "trash",

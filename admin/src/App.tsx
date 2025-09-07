@@ -9,6 +9,7 @@ import { NotificationInitializer } from "./components/shared/NotificationInitial
 import { VoiceInputProvider } from "./contexts/VoiceInputContext";
 import { SoundProvider } from "./contexts/SoundContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { PopupDisplay } from "./components/popups/PopupDisplay";
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
                     <TooltipProvider>
                       <AppRouter />
                       <NotificationCenter />
+                      <PopupDisplay />
                       <Toaster />
                       {/* <AuthDebugger /> */}
                     </TooltipProvider>

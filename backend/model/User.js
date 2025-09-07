@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: {
     type: String,
-    enum: ["admin", "staff", "dentist", "doctor", "reception"],
+    enum: ["superadmin", "admin", "staff", "dentist", "doctor", "reception"],
     default: "staff",
     required: true,
   },
@@ -79,9 +79,26 @@ const userSchema = new mongoose.Schema({
         access: { type: Boolean, default: false },
         configure: { type: Boolean, default: false },
       },
+      // Popup management permissions
+      popups: {
+        create: { type: Boolean, default: false },
+        read: { type: Boolean, default: false },
+        update: { type: Boolean, default: false },
+        delete: { type: Boolean, default: false },
+        schedule: { type: Boolean, default: false },
+        activate: { type: Boolean, default: false },
+        deactivate: { type: Boolean, default: false },
+      },
+      // System administration
+      system: {
+        fullAccess: { type: Boolean, default: false },
+        userManagement: { type: Boolean, default: false },
+        systemConfig: { type: Boolean, default: false },
+        backupRestore: { type: Boolean, default: false },
+      },
     },
     default: function() {
-      if (this.role === 'admin') {
+      if (this.role === 'superadmin') {
         return {
           dashboard: { fullAccess: true, basicAccess: true, analytics: true, reports: true },
           users: { create: true, read: true, update: true, delete: true },
@@ -92,6 +109,22 @@ const userSchema = new mongoose.Schema({
           expenses: { create: true, read: true, update: true, delete: true },
           contacts: { create: true, read: true, update: true, delete: true },
           settings: { access: true, configure: true },
+          popups: { create: true, read: true, update: true, delete: true, schedule: true, activate: true, deactivate: true },
+          system: { fullAccess: true, userManagement: true, systemConfig: true, backupRestore: true },
+        };
+      } else if (this.role === 'admin') {
+        return {
+          dashboard: { fullAccess: true, basicAccess: true, analytics: true, reports: true },
+          users: { create: true, read: true, update: true, delete: true },
+          patients: { create: true, read: true, update: true, delete: true },
+          doctors: { create: true, read: true, update: true, delete: true },
+          appointments: { create: true, read: true, update: true, delete: true },
+          income: { create: true, read: true, update: true, delete: true },
+          expenses: { create: true, read: true, update: true, delete: true },
+          contacts: { create: true, read: true, update: true, delete: true },
+          settings: { access: true, configure: true },
+          popups: { create: true, read: true, update: true, delete: true, schedule: true, activate: true, deactivate: true },
+          system: { fullAccess: false, userManagement: false, systemConfig: false, backupRestore: false },
         };
       } else {
         return {
@@ -104,6 +137,8 @@ const userSchema = new mongoose.Schema({
           expenses: { create: true, read: true, update: true, delete: false },
           contacts: { create: true, read: true, update: true, delete: false },
           settings: { access: false, configure: false },
+          popups: { create: false, read: false, update: false, delete: false, schedule: false, activate: false, deactivate: false },
+          system: { fullAccess: false, userManagement: false, systemConfig: false, backupRestore: false },
         };
       }
     },
@@ -128,7 +163,7 @@ const userSchema = new mongoose.Schema({
 // Pre-save middleware to set permissions based on role
 userSchema.pre('save', function(next) {
   if (this.isModified('role') || this.isNew) {
-    if (this.role === 'admin') {
+    if (this.role === 'superadmin') {
       this.permissions = {
         dashboard: { fullAccess: true, basicAccess: true, analytics: true, reports: true },
         users: { create: true, read: true, update: true, delete: true },
@@ -139,6 +174,22 @@ userSchema.pre('save', function(next) {
         expenses: { create: true, read: true, update: true, delete: true },
         contacts: { create: true, read: true, update: true, delete: true },
         settings: { access: true, configure: true },
+        popups: { create: true, read: true, update: true, delete: true, schedule: true, activate: true, deactivate: true },
+        system: { fullAccess: true, userManagement: true, systemConfig: true, backupRestore: true },
+      };
+    } else if (this.role === 'admin') {
+      this.permissions = {
+        dashboard: { fullAccess: true, basicAccess: true, analytics: true, reports: true },
+        users: { create: true, read: true, update: true, delete: true },
+        patients: { create: true, read: true, update: true, delete: true },
+        doctors: { create: true, read: true, update: true, delete: true },
+        appointments: { create: true, read: true, update: true, delete: true },
+        income: { create: true, read: true, update: true, delete: true },
+        expenses: { create: true, read: true, update: true, delete: true },
+        contacts: { create: true, read: true, update: true, delete: true },
+        settings: { access: true, configure: true },
+        popups: { create: true, read: true, update: true, delete: true, schedule: true, activate: true, deactivate: true },
+        system: { fullAccess: false, userManagement: false, systemConfig: false, backupRestore: false },
       };
     } else {
       this.permissions = {
@@ -151,6 +202,8 @@ userSchema.pre('save', function(next) {
         expenses: { create: true, read: true, update: true, delete: false },
         contacts: { create: true, read: true, update: true, delete: false },
         settings: { access: false, configure: false },
+        popups: { create: false, read: false, update: false, delete: false, schedule: false, activate: false, deactivate: false },
+        system: { fullAccess: false, userManagement: false, systemConfig: false, backupRestore: false },
       };
     }
   }
@@ -170,9 +223,19 @@ userSchema.methods.hasPermission = function(entity, action) {
   return this.permissions[entity][action] || false;
 };
 
+// Instance method to check if user is superadmin
+userSchema.methods.isSuperAdmin = function() {
+  return this.role === 'superadmin';
+};
+
 // Instance method to check if user is admin
 userSchema.methods.isAdmin = function() {
   return this.role === 'admin';
+};
+
+// Instance method to check if user is admin or superadmin
+userSchema.methods.isAdminOrSuperAdmin = function() {
+  return this.role === 'admin' || this.role === 'superadmin';
 };
 
 // Instance method to check if user is staff

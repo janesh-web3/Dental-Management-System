@@ -87,8 +87,8 @@ const authorizePermission = (entity, action) => {
       });
     }
 
-    // Admin users have all permissions
-    if (req.user.role === 'admin') {
+    // Admin and superadmin users have all permissions
+    if (req.user.role === 'admin' || req.user.role === 'superadmin') {
       return next();
     }
 
@@ -113,10 +113,10 @@ const adminOnly = (req, res, next) => {
     });
   }
 
-  if (!req.user.isAdmin()) {
+  if (!req.user.isAdmin() && !req.user.isSuperAdmin()) {
     return res.status(403).json({ 
       success: false, 
-      message: 'Access denied. Admin privileges required.' 
+      message: 'Access denied. Admin or superadmin privileges required.' 
     });
   }
 
@@ -132,10 +132,10 @@ const staffOrAdmin = (req, res, next) => {
     });
   }
 
-  if (!req.user.isAdmin() && !req.user.isStaff()) {
+  if (!req.user.isAdmin() && !req.user.isSuperAdmin() && !req.user.isStaff()) {
     return res.status(403).json({ 
       success: false, 
-      message: 'Access denied. Staff or Admin privileges required.' 
+      message: 'Access denied. Staff, Admin, or Superadmin privileges required.' 
     });
   }
 
@@ -177,6 +177,44 @@ const dashboardAccess = (accessLevel = 'basic') => {
   };
 };
 
+// Superadmin-only middleware
+const superAdminOnly = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ 
+      success: false, 
+      message: 'User not authenticated.' 
+    });
+  }
+
+  if (!req.user.isSuperAdmin()) {
+    return res.status(403).json({ 
+      success: false, 
+      message: 'Access denied. Superadmin privileges required.' 
+    });
+  }
+
+  next();
+};
+
+// Admin or Superadmin middleware
+const adminOrSuperAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ 
+      success: false, 
+      message: 'User not authenticated.' 
+    });
+  }
+
+  if (!req.user.isAdmin() && !req.user.isSuperAdmin()) {
+    return res.status(403).json({ 
+      success: false, 
+      message: 'Access denied. Admin or Superadmin privileges required.' 
+    });
+  }
+
+  next();
+};
+
 // Self or Admin middleware (for profile operations)
 const selfOrAdmin = (req, res, next) => {
   if (!req.user) {
@@ -188,7 +226,7 @@ const selfOrAdmin = (req, res, next) => {
 
   const targetUserId = req.params.id || req.params.userId;
   
-  if (!req.user.isAdmin() && req.user._id.toString() !== targetUserId) {
+  if (!req.user.isAdmin() && !req.user.isSuperAdmin() && req.user._id.toString() !== targetUserId) {
     return res.status(403).json({ 
       success: false, 
       message: 'Access denied. You can only access your own profile.' 
@@ -203,6 +241,8 @@ module.exports = {
   authorizeRoles,
   authorizePermission,
   adminOnly,
+  superAdminOnly,
+  adminOrSuperAdmin,
   staffOrAdmin,
   dashboardAccess,
   selfOrAdmin,

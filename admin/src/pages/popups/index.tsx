@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Power, PowerOff, BarChart3, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Power, PowerOff, BarChart3, Eye, Play, Square, RefreshCw, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +39,14 @@ import {
   togglePopupStatus,
   getPopupAnalytics
 } from '@/services/popupService';
+import {
+  startPaymentReminders,
+  stopPaymentReminders,
+  getPaymentReminderStatus,
+  triggerPaymentReminderCheck,
+  triggerRoleSpecificReminders,
+  PaymentReminderStatus
+} from '@/services/paymentReminderService';
 import { Popup, PopupFormData, PopupAnalytics } from '@/types/popup';
 
 const typeColors = {
@@ -62,8 +70,14 @@ const PopupManagement: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+  const [isRoleSelectionModalOpen, setIsRoleSelectionModalOpen] = useState(false);
   const [currentPopup, setCurrentPopup] = useState<Popup | null>(null);
   const [analytics, setAnalytics] = useState<PopupAnalytics | null>(null);
+  
+  // Payment reminder states
+  const [paymentReminderStatus, setPaymentReminderStatus] = useState<PaymentReminderStatus | null>(null);
+  const [loadingReminderAction, setLoadingReminderAction] = useState(false);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(['admin', 'staff', 'reception']);
   
   const [formData, setFormData] = useState<PopupFormData>({
     title: '',
@@ -91,7 +105,107 @@ const PopupManagement: React.FC = () => {
 
   useEffect(() => {
     fetchPopups();
+    fetchPaymentReminderStatus();
   }, []);
+
+  const fetchPaymentReminderStatus = async () => {
+    try {
+      const response = await getPaymentReminderStatus();
+      if (response.success && response.data) {
+        setPaymentReminderStatus(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch payment reminder status');
+    }
+  };
+
+  const handleStartPaymentReminders = async () => {
+    setLoadingReminderAction(true);
+    try {
+      const response = await startPaymentReminders();
+      if (response.success) {
+        toast.success('Payment reminder service started successfully!');
+        fetchPaymentReminderStatus();
+      } else {
+        toast.error(response.message || 'Failed to start payment reminder service');
+      }
+    } catch (error) {
+      toast.error('Failed to start payment reminder service');
+    }
+    setLoadingReminderAction(false);
+  };
+
+  const handleStopPaymentReminders = async () => {
+    setLoadingReminderAction(true);
+    try {
+      const response = await stopPaymentReminders();
+      if (response.success) {
+        toast.success('Payment reminder service stopped successfully!');
+        fetchPaymentReminderStatus();
+      } else {
+        toast.error(response.message || 'Failed to stop payment reminder service');
+      }
+    } catch (error) {
+      toast.error('Failed to stop payment reminder service');
+    }
+    setLoadingReminderAction(false);
+  };
+
+  const handleTriggerManualCheck = async () => {
+    setLoadingReminderAction(true);
+    try {
+      const response = await triggerPaymentReminderCheck();
+      if (response.success) {
+        toast.success('Payment reminder check triggered successfully!');
+        // Refresh popups to see any new reminders
+        setTimeout(() => {
+          fetchPopups();
+          // Trigger global popup refresh
+          window.dispatchEvent(new Event('refresh-popups'));
+        }, 2000);
+      } else {
+        toast.error(response.message || 'Failed to trigger payment reminder check');
+      }
+    } catch (error) {
+      toast.error('Failed to trigger payment reminder check');
+    }
+    setLoadingReminderAction(false);
+  };
+
+  const handleTriggerRoleSpecificCheck = async () => {
+    if (selectedRoles.length === 0) {
+      toast.error('Please select at least one role');
+      return;
+    }
+
+    setLoadingReminderAction(true);
+    try {
+      const response = await triggerRoleSpecificReminders(selectedRoles);
+      if (response.success) {
+        toast.success(response.message || 'Role-specific payment reminders sent successfully!');
+        setIsRoleSelectionModalOpen(false);
+        // Refresh popups to see any new reminders
+        setTimeout(() => {
+          fetchPopups();
+          // Trigger global popup refresh
+          window.dispatchEvent(new Event('refresh-popups'));
+        }, 2000);
+      } else {
+        toast.error(response.message || 'Failed to send role-specific reminders');
+      }
+    } catch (error) {
+      toast.error('Failed to send role-specific reminders');
+    }
+    setLoadingReminderAction(false);
+  };
+
+  const handleRoleSelectionChange = (role: string, checked: boolean) => {
+    if (checked) {
+      setSelectedRoles(prev => [...prev, role]);
+    } else {
+      setSelectedRoles(prev => prev.filter(r => r !== role));
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -411,6 +525,141 @@ const PopupManagement: React.FC = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Payment Reminder Service Control */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Payment Reminder Service
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Automatically creates payment reminder popups every 5 minutes for overdue patients
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Badge variant={paymentReminderStatus?.isRunning ? "default" : "secondary"}>
+                  {paymentReminderStatus?.isRunning ? "Running" : "Stopped"}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  {paymentReminderStatus?.description || 'Loading status...'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTriggerManualCheck}
+                disabled={loadingReminderAction}
+              >
+                <RefreshCw className={cn("h-4 w-4 mr-1", loadingReminderAction && "animate-spin")} />
+                Check Now (All)
+              </Button>
+              
+              <Dialog open={isRoleSelectionModalOpen} onOpenChange={setIsRoleSelectionModalOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={loadingReminderAction}
+                  >
+                    <RefreshCw className={cn("h-4 w-4 mr-1", loadingReminderAction && "animate-spin")} />
+                    Check Now (Roles)
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Send Payment Reminders to Specific Roles</DialogTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Select which roles should receive immediate payment reminder notifications for all overdue patients.
+                    </p>
+                  </DialogHeader>
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Select Roles to Notify *</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {roles.filter(role => role !== 'All').map(role => (
+                          <div key={role} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`role-${role}`}
+                              checked={selectedRoles.includes(role)}
+                              onCheckedChange={(checked) => handleRoleSelectionChange(role, checked as boolean)}
+                            />
+                            <Label htmlFor={`role-${role}`} className="text-sm capitalize">{role}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        <strong>Selected roles:</strong> {selectedRoles.length > 0 ? selectedRoles.join(', ') : 'None'}
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1">
+                        Payment reminder popups will appear immediately on their dashboards as banner notifications.
+                      </p>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsRoleSelectionModalOpen(false)}
+                        disabled={loadingReminderAction}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleTriggerRoleSpecificCheck}
+                        disabled={loadingReminderAction || selectedRoles.length === 0}
+                      >
+                        {loadingReminderAction ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-1" />
+                            Send Reminders
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              
+              {paymentReminderStatus?.isRunning ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleStopPaymentReminders}
+                  disabled={loadingReminderAction}
+                >
+                  <Square className="h-4 w-4 mr-1" />
+                  Stop Service
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleStartPaymentReminders}
+                  disabled={loadingReminderAction}
+                >
+                  <Play className="h-4 w-4 mr-1" />
+                  Start Service
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

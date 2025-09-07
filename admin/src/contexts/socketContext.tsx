@@ -231,12 +231,40 @@ const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       });
     };
 
+    // Popup event handlers
+    const handlePopupNew = (popup: any) => {
+      console.log("🚨 New popup notification received:", popup);
+      
+      // Show as toast notification in addition to popup component
+      if (popup.type === 'Payment Reminder') {
+        addNotification({
+          type: "warning",
+          title: popup.title,
+          message: `${popup.message.substring(0, 100)}...`,
+          autoClose: 8000,
+        });
+      } else {
+        addNotification({
+          type: "info",
+          title: popup.title,
+          message: `${popup.message.substring(0, 100)}...`,
+          autoClose: 5000,
+        });
+      }
+    };
+
+    const handlePopupCreated = (data: any) => {
+      console.log("📢 Popup created notification:", data);
+    };
+
     // Set up event listeners
     socketInstance.on("connect", onConnect);
     socketInstance.on("disconnect", onDisconnect);
     socketInstance.on("connect_error", onConnectError);
     socketInstance.on("patient:added", handlePatientAdded);
     socketInstance.on("patient:deleted", handlePatientDeleted);
+    socketInstance.on("popup:new", handlePopupNew);
+    socketInstance.on("popup:created", handlePopupCreated);
 
     // Cleanup function
     return () => {
@@ -246,6 +274,8 @@ const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       socketInstance.off("connect_error", onConnectError);
       socketInstance.off("patient:added", handlePatientAdded);
       socketInstance.off("patient:deleted", handlePatientDeleted);
+      socketInstance.off("popup:new", handlePopupNew);
+      socketInstance.off("popup:created", handlePopupCreated);
       socketInstance.disconnect();
     };
   }, [

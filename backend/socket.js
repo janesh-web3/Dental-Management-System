@@ -242,6 +242,35 @@ const initSocket = (server) => {
       }
     });
 
+    // Popup events
+    socket.on("popup:created", (data) => {
+      console.log("Popup created event received:", data);
+      
+      // Emit to specific roles
+      if (data.rolesVisibleTo && data.rolesVisibleTo.length > 0) {
+        data.rolesVisibleTo.forEach((role) => {
+          if (role === 'All') {
+            // Send to all users
+            io.emit("popup:new", data.popup);
+          } else {
+            // Send to specific role room
+            io.to(role).emit("popup:new", data.popup);
+          }
+        });
+      }
+
+      // Play notification sound for targeted roles
+      if (data.soundEnabled !== false) {
+        data.rolesVisibleTo?.forEach((role) => {
+          if (role !== 'All') {
+            io.to(role).emit("notification:sound", { type: "info" });
+          } else {
+            io.emit("notification:sound", { type: "info" });
+          }
+        });
+      }
+    });
+
     socket.on("disconnect", () => {
       console.log("Client disconnected:", socket.id);
     });
@@ -446,6 +475,41 @@ const notifyUser = (userId, userType, event, data) => {
   }
 };
 
+// Helper function to emit popup notifications to specific roles
+const notifyPopup = (popup, targetRoles = []) => {
+  if (!io) return;
+
+  try {
+    console.log(`📢 Broadcasting popup "${popup.title}" to roles:`, targetRoles);
+    
+    const popupData = {
+      popup,
+      rolesVisibleTo: targetRoles,
+      soundEnabled: true
+    };
+
+    // Emit to specific roles
+    targetRoles.forEach((role) => {
+      if (role === 'All') {
+        // Send to all connected users
+        io.emit("popup:new", popup);
+        io.emit("notification:sound", { type: "info" });
+      } else {
+        // Send to specific role room
+        io.to(role).emit("popup:new", popup);
+        io.to(role).emit("notification:sound", { type: "info" });
+      }
+    });
+
+    // Also emit the generic popup:created event for listeners
+    io.emit("popup:created", popupData);
+    
+    console.log(`✅ Popup "${popup.title}" broadcasted successfully to ${targetRoles.join(', ')} roles`);
+  } catch (error) {
+    console.error('Error broadcasting popup:', error);
+  }
+};
+
 const getIO = () => {
   if (!io) {
     throw new Error("Socket.io not initialized!");
@@ -460,4 +524,5 @@ module.exports = {
   broadcastNotification,
   notifyUser,
   notifyRoles,
+  notifyPopup,
 };

@@ -5,6 +5,7 @@ import { PopupBanner } from './PopupBanner';
 import { PopupToast } from './PopupToast';
 import { getActivePopupsForUser, markAsViewed, dismissPopup } from '@/services/popupService';
 import { Popup, PopupAction } from '@/types/popup';
+import { useSocket } from '@/contexts/SocketContext';
 
 interface PopupDisplayProps {
   className?: string;
@@ -16,13 +17,18 @@ export const PopupDisplay: React.FC<PopupDisplayProps> = ({ className }) => {
   const [bannerPopup, setBannerPopup] = useState<Popup | null>(null);
   const [toastPopups, setToastPopups] = useState<Popup[]>([]);
   const navigate = useNavigate();
+  const { socket, isConnected } = useSocket();
 
   // Fetch active popups
   const fetchActivePopups = useCallback(async () => {
     try {
+      console.log('🔍 Fetching active popups...');
       const response = await getActivePopupsForUser();
+      console.log('📋 Popup response:', response);
+      
       if (response.success) {
         const activePopups = response.data;
+        console.log(`✅ Found ${activePopups.length} active popups:`, activePopups);
         setPopups(activePopups);
 
         // Separate popups by display type
@@ -30,22 +36,84 @@ export const PopupDisplay: React.FC<PopupDisplayProps> = ({ className }) => {
         const banner = activePopups.find(p => p.displayType === 'Banner');
         const toasts = activePopups.filter(p => p.displayType === 'Toast');
 
+        console.log('🎭 Popup display breakdown:', { 
+          modal: modal?.title, 
+          banner: banner?.title, 
+          toasts: toasts.map(t => t.title) 
+        });
+
         setCurrentModal(modal || null);
         setBannerPopup(banner || null);
         setToastPopups(toasts);
+      } else {
+        console.warn('❌ Failed to fetch popups:', response);
       }
     } catch (error) {
-      console.error('Failed to fetch active popups:', error);
+      console.error('❌ Failed to fetch active popups:', error);
     }
   }, []);
 
   useEffect(() => {
     fetchActivePopups();
 
-    // Set up polling to check for new popups every 5 minutes
-    const interval = setInterval(fetchActivePopups, 5 * 60 * 1000);
+    // Set up polling to check for new popups more frequently (every 30 seconds)
+    const interval = setInterval(fetchActivePopups, 30 * 1000);
     return () => clearInterval(interval);
   }, [fetchActivePopups]);
+
+  // Listen for custom events to refresh popups immediately
+  useEffect(() => {
+    const handlePopupRefresh = () => {
+      fetchActivePopups();
+    };
+
+    window.addEventListener('refresh-popups', handlePopupRefresh);
+    return () => window.removeEventListener('refresh-popups', handlePopupRefresh);
+  }, [fetchActivePopups]);
+
+  // Listen for real-time popup events via socket
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleNewPopup = (popup: Popup) => {
+      console.log('🚀 Real-time popup received:', popup);
+      
+      // Add to current popups if not already present
+      setPopups(prev => {
+        const exists = prev.some(p => p._id === popup._id);
+        if (exists) return prev;
+        return [popup, ...prev];
+      });
+
+      // Update display components based on type
+      if (popup.displayType === 'Modal') {
+        setCurrentModal(popup);
+      } else if (popup.displayType === 'Banner') {
+        setBannerPopup(popup);
+      } else if (popup.displayType === 'Toast') {
+        setToastPopups(prev => {
+          const exists = prev.some(p => p._id === popup._id);
+          if (exists) return prev;
+          return [...prev, popup];
+        });
+      }
+    };
+
+    const handlePopupCreated = (data: { popup: Popup; rolesVisibleTo: string[] }) => {
+      console.log('📢 Popup created event received:', data);
+      handleNewPopup(data.popup);
+    };
+
+    // Set up socket listeners
+    socket.on('popup:new', handleNewPopup);
+    socket.on('popup:created', handlePopupCreated);
+
+    // Cleanup listeners
+    return () => {
+      socket.off('popup:new', handleNewPopup);
+      socket.off('popup:created', handlePopupCreated);
+    };
+  }, [socket, isConnected]);
 
   const handleView = useCallback(async (popupId: string) => {
     try {

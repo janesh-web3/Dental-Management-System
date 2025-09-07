@@ -189,14 +189,20 @@ popupSchema.statics.getActivePopupsForUser = function(userRole, userId) {
   return this.find({
     isActive: true,
     startTime: { $lte: now },
-    $or: [
-      { endTime: { $exists: false } },
-      { endTime: null },
-      { endTime: { $gte: now } }
-    ],
-    $or: [
-      { rolesVisibleTo: "All" },
-      { rolesVisibleTo: userRole }
+    $and: [
+      {
+        $or: [
+          { endTime: { $exists: false } },
+          { endTime: null },
+          { endTime: { $gte: now } }
+        ]
+      },
+      {
+        $or: [
+          { rolesVisibleTo: "All" },
+          { rolesVisibleTo: userRole }
+        ]
+      }
     ],
     'dismissedBy.userId': { $ne: userId }
   })

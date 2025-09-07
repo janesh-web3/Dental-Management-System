@@ -1,5 +1,6 @@
 const Popup = require("../model/Popup.js");
 const User = require("../model/User.js");
+const { notifyPopup } = require('../socket');
 
 // Create a new popup (superadmin only)
 const createPopup = async (req, res) => {
@@ -49,6 +50,13 @@ const createPopup = async (req, res) => {
 
     await newPopup.save();
     await newPopup.populate('createdBy', 'name email');
+
+    // Emit real-time popup notification
+    try {
+      notifyPopup(newPopup, rolesVisibleTo);
+    } catch (socketError) {
+      console.error('⚠️ Failed to emit real-time popup notification:', socketError);
+    }
 
     res.status(201).json({
       success: true,

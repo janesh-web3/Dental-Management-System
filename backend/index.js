@@ -29,9 +29,11 @@ const recycleBinRouter = require("./routes/recycleBinRoutes.js");
 const userPreferencesRouter = require("./routes/userPreferencesRoutes.js");
 const followUpRouter = require("./routes/followUpRoutes.js");
 const popupRouter = require("./routes/popupRoutes.js");
+const paymentReminderRouter = require("./routes/paymentReminderRoutes.js");
 
 // Import utilities
 const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
+const { initializePaymentReminderService } = require("./controller/paymentReminderController.js");
 
 // Import multer error handling middleware
 const { handleMulterError } = require("./middleware/multer");
@@ -93,6 +95,7 @@ app.use("/api/recycle-bin", recycleBinRouter);
 app.use("/api/user-preferences", userPreferencesRouter);
 app.use("/api/follow-ups", followUpRouter);
 app.use("/api/popups", popupRouter);
+app.use("/api/payment-reminders", paymentReminderRouter);
 
 const port = process.env.PORT || 8080;
 
@@ -105,4 +108,7 @@ server.listen(process.env.PORT, () => {
   // Update every 30 minutes by default
   scheduleDoctorPatientCountUpdates(30);
   console.log("Scheduled automatic doctor patient count updates");
+  
+  // Initialize payment reminder service
+  initializePaymentReminderService();
 });

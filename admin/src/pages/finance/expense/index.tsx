@@ -210,8 +210,10 @@ export default function ExpensePage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "PPP");
+  const formatDate = (dateValue: string | Date) => {
+    // Handle both string and Date types
+    const date = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
+    return format(date, "PPP");
   };
 
   return (
@@ -273,6 +275,7 @@ export default function ExpensePage() {
               <TableRow>
                 <TableHead>Title</TableHead>
                 <TableHead>Category</TableHead>
+                <TableHead>Payment Method</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -281,7 +284,7 @@ export default function ExpensePage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10">
+                  <TableCell colSpan={6} className="text-center py-10">
                     <div className="flex justify-center">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
@@ -289,7 +292,7 @@ export default function ExpensePage() {
                 </TableRow>
               ) : expenses.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10">
+                  <TableCell colSpan={6} className="text-center py-10">
                     <p className="text-muted-foreground">No expense records found</p>
                     <Button
                       variant="link"
@@ -304,6 +307,7 @@ export default function ExpensePage() {
                   <TableRow key={expense._id}>
                     <TableCell className="font-medium">{expense.title}</TableCell>
                     <TableCell>{expense.category}</TableCell>
+                    <TableCell>{expense.paymentMethod || "Cash"}</TableCell>
                     <TableCell>{formatDate(expense.date)}</TableCell>
                     <TableCell className="text-right font-medium">
                       Rs.{expense.amount.toFixed(2)}

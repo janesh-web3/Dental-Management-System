@@ -81,7 +81,7 @@ export function IncomeForm({
       ? {
           title: initialData.title,
           amount: initialData.amount,
-          date: new Date(initialData.date),
+          date: typeof initialData.date === "string" ? new Date(initialData.date) : initialData.date,
           category: initialData.category,
           paymentMethod: (initialData as any).paymentMethod || "Cash",
           notes: initialData.notes || "",

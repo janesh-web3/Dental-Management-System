@@ -85,7 +85,7 @@ export function ExpenseForm({
       ? {
           title: initialData.title,
           amount: initialData.amount,
-          date: new Date(initialData.date),
+          date: typeof initialData.date === "string" ? new Date(initialData.date) : initialData.date,
           category: initialData.category,
           paymentMethod: (initialData as any).paymentMethod || "Cash",
           notes: initialData.notes || "",
@@ -150,10 +150,14 @@ export function ExpenseForm({
               <FormControl>
                 <Input
                   type="date"
-                  max={format(new Date(), "yyyy-MM-dd")}
-                  min="1900-01-01"
-                  {...field}
-                  value={typeof field.value === "string" ? field.value : format(field.value, "yyyy-MM-dd")}
+                  value={field.value ? format(field.value, "yyyy-MM-dd") : ""}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      field.onChange(new Date(e.target.value));
+                    } else {
+                      field.onChange(null);
+                    }
+                  }}
                 />
               </FormControl>
               <FormMessage />

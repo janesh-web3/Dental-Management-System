@@ -6,7 +6,7 @@ export interface Income {
   _id: string;
   title: string;
   amount: number;
-  date: string;
+  date: string | Date;
   category: IncomeCategory;
   paymentMethod?: string;
   notes?: string;
@@ -27,8 +27,9 @@ export interface Expense {
   _id: string;
   title: string;
   amount: number;
-  date: string;
+  date: string | Date;
   category: ExpenseCategory;
+  paymentMethod?: string;
   notes?: string;
   createdBy: string | User;
   createdAt: string;

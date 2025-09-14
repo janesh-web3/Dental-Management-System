@@ -8,6 +8,7 @@ export interface Income {
   amount: number;
   date: string;
   category: IncomeCategory;
+  paymentMethod?: string;
   notes?: string;
   createdBy: string | User;
   createdAt: string;
@@ -101,4 +102,4 @@ export interface FinancialSummary {
   recentIncome: Income[];
   recentExpenses: Expense[];
   recentServicePayments: ServicePayment[];
-} 
+}

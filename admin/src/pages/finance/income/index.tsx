@@ -271,6 +271,7 @@ export default function IncomePage() {
               <TableRow>
                 <TableHead>Title</TableHead>
                 <TableHead>Category</TableHead>
+                <TableHead>Payment Method</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -279,7 +280,7 @@ export default function IncomePage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10">
+                  <TableCell colSpan={6} className="text-center py-10">
                     <div className="flex justify-center">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
@@ -287,7 +288,7 @@ export default function IncomePage() {
                 </TableRow>
               ) : incomes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10">
+                  <TableCell colSpan={6} className="text-center py-10">
                     <p className="text-muted-foreground">No income records found</p>
                     <Button
                       variant="link"
@@ -302,6 +303,7 @@ export default function IncomePage() {
                   <TableRow key={income._id}>
                     <TableCell className="font-medium">{income.title}</TableCell>
                     <TableCell>{income.category}</TableCell>
+                    <TableCell>{income.paymentMethod || "Cash"}</TableCell>
                     <TableCell>{formatDate(income.date)}</TableCell>
                     <TableCell className="text-right font-medium">
                       Rs.{income.amount.toFixed(2)}

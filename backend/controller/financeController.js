@@ -239,7 +239,7 @@ const getIncomes = async (req, res) => {
     
     // Get income records (excluding soft deleted)
     const incomes = await Income.find(query)
-      .sort({ date: -1 }) // Sort by date (newest first)
+      .sort({ createdAt: -1 }) // Sort by creation time (newest first)
       .skip(skip)
       .limit(parseInt(limit))
       .populate("createdBy", "name email");
@@ -540,7 +540,7 @@ const getExpenses = async (req, res) => {
     
     // Get expense records
     const expenses = await Expense.find(query)
-      .sort({ date: -1 }) // Sort by date (newest first)
+      .sort({ createdAt: -1 }) // Sort by creation time (newest first)
       .skip(skip)
       .limit(parseInt(limit))
       .populate("createdBy", "name email");
@@ -832,19 +832,19 @@ const getFinancialSummary = async (req, res) => {
     
     // Get recent income (last 5, excluding soft deleted)
     const recentIncome = await Income.find(incomeQuery)
-      .sort({ date: -1 })
+      .sort({ createdAt: -1 })
       .limit(5)
       .populate("createdBy", "name");
     
     // Get recent expenses (last 5, excluding soft deleted)
     const recentExpenses = await Expense.find(expenseQuery)
-      .sort({ date: -1 })
+      .sort({ createdAt: -1 })
       .limit(5)
       .populate("createdBy", "name");
     
     // Get recent service payments (last 5)
     const recentServicePayments = await ServicePayment.find(servicePaymentQuery)
-      .sort({ date: -1 })
+      .sort({ createdAt: -1 })
       .limit(5)
       .populate("createdBy", "name")
       .populate("patient", "personalDetails.name");

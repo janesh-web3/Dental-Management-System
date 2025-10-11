@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,6 +20,7 @@ interface BulkSMSFilters {
   gender: string;
   group: string;
   procedure: string;
+  doctor: string;
   dateRange: DateRange;
   dateRangePreset: string;
 }
@@ -29,6 +30,7 @@ interface FilterPayload {
   gender: string;
   group: string;
   procedure: string;
+  doctor: string;
   dateRange: { from: string; to: string };
   dateRangePreset: string;
 }
@@ -42,6 +44,7 @@ interface BulkSMSFilterProps {
 interface Doctor {
   _id: string;
   name: string;
+  specialization?: string;
 }
 
 export function BulkSMSFilter({ 
@@ -94,12 +97,34 @@ export function BulkSMSFilter({
     gender: 'all',
     group: 'all',
     procedure: 'all',
+    doctor: 'all',
     dateRange: {
       from: null,
       to: null,
     },
     dateRangePreset: 'all'
   });
+
+  // Add state for doctors
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loadingDoctors, setLoadingDoctors] = useState(false);
+
+  // Fetch doctors
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      try {
+        setLoadingDoctors(true);
+        const response = await crudRequest<Doctor[]>("GET", "/doctor/get-doctor");
+        setDoctors(response);
+      } catch (error) {
+        console.error("Error fetching doctors:", error);
+      } finally {
+        setLoadingDoctors(false);
+      }
+    };
+
+    fetchDoctors();
+  }, []);
 
   const handleDateChange = (range: { from?: Date | null; to?: Date | null } | undefined) => {
     if (!range) return;
@@ -169,6 +194,7 @@ export function BulkSMSFilter({
       gender: 'all',
       group: 'all',
       procedure: 'all',
+      doctor: 'all',
       dateRange: { from: null, to: null },
       dateRangePreset: 'all'
     };
@@ -195,6 +221,35 @@ export function BulkSMSFilter({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Doctor Filter */}
+        <div className="space-y-2">
+          <Label>Doctor</Label>
+          <Select 
+            value={filters.doctor}
+            onValueChange={(value) => setFilters({...filters, doctor: value})}
+            disabled={loading || loadingDoctors}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select doctor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Doctors</SelectItem>
+              {loadingDoctors ? (
+                <SelectItem value="loading" disabled>
+                  Loading doctors...
+                </SelectItem>
+              ) : (
+                doctors.map((doctor) => (
+                  <SelectItem key={doctor._id} value={doctor._id}>
+                    {doctor.name}
+                    {doctor.specialization ? ` (${doctor.specialization})` : ""}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+        
         {/* Date Range Preset */}
         <div className="space-y-2">
           <Label>Date Range</Label>

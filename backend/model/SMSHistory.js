@@ -4,7 +4,14 @@ const SMSHistorySchema = new mongoose.Schema(
   {
     recipient: {
       type: String,
-      required: true
+      required: true,
+      // Validate Nepali phone number format
+      validate: {
+        validator: function(v) {
+          return /^9[678]\d{8}$/.test(v);
+        },
+        message: props => `${props.value} is not a valid Nepali phone number!`
+      }
     },
     message: {
       type: String,
@@ -58,6 +65,25 @@ const SMSHistorySchema = new mongoose.Schema(
       type: String,
       enum: ['A', 'B', 'C'],
       default: null
+    },
+    // Delivery timestamp
+    deliveredAt: {
+      type: Date
+    },
+    // Retry count for failed messages
+    retryCount: {
+      type: Number,
+      default: 0
+    },
+    // Group this SMS belongs to
+    groupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PatientGroup'
+    },
+    // Cost estimation
+    estimatedCost: {
+      type: Number,
+      default: 0
     }
   },
   {

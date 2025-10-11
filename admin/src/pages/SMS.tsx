@@ -4,9 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "react-toastify";
-import { MessageSquare, Users } from "lucide-react";
+import { 
+  MessageSquare, 
+  Users, 
+  FileText, 
+  BarChart3, 
+  Settings
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SMSHistoryPage from "./sms/SMSHistory";
+import { EnhancedSMSTemplateManager } from "@/components/sms/EnhancedSMSTemplateManager";
+import PatientGroupManager from "@/components/sms/PatientGroupManager";
+import SMSDashboard from "@/components/sms/SMSDashboard";
 
 const SMS = () => {
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
@@ -23,25 +32,44 @@ const SMS = () => {
 
   return (
     <div className="container mx-auto py-6">
-      <Tabs defaultValue="sms" className="w-full">
-        <TabsList>
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="dashboard" className="flex items-center">
+            <BarChart3 className="w-4 h-4 mr-2" />
+            <span className="text-md font-semibold">Dashboard</span>
+          </TabsTrigger>
+          <TabsTrigger value="templates" className="flex items-center">
+            <FileText className="w-4 h-4 mr-2" />
+            <span className="text-md font-semibold">Templates</span>
+          </TabsTrigger>
+          <TabsTrigger value="groups" className="flex items-center">
+            <Settings className="w-4 h-4 mr-2" />
+            <span className="text-md font-semibold">Groups</span>
+          </TabsTrigger>
           <TabsTrigger value="sms" className="flex items-center">
-            <span className="text-md font-semibold">SMS Communication</span>
+            <MessageSquare className="w-4 h-4 mr-2" />
+            <span className="text-md font-semibold">Send SMS</span>
           </TabsTrigger>
           <TabsTrigger value="history" className="flex items-center">
-            <span className="text-md font-semibold">SMS History</span>
+            <span className="text-md font-semibold">History</span>
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="dashboard">
+          <SMSDashboard />
+        </TabsContent>
+
+        <TabsContent value="templates">
+          <EnhancedSMSTemplateManager />
+        </TabsContent>
+
+        <TabsContent value="groups">
+          <PatientGroupManager />
+        </TabsContent>
 
         <TabsContent value="sms">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-bold">SMS Communication</h1>
-            <Button
-              variant="outline"
-              onClick={() => setShowTemplateDialog(true)}
-            >
-              New Template
-            </Button>
           </div>
 
           <div className="grid gap-6">
@@ -55,7 +83,7 @@ const SMS = () => {
               <CardContent>
                 <div className="space-y-4">
                   <p className="text-muted-foreground">
-                    SMS functionality will be implemented here.
+                    Send individual SMS messages to patients
                   </p>
                   <div className="flex justify-end">
                     <Button onClick={handleSendSMS}>
@@ -77,7 +105,7 @@ const SMS = () => {
               <CardContent>
                 <div className="space-y-4">
                   <p className="text-muted-foreground">
-                    Bulk SMS functionality will be implemented here.
+                    Send SMS to multiple patients using groups and filters
                   </p>
                   <div className="flex justify-end">
                     <Button onClick={handleSendBulkSMS}>
@@ -89,37 +117,6 @@ const SMS = () => {
               </CardContent>
             </Card>
           </div>
-
-          {/* Template Dialog */}
-          <Dialog
-            open={showTemplateDialog}
-            onOpenChange={setShowTemplateDialog}
-          >
-            <DialogContent>
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold">New Template</h2>
-                <p className="text-sm text-muted-foreground">
-                  Template creation will be implemented here.
-                </p>
-                <div className="flex justify-end space-x-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowTemplateDialog(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      toast.info("Template creation will be implemented");
-                      setShowTemplateDialog(false);
-                    }}
-                  >
-                    Create
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
         </TabsContent>
 
         <TabsContent value="history">

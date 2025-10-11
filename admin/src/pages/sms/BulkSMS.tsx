@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from 'react-toastify';
-import { Send, RefreshCw, MessageSquare, CheckCircle, Settings, History, Plus, Edit3 } from 'lucide-react';
+import { Send, RefreshCw, MessageSquare, CheckCircle, Settings, History, Plus, Edit3, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { crudRequest } from '@/lib/api';
@@ -35,6 +36,14 @@ interface SMSClassConfig {
   isActive: boolean;
 }
 
+interface SMSTemplate {
+  _id: string;
+  name: string;
+  content: string;
+  variables: string[];
+  category: string;
+}
+
 interface SMSCampaign {
   _id: string;
   name: string;
@@ -42,6 +51,7 @@ interface SMSCampaign {
   filters: Filters;
   totalPatients: number;
   status: 'draft' | 'in_progress' | 'completed' | 'failed';
+  templateId?: string;
   classes: Array<{
     className: 'A' | 'B' | 'C';
     patientCount: number;
@@ -64,6 +74,23 @@ export default function BulkSMSPage() {
   const [currentCampaign, setCurrentCampaign] = useState<SMSCampaign | null>(null);
   const [showClassSettings, setShowClassSettings] = useState(false);
   const [editingClass, setEditingClass] = useState<SMSClassConfig | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [templates, setTemplates] = useState<SMSTemplate[]>([]);
+
+  // Fetch SMS templates
+  const { data: templateData } = useQuery({
+    queryKey: ['smsTemplates'],
+    queryFn: async () => {
+      const response = await crudRequest<{ templates: SMSTemplate[] }>('GET', '/sms/templates');
+      return response?.templates || [];
+    },
+  });
+
+  useEffect(() => {
+    if (templateData) {
+      setTemplates(templateData);
+    }
+  }, [templateData]);
 
   // Fetch SMS class configurations
   const { data: classConfigs = [], isLoading: loadingConfigs } = useQuery({
@@ -95,6 +122,7 @@ export default function BulkSMSPage() {
       setMessage('');
       setCampaignName('');
       setFilters({});
+      setSelectedTemplate('');
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to create campaign');
@@ -142,9 +170,24 @@ export default function BulkSMSPage() {
     }
   });
 
+  // Handle template selection
+  const handleTemplateSelect = (templateId: string) => {
+    if (templateId === '__no_template__') {
+      setSelectedTemplate('');
+      setMessage('');
+      return;
+    }
+    
+    setSelectedTemplate(templateId);
+    const template = templates.find(t => t._id === templateId);
+    if (template) {
+      setMessage(template.content);
+    }
+  };
+
   const handleCreateCampaign = async () => {
-    if (!message.trim()) {
-      toast.error('Please enter a message');
+    if (!message.trim() && !selectedTemplate) {
+      toast.error('Please enter a message or select a template');
       return;
     }
 
@@ -154,7 +197,8 @@ export default function BulkSMSPage() {
       await createCampaignMutation.mutateAsync({
         message: message.trim(),
         filters,
-        campaignName: campaignName.trim() || undefined
+        campaignName: campaignName.trim() || undefined,
+        templateId: selectedTemplate || undefined
       });
     } finally {
       setIsCreatingCampaign(false);
@@ -228,6 +272,41 @@ export default function BulkSMSPage() {
               </div>
             </div>
 
+            {/* Template Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="template">Select Template</Label>
+              <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__no_template__">No template</SelectItem>
+                  {templates.map((template) => (
+                    <SelectItem key={template._id} value={template._id}>
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        {template.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedTemplate && selectedTemplate !== '__no_template__' && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => {
+                    setSelectedTemplate('');
+                    setMessage('');
+                  }}
+                  className="mt-1"
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  Clear Template
+                </Button>
+              )}
+            </div>
+
             <BulkSMSFilter 
               onFilter={setFilters} 
               onReset={() => setFilters({})}
@@ -240,9 +319,10 @@ export default function BulkSMSPage() {
                 id="message"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Type your message here..."
+                placeholder="Type your message here or select a template..."
                 className="min-h-[120px]"
                 maxLength={160}
+                disabled={!!selectedTemplate}
               />
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>{message.length}/160 characters</span>
@@ -252,7 +332,7 @@ export default function BulkSMSPage() {
 
             <Button 
               onClick={handleCreateCampaign} 
-              disabled={isCreatingCampaign || !message.trim()}
+              disabled={isCreatingCampaign || (!message.trim() && !selectedTemplate)}
               className="gap-2 w-full"
             >
               {isCreatingCampaign ? (
@@ -294,6 +374,11 @@ export default function BulkSMSPage() {
                 <div className="p-4 bg-muted/50 rounded-lg">
                   <p className="font-medium mb-2">Message:</p>
                   <p className="text-sm">{currentCampaign.message}</p>
+                  {currentCampaign.templateId && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Template: {templates.find(t => t._id === currentCampaign.templateId)?.name || 'Unknown'}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -506,4 +591,3 @@ export default function BulkSMSPage() {
     </div>
   );
 }
-  

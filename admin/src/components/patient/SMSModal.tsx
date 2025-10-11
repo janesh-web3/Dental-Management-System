@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { ScrollArea } from "../ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { dentalName } from "@/server";
+import NepalPhoneNumberValidator from "@/components/sms/NepalPhoneNumberValidator";
 
 interface SMSModalProps {
   isOpen: boolean;
@@ -66,6 +67,7 @@ const SMSModal = ({ isOpen, onClose, patient }: SMSModalProps) => {
   const [hasPendingPayment, setHasPendingPayment] = useState<boolean | null>(null);
   const [isLoadingPaymentInfo, setIsLoadingPaymentInfo] = useState(false);
   const [totalRemainingAmount, setTotalRemainingAmount] = useState<number>(0);
+  const [phoneNumber, setPhoneNumber] = useState(patient.personalDetails.contactNumber || '');
 
   // Fetch the patient's payment info when the modal opens
   useEffect(() => {
@@ -74,6 +76,8 @@ const SMSModal = ({ isOpen, onClose, patient }: SMSModalProps) => {
       if (selectedTab === "followup" || hasFollowUpDate === null) {
         fetchPatientFollowUpDate(patient._id);
       }
+      // Initialize phone number
+      setPhoneNumber(patient.personalDetails.contactNumber || '');
     }
   }, [isOpen, patient._id]);
 
@@ -244,8 +248,8 @@ const SMSModal = ({ isOpen, onClose, patient }: SMSModalProps) => {
   };
 
   const handleSendSMS = async () => {
-    if (!patient.personalDetails.contactNumber) {
-      toast.error("Patient does not have a contact number");
+    if (!phoneNumber) {
+      toast.error("Please enter a valid phone number");
       return;
     }
 
@@ -268,7 +272,8 @@ const SMSModal = ({ isOpen, onClose, patient }: SMSModalProps) => {
       }
         
       const response = await crudRequest<{success: boolean, message: string}>("POST", endpoint, { 
-        customMessage: message 
+        customMessage: message,
+        phoneNumber: phoneNumber
       });
 
       if (response && response.success) {
@@ -410,8 +415,18 @@ const SMSModal = ({ isOpen, onClose, patient }: SMSModalProps) => {
           {/* Payment Tab Content */}
           <TabsContent value="payment" className="space-y-4 py-4">
             <div className="space-y-2">
+              <div className="mb-2">
+                <NepalPhoneNumberValidator
+                  phoneNumber={phoneNumber}
+                  onPhoneNumberChange={setPhoneNumber}
+                  label="Phone Number"
+                  placeholder="Enter phone number (e.g., 98XXXXXXXX)"
+                  required={true}
+                />
+              </div>
+              
               <p className="text-sm text-muted-foreground">
-                Send a payment reminder SMS to this patient. The phone number that will be used is: <span className="font-medium">{patient.personalDetails.contactNumber || "No contact number available"}</span>
+                Send a payment reminder SMS to this patient.
               </p>
               
               {isLoadingPaymentInfo ? (
@@ -478,8 +493,18 @@ const SMSModal = ({ isOpen, onClose, patient }: SMSModalProps) => {
 
             {view === "single" ? (
               <div className="space-y-2">
+                <div className="mb-2">
+                  <NepalPhoneNumberValidator
+                    phoneNumber={phoneNumber}
+                    onPhoneNumberChange={setPhoneNumber}
+                    label="Phone Number"
+                    placeholder="Enter phone number (e.g., 98XXXXXXXX)"
+                    required={true}
+                  />
+                </div>
+                
                 <p className="text-sm text-muted-foreground">
-                  Send a follow-up appointment reminder SMS to this patient. The phone number that will be used is: <span className="font-medium">{patient.personalDetails.contactNumber || "No contact number available"}</span>
+                  Send a follow-up appointment reminder SMS to this patient.
                 </p>
                 
                 {isLoadingSinglePatient ? (
@@ -622,8 +647,18 @@ const SMSModal = ({ isOpen, onClose, patient }: SMSModalProps) => {
           {/* Custom Message Tab Content */}
           <TabsContent value="custom" className="space-y-4 py-4">
             <div className="space-y-2">
+              <div className="mb-2">
+                <NepalPhoneNumberValidator
+                  phoneNumber={phoneNumber}
+                  onPhoneNumberChange={setPhoneNumber}
+                  label="Phone Number"
+                  placeholder="Enter phone number (e.g., 98XXXXXXXX)"
+                  required={true}
+                />
+              </div>
+              
               <p className="text-sm text-muted-foreground">
-                Send a custom SMS to this patient. The phone number that will be used is: <span className="font-medium">{patient.personalDetails.contactNumber || "No contact number available"}</span>
+                Send a custom SMS to this patient.
               </p>
               
               <div className="mb-2 flex items-center p-3 rounded-md bg-blue-50 border border-blue-200">
@@ -675,7 +710,7 @@ const SMSModal = ({ isOpen, onClose, patient }: SMSModalProps) => {
               onClick={handleSendSMS} 
               disabled={
                 isSending || 
-                !patient.personalDetails.contactNumber || 
+                !phoneNumber ||
                 (selectedTab === "followup" && hasFollowUpDate === false) ||
                 (selectedTab === "payment" && hasPendingPayment === false) ||
                 (selectedTab === "custom" && !customMessage.trim())

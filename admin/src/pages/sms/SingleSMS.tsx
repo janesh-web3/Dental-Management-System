@@ -1,14 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from 'react-toastify';
-import { Send, Search, X, User, Phone, Mail, Calendar, MessageSquare } from 'lucide-react';
+import { 
+  Send, 
+  Search, 
+  X, 
+  User, 
+  Phone, 
+  Mail, 
+  Calendar, 
+  MessageSquare,
+  FileText,
+  Clock
+} from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { crudRequest } from '@/lib/api';
+import SMSScheduler from '@/components/sms/SMSScheduler';
 
 interface Patient {
   _id: string;
@@ -21,11 +34,23 @@ interface Patient {
   lastAppointment?: string;
 }
 
+interface SMSTemplate {
+  _id: string;
+  name: string;
+  content: string;
+  variables: string[];
+  category: string;
+}
+
 export default function SingleSMSPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [message, setMessage] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [isSending, setIsSending] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [templates, setTemplates] = useState<SMSTemplate[]>([]);
+  const [isSchedulerOpen, setIsSchedulerOpen] = useState(false);
 
   // Search for patients
   const { data: searchResults = [], isLoading } = useQuery({
@@ -43,33 +68,71 @@ export default function SingleSMSPage() {
     enabled: searchQuery.trim().length > 0,
   });
 
+  // Fetch SMS templates
+  const { data: templateData } = useQuery({
+    queryKey: ['smsTemplates'],
+    queryFn: async () => {
+      const response = await crudRequest<{ templates: SMSTemplate[] }>('GET', '/sms/templates');
+      return response?.templates || [];
+    },
+  });
+
+  useEffect(() => {
+    if (templateData) {
+      setTemplates(templateData);
+    }
+  }, [templateData]);
+
   // Handle sending SMS
-  const handleSendSMS = async () => {
+  const handleSendSMS = async (scheduledFor?: Date) => {
     if (!selectedPatient) {
       toast.error('Please select a patient');
       return;
     }
 
-    if (!message.trim()) {
-      toast.error('Please enter a message');
+    if (!message.trim() && !selectedTemplate) {
+      toast.error('Please enter a message or select a template');
       return;
     }
 
     setIsSending(true);
     
     try {
-      const response = await crudRequest<{ 
-        success: boolean; 
-        message?: string 
-      }>('POST', '/sms/single', {
+      const requestData: any = {
         phoneNumber: selectedPatient.personalDetails.contactNumber,
         patientId: selectedPatient._id,
-        message,
-      });
+      };
+
+      if (selectedTemplate) {
+        requestData.templateId = selectedTemplate;
+        // Add variables if needed
+        requestData.variables = {
+          patientName: selectedPatient.personalDetails.name,
+          // Add more variables as needed
+        };
+      } else {
+        requestData.message = message;
+      }
+
+      if (scheduledFor) {
+        requestData.scheduledFor = scheduledFor.toISOString();
+      }
+
+      const response = await crudRequest<{ 
+        success: boolean; 
+        message?: string;
+        scheduled?: boolean;
+        scheduledFor?: string;
+      }>('POST', '/sms/single', requestData);
 
       if (response?.success) {
-        toast.success('SMS sent successfully');
+        if (response.scheduled) {
+          toast.success(`SMS scheduled for ${new Date(response.scheduledFor!).toLocaleString()}`);
+        } else {
+          toast.success('SMS sent successfully');
+        }
         setMessage('');
+        setSelectedTemplate('');
         setSelectedPatient(null);
         setSearchQuery('');
       } else {
@@ -81,6 +144,27 @@ export default function SingleSMSPage() {
     } finally {
       setIsSending(false);
     }
+  };
+
+  // Handle template selection
+  const handleTemplateSelect = (templateId: string) => {
+    if (templateId === '__no_template__') {
+      setSelectedTemplate('');
+      setMessage('');
+      return;
+    }
+    
+    setSelectedTemplate(templateId);
+    const template = templates.find(t => t._id === templateId);
+    if (template) {
+      setMessage(template.content);
+    }
+  };
+
+  // Handle scheduling
+  const handleSchedule = (scheduledDate: Date) => {
+    setIsSchedulerOpen(false);
+    handleSendSMS(scheduledDate);
   };
 
   // Format date
@@ -225,21 +309,57 @@ export default function SingleSMSPage() {
           <CardHeader>
             <CardTitle>Message</CardTitle>
             <CardDescription>
-              Compose your SMS message (max 160 characters)
+              Compose your SMS message or select a template
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {/* Template Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="template">Select Template</Label>
+                <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__no_template__">No template</SelectItem>
+                    {templates.map((template) => (
+                      <SelectItem key={template._id} value={template._id}>
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          {template.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedTemplate && selectedTemplate !== '__no_template__' && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => {
+                      setSelectedTemplate('');
+                      setMessage('');
+                    }}
+                    className="mt-1"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Clear Template
+                  </Button>
+                )}
+              </div>
+
+              {/* Message Content */}
               <div className="space-y-2">
                 <Label htmlFor="message">Message Content</Label>
                 <Textarea
                   id="message"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type your message here..."
+                  placeholder="Type your message here or select a template..."
                   className="min-h-[150px]"
                   maxLength={160}
-                  disabled={!selectedPatient}
+                  disabled={!selectedPatient || !!selectedTemplate}
                 />
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>{message.length}/160 characters</span>
@@ -250,6 +370,7 @@ export default function SingleSMSPage() {
                 </div>
               </div>
 
+              {/* Variables */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="h-4 w-4" />
@@ -272,7 +393,7 @@ export default function SingleSMSPage() {
                           onClick={() => {
                             setMessage(prev => prev + ' ' + variable.name);
                           }}
-                          disabled={!selectedPatient}
+                          disabled={!selectedPatient || !!selectedTemplate}
                         >
                           {variable.name}
                         </Button>
@@ -285,10 +406,20 @@ export default function SingleSMSPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2">
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 pt-2">
                 <Button 
-                  onClick={handleSendSMS} 
-                  disabled={isSending || !selectedPatient || !message.trim()}
+                  variant="outline"
+                  onClick={() => setIsSchedulerOpen(true)}
+                  disabled={isSending || !selectedPatient || (!message.trim() && !selectedTemplate)}
+                  className="gap-2"
+                >
+                  <Clock className="h-4 w-4" />
+                  Schedule
+                </Button>
+                <Button 
+                  onClick={() => handleSendSMS()}
+                  disabled={isSending || !selectedPatient || (!message.trim() && !selectedTemplate)}
                   className="gap-2"
                 >
                   {isSending ? (
@@ -308,6 +439,13 @@ export default function SingleSMSPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Scheduler Dialog */}
+      <SMSScheduler 
+        isOpen={isSchedulerOpen}
+        onClose={() => setIsSchedulerOpen(false)}
+        onSchedule={handleSchedule}
+      />
     </div>
   );
 }

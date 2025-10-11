@@ -13,6 +13,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { crudRequest } from '@/lib/api';
+import {
+  getPatients,
+  getSMSTemplates,
+  getSMSCampaigns,
+  sendBulkSMS,
+  scheduleSMS
+} from '@/lib/api';
 import { toast } from 'react-toastify';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -91,6 +98,47 @@ interface SMSCampaign {
   createdAt: string;
 }
 
+// 定义API响应类型
+interface PatientsApiResponse {
+  success: boolean;
+  data: {
+    patientGroups: Patient[];
+  };
+  meta?: {
+    totalPages: number;
+    currentPage: number;
+    totalPatients: number;
+  };
+}
+
+interface TemplatesApiResponse {
+  success: boolean;
+  data: {
+    templates: SMSTemplate[];
+  };
+}
+
+interface CampaignsApiResponse {
+  success: boolean;
+  data: SMSCampaign[];
+}
+
+// 为API函数添加类型注解
+const fetchPatients = async (): Promise<PatientsApiResponse> => {
+  const result = await getPatients(1, 1000);
+  return result as PatientsApiResponse;
+};
+
+const fetchTemplates = async (): Promise<TemplatesApiResponse> => {
+  const result = await getSMSTemplates();
+  return result as TemplatesApiResponse;
+};
+
+const fetchCampaigns = async (): Promise<CampaignsApiResponse> => {
+  const result = await getSMSCampaigns();
+  return result as CampaignsApiResponse;
+};
+
 export const EnhancedBulkSMS: React.FC = () => {
   const [activeTab, setActiveTab] = useState('compose');
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
@@ -129,31 +177,31 @@ export const EnhancedBulkSMS: React.FC = () => {
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
 
   // Fetch data
-  const { data: patientsData, isLoading: patientsLoading } = useQuery({
+  const { data: patientsData, isLoading: patientsLoading, refetch: refetchPatients } = useQuery<PatientsApiResponse>({
     queryKey: ['patients-bulk-sms'],
-    queryFn: () => crudRequest<{ data: Patient[] }>('GET', '/patients'),
+    queryFn: fetchPatients,
   });
 
-  const { data: templatesData, isLoading: templatesLoading } = useQuery({
+  const { data: templatesData, isLoading: templatesLoading, refetch: refetchTemplates } = useQuery<TemplatesApiResponse>({
     queryKey: ['sms-templates'],
-    queryFn: () => crudRequest<{ data: SMSTemplate[] }>('GET', '/sms/templates'),
+    queryFn: fetchTemplates,
   });
 
-  const { data: campaignsData, isLoading: campaignsLoading } = useQuery({
+  const { data: campaignsData, isLoading: campaignsLoading, refetch: refetchCampaigns } = useQuery<CampaignsApiResponse>({
     queryKey: ['sms-campaigns'],
-    queryFn: () => crudRequest<{ data: SMSCampaign[] }>('GET', '/sms/campaigns'),
+    queryFn: fetchCampaigns,
   });
 
   useEffect(() => {
-    if (patientsData?.data) {
-      setAllPatients(patientsData.data);
-      applyFilters(patientsData.data);
+    if (patientsData?.data?.patientGroups) {
+      setAllPatients(patientsData.data.patientGroups);
+      applyFilters(patientsData.data.patientGroups);
     }
   }, [patientsData]);
 
   useEffect(() => {
-    if (templatesData?.data) {
-      setTemplates(templatesData.data);
+    if (templatesData?.data?.templates) {
+      setTemplates(templatesData.data.templates);
     }
   }, [templatesData]);
 
@@ -284,7 +332,7 @@ export const EnhancedBulkSMS: React.FC = () => {
       setLoading(true);
       setSendingProgress(0);
 
-      const response = await crudRequest('POST', '/sms/bulk', {
+      const response = await sendBulkSMS({
         patientIds: selectedPatients,
         message,
         campaignName: campaignNameToUse,
@@ -301,6 +349,9 @@ export const EnhancedBulkSMS: React.FC = () => {
 
       // Switch to campaigns tab to monitor progress
       setActiveTab('campaigns');
+      
+      // Refresh campaigns data
+      refetchCampaigns();
 
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to send SMS');
@@ -335,7 +386,7 @@ export const EnhancedBulkSMS: React.FC = () => {
     try {
       setLoading(true);
 
-      await crudRequest('POST', '/sms/bulk', {
+      await scheduleSMS({
         patientIds: selectedPatients,
         message,
         campaignName: campaignNameToUse,
@@ -352,6 +403,9 @@ export const EnhancedBulkSMS: React.FC = () => {
       setSelectedTemplate('');
       setScheduleDate(undefined);
       setScheduleTime('');
+
+      // Refresh campaigns data
+      refetchCampaigns();
 
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to schedule SMS');

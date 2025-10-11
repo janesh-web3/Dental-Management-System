@@ -30,13 +30,18 @@ interface SMSTemplate {
   name: string;
   content: string;
   variables: string[];
-  category: 'Appointment' | 'Reminder' | 'Promotion' | 'General' | 'Other';
+  category: 'Appointment' | 'Reminder' | 'Promotion' | 'General' | 'Other' | 'Payment Due' | 'Missed Visit' | 'Birthday Wish' | 'Feedback Request';
   createdBy: {
     _id: string;
     name: string;
   };
   createdAt: string;
   updatedAt: string;
+  isAutoTriggered?: boolean;
+  triggerEvent?: 'appointment_booking' | 'appointment_cancellation' | 'missed_visit' | 'payment_due' | 'birthday' | 'feedback_request' | 'follow_up';
+  isActive?: boolean;
+  lastUsed?: string;
+  totalSent?: number;
 }
 
 const TEMPLATE_CATEGORIES = [
@@ -44,7 +49,11 @@ const TEMPLATE_CATEGORIES = [
   'Reminder',
   'Promotion',
   'General',
-  'Other'
+  'Other',
+  'Payment Due',
+  'Missed Visit',
+  'Birthday Wish',
+  'Feedback Request'
 ];
 
 const COMMON_VARIABLES = [
@@ -74,8 +83,11 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     content: '',
-    category: 'General' as 'Appointment' | 'Reminder' | 'Promotion' | 'General' | 'Other',
-    variables: [] as string[]
+    category: 'General' as 'Appointment' | 'Reminder' | 'Promotion' | 'General' | 'Other' | 'Payment Due' | 'Missed Visit' | 'Birthday Wish' | 'Feedback Request',
+    variables: [] as string[],
+    isAutoTriggered: false,
+    triggerEvent: '' as 'appointment_booking' | 'appointment_cancellation' | 'missed_visit' | 'payment_due' | 'birthday' | 'feedback_request' | 'follow_up' | '',
+    isActive: true
   });
 
   const [previewData, setPreviewData] = useState({
@@ -153,14 +165,23 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
     setFormData({
       name: '',
       content: '',
-      category: 'General' as 'Appointment' | 'Reminder' | 'Promotion' | 'General' | 'Other',
-      variables: []
+      category: 'General' as 'Appointment' | 'Reminder' | 'Promotion' | 'General' | 'Other' | 'Payment Due' | 'Missed Visit' | 'Birthday Wish' | 'Feedback Request',
+      variables: [],
+      isAutoTriggered: false,
+      triggerEvent: '',
+      isActive: true
     });
   };
 
   const handleCreate = async () => {
     try {
-      const response = await crudRequest<{ data: SMSTemplate }>('POST', '/sms/templates', formData);
+      // Only send auto-trigger fields if isAutoTriggered is true
+      const requestData = {
+        ...formData,
+        triggerEvent: formData.isAutoTriggered && formData.triggerEvent ? formData.triggerEvent : undefined
+      };
+      
+      const response = await crudRequest<{ data: SMSTemplate }>('POST', '/sms/templates', requestData);
       setTemplates(prev => [response.data, ...prev]);
       setIsCreateDialogOpen(false);
       resetForm();
@@ -174,7 +195,13 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
     if (!selectedTemplate) return;
 
     try {
-      const response = await crudRequest<{ data: SMSTemplate }>('PUT', `/sms/templates/${selectedTemplate._id}`, formData);
+      // Only send auto-trigger fields if isAutoTriggered is true
+      const requestData = {
+        ...formData,
+        triggerEvent: formData.isAutoTriggered && formData.triggerEvent ? formData.triggerEvent : undefined
+      };
+      
+      const response = await crudRequest<{ data: SMSTemplate }>('PUT', `/sms/templates/${selectedTemplate._id}`, requestData);
       setTemplates(prev => prev.map(t => t._id === selectedTemplate._id ? response.data : t));
       setIsEditDialogOpen(false);
       setSelectedTemplate(null);
@@ -202,7 +229,10 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
       name: `${template.name} (Copy)`,
       content: template.content,
       category: template.category,
-      variables: template.variables
+      variables: template.variables,
+      isAutoTriggered: template.isAutoTriggered || false,
+      triggerEvent: template.triggerEvent || '',
+      isActive: template.isActive !== undefined ? template.isActive : true
     });
     setIsCreateDialogOpen(true);
   };
@@ -328,7 +358,14 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
                   <TableRow key={template._id}>
                     <TableCell className="font-medium">{template.name}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{template.category}</Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="secondary">{template.category}</Badge>
+                        {template.isAutoTriggered && (
+                          <Badge variant="default" className="w-fit">
+                            Auto: {template.triggerEvent}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
@@ -344,8 +381,33 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{template.createdBy.name}</TableCell>
-                    <TableCell>{new Date(template.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span>{template.createdBy.name}</span>
+                        {template.lastUsed && (
+                          <span className="text-xs text-muted-foreground">
+                            Last used: {new Date(template.lastUsed).toLocaleDateString()}
+                          </span>
+                        )}
+                        {template.totalSent !== undefined && (
+                          <span className="text-xs text-muted-foreground">
+                            Sent: {template.totalSent}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span>{new Date(template.createdAt).toLocaleDateString()}</span>
+                        <div className="flex items-center gap-1 mt-1">
+                          {template.isActive !== false ? (
+                            <Badge variant="default" className="text-xs">Active</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">Inactive</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-2">
                         <Button
@@ -374,7 +436,10 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
                               name: template.name,
                               content: template.content,
                               category: template.category,
-                              variables: template.variables
+                              variables: template.variables,
+                              isAutoTriggered: template.isAutoTriggered || false,
+                              triggerEvent: template.triggerEvent || '',
+                              isActive: template.isActive !== undefined ? template.isActive : true
                             });
                             setIsEditDialogOpen(true);
                           }}
@@ -458,6 +523,57 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
                   </div>
                 </div>
               )}
+              {/* Auto-trigger section */}
+              <div className="border-t pt-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="autoTrigger"
+                    checked={formData.isAutoTriggered}
+                    onChange={(e) => setFormData(prev => ({ ...prev, isAutoTriggered: e.target.checked }))}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <Label htmlFor="autoTrigger">Enable Auto-trigger</Label>
+                </div>
+                
+                {formData.isAutoTriggered && (
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <Label htmlFor="triggerEvent">Trigger Event</Label>
+                      <Select 
+                        value={formData.triggerEvent} 
+                        onValueChange={(value: 'appointment_booking' | 'appointment_cancellation' | 'missed_visit' | 'payment_due' | 'birthday' | 'feedback_request' | 'follow_up' | '') => 
+                          setFormData(prev => ({ ...prev, triggerEvent: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select trigger event" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="appointment_booking">Appointment Booking</SelectItem>
+                          <SelectItem value="appointment_cancellation">Appointment Cancellation</SelectItem>
+                          <SelectItem value="missed_visit">Missed Visit</SelectItem>
+                          <SelectItem value="payment_due">Payment Due</SelectItem>
+                          <SelectItem value="birthday">Birthday</SelectItem>
+                          <SelectItem value="feedback_request">Feedback Request</SelectItem>
+                          <SelectItem value="follow_up">Follow Up</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="isActive"
+                        checked={formData.isActive}
+                        onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <Label htmlFor="isActive">Active</Label>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="space-y-4">
               <div>
@@ -558,6 +674,57 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
                   </div>
                 </div>
               )}
+              {/* Auto-trigger section */}
+              <div className="border-t pt-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="edit-autoTrigger"
+                    checked={formData.isAutoTriggered}
+                    onChange={(e) => setFormData(prev => ({ ...prev, isAutoTriggered: e.target.checked }))}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <Label htmlFor="edit-autoTrigger">Enable Auto-trigger</Label>
+                </div>
+                
+                {formData.isAutoTriggered && (
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <Label htmlFor="edit-triggerEvent">Trigger Event</Label>
+                      <Select 
+                        value={formData.triggerEvent} 
+                        onValueChange={(value: 'appointment_booking' | 'appointment_cancellation' | 'missed_visit' | 'payment_due' | 'birthday' | 'feedback_request' | 'follow_up' | '') => 
+                          setFormData(prev => ({ ...prev, triggerEvent: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select trigger event" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="appointment_booking">Appointment Booking</SelectItem>
+                          <SelectItem value="appointment_cancellation">Appointment Cancellation</SelectItem>
+                          <SelectItem value="missed_visit">Missed Visit</SelectItem>
+                          <SelectItem value="payment_due">Payment Due</SelectItem>
+                          <SelectItem value="birthday">Birthday</SelectItem>
+                          <SelectItem value="feedback_request">Feedback Request</SelectItem>
+                          <SelectItem value="follow_up">Follow Up</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="edit-isActive"
+                        checked={formData.isActive}
+                        onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <Label htmlFor="edit-isActive">Active</Label>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="space-y-4">
               <div>
@@ -639,6 +806,25 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
                   <div>Variables: {selectedTemplate?.variables.length || 0}</div>
                   <div>Length: {selectedTemplate?.content.length || 0} chars</div>
                   <div>SMS Units: {Math.ceil((selectedTemplate?.content.length || 0) / 160)}</div>
+                  {selectedTemplate?.isAutoTriggered && (
+                    <div className="mt-2">
+                      <div>Auto-trigger: <Badge variant="default">Enabled</Badge></div>
+                      <div>Event: <Badge variant="secondary">{selectedTemplate?.triggerEvent}</Badge></div>
+                      <div>Status: 
+                        {selectedTemplate?.isActive !== false ? (
+                          <Badge variant="default" className="ml-1">Active</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="ml-1">Inactive</Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {selectedTemplate?.lastUsed && (
+                    <div>Last Used: {new Date(selectedTemplate.lastUsed).toLocaleDateString()}</div>
+                  )}
+                  {selectedTemplate?.totalSent !== undefined && (
+                    <div>Total Sent: {selectedTemplate.totalSent}</div>
+                  )}
                 </div>
               </div>
             </div>

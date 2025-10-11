@@ -320,6 +320,126 @@ export const deleteAppointment = async (id: string) => {
   return await crudRequest("DELETE", `/appointment/delete-appointment/${id}`);
 };
 
+// ********************* SMS API SERVICES *********************
+
+// Patient Groups
+export const getPatientGroups = async () => {
+  return await crudRequest("GET", `/patient-groups`);
+};
+
+export const createPatientGroup = async (data: any) => {
+  return await crudRequest("POST", `/patient-groups`, data);
+};
+
+export const updatePatientGroup = async (id: string, data: any) => {
+  return await crudRequest("PUT", `/patient-groups/${id}`, data);
+};
+
+export const deletePatientGroup = async (id: string) => {
+  return await crudRequest("DELETE", `/patient-groups/${id}`);
+};
+
+export const filterPatientsForGroup = async (filters: any) => {
+  return await crudRequest("POST", `/patient-groups/filter-patients`, filters);
+};
+
+// SMS Templates
+export const getSMSTemplates = async () => {
+  return await crudRequest("GET", `/sms/templates`);
+};
+
+export const createSMSTemplate = async (data: any) => {
+  return await crudRequest("POST", `/sms/templates`, data);
+};
+
+export const updateSMSTemplate = async (id: string, data: any) => {
+  return await crudRequest("PUT", `/sms/templates/${id}`, data);
+};
+
+export const deleteSMSTemplate = async (id: string) => {
+  return await crudRequest("DELETE", `/sms/templates/${id}`);
+};
+
+// SMS Sending
+export const sendBulkSMS = async (data: any) => {
+  return await crudRequest("POST", `/sms/bulk`, data);
+};
+
+export const sendSingleSMS = async (data: any) => {
+  return await crudRequest("POST", `/sms/single`, data);
+};
+
+export const sendSMSToGroup = async (groupId: string, data: any) => {
+  return await crudRequest("POST", `/sms/group/${groupId}`, data);
+};
+
+// SMS History
+export const getSMSHistory = async (params?: { page?: number; limit?: number; status?: string; search?: string }) => {
+  let url = `/sms/history`;
+  if (params) {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.status) queryParams.append('status', params.status);
+    if (params.search) queryParams.append('search', params.search);
+    if (queryParams.toString()) url += `?${queryParams.toString()}`;
+  }
+  return await crudRequest("GET", url);
+};
+
+// SMS Dashboard
+export const getSMSDashboardStats = async () => {
+  return await crudRequest("GET", `/sms-dashboard/stats`);
+};
+
+export const getSMSDashboardHistory = async (params?: { page?: number; limit?: number; status?: string; search?: string }) => {
+  let url = `/sms-dashboard/history`;
+  if (params) {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.status) queryParams.append('status', params.status);
+    if (params.search) queryParams.append('search', params.search);
+    if (queryParams.toString()) url += `?${queryParams.toString()}`;
+  }
+  return await crudRequest("GET", url);
+};
+
+export const getSMSTemplateAnalytics = async () => {
+  return await crudRequest("GET", `/sms-dashboard/analytics/templates`);
+};
+
+export const getSMSCostAnalytics = async () => {
+  return await crudRequest("GET", `/sms-dashboard/analytics/costs`);
+};
+
+// SMS Scheduling
+export const scheduleSMS = async (data: any) => {
+  return await crudRequest("POST", `/sms-schedule`, data);
+};
+
+export const getScheduledSMS = async () => {
+  return await crudRequest("GET", `/sms-schedule`);
+};
+
+export const cancelScheduledSMS = async (id: string) => {
+  return await crudRequest("DELETE", `/sms-schedule/${id}`);
+};
+
+// SMS Credit
+export const getSMSCredit = async () => {
+  return await crudRequest("GET", `/sms/credit`);
+};
+
+export const getDetailedSMSCredit = async () => {
+  return await crudRequest("GET", `/sms/credit/detailed`);
+};
+
+// SMS Campaigns
+export const getSMSCampaigns = async () => {
+  return await crudRequest("GET", `/sms/campaigns`);
+};
+
 // ********************* INVOICE API SERVICES *********************
 
 export const getInvoices = async (

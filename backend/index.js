@@ -20,6 +20,7 @@ const contactRouter = require("./routes/contactRoute.js");
 const prescriptionRouter = require("./routes/prescriptionRoutes.js");
 const analyticsRouter = require("./routes/analyticsRoutes.js");
 const smsRouter = require("./routes/smsRoutes.js");
+const smsDeliveryRouter = require("./routes/smsDeliveryRoutes.js");
 const financeRouter = require("./routes/financeRoutes.js");
 const servicePaymentRouter = require("./routes/servicePaymentRoutes.js");
 const geminiRouter = require("./routes/geminiRoute.js");
@@ -30,6 +31,9 @@ const userPreferencesRouter = require("./routes/userPreferencesRoutes.js");
 const followUpRouter = require("./routes/followUpRoutes.js");
 const popupRouter = require("./routes/popupRoutes.js");
 const paymentReminderRouter = require("./routes/paymentReminderRoutes.js");
+const patientGroupRouter = require("./routes/patientGroupRoutes.js");
+const smsDashboardRouter = require("./routes/smsDashboardRoutes.js");
+const smsScheduleRouter = require("./routes/smsScheduleRoutes.js");
 
 // Import utilities
 const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
@@ -86,6 +90,7 @@ app.use("/api/contact", contactRouter);
 app.use("/api/prescription", prescriptionRouter);
 app.use("/api/analytics", analyticsRouter); // Advanced analytics routes
 app.use("/api/sms", smsRouter);
+app.use("/api/sms-delivery", smsDeliveryRouter);
 app.use("/api/finance", financeRouter); // Finance management routes
 app.use("/api/service-payment", servicePaymentRouter); // Service payment routes
 app.use("/api/gemini", geminiRouter);
@@ -96,6 +101,9 @@ app.use("/api/user-preferences", userPreferencesRouter);
 app.use("/api/follow-ups", followUpRouter);
 app.use("/api/popups", popupRouter);
 app.use("/api/payment-reminders", paymentReminderRouter);
+app.use("/api/patient-groups", patientGroupRouter);
+app.use("/api/sms-dashboard", smsDashboardRouter);
+app.use("/api/sms-schedule", smsScheduleRouter);
 
 const port = process.env.PORT || 8080;
 

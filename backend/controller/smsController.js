@@ -5,6 +5,7 @@ const SMSTemplate = require('../model/SMSTemplate');
 const SMSHistory = require('../model/SMSHistory');
 const SMSClassConfig = require('../model/SMSClassConfig');
 const SMSCampaign = require('../model/SMSCampaign');
+const SMSDeliveryReport = require('../model/SMSDeliveryReport');
 const mongoose = require('mongoose');
 const aakashSmsUtils = require('../utils/aakashSmsUtils');
 
@@ -56,10 +57,21 @@ const replaceTemplateVariables = (template, variables) => {
     return message;
 };
 
-// Helper function to save SMS history
-const saveSMSHistory = async (smsData) => {
+// Helper function to save SMS history with enhanced logging
+const saveSMSHistory = async (smsData, req) => {
     try {
-        const smsHistory = new SMSHistory(smsData);
+        // Add additional logging information from the request
+        const enhancedSmsData = {
+            ...smsData,
+            sentBy: req.smsSender ? req.smsSender.userId : smsData.sentBy,
+            sentByName: req.smsSender ? req.smsSender.name : null,
+            sentByRole: req.smsSender ? req.smsSender.role : null,
+            sentAt: req.smsLog ? req.smsLog.timestamp : new Date(),
+            sentFromIP: req.smsLog ? req.smsLog.ip : null,
+            userAgent: req.smsLog ? req.smsLog.userAgent : null
+        };
+        
+        const smsHistory = new SMSHistory(enhancedSmsData);
         await smsHistory.save();
         return smsHistory;
     } catch (error) {
@@ -111,6 +123,11 @@ const sendSingleSMS = async (req, res) => {
                 
                 messageContent = replaceTemplateVariables(template.content, variables);
                 templateUsed = template._id;
+                
+                // Update template usage stats
+                template.lastUsed = new Date();
+                template.totalSent += 1;
+                await template.save();
             } catch (error) {
                 return res.status(500).json({ 
                     error: 'Failed to process template', 
@@ -151,47 +168,36 @@ const sendSingleSMS = async (req, res) => {
         }
 
         // Send the message immediately using Aakash SMS API
-        const response = await axios.post(aakashSmsConfig.apiUrl, null, {
-            params: {
-                auth_token: aakashSmsConfig.authToken,
-                to: formattedNumber,
-                text: messageContent
-            }
-        });
+        const result = await aakashSmsUtils.sendSingleSMS(formattedNumber, messageContent);
 
-        if (response.data.error) {
-            // If Aakash SMS returned an error
+        if (!result.success) {
             return res.status(400).json({
                 error: 'Failed to send SMS',
-                details: response.data.message,
+                details: result.error,
             });
         }
 
-        // Extract message details from the response
-        const smsResult = response.data.data.valid[0] || {};
-        
-        // Save to history
+        // Save to history with enhanced logging
         await saveSMSHistory({
             recipient: formattedNumber,
             message: messageContent,
-            status: smsResult.status || 'sent',
-            messageId: smsResult.id?.toString(),
-            networkProvider: smsResult.network,
-            credit: smsResult.credit,
+            status: result.status || 'sent',
+            messageId: result.messageId?.toString(),
+            networkProvider: result.network,
+            credit: result.credit,
             sentBy: req.user?._id || null,
             patient: patientId || null,
             templateUsed
-        });
+        }, req);
 
         // Return success response
         res.status(200).json({ 
             success: true, 
-            messageId: smsResult.id,
-            status: smsResult.status,
-            to: smsResult.mobile,
-            credit: smsResult.credit,
-            network: smsResult.network,
-            message: response.data.message
+            messageId: result.messageId,
+            status: result.status,
+            to: result.recipient,
+            credit: result.credit,
+            network: result.network
         });
     } catch (error) {
         console.error('Error sending SMS:', error);
@@ -210,7 +216,8 @@ const sendBulkSMS = async (req, res) => {
             variables = {},
             patientIds = [],
             filters = {},
-            scheduledFor
+            scheduledFor,
+            groupId
         } = req.body;
 
         if (!message && !templateId) {
@@ -230,6 +237,11 @@ const sendBulkSMS = async (req, res) => {
                 
                 messageContent = replaceTemplateVariables(template.content, variables);
                 templateUsed = template._id;
+                
+                // Update template usage stats
+                template.lastUsed = new Date();
+                template.totalSent += 1;
+                await template.save();
             } catch (error) {
                 return res.status(500).json({ 
                     error: 'Failed to process template', 
@@ -328,6 +340,7 @@ const sendBulkSMS = async (req, res) => {
                     personalizedMessage = replaceTemplateVariables(messageContent, {
                         ...variables,
                         name: patient.personalDetails.name,
+                        patientName: patient.personalDetails.name,
                         // Add more patient-specific variables as needed
                     });
                 }
@@ -340,11 +353,30 @@ const sendBulkSMS = async (req, res) => {
                     patient: patient._id,
                     templateUsed,
                     scheduledFor: scheduledDate,
-                    isBulk: true
+                    isBulk: true,
+                    groupId: groupId || null
                 };
             });
             
-            await SMSHistory.insertMany(scheduledMessages);
+            // Enhance scheduled messages with logging information
+            const enhancedScheduledMessages = scheduledMessages.map(msg => ({
+                ...msg,
+                sentByName: req.smsSender ? req.smsSender.name : null,
+                sentByRole: req.smsSender ? req.smsSender.role : null,
+                sentAt: req.smsLog ? req.smsLog.timestamp : new Date(),
+                sentFromIP: req.smsLog ? req.smsLog.ip : null,
+                userAgent: req.smsLog ? req.smsLog.userAgent : null
+            }));
+            
+            await SMSHistory.insertMany(enhancedScheduledMessages);
+            
+            // Update group last used if groupId is provided
+            if (groupId) {
+                await require('../model/PatientGroup').findByIdAndUpdate(groupId, {
+                    lastUsed: new Date(),
+                    lastTemplateUsed: templateUsed
+                });
+            }
             
             return res.status(200).json({
                 success: true,
@@ -357,6 +389,7 @@ const sendBulkSMS = async (req, res) => {
         // For immediate sending, prepare the arrays for the v4 API
         const phoneNumbers = [];
         const personalizedMessages = [];
+        const patientMap = {};
         
         for (const patient of patients) {
             try {
@@ -373,12 +406,14 @@ const sendBulkSMS = async (req, res) => {
                     personalizedMessage = replaceTemplateVariables(messageContent, {
                         ...variables,
                         name: patient.personalDetails.name,
+                        patientName: patient.personalDetails.name,
                         // Add more patient-specific variables as needed
                     });
                 }
                 
                 phoneNumbers.push(phoneNumber);
                 personalizedMessages.push(personalizedMessage);
+                patientMap[phoneNumber] = patient._id;
             } catch (error) {
                 console.error(`Error processing patient ${patient._id}:`, error.message);
             }
@@ -394,6 +429,70 @@ const sendBulkSMS = async (req, res) => {
             return res.status(500).json({
                 error: result.error || 'Failed to send bulk SMS',
                 details: result.code || 'UNKNOWN_ERROR'
+            });
+        }
+        
+        // Save to history
+        const historyRecords = [];
+        
+        // Process valid messages
+        if (result.validMessages) {
+            for (const validMsg of result.validMessages) {
+                const patientId = patientMap[validMsg.recipient] || null;
+                historyRecords.push({
+                    recipient: validMsg.recipient,
+                    message: personalizedMessages[phoneNumbers.indexOf(validMsg.recipient)],
+                    status: validMsg.status || 'sent',
+                    messageId: validMsg.messageId,
+                    networkProvider: validMsg.network,
+                    credit: validMsg.credit,
+                    sentBy: req.user?._id || req.admin?.id,
+                    patient: patientId,
+                    templateUsed,
+                    isBulk: true,
+                    groupId: groupId || null
+                });
+            }
+        }
+        
+        // Process invalid messages
+        if (result.invalidMessages) {
+            for (const invalidMsg of result.invalidMessages) {
+                const patientId = patientMap[invalidMsg.recipient] || null;
+                historyRecords.push({
+                    recipient: invalidMsg.recipient,
+                    message: personalizedMessages[phoneNumbers.indexOf(invalidMsg.recipient)],
+                    status: 'failed',
+                    errorMessage: invalidMsg.reason || 'Failed to send',
+                    sentBy: req.user?._id || req.admin?.id,
+                    patient: patientId,
+                    templateUsed,
+                    isBulk: true,
+                    groupId: groupId || null
+                });
+            }
+        }
+        
+        // Enhance history records with logging information
+        const enhancedHistoryRecords = historyRecords.map(record => ({
+            ...record,
+            sentByName: req.smsSender ? req.smsSender.name : null,
+            sentByRole: req.smsSender ? req.smsSender.role : null,
+            sentAt: req.smsLog ? req.smsLog.timestamp : new Date(),
+            sentFromIP: req.smsLog ? req.smsLog.ip : null,
+            userAgent: req.smsLog ? req.smsLog.userAgent : null
+        }));
+        
+        // Save all history records
+        if (enhancedHistoryRecords.length > 0) {
+            await SMSHistory.insertMany(enhancedHistoryRecords);
+        }
+        
+        // Update group last used if groupId is provided
+        if (groupId) {
+            await require('../model/PatientGroup').findByIdAndUpdate(groupId, {
+                lastUsed: new Date(),
+                lastTemplateUsed: templateUsed
             });
         }
         
@@ -434,18 +533,27 @@ const getTemplates = async (req, res) => {
 // Create a new SMS template
 const createTemplate = async (req, res) => {
     try {
-        const { name, content, variables, category } = req.body;
+        const { name, content, variables, category, isAutoTriggered, triggerEvent, colorTag, senderId } = req.body;
         
         if (!name || !content) {
             return res.status(400).json({ error: 'Name and content are required' });
         }
+        
+        // Calculate character count for cost estimation
+        const characterCount = content.length;
         
         const template = new SMSTemplate({
             name,
             content,
             variables: variables || [],
             category: category || 'General',
-            createdBy: req.user._id
+            createdBy: req.user._id,
+            isAutoTriggered: isAutoTriggered || false,
+            triggerEvent: triggerEvent || null,
+            isActive: true,
+            characterCount,
+            colorTag: colorTag || 'gray',
+            senderId: senderId || null
         });
         
         await template.save();
@@ -467,20 +575,33 @@ const createTemplate = async (req, res) => {
 const updateTemplate = async (req, res) => {
     try {
         const { templateId } = req.params;
-        const { name, content, variables, category } = req.body;
+        const { name, content, variables, category, isAutoTriggered, triggerEvent, isActive, colorTag, senderId } = req.body;
         
         if (!name || !content) {
             return res.status(400).json({ error: 'Name and content are required' });
         }
         
+        // Calculate character count for cost estimation
+        const characterCount = content.length;
+        
+        const updateData = {
+            name,
+            content,
+            variables: variables || [],
+            category: category || 'General',
+            characterCount
+        };
+        
+        // Add auto-trigger fields if provided
+        if (isAutoTriggered !== undefined) updateData.isAutoTriggered = isAutoTriggered;
+        if (triggerEvent !== undefined) updateData.triggerEvent = triggerEvent;
+        if (isActive !== undefined) updateData.isActive = isActive;
+        if (colorTag !== undefined) updateData.colorTag = colorTag;
+        if (senderId !== undefined) updateData.senderId = senderId;
+        
         const template = await SMSTemplate.findByIdAndUpdate(
             templateId,
-            {
-                name,
-                content,
-                variables: variables || [],
-                category: category || 'General'
-            },
+            updateData,
             { new: true }
         );
         
@@ -528,7 +649,7 @@ const deleteTemplate = async (req, res) => {
 // Get SMS history
 const getSMSHistory = async (req, res) => {
     try {
-        const { page = 1, limit = 20, patientId, status, search } = req.query;
+        const { page = 1, limit = 20, patientId, status, search, groupId } = req.query;
         
         const query = {};
         
@@ -538,6 +659,10 @@ const getSMSHistory = async (req, res) => {
         
         if (status) {
             query.status = status;
+        }
+        
+        if (groupId) {
+            query.groupId = groupId;
         }
         
         // Add search functionality
@@ -632,33 +757,25 @@ const processScheduledSMS = async (req, res) => {
         // Process single messages one by one
         for (const message of singleMessages) {
             try {
-                // Send using v3 API
-                const response = await axios.post(aakashSmsConfig.apiUrl, null, {
-                    params: {
-                        auth_token: aakashSmsConfig.authToken,
-                        to: message.recipient,
-                        text: message.message
-                    }
-                });
+                // Send using aakashSmsUtils
+                const result = await aakashSmsUtils.sendSingleSMS(message.recipient, message.message);
                 
-                if (response.data.error) {
-                    throw new Error(response.data.message);
+                if (!result.success) {
+                    throw new Error(result.error);
                 }
                 
-                const smsResult = response.data.data.valid[0] || {};
-                
                 // Update the history record
-                message.status = smsResult.status || 'sent';
-                message.messageId = smsResult.id?.toString();
-                message.networkProvider = smsResult.network;
-                message.credit = smsResult.credit;
+                message.status = result.status || 'sent';
+                message.messageId = result.messageId?.toString();
+                message.networkProvider = result.network;
+                message.credit = result.credit;
                 await message.save();
                 
                 results.push({
                     historyId: message._id,
-                    messageId: smsResult.id,
-                    status: smsResult.status,
-                    to: smsResult.mobile
+                    messageId: result.messageId,
+                    status: result.status,
+                    to: result.recipient
                 });
             } catch (error) {
                 // Update the history record with the error
@@ -683,28 +800,16 @@ const processScheduledSMS = async (req, res) => {
             }
             
             try {
-                // Send using v4 API
-                const response = await axios.post(
-                    aakashSmsConfig.apiUrlV4, 
-                    {
-                        to: bulkPhoneNumbers,
-                        text: bulkMessageTexts.length === 1 ? bulkMessageTexts[0] : bulkMessageTexts
-                    },
-                    {
-                        headers: {
-                            'auth-token': aakashSmsConfig.authToken,
-                            'Content-Type': 'application/json'
-                        }
-                    }
-                );
+                // Send using aakashSmsUtils
+                const result = await aakashSmsUtils.sendBulkSMS(bulkPhoneNumbers, bulkMessageTexts);
                 
-                if (response.data.error) {
-                    throw new Error(response.data.message);
+                if (!result.success) {
+                    throw new Error(result.error);
                 }
                 
                 // Process valid messages
-                if (response.data.data && response.data.data.valid) {
-                    for (const validMsg of response.data.data.valid) {
+                if (result.validMessages) {
+                    for (const validMsg of result.validMessages) {
                         // Find the corresponding message record
                         const index = bulkPhoneNumbers.findIndex(num => num === formatPhoneNumber(validMsg.mobile));
                         if (index !== -1) {
@@ -712,14 +817,14 @@ const processScheduledSMS = async (req, res) => {
                             
                             // Update the history record
                             message.status = validMsg.status || 'sent';
-                            message.messageId = validMsg.id?.toString();
+                            message.messageId = validMsg.messageId?.toString();
                             message.networkProvider = validMsg.network;
                             message.credit = validMsg.credit;
                             await message.save();
                             
                             results.push({
                                 historyId: message._id,
-                                messageId: validMsg.id,
+                                messageId: validMsg.messageId,
                                 status: validMsg.status,
                                 to: validMsg.mobile
                             });
@@ -728,8 +833,8 @@ const processScheduledSMS = async (req, res) => {
                 }
                 
                 // Process invalid messages
-                if (response.data.data && response.data.data.invalid) {
-                    for (const invalidMsg of response.data.data.invalid) {
+                if (result.invalidMessages) {
+                    for (const invalidMsg of result.invalidMessages) {
                         // Find the corresponding message record
                         const index = bulkPhoneNumbers.findIndex(num => num === formatPhoneNumber(invalidMsg.mobile));
                         if (index !== -1) {
@@ -1623,6 +1728,11 @@ const createSMSCampaign = async (req, res) => {
             
             messageContent = replaceTemplateVariables(template.content, variables);
             templateUsed = template._id;
+            
+            // Update template usage stats
+            template.lastUsed = new Date();
+            template.totalSent += 1;
+            await template.save();
         }
         
         // Build patient query
@@ -2027,6 +2137,168 @@ const getSMSHistoryByClass = async (req, res) => {
     }
 };
 
+// Get delivery reports
+const getDeliveryReports = async (req, res) => {
+    try {
+        const { page = 1, limit = 20, status, startDate, endDate, search } = req.query;
+        
+        const query = {};
+        
+        if (status) {
+            query.status = status;
+        }
+        
+        if (startDate || endDate) {
+            query.createdAt = {};
+            if (startDate) {
+                query.createdAt.$gte = new Date(startDate);
+            }
+            if (endDate) {
+                query.createdAt.$lte = new Date(endDate);
+            }
+        }
+        
+        if (search) {
+            query.$or = [
+                { recipient: { $regex: search, $options: 'i' } },
+                { messageId: { $regex: search, $options: 'i' } }
+            ];
+        }
+        
+        const total = await SMSDeliveryReport.countDocuments(query);
+        const reports = await SMSDeliveryReport.find(query)
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit))
+            .populate('smsHistory', 'message templateUsed')
+            .populate('smsHistory.templateUsed', 'name');
+        
+        res.status(200).json({
+            success: true,
+            data: {
+                reports,
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                pages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching delivery reports:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch delivery reports',
+            error: error.message
+        });
+    }
+};
+
+// Retry failed SMS
+const retryFailedSMS = async (req, res) => {
+    try {
+        const { reportId } = req.params;
+        
+        // Find the delivery report
+        const report = await SMSDeliveryReport.findById(reportId).populate('smsHistory');
+        
+        if (!report) {
+            return res.status(404).json({
+                success: false,
+                message: 'Delivery report not found'
+            });
+        }
+        
+        if (report.status !== 'failed' && report.status !== 'undelivered') {
+            return res.status(400).json({
+                success: false,
+                message: 'Only failed or undelivered messages can be retried'
+            });
+        }
+        
+        // Increment retry count
+        report.retryCount += 1;
+        
+        // Update the report
+        await report.save();
+        
+        // Here we would implement the actual retry logic
+        // For now, we'll just update the status to queued
+        report.status = 'queued';
+        await report.save();
+        
+        // Also update the SMS history
+        if (report.smsHistory) {
+            report.smsHistory.retryCount = report.retryCount;
+            report.smsHistory.status = 'queued';
+            await report.smsHistory.save();
+        }
+        
+        res.status(200).json({
+            success: true,
+            message: 'SMS message queued for retry',
+            data: report
+        });
+    } catch (error) {
+        console.error('Error retrying SMS:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to retry SMS',
+            error: error.message
+        });
+    }
+};
+
+// Get delivery statistics
+const getDeliveryStats = async (req, res) => {
+    try {
+        // Get status breakdown
+        const statusBreakdown = await SMSDeliveryReport.aggregate([
+            {
+                $group: {
+                    _id: '$status',
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+        
+        // Get recent activity (last 7 days)
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        
+        const recentActivity = await SMSDeliveryReport.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: sevenDaysAgo }
+                }
+            },
+            {
+                $group: {
+                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $sort: { _id: 1 }
+            }
+        ]);
+        
+        res.status(200).json({
+            success: true,
+            data: {
+                statusBreakdown,
+                recentActivity
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching delivery stats:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch delivery stats',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     sendSingleSMS,
     sendBulkSMS,
@@ -2052,5 +2324,9 @@ module.exports = {
     getSMSCampaigns,
     getCampaignDetails,
     sendSMSToClass,
-    getSMSHistoryByClass
+    getSMSHistoryByClass,
+    // Delivery report functions
+    getDeliveryReports,
+    retryFailedSMS,
+    getDeliveryStats
 };

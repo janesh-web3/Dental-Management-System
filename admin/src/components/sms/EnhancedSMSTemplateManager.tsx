@@ -110,17 +110,40 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
   const fetchTemplates = async () => {
     try {
       setLoading(true);
-      const response = await crudRequest<{ data: SMSTemplate[] }>('GET', '/sms/templates');
-      setTemplates(response.data || []);
+      const response = await crudRequest<any>('GET', '/sms/templates');
+      // Handle different possible response structures
+      let templatesData: SMSTemplate[] = [];
+      
+      if (Array.isArray(response)) {
+        // Direct array response
+        templatesData = response;
+      } else if (response?.templates && Array.isArray(response.templates)) {
+        // { templates: SMSTemplate[] } structure
+        templatesData = response.templates;
+      } else if (response?.data && Array.isArray(response.data)) {
+        // { data: SMSTemplate[] } structure
+        templatesData = response.data;
+      }
+      
+      // Defensive check to ensure templates have required properties
+      const validTemplates = templatesData.filter(template => template && template._id && template.name);
+      setTemplates(validTemplates);
     } catch (error) {
       console.error('Error fetching templates:', error);
       toast.error('Failed to fetch SMS templates');
+      // Set templates to empty array on error
+      setTemplates([]);
     } finally {
       setLoading(false);
     }
   };
 
   const filteredTemplates = templates.filter(template => {
+    // Defensive check to ensure template is properly defined
+    if (!template || !template.name || !template.content) {
+      return false;
+    }
+    
     const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          template.content.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || template.category === selectedCategory;
@@ -181,8 +204,25 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
         triggerEvent: formData.isAutoTriggered && formData.triggerEvent ? formData.triggerEvent : undefined
       };
       
-      const response = await crudRequest<{ data: SMSTemplate }>('POST', '/sms/templates', requestData);
-      setTemplates(prev => [response.data, ...prev]);
+      const response = await crudRequest<any>('POST', '/sms/templates', requestData);
+      // Handle different possible response structures
+      let newTemplate: SMSTemplate | null = null;
+      
+      if (response?.template) {
+        // { template: SMSTemplate } structure
+        newTemplate = response.template;
+      } else if (response?.data) {
+        // { data: SMSTemplate } structure
+        newTemplate = response.data;
+      } else if (response?._id) {
+        // Direct template object
+        newTemplate = response;
+      }
+      
+      // Defensive check to ensure newTemplate is properly defined
+      if (newTemplate && newTemplate._id) {
+        setTemplates(prev => [newTemplate as SMSTemplate, ...prev]);
+      }
       setIsCreateDialogOpen(false);
       resetForm();
       toast.success('SMS template created successfully');
@@ -201,8 +241,25 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
         triggerEvent: formData.isAutoTriggered && formData.triggerEvent ? formData.triggerEvent : undefined
       };
       
-      const response = await crudRequest<{ data: SMSTemplate }>('PUT', `/sms/templates/${selectedTemplate._id}`, requestData);
-      setTemplates(prev => prev.map(t => t._id === selectedTemplate._id ? response.data : t));
+      const response = await crudRequest<any>('PUT', `/sms/templates/${selectedTemplate._id}`, requestData);
+      // Handle different possible response structures
+      let updatedTemplate: SMSTemplate | null = null;
+      
+      if (response?.template) {
+        // { template: SMSTemplate } structure
+        updatedTemplate = response.template;
+      } else if (response?.data) {
+        // { data: SMSTemplate } structure
+        updatedTemplate = response.data;
+      } else if (response?._id) {
+        // Direct template object
+        updatedTemplate = response;
+      }
+      
+      // Defensive check to ensure updatedTemplate is properly defined
+      if (updatedTemplate && updatedTemplate._id) {
+        setTemplates(prev => prev.map(t => t._id === selectedTemplate._id ? updatedTemplate as SMSTemplate : t));
+      }
       setIsEditDialogOpen(false);
       setSelectedTemplate(null);
       resetForm();

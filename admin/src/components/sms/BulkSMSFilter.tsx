@@ -20,7 +20,6 @@ interface BulkSMSFilters {
   gender: string;
   group: string;
   procedure: string;
-  doctor: string;
   dateRange: DateRange;
   dateRangePreset: string;
 }
@@ -30,7 +29,6 @@ interface FilterPayload {
   gender: string;
   group: string;
   procedure: string;
-  doctor: string;
   dateRange: { from: string; to: string };
   dateRangePreset: string;
 }
@@ -91,26 +89,11 @@ export function BulkSMSFilter({
     { value: 'custom', label: 'Custom Range' }
   ];
 
-  // Fetch doctors for the doctor filter
-  const { data: doctors = [] } = useQuery<Doctor[]>({
-    queryKey: ['doctors'],
-    queryFn: async () => {
-      try {
-        const response = await crudRequest<{ data: Doctor[] }>('GET', '/doctor/get-doctor');
-        return response?.data || [];
-      } catch (error) {
-        console.error('Error fetching doctors:', error);
-        return [];
-      }
-    },
-  });
-
   const [filters, setFilters] = useState<BulkSMSFilters>({
     treatmentStatus: 'all',
     gender: 'all',
     group: 'all',
     procedure: 'all',
-    doctor: 'all',
     dateRange: {
       from: null,
       to: null,
@@ -186,7 +169,6 @@ export function BulkSMSFilter({
       gender: 'all',
       group: 'all',
       procedure: 'all',
-      doctor: 'all',
       dateRange: { from: null, to: null },
       dateRangePreset: 'all'
     };
@@ -373,28 +355,6 @@ export function BulkSMSFilter({
               {procedureOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Doctor */}
-        <div className="space-y-2">
-          <Label>Doctor</Label>
-          <Select 
-            value={filters.doctor}
-            onValueChange={(value) => setFilters({...filters, doctor: value})}
-            disabled={loading}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select doctor" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[300px] overflow-y-auto">
-              <SelectItem value="all">All Doctors</SelectItem>
-              {doctors.map((doctor) => (
-                <SelectItem key={doctor._id} value={doctor._id}>
-                  {doctor.name}
                 </SelectItem>
               ))}
             </SelectContent>

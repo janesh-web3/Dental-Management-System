@@ -294,8 +294,7 @@ const filterPatientsForGroup = async (req, res) => {
     
     // Get patients matching the filters
     const patients = await Patient.find(query)
-      .select('personalDetails.name personalDetails.contactNumber personalDetails.gender assignedDoctor createdAt followUpDate totalRemainingAmount')
-      .populate('assignedDoctor', 'name');
+      .select('personalDetails.name personalDetails.contactNumber personalDetails.gender createdAt followUpDate totalRemainingAmount');
     
     res.status(200).json({
       success: true,
@@ -330,11 +329,6 @@ const buildPatientQueryFromFilters = (filters) => {
   // Add treatment procedure filter
   if (filters.procedure && filters.procedure !== 'all') {
     query['medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.procedure'] = filters.procedure;
-  }
-  
-  // Add doctor filter
-  if (filters.doctor && filters.doctor !== 'all') {
-    query['assignedDoctor'] = new mongoose.Types.ObjectId(filters.doctor);
   }
   
   // Add date range filter
@@ -403,3 +397,9 @@ module.exports = {
   getGroupPatients,
   filterPatientsForGroup
 };
+
+
+
+
+
+

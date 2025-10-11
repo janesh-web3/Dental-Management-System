@@ -72,8 +72,19 @@ export default function SingleSMSPage() {
   const { data: templateData } = useQuery({
     queryKey: ['smsTemplates'],
     queryFn: async () => {
-      const response = await crudRequest<{ templates: SMSTemplate[] }>('GET', '/sms/templates');
-      return response?.templates || [];
+      const response = await crudRequest<any>('GET', '/sms/templates');
+      // Handle different possible response structures
+      if (Array.isArray(response)) {
+        // Direct array response
+        return response;
+      } else if (response?.templates && Array.isArray(response.templates)) {
+        // { templates: SMSTemplate[] } structure
+        return response.templates;
+      } else if (response?.data && Array.isArray(response.data)) {
+        // { data: SMSTemplate[] } structure
+        return response.data;
+      }
+      return [];
     },
   });
 

@@ -42,10 +42,6 @@ interface Patient {
     contactNumber: string;
     gender: string;
   };
-  assignedDoctor?: {
-    _id: string;
-    name: string;
-  };
   createdAt: string;
 }
 
@@ -393,7 +389,6 @@ export const PatientGroupManager: React.FC = () => {
                       <TableRow>
                         <TableHead>Name</TableHead>
                         <TableHead>Phone</TableHead>
-                        <TableHead>Doctor</TableHead>
                         <TableHead>Registered</TableHead>
                         <TableHead>Select</TableHead>
                       </TableRow>
@@ -403,7 +398,6 @@ export const PatientGroupManager: React.FC = () => {
                         <TableRow key={patient._id}>
                           <TableCell className="font-medium">{patient.personalDetails.name}</TableCell>
                           <TableCell>{patient.personalDetails.contactNumber}</TableCell>
-                          <TableCell>{patient.assignedDoctor?.name || 'N/A'}</TableCell>
                           <TableCell>{new Date(patient.createdAt).toLocaleDateString()}</TableCell>
                           <TableCell>
                             <input

@@ -146,6 +146,9 @@ export type Patient = {
     };
   };
   medicalDetails: MedicalDetails[];
+  patientStatus?: "New" | "Old";
+  lastVisitDate?: string;
+  firstTreatmentDate?: string;
   createdAt: string;
   updatedAt: string;
   documents?: {

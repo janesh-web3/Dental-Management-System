@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { PopupModal } from './PopupModal';
 import { PopupBanner } from './PopupBanner';
 import { PopupToast } from './PopupToast';
+import { FullScreenPopup } from '@/components/ui/enhanced-popup';
 import { getActivePopupsForUser, markAsViewed, dismissPopup } from '@/services/popupService';
 import { Popup, PopupAction } from '@/types/popup';
 import { useSocket } from '@/contexts/SocketContext';
@@ -16,6 +17,7 @@ export const PopupDisplay: React.FC<PopupDisplayProps> = ({ className }) => {
   const [currentModal, setCurrentModal] = useState<Popup | null>(null);
   const [bannerPopup, setBannerPopup] = useState<Popup | null>(null);
   const [toastPopups, setToastPopups] = useState<Popup[]>([]);
+  const [fullScreenPopup, setFullScreenPopup] = useState<Popup | null>(null);
   const navigate = useNavigate();
   const { socket, isConnected } = useSocket();
 
@@ -35,16 +37,19 @@ export const PopupDisplay: React.FC<PopupDisplayProps> = ({ className }) => {
         const modal = activePopups.find(p => p.displayType === 'Modal');
         const banner = activePopups.find(p => p.displayType === 'Banner');
         const toasts = activePopups.filter(p => p.displayType === 'Toast');
+        const fullScreen = activePopups.find(p => p.displayType === 'FullScreen');
 
-        console.log('🎭 Popup display breakdown:', { 
-          modal: modal?.title, 
-          banner: banner?.title, 
-          toasts: toasts.map(t => t.title) 
+        console.log('🎭 Popup display breakdown:', {
+          modal: modal?.title,
+          banner: banner?.title,
+          toasts: toasts.map(t => t.title),
+          fullScreen: fullScreen?.title
         });
 
         setCurrentModal(modal || null);
         setBannerPopup(banner || null);
         setToastPopups(toasts);
+        setFullScreenPopup(fullScreen || null);
       } else {
         console.warn('❌ Failed to fetch popups:', response);
       }
@@ -96,6 +101,8 @@ export const PopupDisplay: React.FC<PopupDisplayProps> = ({ className }) => {
           if (exists) return prev;
           return [...prev, popup];
         });
+      } else if (popup.displayType === 'FullScreen') {
+        setFullScreenPopup(popup);
       }
     };
 
@@ -137,7 +144,11 @@ export const PopupDisplay: React.FC<PopupDisplayProps> = ({ className }) => {
       if (bannerPopup?._id === popupId) {
         setBannerPopup(null);
       }
-      
+
+      if (fullScreenPopup?._id === popupId) {
+        setFullScreenPopup(null);
+      }
+
       setToastPopups(prev => prev.filter(p => p._id !== popupId));
       
     } catch (error) {
@@ -221,6 +232,51 @@ export const PopupDisplay: React.FC<PopupDisplayProps> = ({ className }) => {
           />
         </div>
       ))}
+
+      {/* Full Screen Popup */}
+      {fullScreenPopup && (
+        <FullScreenPopup
+          isOpen={!!fullScreenPopup}
+          onClose={() => setFullScreenPopup(null)}
+          title={fullScreenPopup.title}
+          description={fullScreenPopup.message}
+          content={
+            <div className="space-y-6">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold mb-4">{fullScreenPopup.title}</h2>
+                <p className="text-gray-600 max-w-2xl mx-auto">{fullScreenPopup.message}</p>
+              </div>
+
+              <div className="flex justify-center">
+                <div className="bg-blue-50 p-6 rounded-lg max-w-md">
+                  <p className="text-sm text-blue-800">
+                    <strong>Created:</strong> {new Date(fullScreenPopup.createdAt).toLocaleString()}
+                  </p>
+                  {fullScreenPopup.endTime && (
+                    <p className="text-sm text-blue-800 mt-1">
+                      <strong>Active until:</strong> {new Date(fullScreenPopup.endTime).toLocaleString()}
+                    </p>
+                  )}
+                  <p className="text-sm text-blue-800 mt-1">
+                    <strong>Type:</strong> {fullScreenPopup.type}
+                  </p>
+                </div>
+              </div>
+            </div>
+          }
+          actions={fullScreenPopup.actions.map(action => ({
+            label: action.label,
+            variant: action.action === 'close' ? 'default' : 'outline',
+            onClick: () => {
+              if (action.action === 'close') {
+                handleDismiss(fullScreenPopup._id);
+              } else {
+                handleActionClick(action);
+              }
+            }
+          }))}
+        />
+      )}
     </div>
   );
 };

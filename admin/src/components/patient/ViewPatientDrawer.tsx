@@ -343,6 +343,13 @@ export function ViewPatientDrawer({
   // Payment dialog state
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
+  // Patient status edit dialog state
+  const [showStatusEditDialog, setShowStatusEditDialog] = useState(false);
+  const [newPatientStatus, setNewPatientStatus] = useState<"New" | "Old">(
+    localPatient.patientStatus || "New"
+  );
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
   // Get all treatments and their teeth details for calculations
   const allTreatments = localPatient.medicalDetails.flatMap(
     (record) => record.treatmentPlanning
@@ -511,6 +518,43 @@ export function ViewPatientDrawer({
       toast.error("Failed to load service payments");
     } finally {
       setLoadingServicePayments(false);
+    }
+  };
+
+  // Update patient status
+  const handleUpdatePatientStatus = async () => {
+    try {
+      setIsUpdatingStatus(true);
+
+      const token = localStorage.getItem("token");
+      const response = await fetch(`/api/patients/status/${localPatient._id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ patientStatus: newPatientStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update patient status");
+      }
+
+      const result = await response.json();
+
+      // Update local patient data
+      setLocalPatient(prev => ({
+        ...prev,
+        patientStatus: newPatientStatus
+      }));
+
+      setShowStatusEditDialog(false);
+      toast.success(`Patient status updated to ${newPatientStatus}`);
+    } catch (error) {
+      console.error("Error updating patient status:", error);
+      toast.error("Failed to update patient status");
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -1544,7 +1588,7 @@ export function ViewPatientDrawer({
                                       {localPatient.personalDetails.gender ||
                                         "Not specified"}
                                     </Badge>
-                                    <Badge 
+                                    <Badge
                                       variant="outline"
                                       className="bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs px-1 py-0.5 rounded"
                                     >
@@ -1552,6 +1596,27 @@ export function ViewPatientDrawer({
                                         ? `Age: ${localPatient.personalDetails.age}`
                                         : "Adult"}
                                     </Badge>
+                                    <div className="flex items-center gap-1">
+                                      <Badge
+                                        variant="outline"
+                                        className={`text-xs px-1 py-0.5 rounded ${
+                                          localPatient.patientStatus === 'New'
+                                            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
+                                            : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'
+                                        }`}
+                                      >
+                                        {localPatient.patientStatus || 'New'}
+                                      </Badge>
+                                      <button
+                                        onClick={() => setShowStatusEditDialog(true)}
+                                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                        title="Edit patient status"
+                                      >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -3692,6 +3757,73 @@ export function ViewPatientDrawer({
         medicalDetailId={patient.medicalDetails[0]?._id || ""}
         patient={localPatient}
       />
+      {/* Patient Status Edit Dialog */}
+      {showStatusEditDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowStatusEditDialog(false)} />
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 mx-4 relative z-10 shadow-xl">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+              Update Patient Status
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Change the status for {localPatient.personalDetails.name}
+            </p>
+
+            <div className="space-y-3 mb-6">
+              <label className="flex items-center space-x-3">
+                <input
+                  type="radio"
+                  name="patientStatus"
+                  value="New"
+                  checked={newPatientStatus === "New"}
+                  onChange={(e) => setNewPatientStatus(e.target.value as "New" | "Old")}
+                  className="text-green-600"
+                />
+                <div className="flex items-center space-x-2">
+                  <Badge className="bg-green-50 border-green-200 text-green-700 text-xs px-2 py-1">
+                    New
+                  </Badge>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">New Patient</span>
+                </div>
+              </label>
+
+              <label className="flex items-center space-x-3">
+                <input
+                  type="radio"
+                  name="patientStatus"
+                  value="Old"
+                  checked={newPatientStatus === "Old"}
+                  onChange={(e) => setNewPatientStatus(e.target.value as "New" | "Old")}
+                  className="text-blue-600"
+                />
+                <div className="flex items-center space-x-2">
+                  <Badge className="bg-blue-50 border-blue-200 text-blue-700 text-xs px-2 py-1">
+                    Old
+                  </Badge>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Returning Patient</span>
+                </div>
+              </label>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowStatusEditDialog(false)}
+                disabled={isUpdatingStatus}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdatePatientStatus}
+                disabled={isUpdatingStatus}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {isUpdatingStatus ? "Updating..." : "Update Status"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Drawer>
   );
 }

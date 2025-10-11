@@ -379,6 +379,20 @@ const patientSchema = new mongoose.Schema(
     lastLogin: {
       type: Date,
     },
+    // Patient Status field for New/Old classification
+    patientStatus: {
+      type: String,
+      enum: ["New", "Old"],
+      default: "New",
+    },
+    // Track last visit/activity date for automatic status logic
+    lastVisitDate: {
+      type: Date,
+    },
+    // Track first treatment/invoice date to determine when to change to Old
+    firstTreatmentDate: {
+      type: Date,
+    },
     // Add documents field for general patient documents
     documents: [
       {
@@ -421,6 +435,104 @@ patientSchema.methods.recalculateTreatmentTotals = function () {
   return this;
 };
 
+// Method to update patient status based on activity
+patientSchema.methods.updatePatientStatus = function () {
+  const now = new Date();
+
+  // Check if patient has any treatments or invoices
+  let hasActivity = false;
+  let earliestActivityDate = null;
+
+  if (this.medicalDetails && this.medicalDetails.length > 0) {
+    this.medicalDetails.forEach((medical) => {
+      if (medical.treatmentPlanning && medical.treatmentPlanning.length > 0) {
+        medical.treatmentPlanning.forEach((plan) => {
+          // Check for treatments in selectedTeethDetails
+          if (plan.selectedTeethDetails && plan.selectedTeethDetails.length > 0) {
+            plan.selectedTeethDetails.forEach((tooth) => {
+              if (tooth.dailyTreatments && tooth.dailyTreatments.length > 0) {
+                hasActivity = true;
+                tooth.dailyTreatments.forEach((treatment) => {
+                  if (treatment.date && (!earliestActivityDate || treatment.date < earliestActivityDate)) {
+                    earliestActivityDate = treatment.date;
+                  }
+                });
+              }
+            });
+          }
+
+          // Check for treatments in groupTreatmentDetails
+          if (plan.groupTreatmentDetails && plan.groupTreatmentDetails.length > 0) {
+            plan.groupTreatmentDetails.forEach((group) => {
+              if (group.dailyTreatments && group.dailyTreatments.length > 0) {
+                hasActivity = true;
+                group.dailyTreatments.forEach((treatment) => {
+                  if (treatment.date && (!earliestActivityDate || treatment.date < earliestActivityDate)) {
+                    earliestActivityDate = treatment.date;
+                  }
+                });
+              }
+            });
+          }
+
+          // Check treatment date
+          if (plan.treatmentDate) {
+            hasActivity = true;
+            if (!earliestActivityDate || plan.treatmentDate < earliestActivityDate) {
+              earliestActivityDate = plan.treatmentDate;
+            }
+          }
+        });
+      }
+    });
+  }
+
+  // Update firstTreatmentDate if we found activity and don't have one set
+  if (hasActivity && earliestActivityDate && !this.firstTreatmentDate) {
+    this.firstTreatmentDate = earliestActivityDate;
+  }
+
+  // Update lastVisitDate to most recent activity
+  this.lastVisitDate = now;
+
+  // Logic for changing status to "Old"
+  if (hasActivity && this.patientStatus === "New") {
+    this.patientStatus = "Old";
+  }
+
+  // Logic for patients who haven't visited in over 12 months
+  // (This would typically require manual confirmation, but we'll mark for review)
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
+
+  if (this.lastVisitDate && this.lastVisitDate < twelveMonthsAgo && this.patientStatus === "Old") {
+    // Could add a flag here for manual review if needed
+    // For now, we'll keep them as "Old" but this could be extended
+  }
+
+  return this;
+};
+
+// Method to manually set patient status (for manual override)
+patientSchema.methods.setPatientStatus = function (status) {
+  if (["New", "Old"].includes(status)) {
+    this.patientStatus = status;
+  }
+  return this;
+};
+
+// Method to check if patient should be considered for "New Again" status
+patientSchema.methods.shouldConsiderNewAgain = function () {
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
+
+  return (
+    this.patientStatus === "Old" &&
+    this.lastVisitDate &&
+    this.lastVisitDate < twelveMonthsAgo
+  );
+};
+
 // Hash password before saving
 patientSchema.pre("save", async function (next) {
   // Only hash the password if it's modified (or new)
@@ -452,7 +564,7 @@ patientSchema.virtual("contact").get(function () {
   return this.personalDetails?.contactNumber || "";
 });
 
-// Add a pre-save hook to ensure createdAt is set in personalDetails
+// Add a pre-save hook to ensure createdAt is set in personalDetails and handle patient status
 patientSchema.pre("save", function (next) {
   // If this is a new patient (being created for the first time)
   if (this.isNew && this.personalDetails) {
@@ -460,7 +572,39 @@ patientSchema.pre("save", function (next) {
     if (!this.personalDetails.createdAt) {
       this.personalDetails.createdAt = new Date();
     }
+    // Ensure new patients start with "New" status
+    if (!this.patientStatus) {
+      this.patientStatus = "New";
+    }
   }
+
+  // Auto-update patient status if medical details have been modified
+  if (this.isModified('medicalDetails') && !this.isNew) {
+    this.updatePatientStatus();
+  }
+
+  // Handle automatic status change for old patients (yearly check)
+  // Mark patients from previous year as "Old" if they haven't been updated this year
+  const currentYear = new Date().getFullYear();
+  const lastUpdateYear = this.updatedAt ? this.updatedAt.getFullYear() : currentYear;
+
+  if (lastUpdateYear < currentYear && this.patientStatus === "New") {
+    // If patient data hasn't been updated this year and they're still "New",
+    // check if they have any activity to determine if they should be "Old"
+    let hasAnyActivity = false;
+    if (this.medicalDetails && this.medicalDetails.length > 0) {
+      this.medicalDetails.forEach((medical) => {
+        if (medical.treatmentPlanning && medical.treatmentPlanning.length > 0) {
+          hasAnyActivity = true;
+        }
+      });
+    }
+
+    if (hasAnyActivity) {
+      this.patientStatus = "Old";
+    }
+  }
+
   next();
 });
 

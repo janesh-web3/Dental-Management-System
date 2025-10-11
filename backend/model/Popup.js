@@ -71,7 +71,7 @@ const popupSchema = new mongoose.Schema({
   },
   displayType: {
     type: String,
-    enum: ["Modal", "Banner", "Toast"],
+    enum: ["Modal", "Banner", "Toast", "FullScreen"],
     default: "Modal",
     required: true
   },

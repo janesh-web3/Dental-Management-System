@@ -2877,29 +2877,39 @@ const getDashboardMetrics = async (req, res) => {
 
     // Get gender distribution data from patients
     let genderDistribution = [];
+    let patientStatusDistribution = [];
     try {
       const patients = await Patient.find(
         { isDeleted: { $ne: true } },
-        { "personalDetails.gender": 1, "personalDetails.name": 1 }
+        { "personalDetails.gender": 1, "personalDetails.name": 1, "patientStatus": 1 }
       ).lean();
 
       const genderGroups = { Male: 0, Female: 0, Other: 0 };
+      const statusGroups = { New: 0, Old: 0 };
 
       patients.forEach((patient) => {
-        if (!patient.personalDetails || !patient.personalDetails.gender) {
+        // Handle gender distribution
+        if (patient.personalDetails && patient.personalDetails.gender) {
+          const gender = patient.personalDetails.gender;
+          console.log(
+            `Processing patient with gender: "${gender}", Type: ${typeof gender}`
+          );
+
+          if (gender in genderGroups) {
+            genderGroups[gender]++;
+          } else {
+            console.log(`Unknown gender category: "${gender}"`);
+          }
+        } else {
           console.log("Missing gender data for patient:", patient._id);
-          return;
         }
 
-        const gender = patient.personalDetails.gender;
-        console.log(
-          `Processing patient with gender: "${gender}", Type: ${typeof gender}`
-        );
-
-        if (gender in genderGroups) {
-          genderGroups[gender]++;
+        // Handle patient status distribution
+        const status = patient.patientStatus || 'New'; // Default to New if not set
+        if (statusGroups.hasOwnProperty(status)) {
+          statusGroups[status] += 1;
         } else {
-          console.log(`Unknown gender category: "${gender}"`);
+          console.log(`Unknown patient status: "${status}"`);
         }
       });
 
@@ -2907,7 +2917,12 @@ const getDashboardMetrics = async (req, res) => {
         .filter(([_, count]) => count > 0)
         .map(([name, value]) => ({ name, value }));
 
+      patientStatusDistribution = Object.entries(statusGroups)
+        .filter(([_, count]) => count > 0)
+        .map(([status, count]) => ({ status, count }));
+
       console.log("Gender distribution calculated:", genderDistribution);
+      console.log("Patient status distribution calculated:", patientStatusDistribution);
 
       if (
         genderDistribution.length === 0 ||
@@ -2919,6 +2934,10 @@ const getDashboardMetrics = async (req, res) => {
         genderDistribution = [
           { name: "Male", value: 2 },
           { name: "Female", value: 1 },
+        ];
+        patientStatusDistribution = [
+          { status: "New", count: 1 },
+          { status: "Old", count: 2 },
         ];
         ageDistribution = [{ name: "19-35", value: 3 }];
         console.log(
@@ -2932,6 +2951,10 @@ const getDashboardMetrics = async (req, res) => {
       genderDistribution = [
         { name: "Male", value: 2 },
         { name: "Female", value: 1 },
+      ];
+      patientStatusDistribution = [
+        { status: "New", count: 1 },
+        { status: "Old", count: 2 },
       ];
     }
 
@@ -2952,6 +2975,17 @@ const getDashboardMetrics = async (req, res) => {
       genderDistribution = [
         { name: "Male", value: 2 },
         { name: "Female", value: 1 },
+      ];
+    }
+
+    if (
+      patientStatusDistribution.length === 0 ||
+      !patientStatusDistribution.some((item) => item.count > 0)
+    ) {
+      console.warn("Patient status distribution has no data! Using fallback data.");
+      patientStatusDistribution = [
+        { status: "New", count: 1 },
+        { status: "Old", count: 2 },
       ];
     }
 
@@ -3970,6 +4004,7 @@ const getDashboardMetrics = async (req, res) => {
           patientDemographics: {
             ageGroups: ageDistribution,
             genderDistribution,
+            patientStatusDistribution,
           },
           appointmentAnalytics: {
             byDay: appointmentsByDay,
@@ -3984,6 +4019,22 @@ const getDashboardMetrics = async (req, res) => {
             amount: t.amount,
             status: t.status,
             documents: t.documents,
+          })),
+        },
+        breakdown: {
+          paymentMethods: [],
+          treatmentTypes: [],
+          ageGroups: ageDistribution.map(item => ({
+            group: item.name,
+            count: item.value
+          })),
+          genderDistribution: genderDistribution.map(item => ({
+            gender: item.name,
+            count: item.value
+          })),
+          patientStatusDistribution: patientStatusDistribution.map(item => ({
+            status: item.status,
+            count: item.count
           })),
         },
       },
@@ -5129,6 +5180,84 @@ const getPatientsCount = async (req, res) => {
   }
 };
 
+// Update patient status manually (for manual override)
+const updatePatientStatus = async (req, res) => {
+  try {
+    const { patientStatus } = req.body;
+    const patientId = req.params.id;
+
+    // Validate patient status
+    if (!["New", "Old"].includes(patientStatus)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid patient status. Must be 'New' or 'Old'",
+      });
+    }
+
+    // Find and update patient status
+    const patient = await Patient.findById(patientId);
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found",
+      });
+    }
+
+    // Use the model method to set status
+    patient.setPatientStatus(patientStatus);
+    await patient.save();
+
+    res.json({
+      success: true,
+      message: `Patient status updated to ${patientStatus}`,
+      data: {
+        patientId: patient._id,
+        patientStatus: patient.patientStatus,
+        name: patient.personalDetails?.name || "Unknown"
+      }
+    });
+  } catch (error) {
+    console.error('Error updating patient status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get patients that should be considered for "New Again" status
+const getPatientsForNewAgainReview = async (req, res) => {
+  try {
+    const patients = await Patient.find({})
+      .select('personalDetails patientStatus lastVisitDate firstTreatmentDate')
+      .lean();
+
+    const patientsForReview = patients.filter(patient => {
+      const twelveMonthsAgo = new Date();
+      twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
+
+      return (
+        patient.patientStatus === "Old" &&
+        patient.lastVisitDate &&
+        patient.lastVisitDate < twelveMonthsAgo
+      );
+    });
+
+    res.json({
+      success: true,
+      data: patientsForReview,
+      total: patientsForReview.length
+    });
+  } catch (error) {
+    console.error('Error getting patients for New Again review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 // Export the new function
 module.exports = {
   addPatient,
@@ -5141,6 +5270,8 @@ module.exports = {
   getPaginatedPatient,
   uploadPatientFiles,
   updateTreatmentStatus,
+  updatePatientStatus,
+  getPatientsForNewAgainReview,
   getRecentTransactions,
   getNextSerialNumber,
   getFinancialInsights,

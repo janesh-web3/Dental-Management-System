@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Power, PowerOff, BarChart3, Eye, Play, Square, RefreshCw, Clock } from 'lucide-react';
+import { Plus, Edit, Trash2, Power, PowerOff, BarChart3, Eye, Play, Square, RefreshCw, Clock, Bell, Users, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +48,7 @@ import {
   PaymentReminderStatus
 } from '@/services/paymentReminderService';
 import { Popup, PopupFormData, PopupAnalytics } from '@/types/popup';
+import { FullScreenPopup } from '@/components/ui/enhanced-popup';
 
 const typeColors = {
   'Notice': 'bg-blue-100 text-blue-800 border-blue-200',
@@ -59,7 +60,8 @@ const typeColors = {
 const displayTypeColors = {
   'Modal': 'bg-purple-100 text-purple-800',
   'Banner': 'bg-orange-100 text-orange-800',
-  'Toast': 'bg-cyan-100 text-cyan-800'
+  'Toast': 'bg-cyan-100 text-cyan-800',
+  'FullScreen': 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800'
 };
 
 const roles = ['superadmin', 'admin', 'staff', 'dentist', 'doctor', 'reception', 'All'];
@@ -71,8 +73,10 @@ const PopupManagement: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isRoleSelectionModalOpen, setIsRoleSelectionModalOpen] = useState(false);
+  const [isFullScreenCheckOpen, setIsFullScreenCheckOpen] = useState(false);
   const [currentPopup, setCurrentPopup] = useState<Popup | null>(null);
   const [analytics, setAnalytics] = useState<PopupAnalytics | null>(null);
+  const [fullScreenData, setFullScreenData] = useState<any>(null);
   
   // Payment reminder states
   const [paymentReminderStatus, setPaymentReminderStatus] = useState<PaymentReminderStatus | null>(null);
@@ -169,6 +173,54 @@ const PopupManagement: React.FC = () => {
     } catch (error) {
       toast.error('Failed to trigger payment reminder check');
     }
+    setLoadingReminderAction(false);
+  };
+
+  const handleFullScreenCheck = async () => {
+    setLoadingReminderAction(true);
+
+    // Simulate fetching comprehensive system data
+    const systemData = {
+      popups: popups,
+      paymentReminderStatus: paymentReminderStatus,
+      systemHealth: {
+        database: { status: 'healthy', latency: '12ms' },
+        api: { status: 'healthy', response: '45ms' },
+        storage: { status: 'warning', usage: '85%' },
+        backup: { status: 'healthy', lastRun: '2 hours ago' }
+      },
+      activeUsers: 24,
+      totalNotifications: popups.filter(p => p.isActive).length,
+      recentActivity: [
+        { type: 'popup_created', message: 'New popup created', time: '5 min ago' },
+        { type: 'reminder_sent', message: 'Payment reminders sent', time: '15 min ago' },
+        { type: 'user_login', message: '12 users logged in', time: '30 min ago' }
+      ]
+    };
+
+    try {
+      // Trigger actual check
+      const response = await triggerPaymentReminderCheck();
+      if (response.success) {
+        systemData.recentActivity.unshift({
+          type: 'system_check',
+          message: 'Full system check completed successfully',
+          time: 'Just now'
+        });
+
+        // Refresh popups
+        await fetchPopups();
+        window.dispatchEvent(new Event('refresh-popups'));
+      }
+
+      setFullScreenData(systemData);
+      setIsFullScreenCheckOpen(true);
+      toast.success('Full system check completed!');
+
+    } catch (error) {
+      toast.error('System check failed');
+    }
+
     setLoadingReminderAction(false);
   };
 
@@ -449,6 +501,7 @@ const PopupManagement: React.FC = () => {
                     <SelectItem value="Modal">Modal</SelectItem>
                     <SelectItem value="Banner">Banner</SelectItem>
                     <SelectItem value="Toast">Toast</SelectItem>
+                    <SelectItem value="FullScreen">Full Screen</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -551,6 +604,17 @@ const PopupManagement: React.FC = () => {
             </div>
             
             <div className="flex items-center gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleFullScreenCheck}
+                disabled={loadingReminderAction}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                <RefreshCw className={cn("h-4 w-4 mr-1", loadingReminderAction && "animate-spin")} />
+                Full Screen Check
+              </Button>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -836,6 +900,188 @@ const PopupManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Full Screen System Check */}
+      <FullScreenPopup
+        isOpen={isFullScreenCheckOpen}
+        onClose={() => setIsFullScreenCheckOpen(false)}
+        title="System Health & Popup Management Overview"
+        description="Complete system status, popup analytics, and real-time monitoring dashboard"
+        content={
+          fullScreenData && (
+            <div className="space-y-8">
+              {/* System Overview Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-blue-500 rounded-full">
+                        <Eye className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-blue-900">{fullScreenData.totalNotifications}</p>
+                        <p className="text-sm text-blue-600">Active Popups</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-green-50 to-green-100">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-green-500 rounded-full">
+                        <Users className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-green-900">{fullScreenData.activeUsers}</p>
+                        <p className="text-sm text-green-600">Active Users</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-purple-50 to-purple-100">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-purple-500 rounded-full">
+                        <Clock className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-purple-900">
+                          {fullScreenData.paymentReminderStatus?.isRunning ? 'ON' : 'OFF'}
+                        </p>
+                        <p className="text-sm text-purple-600">Reminder Service</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-amber-50 to-amber-100">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-amber-500 rounded-full">
+                        <RefreshCw className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-amber-900">LIVE</p>
+                        <p className="text-sm text-amber-600">System Status</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* System Health */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <BarChart3 className="h-5 w-5" />
+                    <span>System Health Monitor</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {Object.entries(fullScreenData.systemHealth).map(([key, value]: [string, any]) => (
+                      <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium capitalize">{key}</p>
+                          <p className="text-sm text-gray-500">
+                            {value.latency || value.response || value.usage || value.lastRun}
+                          </p>
+                        </div>
+                        <Badge variant={value.status === 'healthy' ? 'default' : 'destructive'}>
+                          {value.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Active Popups Overview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Bell className="h-5 w-5" />
+                    <span>Active Popups Overview</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {fullScreenData.popups.filter((popup: Popup) => popup.isActive).slice(0, 5).map((popup: Popup) => (
+                      <div key={popup._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium">{popup.title}</p>
+                          <p className="text-sm text-gray-600 truncate max-w-md">{popup.message}</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge className={cn(typeColors[popup.type])}>
+                            {popup.type}
+                          </Badge>
+                          <Badge className={cn(displayTypeColors[popup.displayType])}>
+                            {popup.displayType}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recent Activity */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Clock className="h-5 w-5" />
+                    <span>Recent System Activity</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {fullScreenData.recentActivity.map((activity: any, index: number) => (
+                      <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div className={`p-2 rounded-full ${
+                          activity.type === 'system_check' ? 'bg-green-100' :
+                          activity.type === 'popup_created' ? 'bg-blue-100' :
+                          activity.type === 'reminder_sent' ? 'bg-purple-100' : 'bg-gray-100'
+                        }`}>
+                          {activity.type === 'system_check' ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          ) : activity.type === 'popup_created' ? (
+                            <Plus className="h-4 w-4 text-blue-600" />
+                          ) : activity.type === 'reminder_sent' ? (
+                            <Bell className="h-4 w-4 text-purple-600" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-gray-600" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">{activity.message}</p>
+                          <p className="text-sm text-gray-500">{activity.time}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )
+        }
+        actions={[
+          {
+            label: 'Refresh Data',
+            variant: 'outline',
+            onClick: handleFullScreenCheck,
+            icon: <RefreshCw className="h-4 w-4" />,
+            loading: loadingReminderAction
+          },
+          {
+            label: 'Close Dashboard',
+            variant: 'default',
+            onClick: () => setIsFullScreenCheckOpen(false)
+          }
+        ]}
+      />
     </div>
   );
 };

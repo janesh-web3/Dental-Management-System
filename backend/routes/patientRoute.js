@@ -16,6 +16,8 @@ const {
   getPaginatedPatient,
   uploadPatientFiles,
   updateTreatmentStatus,
+  updatePatientStatus,
+  getPatientsForNewAgainReview,
   getRecentTransactions,
   getNextSerialNumber,
   getFinancialInsights,
@@ -1593,6 +1595,10 @@ router.get("/:patientId/next-followup", protectAdminRoute, async (req, res) => {
 });
 
 // Get patient payment information
+// Patient status management routes
+router.patch("/status/:id", authenticateUser, authorizePermission('patients', 'update'), updatePatientStatus);
+router.get("/new-again-review", authenticateUser, authorizePermission('patients', 'read'), getPatientsForNewAgainReview);
+
 router.get("/:patientId/payment-info", protectAdminRoute, async (req, res) => {
   try {
     const { patientId } = req.params;

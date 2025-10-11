@@ -38,7 +38,7 @@ export interface Popup {
   endTime?: Date;
   reminderTime?: ReminderTime;
   isActive: boolean;
-  displayType: 'Modal' | 'Banner' | 'Toast';
+  displayType: 'Modal' | 'Banner' | 'Toast' | 'FullScreen';
   actions: PopupAction[];
   dismissedBy: PopupDismissal[];
   viewedBy: PopupView[];
@@ -54,7 +54,7 @@ export interface PopupFormData {
   startTime: string; // ISO string
   endTime?: string; // ISO string
   reminderTime?: ReminderTime;
-  displayType: 'Modal' | 'Banner' | 'Toast';
+  displayType: 'Modal' | 'Banner' | 'Toast' | 'FullScreen';
   actions: PopupAction[];
 }
 

@@ -33,13 +33,14 @@ exports.searchPatients = async (req, res) => {
 exports.getFilteredPatients = async (req, res) => {
   try {
     // Get filters from query parameters
-    const { 
-      treatmentStatus, 
-      procedure, 
-      group, 
+    const {
+      treatmentStatus,
+      procedure,
+      group,
       from,
       to,
       gender,
+      patientStatus,
       limit = 1000,
       page = 1
     } = req.query;
@@ -54,6 +55,12 @@ exports.getFilteredPatients = async (req, res) => {
     // Apply gender filter - Correct path for gender
     if (gender && gender !== 'all') {
       query['personalDetails.gender'] = gender;
+      hasFilters = true;
+    }
+
+    // Apply patient status filter
+    if (patientStatus && patientStatus !== 'all') {
+      query['patientStatus'] = patientStatus;
       hasFilters = true;
     }
 
@@ -115,7 +122,7 @@ exports.getFilteredPatients = async (req, res) => {
         Patient.find({})
           .skip(skip)
           .limit(actualLimit)
-          .select('personalDetails.name personalDetails.contactNumber personalDetails.gender personalDetails.emailAddress lastAppointment')
+          .select('personalDetails.name personalDetails.contactNumber personalDetails.gender personalDetails.emailAddress patientStatus lastVisitDate lastAppointment')
           .sort({ 'personalDetails.name': 1 })
           .lean(),
         Patient.countDocuments({})
@@ -138,7 +145,7 @@ exports.getFilteredPatients = async (req, res) => {
       Patient.find(query)
         .skip(skip)
         .limit(Number(limit))
-        .select('personalDetails.name personalDetails.contactNumber personalDetails.emailAddress personalDetails.gender lastAppointment')
+        .select('personalDetails.name personalDetails.contactNumber personalDetails.emailAddress personalDetails.gender patientStatus lastVisitDate lastAppointment')
         .sort({ 'personalDetails.name': 1 })
         .lean(),
       Patient.countDocuments(query)

@@ -342,6 +342,10 @@ export const deletePatientGroup = async (id: string) => {
   return await crudRequest("DELETE", `/patient-groups/${id}`);
 };
 
+export const getGroupPatients = async (id: string) => {
+  return await crudRequest("GET", `/patient-groups/${id}/patients`);
+};
+
 export const filterPatientsForGroup = async (filters: any) => {
   return await crudRequest("POST", `/patient-groups/filter-patients`, filters);
 };

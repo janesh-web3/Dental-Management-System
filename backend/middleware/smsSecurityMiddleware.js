@@ -25,8 +25,8 @@ const authorizeSMSSending = async (req, res, next) => {
       });
     }
 
-    // Check user role - only admin, doctor, or staff can send SMS
-    const allowedRoles = ['admin', 'doctor', 'staff'];
+    // Check user role - only superadmin, admin, doctor, or staff can send SMS
+    const allowedRoles = ['superadmin', 'admin', 'doctor', 'staff'];
     if (!allowedRoles.includes(user.role)) {
       return res.status(403).json({
         success: false,

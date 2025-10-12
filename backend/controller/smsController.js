@@ -2515,8 +2515,14 @@ const sendSMSToGroup = async (req, res) => {
           totalFailed++;
           failedMessages.push({
             phoneNumber: msg.phoneNumber,
-            error: result.error
+            error: result.error,
+            code: result.code
           });
+          
+          // Log authentication errors specifically
+          if (result.code === 'AUTH_FAILED') {
+            console.error('Aakash SMS Authentication failed:', result.error);
+          }
         }
       } catch (error) {
         totalFailed++;

@@ -77,6 +77,15 @@ const sendSingleSMS = async (phoneNumber, message) => {
             };
         }
         
+        // Check for authentication errors
+        if (response.data.auth_status === false || response.data.auth === false) {
+            return {
+                success: false,
+                error: 'Authentication failed. Please check your Aakash SMS auth token.',
+                code: 'AUTH_FAILED'
+            };
+        }
+        
         // Extract SMS result
         const smsResult = response.data.data && response.data.data.valid ? 
             response.data.data.valid[0] : null;
@@ -194,6 +203,16 @@ const sendBulkSMS = async (phoneNumbers, messages) => {
                 success: false,
                 error: response.data.message || 'Failed to send bulk SMS',
                 code: response.data.code || 'UNKNOWN_ERROR',
+                invalidRecipients
+            };
+        }
+        
+        // Check for authentication errors
+        if (response.data.auth_status === false || response.data.auth === false) {
+            return {
+                success: false,
+                error: 'Authentication failed. Please check your Aakash SMS auth token.',
+                code: 'AUTH_FAILED',
                 invalidRecipients
             };
         }

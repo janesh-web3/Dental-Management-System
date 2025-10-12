@@ -87,10 +87,18 @@ export default function BulkSMSPage() {
       return await crudRequest('POST', `/sms/group/${groupId}`, messageData);
     },
     onSuccess: (response: any) => {
-      toast.success(`SMS sent successfully to group: ${response?.groupName || 'Unknown Group'}!`);
+      // Check if the response indicates a real success or just a "fake" success due to auth issues
+      if (response?.success === false || response?.error) {
+        toast.error(response?.message || response?.error || 'Failed to send SMS to group');
+      } else {
+        toast.success(`SMS sent successfully to group: ${response?.groupName || 'Unknown Group'}!`);
+        // Reset selections after successful send
+        setSelectedGroup('');
+        setSelectedTemplate('');
+      }
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to send SMS to group');
+      toast.error(error.message || error.error || 'Failed to send SMS to group');
     }
   });
 
@@ -167,6 +175,23 @@ export default function BulkSMSPage() {
     if (!selectedTemplate) {
       toast.error('Please select a template');
       return;
+    }
+    
+    // Check SMS credit before sending
+    try {
+      const creditResponse: any = await crudRequest('GET', '/sms/credit');
+      if (!creditResponse?.success || creditResponse?.availableCredit <= 0) {
+        toast.error('Insufficient SMS credit. Please recharge your account.');
+        return;
+      }
+      
+      const selectedGroupData = groups.find(g => g._id === selectedGroup);
+      if (selectedGroupData && creditResponse?.availableCredit < selectedGroupData?.patientCount) {
+        toast.warn(`You have ${creditResponse?.availableCredit} credits but the group has ${selectedGroupData?.patientCount} patients. Some messages may not be sent.`);
+      }
+    } catch (error) {
+      console.warn('Could not check SMS credit:', error);
+      // Continue anyway, but log the error
     }
     
     await sendToGroupMutation.mutateAsync({

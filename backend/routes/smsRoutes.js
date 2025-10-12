@@ -117,7 +117,7 @@ router.post('/campaigns/:campaignId/send/:className',
 
 // Send SMS to a specific group
 router.post('/group/:groupId', 
-  authMiddleware, // Changed from protectAdminRoute to authMiddleware
+  protectAdminRoute, 
   authorizeSMSSending, 
   validateNepalPhoneNumber, 
   preventDuplicateSMS, 

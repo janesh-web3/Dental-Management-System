@@ -2250,58 +2250,308 @@ const retryFailedSMS = async (req, res) => {
 
 // Get delivery statistics
 const getDeliveryStats = async (req, res) => {
-    try {
-        // Get status breakdown
-        const statusBreakdown = await SMSDeliveryReport.aggregate([
-            {
-                $group: {
-                    _id: '$status',
-                    count: { $sum: 1 }
-                }
-            }
-        ]);
-        
-        // Get recent activity (last 7 days)
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        
-        const recentActivity = await SMSDeliveryReport.aggregate([
-            {
-                $match: {
-                    createdAt: { $gte: sevenDaysAgo }
-                }
-            },
-            {
-                $group: {
-                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-                    count: { $sum: 1 }
-                }
-            },
-            {
-                $sort: { _id: 1 }
-            }
-        ]);
-        
-        res.status(200).json({
-            success: true,
-            data: {
-                statusBreakdown,
-                recentActivity
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching delivery stats:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch delivery stats',
-            error: error.message
-        });
+  try {
+    // Get status breakdown
+    const statusBreakdown = await SMSDeliveryReport.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    // Get recent activity (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const recentActivity = await SMSDeliveryReport.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: sevenDaysAgo }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        statusBreakdown,
+        recentActivity
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching delivery stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch delivery stats',
+      error: error.message
+    });
+  }
+};
+
+// Send SMS to a specific patient group
+const sendSMSToGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { templateId, message, variables } = req.body;
+    
+    // Validate input
+    if (!groupId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Group ID is required'
+      });
     }
+    
+    if (!templateId && !message) {
+      return res.status(400).json({
+        success: false,
+        message: 'Either template ID or message content is required'
+      });
+    }
+    
+    // Import PatientGroup model to avoid circular dependencies
+    const PatientGroup = require('../model/PatientGroup');
+    const Patient = require('../model/Patient');
+    const SMSTemplate = require('../model/SMSTemplate');
+    
+    // Find the patient group
+    const patientGroup = await PatientGroup.findById(groupId);
+    if (!patientGroup) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient group not found'
+      });
+    }
+    
+    // Get patients in the group
+    let patients = [];
+    if (patientGroup.category === 'Static') {
+      patients = await Patient.find({
+        _id: { $in: patientGroup.patientIds },
+        isDeleted: { $ne: true }
+      }).select('personalDetails.name personalDetails.contactNumber');
+    } else if (patientGroup.category === 'Dynamic') {
+      // For dynamic groups, we need to build the query from filters
+      const buildPatientQueryFromFilters = (filters) => {
+        const query = {
+          isDeleted: { $ne: true }
+        };
+        
+        // Add gender filter
+        if (filters.gender && filters.gender !== 'all') {
+          query['personalDetails.gender'] = filters.gender;
+        }
+        
+        // Add group filter
+        if (filters.group && filters.group !== 'all') {
+          query['medicalDetails.group'] = filters.group;
+        }
+        
+        // Add treatment procedure filter
+        if (filters.procedure && filters.procedure !== 'all') {
+          query['medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.procedure'] = filters.procedure;
+        }
+        
+        // Add date range filter
+        if (filters.dateRange) {
+          const dateQuery = {};
+          
+          if (filters.dateRange.from) {
+            dateQuery.$gte = new Date(filters.dateRange.from);
+          }
+          if (filters.dateRange.to) {
+            dateQuery.$lte = new Date(filters.dateRange.to);
+            dateQuery.$lte.setHours(23, 59, 59, 999); // End of the day
+          }
+          
+          if (Object.keys(dateQuery).length > 0) {
+            query.createdAt = dateQuery;
+          }
+        }
+        
+        // Add follow-up date range filter
+        if (filters.followUpDateRange) {
+          const followUpDateQuery = {};
+          
+          if (filters.followUpDateRange.from) {
+            followUpDateQuery.$gte = new Date(filters.followUpDateRange.from);
+          }
+          if (filters.followUpDateRange.to) {
+            followUpDateQuery.$lte = new Date(filters.followUpDateRange.to);
+            followUpDateQuery.$lte.setHours(23, 59, 59, 999); // End of the day
+          }
+          
+          if (Object.keys(followUpDateQuery).length > 0) {
+            query['followUpDate'] = followUpDateQuery;
+          }
+        }
+        
+        // Add payment status filter
+        if (filters.paymentStatus && filters.paymentStatus !== 'all') {
+          if (filters.paymentStatus === 'due') {
+            query.$expr = { $gt: ['$totalRemainingAmount', 0] };
+          } else if (filters.paymentStatus === 'paid') {
+            query.$expr = { $eq: ['$totalRemainingAmount', 0] };
+          }
+        }
+        
+        return query;
+      };
+      
+      const query = buildPatientQueryFromFilters(patientGroup.filters);
+      patients = await Patient.find(query).select('personalDetails.name personalDetails.contactNumber');
+    }
+    
+    // Check if there are patients in the group
+    if (patients.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No patients found in this group'
+      });
+    }
+    
+    // Get message content from template if templateId is provided
+    let messageContent = message;
+    let templateUsed = null;
+    
+    if (templateId) {
+      try {
+        const template = await SMSTemplate.findById(templateId);
+        if (!template) {
+          return res.status(404).json({ 
+            success: false, 
+            message: 'Template not found' 
+          });
+        }
+        
+        messageContent = replaceTemplateVariables(template.content, variables);
+        templateUsed = template._id;
+        
+        // Update template usage stats
+        template.lastUsed = new Date();
+        template.totalSent += 1;
+        await template.save();
+      } catch (error) {
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Failed to process template', 
+          details: error.message 
+        });
+      }
+    }
+    
+    // Prepare phone numbers for sending
+    const phoneNumbers = patients
+      .filter(patient => patient.personalDetails?.contactNumber)
+      .map(patient => patient.personalDetails.contactNumber);
+    
+    if (phoneNumbers.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid phone numbers found in this group'
+      });
+    }
+    
+    // Remove duplicates
+    const uniquePhoneNumbers = [...new Set(phoneNumbers)];
+    
+    // Send bulk SMS using the existing sendBulkSMS function logic
+    const validMessages = [];
+    const invalidMessages = [];
+    
+    // Process each phone number
+    for (const phoneNumber of uniquePhoneNumbers) {
+      try {
+        // Format and validate phone number
+        const formattedNumber = verifyPhoneNumber(phoneNumber);
+        validMessages.push({
+          phoneNumber: formattedNumber,
+          message: messageContent
+        });
+      } catch (error) {
+        invalidMessages.push({
+          phoneNumber,
+          error: error.message
+        });
+      }
+    }
+    
+    // Send valid messages
+    let totalSent = 0;
+    let totalFailed = 0;
+    const failedMessages = [];
+    
+    for (const msg of validMessages) {
+      try {
+        const result = await aakashSmsUtils.sendSingleSMS(msg.phoneNumber, msg.message);
+        
+        if (result.success) {
+          totalSent++;
+          // Save to history with enhanced logging
+          await saveSMSHistory({
+            recipient: msg.phoneNumber,
+            message: msg.message,
+            status: result.status || 'sent',
+            messageId: result.messageId?.toString(),
+            networkProvider: result.network,
+            credit: result.credit,
+            sentBy: req.user?._id || null,
+            templateUsed,
+            groupId: patientGroup._id,
+            groupName: patientGroup.name
+          }, req);
+        } else {
+          totalFailed++;
+          failedMessages.push({
+            phoneNumber: msg.phoneNumber,
+            error: result.error
+          });
+        }
+      } catch (error) {
+        totalFailed++;
+        failedMessages.push({
+          phoneNumber: msg.phoneNumber,
+          error: error.message
+        });
+      }
+    }
+    
+    // Return success response
+    res.status(200).json({
+      success: true,
+      totalSent,
+      totalFailed,
+      validMessages: validMessages.length,
+      invalidMessages: invalidMessages.length,
+      failedMessages,
+      groupName: patientGroup.name,
+      groupPatientCount: patients.length
+    });
+  } catch (error) {
+    console.error('Error sending SMS to group:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to send SMS to group', 
+      details: error.message,
+    });
+  }
 };
 
 module.exports = {
     sendSingleSMS,
     sendBulkSMS,
+    sendSMSToGroup,
     getTemplates,
     createTemplate,
     updateTemplate,
@@ -2330,3 +2580,6 @@ module.exports = {
     retryFailedSMS,
     getDeliveryStats
 };
+
+
+

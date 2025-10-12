@@ -3,6 +3,7 @@ const router = express.Router();
 const smsController = require('../controller/smsController');
 const { protectAdminRoute } = require('../middleware/adminAuthMiddleware');
 const { optionalAdminAuth } = require('../middleware/optionalAdminAuthMiddleware');
+const authMiddleware = require('../middleware/authMiddleware'); // Add this import
 const { authorizeSMSSending, preventDuplicateSMS, validateNepalPhoneNumber, logSMSSending } = require('../middleware/smsSecurityMiddleware');
 
 console.log('SMS Controller exports:', Object.keys(smsController));
@@ -112,6 +113,16 @@ router.post('/campaigns/:campaignId/send/:className',
   preventDuplicateSMS, 
   logSMSSending, 
   (req, res) => smsController.sendSMSToClass(req, res)
+);
+
+// Send SMS to a specific group
+router.post('/group/:groupId', 
+  authMiddleware, // Changed from protectAdminRoute to authMiddleware
+  authorizeSMSSending, 
+  validateNepalPhoneNumber, 
+  preventDuplicateSMS, 
+  logSMSSending, 
+  (req, res) => smsController.sendSMSToGroup(req, res)
 );
 
 // Class-based SMS history

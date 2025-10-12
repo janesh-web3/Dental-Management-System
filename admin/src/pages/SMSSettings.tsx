@@ -81,7 +81,7 @@ const SMSSettings = () => {
       const response = await crudRequest<{ 
         success: boolean; 
         availableCredit: number;
-        responseCode: number;
+        message?: string;
       }>('GET', '/sms/credit');
       
       if (response.success) {
@@ -91,7 +91,7 @@ const SMSSettings = () => {
         });
       } else {
         setCreditInfo({
-          error: 'Failed to fetch credit information'
+          error: response.message || 'Failed to fetch credit information'
         });
       }
     } catch (error: any) {

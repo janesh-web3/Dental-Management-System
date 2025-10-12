@@ -58,6 +58,24 @@ const replaceTemplateVariables = (template, variables) => {
     return message;
 };
 
+        '{{amount}}',
+        '{{dueAmount}}'
+    ];
+    
+    commonPlaceholders.forEach(placeholder => {
+        const regex = new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g');
+        message = message.replace(regex, '');
+    });
+    
+    // Remove any remaining placeholders (in case there are others not in our common list)
+    message = message.replace(/{{[^{}]+}}/g, '');
+    
+    // Clean up extra spaces that might have been left after removing placeholders
+    message = message.replace(/\s+/g, ' ').trim();
+    
+    return message;
+};
+
 // Helper function to save SMS history with enhanced logging
 const saveSMSHistory = async (smsData, req) => {
     try {
@@ -1445,11 +1463,11 @@ const sendBulkFollowUpReminders = async (req, res) => {
                                 if (treatmentDate >= today && (!followUpDate || treatmentDate < followUpDate)) {
                                     followUpDate = treatmentDate;
                                 }
-                                }
                             }
                         }
                     }
                 }
+            }
             
             // If patient has follow-up date, prepare message
             if (followUpDate) {
@@ -2615,3 +2633,12 @@ module.exports = {
     retryFailedSMS,
     getDeliveryStats
 };
+
+
+
+
+
+
+
+
+

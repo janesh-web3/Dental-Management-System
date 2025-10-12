@@ -60,9 +60,10 @@ const sendSingleSMS = async (phoneNumber, message) => {
         const formattedNumber = verifyPhoneNumber(phoneNumber);
         
         // Send SMS using Aakash SMS v3 API
+        // According to Aakash SMS documentation, the parameter should be 'token' not 'auth_token'
         const response = await axios.post(aakashSmsConfig.apiUrl, null, {
             params: {
-                auth_token: aakashSmsConfig.authToken,
+                token: aakashSmsConfig.authToken,  // Changed from 'auth_token' to 'token'
                 to: formattedNumber,
                 text: message
             }
@@ -266,11 +267,16 @@ const sendBulkSMS = async (phoneNumbers, messages) => {
  */
 const checkCredit = async () => {
     try {
+        // Log the auth token being used (first 10 chars only for security)
+        console.log('Checking SMS credit with auth token:', aakashSmsConfig.authToken?.substring(0, 10) + '...');
+        
         const response = await axios.get(aakashSmsConfig.creditUrl, {
             headers: {
                 'auth-token': aakashSmsConfig.authToken
             }
         });
+        
+        console.log('Credit check response:', response.data);
         
         if (response.data && response.data.credit !== undefined) {
             return {
@@ -287,6 +293,7 @@ const checkCredit = async () => {
         }
     } catch (error) {
         console.error('Error checking SMS credit:', error.message);
+        console.error('Error response:', error.response?.data);
         return {
             success: false,
             availableCredit: 0,

@@ -84,21 +84,53 @@ export default function BulkSMSPage() {
   // Send SMS to group mutation
   const sendToGroupMutation = useMutation({
     mutationFn: async ({ groupId, messageData }: { groupId: string; messageData: any }) => {
-      return await crudRequest('POST', `/sms/group/${groupId}`, messageData);
-    },
-    onSuccess: (response: any) => {
-      // Check if the response indicates a real success or just a "fake" success due to auth issues
-      if (response?.success === false || response?.error) {
-        toast.error(response?.message || response?.error || 'Failed to send SMS to group');
-      } else {
-        toast.success(`SMS sent successfully to group: ${response?.groupName || 'Unknown Group'}!`);
-        // Reset selections after successful send
-        setSelectedGroup('');
-        setSelectedTemplate('');
+      const response: { 
+        success: boolean; 
+        data?: any; 
+        message?: string; 
+        groupName?: string;
+        totalSent?: number;
+        totalFailed?: number;
+        failedMessages?: Array<{phoneNumber: string, error: string}>;
+        validMessages?: number;
+        invalidMessages?: number;
+      } = await crudRequest('POST', `/sms/group/${groupId}`, messageData);
+      
+      // Throw error if response indicates failure
+      if (response?.success === false || (response?.totalSent === 0 && (response?.validMessages ?? 0) > 0)) {
+        throw new Error(response?.message || 'Failed to send SMS to group');
       }
+      
+      return response;
+    },
+    onSuccess: (response: { 
+      success: boolean; 
+      data?: any; 
+      message?: string; 
+      groupName?: string;
+      totalSent?: number;
+      totalFailed?: number;
+      failedMessages?: Array<{phoneNumber: string, error: string}>;
+      validMessages?: number;
+      invalidMessages?: number;
+    }) => {
+      // This will only be called if the mutation doesn't throw an error
+      if (response?.totalSent === 0 && (response?.validMessages ?? 0) > 0) {
+        toast.error(`Failed to send SMS to group: ${response?.groupName || 'Unknown Group'}. No messages were delivered.`);
+      } else if (response?.totalFailed && response.totalFailed > 0) {
+        toast.warn(`SMS sent to group: ${response?.groupName || 'Unknown Group'}. ${response.totalSent} sent, ${response.totalFailed} failed.`);
+      } else if (response?.totalSent === 0 && (response?.validMessages === 0 || response?.validMessages === undefined)) {
+        toast.warn(`No valid recipients found in group: ${response?.groupName || 'Unknown Group'}.`);
+      } else {
+        toast.success(`SMS sent successfully to group: ${response?.groupName || 'Unknown Group'}! ${response?.totalSent || 0} messages delivered.`);
+      }
+      // Reset selections after successful send
+      setSelectedGroup('');
+      setSelectedTemplate('');
     },
     onError: (error: any) => {
-      toast.error(error.message || error.error || 'Failed to send SMS to group');
+      console.error('SMS sending error:', error);
+      toast.error(error.message || 'Failed to send SMS to group');
     }
   });
 
@@ -140,28 +172,8 @@ export default function BulkSMSPage() {
       return;
     }
     
-    // Create a preview with sample variables replaced
-    let preview = template.content;
-    
-    // Replace common variables with sample values
-    const sampleVariables: Record<string, string> = {
-      patientName: 'John Doe',
-      name: 'John Doe',
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      clinicName: 'Dental Clinic'
-    };
-    
-    // Replace variables in the format {{variableName}}
-    Object.keys(sampleVariables).forEach(key => {
-      const regex = new RegExp(`{{${key}}}`, 'g');
-      preview = preview.replace(regex, sampleVariables[key]);
-    });
-    
-    // Remove any remaining placeholders
-    preview = preview.replace(/{{[^{}]+}}/g, '[Variable]');
-    
-    setPreviewContent(preview);
+    // Show the raw template content without variable replacement
+    setPreviewContent(template.content);
     setShowPreview(true);
   };
 
@@ -177,35 +189,66 @@ export default function BulkSMSPage() {
       return;
     }
     
-    // Check SMS credit before sending
+    // Check SMS credit before sending (but make it optional)
+    let hasSufficientCredit = true;
+    let availableCredit = 0;
+    
     try {
-      const creditResponse: any = await crudRequest('GET', '/sms/credit');
-      if (!creditResponse?.success || creditResponse?.availableCredit <= 0) {
-        toast.error('Insufficient SMS credit. Please recharge your account.');
-        return;
-      }
+      const creditResponse: { success: boolean; availableCredit?: number; message?: string } = await crudRequest('GET', '/sms/credit');
+      console.log('Credit check response:', creditResponse);
       
-      const selectedGroupData = groups.find(g => g._id === selectedGroup);
-      if (selectedGroupData && creditResponse?.availableCredit < selectedGroupData?.patientCount) {
-        toast.warn(`You have ${creditResponse?.availableCredit} credits but the group has ${selectedGroupData?.patientCount} patients. Some messages may not be sent.`);
+      if (creditResponse?.success && creditResponse?.availableCredit !== undefined) {
+        availableCredit = creditResponse.availableCredit;
+        if (availableCredit <= 0) {
+          hasSufficientCredit = false;
+          toast.warn('Insufficient SMS credit. Attempting to send SMS anyway.');
+        }
+      } else {
+        // Credit check failed, but we'll still try to send
+        hasSufficientCredit = false;
+        toast.warn('Could not verify SMS credit. Attempting to send SMS anyway.');
       }
-    } catch (error) {
-      console.warn('Could not check SMS credit:', error);
-      // Continue anyway, but log the error
+    } catch (error: any) {
+      console.error('Credit check error:', error);
+      // Even if credit check fails, we'll still try to send
+      hasSufficientCredit = false;
+      toast.warn('Could not verify SMS credit. Attempting to send SMS anyway.');
     }
     
-    await sendToGroupMutation.mutateAsync({
-      groupId: selectedGroup,
-      messageData: {
-        templateId: selectedTemplate
+    // Check if group has more patients than available credit (only if we have valid credit info)
+    if (hasSufficientCredit && availableCredit > 0) {
+      const selectedGroupData = groups.find(g => g._id === selectedGroup);
+      if (selectedGroupData && availableCredit < selectedGroupData?.patientCount) {
+        const confirm = window.confirm(
+          `You have ${availableCredit} credits but the group has ${selectedGroupData?.patientCount} patients. ` +
+          `Some messages may not be sent. Do you want to continue?`
+        );
+        
+        if (!confirm) {
+          return;
+        }
       }
-    });
+    }
+    
+    // Send SMS to group
+    try {
+      await sendToGroupMutation.mutateAsync({
+        groupId: selectedGroup,
+        messageData: {
+          templateId: selectedTemplate
+        }
+      });
+    } catch (error: any) {
+      console.error('SMS sending error:', error);
+      const errorMessage = error?.message || error?.error || 'Failed to send SMS to group';
+      toast.error(errorMessage);
+    }
   };
 
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
+        <div> 
           <h1 className="text-2xl font-bold">Send Bulk SMS</h1>
           <p className="text-muted-foreground">
             Send SMS to selected patient groups

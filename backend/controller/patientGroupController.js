@@ -43,6 +43,7 @@ const createPatientGroup = async (req, res) => {
     
     await patientGroup.save();
     
+    // Return data in a format that matches what the frontend expects
     res.status(201).json({
       success: true,
       data: patientGroup
@@ -81,15 +82,10 @@ const getPatientGroups = async (req, res) => {
       .limit(parseInt(limit))
       .populate('createdBy', 'name email');
     
+    // Return data in a format that matches what the frontend expects
     res.status(200).json({
       success: true,
-      data: {
-        patientGroups,
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        pages: Math.ceil(total / limit)
-      }
+      data: patientGroups
     });
   } catch (error) {
     console.error('Error fetching patient groups:', error);
@@ -125,6 +121,7 @@ const getPatientGroupById = async (req, res) => {
       });
     }
     
+    // Return data in a format that matches what the frontend expects
     res.status(200).json({
       success: true,
       data: patientGroup
@@ -182,6 +179,7 @@ const updatePatientGroup = async (req, res) => {
       });
     }
     
+    // Return data in a format that matches what the frontend expects
     res.status(200).json({
       success: true,
       data: patientGroup
@@ -218,8 +216,10 @@ const deletePatientGroup = async (req, res) => {
       });
     }
     
+    // Return data in a format that matches what the frontend expects
     res.status(200).json({
       success: true,
+      data: patientGroup,
       message: 'Patient group deleted successfully'
     });
   } catch (error) {
@@ -268,6 +268,7 @@ const getGroupPatients = async (req, res) => {
       patients = await Patient.find(query).select('personalDetails.name personalDetails.contactNumber');
     }
     
+    // Return data in a format that matches what the frontend expects
     res.status(200).json({
       success: true,
       data: {
@@ -296,6 +297,7 @@ const filterPatientsForGroup = async (req, res) => {
     const patients = await Patient.find(query)
       .select('personalDetails.name personalDetails.contactNumber personalDetails.gender createdAt followUpDate totalRemainingAmount');
     
+    // Return data in a format that matches what the frontend expects
     res.status(200).json({
       success: true,
       data: patients
@@ -397,6 +399,16 @@ module.exports = {
   getGroupPatients,
   filterPatientsForGroup
 };
+
+
+
+
+
+
+
+
+
+
 
 
 

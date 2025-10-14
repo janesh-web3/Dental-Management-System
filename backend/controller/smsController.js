@@ -2395,7 +2395,7 @@ const sendSMSToGroup = async (req, res) => {
           }
           if (filters.followUpDateRange.to) {
             followUpDateQuery.$lte = new Date(filters.followUpDateRange.to);
-            followUpDateQuery.$lte.setHours(23, 59, 59, 999); // End of the day
+            followUpDateQuery.$lte.setHours(23, 59, 59, 999); // End of the day 
           }
           
           if (Object.keys(followUpDateQuery).length > 0) {

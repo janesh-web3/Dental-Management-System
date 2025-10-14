@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SMSHistoryPage from "./sms/SMSHistory";
-import { EnhancedSMSTemplateManager } from "@/components/sms/EnhancedSMSTemplateManager";
+import EnhancedSMSTemplateManager from "@/components/sms/EnhancedSMSTemplateManager";
 import PatientGroupManager from "@/components/sms/PatientGroupManager";
 import SMSDashboard from "@/components/sms/SMSDashboard";
 

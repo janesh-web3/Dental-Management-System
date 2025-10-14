@@ -21,7 +21,8 @@ import {
   X,
   Copy,
   Download,
-  Upload
+  Upload,
+  AlertTriangle
 } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -56,20 +57,12 @@ const TEMPLATE_CATEGORIES = [
   'Feedback Request'
 ];
 
-const COMMON_VARIABLES = [
-  '{{patientName}}',
-  '{{clinicName}}',
-  '{{doctorName}}',
-  '{{appointmentDate}}',
-  '{{appointmentTime}}',
-  '{{amount}}',
-  '{{dueDate}}',
-  '{{contactNumber}}',
-  '{{treatmentType}}',
-  '{{followUpDate}}'
-];
+// Removed COMMON_VARIABLES array as placeholders are no longer supported
 
 export const EnhancedSMSTemplateManager: React.FC = () => {
+  // Define the placeholder warning message to avoid JSX interpretation issues
+  const placeholderWarningMessage = "Plain SMS Mode Active – Messages will be sent exactly as written. Placeholders like {{patientName}}, {{appointmentDate}}, etc. are not supported and will be removed automatically.";
+  
   const [templates, setTemplates] = useState<SMSTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -102,6 +95,9 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
     treatmentType: 'Root Canal',
     followUpDate: '2024-01-22'
   });
+
+  // State for validation errors
+  const [validationError, setValidationError] = useState('');
 
   useEffect(() => {
     fetchTemplates();
@@ -150,37 +146,28 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const extractVariables = (content: string): string[] => {
-    const variableRegex = /\{\{([^}]+)\}\}/g;
-    const matches = content.match(variableRegex) || [];
-    return [...new Set(matches)];
+  // Function to check for placeholders in message content
+  const checkForPlaceholders = (content: string): boolean => {
+    const placeholderRegex = /\{\{.*?\}\}/g;
+    return placeholderRegex.test(content);
   };
 
-  const insertVariable = (variable: string) => {
-    const textarea = document.getElementById('content') as HTMLTextAreaElement;
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const newContent = formData.content.slice(0, start) + variable + formData.content.slice(end);
-      setFormData(prev => ({
-        ...prev,
-        content: newContent,
-        variables: extractVariables(newContent)
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        content: prev.content + variable,
-        variables: extractVariables(prev.content + variable)
-      }));
-    }
-  };
+  // Removed extractVariables function as placeholders are no longer supported
+
+  // Removed insertVariable function as placeholders are no longer supported
 
   const handleContentChange = (content: string) => {
+    // Check for placeholders and set validation error if found
+    if (checkForPlaceholders(content)) {
+      setValidationError('Plain SMS Mode Active - Placeholders are not allowed. Please remove all placeholders ({{...}}) from the message.');
+    } else {
+      setValidationError('');
+    }
+    
     setFormData(prev => ({
       ...prev,
       content,
-      variables: extractVariables(content)
+      variables: [] // Clear variables as they're not supported
     }));
   };
 
@@ -194,13 +181,21 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
       triggerEvent: '',
       isActive: true
     });
+    setValidationError('');
   };
 
   const handleCreate = async () => {
+    // Check for placeholders before creating
+    if (checkForPlaceholders(formData.content)) {
+      toast.error('Placeholders are not allowed in Plain SMS Mode. Please remove all placeholders ({{...}}) from the message.');
+      return;
+    }
+
     try {
       // Only send auto-trigger fields if isAutoTriggered is true
       const requestData = {
         ...formData,
+        variables: [], // Ensure variables are empty
         triggerEvent: formData.isAutoTriggered && formData.triggerEvent ? formData.triggerEvent : undefined
       };
       
@@ -234,10 +229,17 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
   const handleEdit = async () => {
     if (!selectedTemplate) return;
 
+    // Check for placeholders before updating
+    if (checkForPlaceholders(formData.content)) {
+      toast.error('Placeholders are not allowed in Plain SMS Mode. Please remove all placeholders ({{...}}) from the message.');
+      return;
+    }
+
     try {
       // Only send auto-trigger fields if isAutoTriggered is true
       const requestData = {
         ...formData,
+        variables: [], // Ensure variables are empty
         triggerEvent: formData.isAutoTriggered && formData.triggerEvent ? formData.triggerEvent : undefined
       };
       
@@ -286,7 +288,7 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
       name: `${template.name} (Copy)`,
       content: template.content,
       category: template.category,
-      variables: template.variables,
+      variables: [],
       isAutoTriggered: template.isAutoTriggered || false,
       triggerEvent: template.triggerEvent || '',
       isActive: template.isActive !== undefined ? template.isActive : true
@@ -297,12 +299,8 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
   const renderPreview = () => {
     if (!selectedTemplate) return '';
 
-    let preview = selectedTemplate.content;
-    Object.entries(previewData).forEach(([key, value]) => {
-      const regex = new RegExp(`{{${key}}}`, 'g');
-      preview = preview.replace(regex, value);
-    });
-    return preview;
+    // In Plain SMS Mode, we show the message exactly as it is without any replacements
+    return selectedTemplate.content;
   };
 
   const exportTemplates = () => {
@@ -336,6 +334,14 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Info banner for Plain SMS Mode */}
+      <Alert>
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>
+          <strong>{placeholderWarningMessage}</strong>
+        </AlertDescription>
+      </Alert>
 
       {/* Filters */}
       <Card>
@@ -404,7 +410,6 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead>Variables</TableHead>
                   <TableHead>Created By</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -420,20 +425,6 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
                         {template.isAutoTriggered && (
                           <Badge variant="default" className="w-fit">
                             Auto: {template.triggerEvent}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {template.variables.slice(0, 3).map(variable => (
-                          <Badge key={variable} variant="outline" className="text-xs">
-                            {variable}
-                          </Badge>
-                        ))}
-                        {template.variables.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{template.variables.length - 3}
                           </Badge>
                         )}
                       </div>
@@ -493,7 +484,7 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
                               name: template.name,
                               content: template.content,
                               category: template.category,
-                              variables: template.variables,
+                              variables: [],
                               isAutoTriggered: template.isAutoTriggered || false,
                               triggerEvent: template.triggerEvent || '',
                               isActive: template.isActive !== undefined ? template.isActive : true
@@ -526,7 +517,7 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Create SMS Template</DialogTitle>
             <DialogDescription>
-              Create a new SMS template with variables for personalized messages
+              Create a new plain SMS template without variables or placeholders
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 py-4">
@@ -561,25 +552,20 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
                   id="content"
                   value={formData.content}
                   onChange={(e) => handleContentChange(e.target.value)}
-                  placeholder="Enter your message template..."
+                  placeholder="Enter your plain SMS message..."
                   className="min-h-[200px]"
                 />
                 <p className="text-sm text-muted-foreground mt-1">
                   {formData.content.length} characters ({Math.ceil(formData.content.length / 160)} SMS units)
                 </p>
+                {validationError && (
+                  <p className="text-sm text-red-500 mt-1 flex items-center">
+                    <AlertTriangle className="h-4 w-4 mr-1" />
+                    {validationError}
+                  </p>
+                )}
               </div>
-              {formData.variables.length > 0 && (
-                <div>
-                  <Label>Detected Variables</Label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.variables.map(variable => (
-                      <Badge key={variable} variant="secondary">
-                        {variable}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+              
               {/* Auto-trigger section */}
               <div className="border-t pt-4">
                 <div className="flex items-center space-x-2">
@@ -633,22 +619,13 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
               </div>
             </div>
             <div className="space-y-4">
-              <div>
-                <Label>Common Variables</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  {COMMON_VARIABLES.map(variable => (
-                    <Button
-                      key={variable}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => insertVariable(variable)}
-                      className="justify-start text-xs"
-                    >
-                      {variable}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>{placeholderWarningMessage}</strong>
+                </AlertDescription>
+              </Alert>
+              
               <div>
                 <Label>Preview</Label>
                 <div className="border rounded-lg p-3 bg-muted text-sm min-h-[100px]">
@@ -663,7 +640,7 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
             </Button>
             <Button
               onClick={handleCreate}
-              disabled={!formData.name || !formData.content}
+              disabled={!formData.name || !formData.content || !!validationError}
             >
               Create Template
             </Button>
@@ -677,7 +654,7 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Edit SMS Template</DialogTitle>
             <DialogDescription>
-              Modify your SMS template
+              Modify your plain SMS template
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 py-4">
@@ -712,25 +689,20 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
                   id="edit-content"
                   value={formData.content}
                   onChange={(e) => handleContentChange(e.target.value)}
-                  placeholder="Enter your message template..."
+                  placeholder="Enter your plain SMS message..."
                   className="min-h-[200px]"
                 />
                 <p className="text-sm text-muted-foreground mt-1">
                   {formData.content.length} characters ({Math.ceil(formData.content.length / 160)} SMS units)
                 </p>
+                {validationError && (
+                  <p className="text-sm text-red-500 mt-1 flex items-center">
+                    <AlertTriangle className="h-4 w-4 mr-1" />
+                    {validationError}
+                  </p>
+                )}
               </div>
-              {formData.variables.length > 0 && (
-                <div>
-                  <Label>Detected Variables</Label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.variables.map(variable => (
-                      <Badge key={variable} variant="secondary">
-                        {variable}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+              
               {/* Auto-trigger section */}
               <div className="border-t pt-4">
                 <div className="flex items-center space-x-2">
@@ -784,22 +756,13 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
               </div>
             </div>
             <div className="space-y-4">
-              <div>
-                <Label>Common Variables</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  {COMMON_VARIABLES.map(variable => (
-                    <Button
-                      key={variable}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => insertVariable(variable)}
-                      className="justify-start text-xs"
-                    >
-                      {variable}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>{placeholderWarningMessage}</strong>
+                </AlertDescription>
+              </Alert>
+              
               <div>
                 <Label>Preview</Label>
                 <div className="border rounded-lg p-3 bg-muted text-sm min-h-[100px]">
@@ -814,7 +777,7 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
             </Button>
             <Button
               onClick={handleEdit}
-              disabled={!formData.name || !formData.content}
+              disabled={!formData.name || !formData.content || !!validationError}
             >
               Update Template
             </Button>
@@ -828,39 +791,27 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Template Preview</DialogTitle>
             <DialogDescription>
-              See how your template will look with sample data
+              See how your template will look when sent
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label>Original Template</Label>
+              <Label>Message Preview</Label>
               <div className="border rounded-lg p-3 bg-muted text-sm">
                 {selectedTemplate?.content}
               </div>
             </div>
-            <div>
-              <Label>Preview with Sample Data</Label>
-              <div className="border rounded-lg p-3 bg-background text-sm">
-                {renderPreview()}
-              </div>
-            </div>
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>{placeholderWarningMessage}</strong>
+              </AlertDescription>
+            </Alert>
             <div className="grid grid-cols-2 gap-4 text-xs">
-              <div>
-                <Label>Sample Data Used:</Label>
-                <div className="space-y-1 mt-2">
-                  {Object.entries(previewData).map(([key, value]) => (
-                    <div key={key} className="flex justify-between">
-                      <span>{`{{${key}}}:`}</span>
-                      <span className="font-mono">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
               <div>
                 <Label>Template Info:</Label>
                 <div className="space-y-1 mt-2">
                   <div>Category: <Badge variant="outline">{selectedTemplate?.category}</Badge></div>
-                  <div>Variables: {selectedTemplate?.variables.length || 0}</div>
                   <div>Length: {selectedTemplate?.content.length || 0} chars</div>
                   <div>SMS Units: {Math.ceil((selectedTemplate?.content.length || 0) / 160)}</div>
                   {selectedTemplate?.isAutoTriggered && (

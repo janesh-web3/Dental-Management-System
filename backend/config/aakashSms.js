@@ -36,15 +36,48 @@ const aakashSmsConfig = {
     return true;
   },
   
+  // Get configuration status for debugging
+  getConfigStatus: function() {
+    return {
+      hasAuthToken: !!this.authToken,
+      authTokenLength: this.authToken ? this.authToken.length : 0,
+      isTokenValidFormat: this.authToken && !this.authToken.includes('fake') && this.authToken.length >= 50,
+      apiUrl: this.apiUrl,
+      apiUrlV4: this.apiUrlV4,
+      creditUrl: this.creditUrl
+    };
+  },
+  
   // Credit check methods
   checkCredit: async function() {
     try {
       // Log the auth token being used (first 10 chars only for security)
       console.log('Checking SMS credit with auth token:', this.authToken?.substring(0, 10) + '...');
       
+      // Check configuration first
+      if (!this.authToken) {
+        return {
+          success: false,
+          credit: 0,
+          error: 'Aakash SMS auth token is not configured',
+          details: 'Please set AAKASH_SMS_AUTH_TOKEN in your environment variables'
+        };
+      }
+      
       const response = await axios.get(this.creditUrl, {
         headers: { 'auth-token': this.authToken }
       });
+      
+      // Check if response is HTML (error page) instead of JSON
+      if (typeof response.data === 'string' && response.data.includes('<html')) {
+        return {
+          success: false,
+          credit: 0,
+          error: 'Received HTML error page instead of JSON response',
+          details: 'This usually indicates an authentication issue or incorrect endpoint',
+          response: response.data.substring(0, 200) + '...'
+        };
+      }
       
       console.log('Credit check response:', response.data);
       
@@ -63,23 +96,37 @@ const aakashSmsConfig = {
           credit: credit
         };
       } else {
-        // If response structure is not as expected, return a default value
+        // If response structure is not as expected, return an error
         return {
-          success: true,
-          credit: 1000 // Default credit value
+          success: false,
+          credit: 0,
+          error: 'Unexpected response format from Aakash SMS credit API',
+          response: response.data
         };
       }
     } catch (error) {
       console.error('Error checking SMS credit:', error.message);
       console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      console.error('Error headers:', error.response?.headers);
       
-      // Return a default credit value to allow SMS sending to continue
-      // This is a fallback mechanism when the credit API is not accessible
+      // Check if we received HTML error page
+      if (error.response?.data && typeof error.response.data === 'string' && error.response.data.includes('<html')) {
+        return {
+          success: false,
+          credit: 0,
+          error: 'Authentication failed or invalid endpoint',
+          details: 'Received HTML error page. Please check your Aakash SMS auth token and endpoint.',
+          response: error.response.data.substring(0, 200) + '...'
+        };
+      }
+      
       return {
         success: false,
-        credit: 1000, // Default credit value to allow sending
+        credit: 0,
         error: error.message,
-        response: error.response?.data
+        response: error.response?.data,
+        status: error.response?.status
       };
     }
   },
@@ -89,9 +136,30 @@ const aakashSmsConfig = {
       // Log the auth token being used (first 10 chars only for security)
       console.log('Getting detailed SMS credit with auth token:', this.authToken?.substring(0, 10) + '...');
       
+      // Check configuration first
+      if (!this.authToken) {
+        return {
+          success: false,
+          data: null,
+          error: 'Aakash SMS auth token is not configured',
+          details: 'Please set AAKASH_SMS_AUTH_TOKEN in your environment variables'
+        };
+      }
+      
       const response = await axios.get(this.availableCreditUrl, {
         headers: { 'auth-token': this.authToken }
       });
+      
+      // Check if response is HTML (error page) instead of JSON
+      if (typeof response.data === 'string' && response.data.includes('<html')) {
+        return {
+          success: false,
+          data: null,
+          error: 'Received HTML error page instead of JSON response',
+          details: 'This usually indicates an authentication issue or incorrect endpoint',
+          response: response.data.substring(0, 200) + '...'
+        };
+      }
       
       console.log('Detailed credit response:', response.data);
       
@@ -102,10 +170,13 @@ const aakashSmsConfig = {
     } catch (error) {
       console.error('Error getting detailed SMS credit:', error.message);
       console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
       return {
         success: false,
         data: null,
-        error: error.message
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status
       };
     }
   }
@@ -114,6 +185,8 @@ const aakashSmsConfig = {
 // Verify configuration on startup
 if (!aakashSmsConfig.verifyConfig()) {
   console.warn('Aakash SMS configuration is incomplete or invalid. SMS functionality may not work properly.');
+  // Log detailed config status for debugging
+  console.log('Aakash SMS Config Status:', aakashSmsConfig.getConfigStatus());
 }
 
 module.exports = aakashSmsConfig;

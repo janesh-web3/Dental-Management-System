@@ -6,6 +6,7 @@ const SMSHistory = require('../model/SMSHistory');
 const SMSClassConfig = require('../model/SMSClassConfig');
 const SMSCampaign = require('../model/SMSCampaign');
 const SMSDeliveryReport = require('../model/SMSDeliveryReport');
+const SMSTemplateGroup = require('../model/SMSTemplateGroup');
 const mongoose = require('mongoose');
 const aakashSmsUtils = require('../utils/aakashSmsUtils');
 
@@ -495,6 +496,21 @@ const sendBulkSMS = async (req, res) => {
                 lastUsed: new Date(),
                 lastTemplateUsed: templateUsed
             });
+            
+            // Save template-group relationship
+            if (templateUsed) {
+                try {
+                    await SMSTemplateGroup.create({
+                        templateId: templateUsed,
+                        groupId: groupId,
+                        sendDate: new Date(),
+                        sentBy: req.user?._id || req.admin?.id,
+                        patientCount: patients.length
+                    });
+                } catch (error) {
+                    console.error('Error saving template-group relationship:', error);
+                }
+            }
         }
         
         // Return success response with details
@@ -916,6 +932,15 @@ const smsStatusCallback = async (req, res) => {
 // Get credit balance
 const checkSMSCredit = async (req, res) => {
     try {
+        // Check if Aakash SMS is properly configured
+        if (!aakashSmsConfig.authToken) {
+            return res.status(400).json({
+                success: false,
+                message: 'Aakash SMS is not properly configured. Please check your auth token.',
+                error: 'Missing auth token'
+            });
+        }
+        
         const result = await aakashSmsConfig.checkCredit();
         
         if (result.success) {
@@ -929,16 +954,18 @@ const checkSMSCredit = async (req, res) => {
             console.error('SMS Credit Check Failed:', result.error);
             return res.status(400).json({
                 success: false,
-                message: 'Could not retrieve credit information',
-                error: result.error
+                message: 'Could not retrieve credit information from Aakash SMS',
+                error: result.error || 'Unknown error occurred while checking credit',
+                details: result.response || 'No additional details available'
             });
         }
     } catch (error) {
         console.error('Error checking SMS credit:', error);
         return res.status(500).json({
             success: false,
-            message: 'Failed to check SMS credit',
-            error: error.message
+            message: 'Failed to check SMS credit due to server error',
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 };
@@ -946,6 +973,15 @@ const checkSMSCredit = async (req, res) => {
 // Get detailed credit information
 const getDetailedSMSCredit = async (req, res) => {
     try {
+        // Check if Aakash SMS is properly configured
+        if (!aakashSmsConfig.authToken) {
+            return res.status(400).json({
+                success: false,
+                message: 'Aakash SMS is not properly configured. Please check your auth token.',
+                error: 'Missing auth token'
+            });
+        }
+        
         const result = await aakashSmsConfig.getDetailedCredit();
         
         if (result.success) {
@@ -958,16 +994,18 @@ const getDetailedSMSCredit = async (req, res) => {
             console.error('Detailed SMS Credit Check Failed:', result.error);
             return res.status(400).json({
                 success: false,
-                message: 'Could not retrieve detailed credit information',
-                error: result.error
+                message: 'Could not retrieve detailed credit information from Aakash SMS',
+                error: result.error || 'Unknown error occurred while checking detailed credit',
+                details: result.response || 'No additional details available'
             });
         }
     } catch (error) {
         console.error('Error getting detailed SMS credit info:', error);
         return res.status(500).json({
             success: false,
-            message: 'Failed to get detailed SMS credit information',
-            error: error.message
+            message: 'Failed to get detailed SMS credit information due to server error',
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 };
@@ -2326,6 +2364,14 @@ const sendSMSToGroup = async (req, res) => {
       });
     }
     
+    // Check if Aakash SMS is properly configured
+    if (!aakashSmsConfig.authToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Aakash SMS is not properly configured. Please check your auth token in the environment variables.'
+      });
+    }
+    
     // Import PatientGroup model to avoid circular dependencies
     const PatientGroup = require('../model/PatientGroup');
     const Patient = require('../model/Patient');
@@ -2462,6 +2508,8 @@ const sendSMSToGroup = async (req, res) => {
       .filter(patient => patient.personalDetails?.contactNumber)
       .map(patient => patient.personalDetails.contactNumber);
     
+    console.log('Phone numbers to send to:', phoneNumbers);
+    
     if (phoneNumbers.length === 0) {
       return res.status(400).json({
         success: false,
@@ -2471,6 +2519,7 @@ const sendSMSToGroup = async (req, res) => {
     
     // Remove duplicates
     const uniquePhoneNumbers = [...new Set(phoneNumbers)];
+    console.log('Unique phone numbers:', uniquePhoneNumbers);
     
     // Prepare personalized messages for each patient
     const personalizedMessages = patients
@@ -2491,8 +2540,12 @@ const sendSMSToGroup = async (req, res) => {
         return personalizedMessage;
       });
     
+    console.log('Personalized messages:', personalizedMessages);
+    
     // Use the aakashSmsUtils to send the bulk SMS
     const result = await aakashSmsUtils.sendBulkSMS(uniquePhoneNumbers, personalizedMessages);
+    
+    console.log('Aakash SMS send result:', JSON.stringify(result, null, 2));
     
     // Check if the bulk SMS sending was successful
     if (!result.success) {
@@ -2507,6 +2560,7 @@ const sendSMSToGroup = async (req, res) => {
     
     // Save to history for valid messages
     if (result.validMessages && result.validMessages.length > 0) {
+      console.log('Processing valid messages for history:', result.validMessages);
       const validHistoryRecords = result.validMessages.map((validMsg, index) => ({
         recipient: validMsg.recipient,
         message: personalizedMessages[uniquePhoneNumbers.indexOf(validMsg.recipient)],
@@ -2516,6 +2570,7 @@ const sendSMSToGroup = async (req, res) => {
         credit: validMsg.credit,
         sentBy: req.user?._id || null,
         templateUsed,
+        templateId: templateUsed,
         groupId: patientGroup._id,
         groupName: patientGroup.name,
         isBulk: true
@@ -2530,6 +2585,7 @@ const sendSMSToGroup = async (req, res) => {
     
     // Save to history for invalid messages
     if (result.invalidMessages && result.invalidMessages.length > 0) {
+      console.log('Processing invalid messages for history:', result.invalidMessages);
       const invalidHistoryRecords = result.invalidMessages.map((invalidMsg, index) => ({
         recipient: invalidMsg.recipient,
         message: personalizedMessages[uniquePhoneNumbers.indexOf(invalidMsg.recipient)],
@@ -2537,6 +2593,7 @@ const sendSMSToGroup = async (req, res) => {
         errorMessage: invalidMsg.reason || 'Failed to send',
         sentBy: req.user?._id || null,
         templateUsed,
+        templateId: templateUsed,
         groupId: patientGroup._id,
         groupName: patientGroup.name,
         isBulk: true
@@ -2550,17 +2607,69 @@ const sendSMSToGroup = async (req, res) => {
     }
     
     // Check if any messages were actually sent
-    if (result.totalSent === 0 && (result.validMessages?.length > 0 || uniquePhoneNumbers.length > 0)) {
+    // Only consider it a failure if we had recipients but nothing was sent
+    console.log('Checking send results - uniquePhoneNumbers:', uniquePhoneNumbers.length, 'totalSent:', result.totalSent);
+    
+    // If the result itself indicates failure (success: false), return the error immediately
+    if (!result.success) {
+      const errorMessage = result.error ? 
+        `Failed to send SMS: ${result.error}` : 
+        'Failed to send SMS to group. Please check your Aakash SMS configuration and credentials.';
+      
+      console.log('Returning error response due to API failure:', errorMessage);
       return res.status(500).json({
         success: false,
-        message: 'Failed to send SMS to any recipients. Please check your Aakash SMS configuration.',
-        totalSent: result.totalSent,
-        totalFailed: result.totalFailed,
+        message: errorMessage,
+        code: result.code || 'SEND_FAILED',
+        totalSent: result.totalSent || 0,
+        totalFailed: result.totalFailed || 0,
         validMessages: result.validMessages?.length || 0,
         invalidMessages: result.invalidMessages?.length || 0,
         groupName: patientGroup.name,
-        groupPatientCount: patients.length
+        groupPatientCount: patients.length,
+        details: result.details || null
       });
+    }
+    
+    // Only consider it a failure if we had recipients but nothing was sent
+    if (uniquePhoneNumbers.length > 0 && result.totalSent === 0) {
+      // But don't consider it a failure if there were no valid recipients to begin with
+      const hasValidRecipients = result.validMessages?.length > 0 || result.invalidMessages?.length > 0;
+      console.log('Has valid recipients:', hasValidRecipients, 'validMessages:', result.validMessages?.length, 'invalidMessages:', result.invalidMessages?.length);
+      
+      if (hasValidRecipients) {
+        const errorMessage = result.error ? 
+          `Failed to send SMS: ${result.error}` : 
+          'Failed to send SMS to any recipients. Please check your Aakash SMS configuration and credentials.';
+        
+        console.log('Returning error response:', errorMessage);
+        return res.status(500).json({
+          success: false,
+          message: errorMessage,
+          code: result.code || 'SEND_FAILED',
+          totalSent: result.totalSent,
+          totalFailed: result.totalFailed,
+          validMessages: result.validMessages?.length || 0,
+          invalidMessages: result.invalidMessages?.length || 0,
+          groupName: patientGroup.name,
+          groupPatientCount: patients.length
+        });
+      }
+    }
+    
+    // Save template-group relationship
+    if (templateUsed) {
+      try {
+        await SMSTemplateGroup.create({
+          templateId: templateUsed,
+          groupId: patientGroup._id,
+          sendDate: new Date(),
+          sentBy: req.user?._id || null,
+          patientCount: patients.length
+        });
+      } catch (error) {
+        console.error('Error saving template-group relationship:', error);
+      }
     }
     
     // Return success response
@@ -2579,6 +2688,353 @@ const sendSMSToGroup = async (req, res) => {
       success: false, 
       message: 'Failed to send SMS to group', 
       details: error.message,
+    });
+  }
+};
+
+// Get groups that a template has been sent to
+const getTemplateGroups = async (req, res) => {
+  try {
+    const { templateId } = req.params;
+    
+    // Validate templateId
+    if (!mongoose.Types.ObjectId.isValid(templateId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid template ID'
+      });
+    }
+    
+    // Get template-group relationships with populated group and user info
+    const relationships = await SMSTemplateGroup.find({ templateId })
+      .populate('groupId', 'name patientCount')
+      .populate('sentBy', 'name')
+      .sort({ sendDate: -1 });
+    
+    res.status(200).json({
+      success: true,
+      data: relationships
+    });
+  } catch (error) {
+    console.error('Error fetching template groups:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch template groups',
+      error: error.message
+    });
+  }
+};
+
+// Get patients that a template has been sent to with last visit information
+const getTemplatePatients = async (req, res) => {
+  try {
+    const { templateId } = req.params;
+    const { page = 1, limit = 20, startDate, endDate, groupId } = req.query;
+    
+    // Validate templateId
+    if (!mongoose.Types.ObjectId.isValid(templateId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid template ID'
+      });
+    }
+    
+    // Build query for SMS history
+    const query = { templateId };
+    
+    // Add date range filter if provided
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        query.createdAt.$lte = new Date(endDate);
+      }
+    }
+    
+    // Add group filter if provided
+    if (groupId && mongoose.Types.ObjectId.isValid(groupId)) {
+      query.groupId = groupId;
+    }
+    
+    // Get total count
+    const total = await SMSHistory.countDocuments(query);
+    
+    // Get SMS history with populated patient info and last visit date
+    const history = await SMSHistory.find(query)
+      .populate({
+        path: 'patient',
+        select: 'personalDetails.name personalDetails.contactNumber lastVisitDate medicalDetails',
+        populate: {
+          path: 'medicalDetails.treatmentPlanning',
+          select: 'treatmentDate followUpDate'
+        }
+      })
+      .populate('groupId', 'name')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+    
+    // Enhance patient data with last visit information
+    const enhancedHistory = history.map(record => {
+      let lastVisitDate = null;
+      
+      // Extract last visit date from patient data
+      if (record.patient && record.patient.medicalDetails) {
+        let latestDate = null;
+        
+        record.patient.medicalDetails.forEach(medicalDetail => {
+          if (medicalDetail.treatmentPlanning) {
+            medicalDetail.treatmentPlanning.forEach(plan => {
+              // Check treatment date
+              if (plan.treatmentDate && (!latestDate || plan.treatmentDate > latestDate)) {
+                latestDate = plan.treatmentDate;
+              }
+              
+              // Check follow-up date
+              if (plan.followUpDate && (!latestDate || plan.followUpDate > latestDate)) {
+                latestDate = plan.followUpDate;
+              }
+            });
+          }
+        });
+        
+        lastVisitDate = latestDate;
+      }
+      
+      return {
+        ...record.toObject(),
+        lastVisitDate
+      };
+    });
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        history: enhancedHistory,
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching template patients:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch template patients',
+      error: error.message
+    });
+  }
+};
+
+// Get analytics for a template
+const getTemplateAnalytics = async (req, res) => {
+  try {
+    const { templateId } = req.params;
+    
+    // Validate templateId
+    if (!mongoose.Types.ObjectId.isValid(templateId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid template ID'
+      });
+    }
+    
+    // Get template details
+    const template = await SMSTemplate.findById(templateId);
+    if (!template) {
+      return res.status(404).json({
+        success: false,
+        message: 'Template not found'
+      });
+    }
+    
+    // Get total sends
+    const totalSends = await SMSHistory.countDocuments({ templateId });
+    
+    // Get successful sends
+    const successfulSends = await SMSHistory.countDocuments({ 
+      templateId, 
+      status: { $in: ['sent', 'delivered'] } 
+    });
+    
+    // Get groups this template has been sent to
+    const groupsSentTo = await SMSTemplateGroup.countDocuments({ templateId });
+    
+    // Get unique patients this template has been sent to
+    const uniquePatients = await SMSHistory.distinct('patient', { templateId });
+    
+    // Get recent sends (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const recentSends = await SMSHistory.find({ 
+      templateId, 
+      createdAt: { $gte: thirtyDaysAgo } 
+    }).sort({ createdAt: -1 }).limit(10);
+    
+    // Get group distribution
+    const groupDistribution = await SMSTemplateGroup.aggregate([
+      { $match: { templateId: mongoose.Types.ObjectId(templateId) } },
+      {
+        $lookup: {
+          from: 'patientgroups',
+          localField: 'groupId',
+          foreignField: '_id',
+          as: 'groupInfo'
+        }
+      },
+      {
+        $unwind: '$groupInfo'
+      },
+      {
+        $group: {
+          _id: '$groupInfo.name',
+          count: { $sum: 1 },
+          patientCount: { $first: '$groupInfo.patientCount' }
+        }
+      },
+      {
+        $sort: { count: -1 }
+      }
+    ]);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        template,
+        totalSends,
+        successfulSends,
+        groupsSentTo,
+        uniquePatients: uniquePatients.length,
+        recentSends,
+        groupDistribution
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching template analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch template analytics',
+      error: error.message
+    });
+  }
+};
+
+// Get overall SMS analytics
+const getSMSAnalytics = async (req, res) => {
+  try {
+    // Get total templates
+    const totalTemplates = await SMSTemplate.countDocuments();
+    
+    // Get total sends
+    const totalSends = await SMSHistory.countDocuments();
+    
+    // Get successful sends
+    const successfulSends = await SMSHistory.countDocuments({ 
+      status: { $in: ['sent', 'delivered'] } 
+    });
+    
+    // Get failed sends
+    const failedSends = await SMSHistory.countDocuments({ 
+      status: { $in: ['failed', 'undelivered'] } 
+    });
+    
+    // Get templates usage stats
+    const templateUsage = await SMSHistory.aggregate([
+      {
+        $group: {
+          _id: '$templateUsed',
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $lookup: {
+          from: 'smstemplates',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'template'
+        }
+      },
+      {
+        $unwind: '$template'
+      },
+      {
+        $project: {
+          name: '$template.name',
+          category: '$template.category',
+          count: 1
+        }
+      },
+      {
+        $sort: { count: -1 }
+      },
+      {
+        $limit: 10
+      }
+    ]);
+    
+    // Get group distribution
+    const groupDistribution = await SMSTemplateGroup.aggregate([
+      {
+        $lookup: {
+          from: 'patientgroups',
+          localField: 'groupId',
+          foreignField: '_id',
+          as: 'groupInfo'
+        }
+      },
+      {
+        $unwind: '$groupInfo'
+      },
+      {
+        $group: {
+          _id: '$groupInfo.name',
+          count: { $sum: 1 },
+          patientCount: { $first: '$groupInfo.patientCount' }
+        }
+      },
+      {
+        $sort: { count: -1 }
+      },
+      {
+        $limit: 10
+      }
+    ]);
+    
+    // Get recent activity (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const recentActivity = await SMSHistory.find({ 
+      createdAt: { $gte: sevenDaysAgo } 
+    })
+    .populate('patient', 'personalDetails.name')
+    .populate('templateUsed', 'name')
+    .sort({ createdAt: -1 })
+    .limit(20);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        totalTemplates,
+        totalSends,
+        successfulSends,
+        failedSends,
+        successRate: totalSends > 0 ? (successfulSends / totalSends) * 100 : 0,
+        templateUsage,
+        groupDistribution,
+        recentActivity
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching SMS analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch SMS analytics',
+      error: error.message
     });
   }
 };
@@ -2613,5 +3069,11 @@ module.exports = {
     // Delivery report functions
     getDeliveryReports,
     retryFailedSMS,
-    getDeliveryStats
+    getDeliveryStats,
+    // Template relationship functions
+    getTemplateGroups,
+    getTemplatePatients,
+    getTemplateAnalytics,
+    // Overall analytics
+    getSMSAnalytics
 };

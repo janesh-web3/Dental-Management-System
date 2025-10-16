@@ -128,4 +128,12 @@ router.post('/group/:groupId',
 // Class-based SMS history
 router.get('/history-by-class', protectAdminRoute, (req, res) => smsController.getSMSHistoryByClass(req, res));
 
+// Template relationship endpoints
+router.get('/template/:templateId/groups', protectAdminRoute, (req, res) => smsController.getTemplateGroups(req, res));
+router.get('/template/:templateId/patients', protectAdminRoute, (req, res) => smsController.getTemplatePatients(req, res));
+router.get('/template/:templateId/analytics', protectAdminRoute, (req, res) => smsController.getTemplateAnalytics(req, res));
+
+// Overall analytics endpoint
+router.get('/analytics', protectAdminRoute, (req, res) => smsController.getSMSAnalytics(req, res));
+
 module.exports = router;

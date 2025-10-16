@@ -74,6 +74,16 @@ const AppRouter: React.FC = () => {
         { path: "/sms/single", element: <SingleSMS /> },
         { path: "/sms/bulk", element: <BulkSMS /> },
         {
+          path: "/sms/analytics",
+          element: (
+            <Suspense fallback={<Loading />}>
+              {React.createElement(
+                lazy(() => import("@/components/sms/SMSAnalyticsDashboard"))
+              )}
+            </Suspense>
+          ),
+        },
+        {
           path: "/notifications",
           element: (
             <Suspense fallback={<Loading />}>

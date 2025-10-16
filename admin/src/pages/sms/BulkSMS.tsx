@@ -164,11 +164,13 @@ export default function BulkSMSPage() {
         failedMessages?: Array<{phoneNumber: string, error: string}>;
         validMessages?: number;
         invalidMessages?: number;
+        code?: string;
+        details?: string;
       } = await crudRequest('POST', `/sms/group/${groupId}`, messageData);
       
       // Throw error if response indicates failure
-      if (response?.success === false || (response?.totalSent === 0 && (response?.validMessages ?? 0) > 0)) {
-        throw new Error(response?.message || 'Failed to send SMS to group');
+      if (response?.success === false) {
+        throw new Error(JSON.stringify(response)); // Pass the entire response as a JSON string
       }
       
       return response;
@@ -192,7 +194,16 @@ export default function BulkSMSPage() {
       } else if (response?.totalSent === 0 && (response?.validMessages === 0 || response?.validMessages === undefined)) {
         toast.warn(`No valid recipients found in group: ${response?.groupName || 'Unknown Group'}.`);
       } else {
-        toast.success(`SMS sent successfully to group: ${response?.groupName || 'Unknown Group'}! ${response?.totalSent || 0} messages delivered.`);
+        const successMessage = response?.message || `SMS sent successfully to group: ${response?.groupName || 'Unknown Group'}!`;
+        const countMessage = response?.totalSent !== undefined ? 
+          `${response?.totalSent || 0} messages delivered.` : 
+          '';
+        
+        if (countMessage) {
+          toast.success(`${successMessage} ${countMessage}`);
+        } else {
+          toast.success(successMessage);
+        }
       }
       // Reset selections after successful send
       setSelectedGroup('');
@@ -200,7 +211,33 @@ export default function BulkSMSPage() {
     },
     onError: (error: any) => {
       console.error('SMS sending error:', error);
-      toast.error(error.message || 'Failed to send SMS to group');
+      
+      // Try to parse the error response
+      let errorData: any = null;
+      try {
+        // If the error message is a JSON string, parse it
+        if (error?.message && error.message.startsWith('{')) {
+          errorData = JSON.parse(error.message);
+        } else {
+          errorData = error?.response?.data || error;
+        }
+      } catch (parseError) {
+        errorData = error?.response?.data || error;
+      }
+      
+      const errorMessage = errorData?.message || errorData?.error || 'Failed to send SMS to group';
+      const errorCode = errorData?.code || '';
+      const errorDetails = errorData?.details || '';
+      
+      let fullErrorMessage = errorMessage;
+      if (errorCode) {
+        fullErrorMessage += ` (Code: ${errorCode})`;
+      }
+      if (errorDetails) {
+        fullErrorMessage += `: ${errorDetails}`;
+      }
+      
+      toast.error(fullErrorMessage);
     }
   });
 
@@ -281,7 +318,14 @@ export default function BulkSMSPage() {
     let availableCredit = 0;
     
     try {
-      const creditResponse: { success: boolean; availableCredit?: number; message?: string } = await crudRequest('GET', '/sms/credit');
+      const creditResponse: { 
+        success: boolean; 
+        availableCredit?: number; 
+        message?: string; 
+        error?: string; 
+        details?: string;
+        response?: string;
+      } = await crudRequest('GET', '/sms/credit');
       console.log('Credit check response:', creditResponse);
       
       if (creditResponse?.success && creditResponse?.availableCredit !== undefined) {
@@ -293,13 +337,41 @@ export default function BulkSMSPage() {
       } else {
         // Credit check failed, but we'll still try to send
         hasSufficientCredit = false;
-        toast.warn('Could not verify SMS credit. Attempting to send SMS anyway.');
+        const errorMessage = creditResponse?.message || creditResponse?.error || 'Could not verify SMS credit';
+        const errorDetails = creditResponse?.details || '';
+        console.warn('Credit check warning:', errorMessage, errorDetails);
+        
+        let fullWarningMessage = errorMessage;
+        if (errorDetails) {
+          fullWarningMessage += `: ${errorDetails}`;
+        }
+        fullWarningMessage += '. Attempting to send SMS anyway.';
+        
+        toast.warn(fullWarningMessage);
       }
     } catch (error: any) {
       console.error('Credit check error:', error);
       // Even if credit check fails, we'll still try to send
       hasSufficientCredit = false;
-      toast.warn('Could not verify SMS credit. Attempting to send SMS anyway.');
+      
+      // Try to parse the error response
+      let errorData: any = null;
+      try {
+        errorData = error?.response?.data || error;
+      } catch (parseError) {
+        errorData = error;
+      }
+      
+      const errorMessage = errorData?.message || errorData?.error || 'Could not verify SMS credit';
+      const errorDetails = errorData?.details || '';
+      
+      let fullErrorMessage = errorMessage;
+      if (errorDetails) {
+        fullErrorMessage += `: ${errorDetails}`;
+      }
+      fullErrorMessage += '. Attempting to send SMS anyway.';
+      
+      toast.warn(fullErrorMessage);
     }
     
     // Check if group has more patients than available credit (only if we have valid credit info)
@@ -327,8 +399,33 @@ export default function BulkSMSPage() {
       });
     } catch (error: any) {
       console.error('SMS sending error:', error);
-      const errorMessage = error?.message || error?.error || 'Failed to send SMS to group';
-      toast.error(errorMessage);
+      
+      // Try to parse the error response
+      let errorData: any = null;
+      try {
+        // If the error message is a JSON string, parse it
+        if (error?.message && error.message.startsWith('{')) {
+          errorData = JSON.parse(error.message);
+        } else {
+          errorData = error?.response?.data || error;
+        }
+      } catch (parseError) {
+        errorData = error?.response?.data || error;
+      }
+      
+      const errorMessage = errorData?.message || errorData?.error || 'Failed to send SMS to group';
+      const errorCode = errorData?.code || '';
+      const errorDetails = errorData?.details || '';
+      
+      let fullErrorMessage = errorMessage;
+      if (errorCode) {
+        fullErrorMessage += ` (Code: ${errorCode})`;
+      }
+      if (errorDetails) {
+        fullErrorMessage += `: ${errorDetails}`;
+      }
+      
+      toast.error(fullErrorMessage);
     }
   };
 
@@ -417,9 +514,14 @@ export default function BulkSMSPage() {
             Send SMS to selected patient groups
           </p>
         </div>
-        <Button variant="outline" onClick={() => window.history.back()}>
-          Back
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => window.history.back()}>
+            Back
+          </Button>
+          <Button variant="outline" onClick={() => window.location.hash = '/sms/analytics'}>
+            Analytics
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

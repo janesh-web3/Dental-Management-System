@@ -17,7 +17,7 @@ const followUpSchema = new mongoose.Schema({
       enum: ["treatment", "groupTreatment", "tooth", "medicalRecord"],
       required: true
     },
-    entityId: { type: String } // ID of the linked entity
+    entityId: { type: String } // ID of the linked entity 
   },
   completed: { type: Boolean, default: false },
   completedDate: { type: Date },

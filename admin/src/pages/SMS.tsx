@@ -16,6 +16,7 @@ import SMSHistoryPage from "./sms/SMSHistory";
 import EnhancedSMSTemplateManager from "@/components/sms/EnhancedSMSTemplateManager";
 import PatientGroupManager from "@/components/sms/PatientGroupManager";
 import SMSDashboard from "@/components/sms/SMSDashboard";
+import SMSAnalyticsDashboard from "@/components/sms/SMSAnalyticsDashboard";
 
 const SMS = () => {
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
@@ -33,7 +34,7 @@ const SMS = () => {
   return (
     <div className="container mx-auto py-6">
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="dashboard" className="flex items-center">
             <BarChart3 className="w-4 h-4 mr-2" />
             <span className="text-md font-semibold">Dashboard</span>
@@ -52,6 +53,10 @@ const SMS = () => {
           </TabsTrigger>
           <TabsTrigger value="history" className="flex items-center">
             <span className="text-md font-semibold">History</span>
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center">
+            <BarChart3 className="w-4 h-4 mr-2" />
+            <span className="text-md font-semibold">Analytics</span>
           </TabsTrigger>
         </TabsList>
 
@@ -121,6 +126,9 @@ const SMS = () => {
 
         <TabsContent value="history">
           <SMSHistoryPage />
+        </TabsContent>
+        <TabsContent value="analytics">
+          <SMSAnalyticsDashboard />
         </TabsContent>
       </Tabs>
     </div>

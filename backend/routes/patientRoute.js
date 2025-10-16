@@ -629,8 +629,17 @@ router.patch(
   "/update-group-payment/:patientId/:medicalDetailId/:treatmentId/:groupIndex/:dailyTreatmentId",
   async (req, res) => {
     try {
+      // Validate all params before using them
       const { patientId, medicalDetailId, treatmentId, groupIndex, dailyTreatmentId } = req.params;
       let { paidAmount, paymentDate, paymentMethod } = req.body;
+
+      // Validate required parameters
+      if (!patientId || !medicalDetailId || !treatmentId || groupIndex === undefined || !dailyTreatmentId) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required parameters"
+        });
+      }
 
       // Ensure paidAmount is a proper number with 2 decimal places for precision
       paidAmount = parseFloat(paidAmount);
@@ -648,10 +657,54 @@ router.patch(
       let originalPaidAmount = 0;
       try {
         const originalPatient = await Patient.findById(patientId);
+        if (!originalPatient) {
+          return res.status(404).json({
+            success: false,
+            message: "Patient not found"
+          });
+        }
+        
         const originalMedicalDetail = originalPatient.medicalDetails.find(md => md._id.toString() === medicalDetailId);
+        if (!originalMedicalDetail) {
+          return res.status(404).json({
+            success: false,
+            message: "Medical detail not found"
+          });
+        }
+        
         const originalTreatment = originalMedicalDetail.treatmentPlanning.find(t => t._id.toString() === treatmentId);
-        const originalGroup = originalTreatment.groupTreatmentDetails[parseInt(groupIndex)];
+        if (!originalTreatment) {
+          return res.status(404).json({
+            success: false,
+            message: "Treatment not found"
+          });
+        }
+        
+        // Validate groupIndex is a valid number
+        const groupIndexNum = Number(groupIndex);
+        if (isNaN(groupIndexNum)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid group index"
+          });
+        }
+        
+        const originalGroup = originalTreatment.groupTreatmentDetails[groupIndexNum];
+        if (!originalGroup) {
+          return res.status(404).json({
+            success: false,
+            message: "Group treatment not found"
+          });
+        }
+        
         const originalDailyTreatment = originalGroup.dailyTreatments.find(d => d._id.toString() === dailyTreatmentId);
+        if (!originalDailyTreatment) {
+          return res.status(404).json({
+            success: false,
+            message: "Daily treatment not found"
+          });
+        }
+        
         originalPaidAmount = parseFloat(originalDailyTreatment.paidAmount) || 0;
         console.log(`Group payment update - Original: ${originalPaidAmount}, New: ${paidAmount}, Additional: ${paidAmount - originalPaidAmount}`);
       } catch (err) {
@@ -684,7 +737,13 @@ router.patch(
         );
         if (!treatment) throw new Error("Treatment not found");
         
-        const groupTreatment = treatment.groupTreatmentDetails[parseInt(groupIndex)];
+        // Validate groupIndex is a valid number
+        const groupIndexNum = Number(groupIndex);
+        if (isNaN(groupIndexNum)) {
+          throw new Error("Invalid group index");
+        }
+        
+        const groupTreatment = treatment.groupTreatmentDetails[groupIndexNum];
         if (!groupTreatment) throw new Error("Group treatment not found");
         
         const dailyTreatment = groupTreatment.dailyTreatments.find(d => 
@@ -692,7 +751,7 @@ router.patch(
         );
         if (!dailyTreatment) throw new Error("Daily treatment not found");
         
-        treatmentAmount = dailyTreatment.treatmentAmount;
+        treatmentAmount = parseFloat(dailyTreatment.treatmentAmount) || 0;
       } catch (err) {
         console.error("Error finding group treatment amount:", err);
         return res.status(404).json({
@@ -704,25 +763,40 @@ router.patch(
       // Calculate remaining amount
       const remainingAmount = Math.round((treatmentAmount - paidAmount) * 100) / 100;
 
-      // Prepare update fields
+      // Prepare update fields - ensure all values are properly typed
       const updateFields = {
         "medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.$[group].dailyTreatments.$[daily].paidAmount": paidAmount,
         "medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.$[group].dailyTreatments.$[daily].remainingAmount": remainingAmount,
       };
       
-      // Add payment method if provided
-      if (paymentMethod) {
+      // Add payment method if provided - ensure it's a string
+      if (paymentMethod && typeof paymentMethod === 'string') {
         updateFields["medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.$[group].dailyTreatments.$[daily].paymentMethod"] = paymentMethod;
       }
 
       // Add payment date if provided, otherwise use current date if payment amount is greater than 0
       if (paymentDate) {
-        updateFields["medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.$[group].dailyTreatments.$[daily].paymentDate"] = new Date(paymentDate);
+        const date = new Date(paymentDate);
+        if (!isNaN(date.getTime())) {
+          updateFields["medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.$[group].dailyTreatments.$[daily].paymentDate"] = date;
+        }
       } else if (paidAmount > 0) {
         updateFields["medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.$[group].dailyTreatments.$[daily].paymentDate"] = new Date();
       }
 
+
       // Update payment information
+      // For group treatments, we need to use the array index directly in the field path
+      // instead of using arrayFilters for the index
+      const groupIndexNum = Number(groupIndex);
+      const indexedUpdateFields = {};
+      
+      // Replace the $[group] placeholder with the actual index
+      Object.keys(updateFields).forEach(key => {
+        const newKey = key.replace('$[group]', groupIndexNum);
+        indexedUpdateFields[newKey] = updateFields[key];
+      });
+      
       const updatedPatient = await Patient.findOneAndUpdate(
         {
           _id: patientId,
@@ -730,13 +804,12 @@ router.patch(
           "medicalDetails.treatmentPlanning._id": treatmentId
         },
         {
-          $set: updateFields
+          $set: indexedUpdateFields
         },
         {
           arrayFilters: [
             { "med._id": medicalDetailId },
             { "treat._id": treatmentId },
-            { "group": parseInt(groupIndex) }, // Fix: Use the actual group index instead of just checking if it exists
             { "daily._id": dailyTreatmentId }
           ],
           new: true
@@ -760,7 +833,7 @@ router.patch(
         {
           $project: {
             groupTreatment: { 
-              $arrayElemAt: ["$medicalDetails.treatmentPlanning.groupTreatmentDetails", parseInt(groupIndex)]
+              $arrayElemAt: ["$medicalDetails.treatmentPlanning.groupTreatmentDetails", { $literal: Number(groupIndex) }]
             }
           }
         }
@@ -773,6 +846,8 @@ router.patch(
         const totalRemainingAmount = Math.round((totalTreatmentAmount - totalPaidAmount) * 100) / 100;
 
         // Update the group treatment totals
+        // For group treatments, we need to use the array index directly in the field path
+        const groupIndexNum = Number(groupIndex);
         await Patient.updateOne(
           {
             _id: patientId,
@@ -781,9 +856,9 @@ router.patch(
           },
           {
             $set: {
-              [`medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.${groupIndex}.totalTreatmentAmount`]: totalTreatmentAmount,
-              [`medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.${groupIndex}.totalPaidAmount`]: totalPaidAmount,
-              [`medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.${groupIndex}.totalRemainingAmount`]: totalRemainingAmount
+              [`medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.${groupIndexNum}.totalTreatmentAmount`]: totalTreatmentAmount,
+              [`medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.${groupIndexNum}.totalPaidAmount`]: totalPaidAmount,
+              [`medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.${groupIndexNum}.totalRemainingAmount`]: totalRemainingAmount
             }
           },
           {
@@ -867,10 +942,53 @@ router.patch(
       // Generate invoice for the group payment update
       try {
         const fullPatientData = await Patient.findById(patientId).populate("medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatedByDoctor", "name");
+        if (!fullPatientData) {
+          return res.status(404).json({
+            success: false,
+            message: "Patient not found for invoice generation"
+          });
+        }
+        
         const medicalDetail = fullPatientData.medicalDetails.find(md => md._id.toString() === medicalDetailId);
+        if (!medicalDetail) {
+          return res.status(404).json({
+            success: false,
+            message: "Medical detail not found for invoice generation"
+          });
+        }
+        
         const treatment = medicalDetail.treatmentPlanning.find(t => t._id.toString() === treatmentId);
-        const groupTreatment = treatment.groupTreatmentDetails[parseInt(groupIndex)];
+        if (!treatment) {
+          return res.status(404).json({
+            success: false,
+            message: "Treatment not found for invoice generation"
+          });
+        }
+        
+        // Validate groupIndex is a valid number
+        const groupIndexNum = Number(groupIndex);
+        if (isNaN(groupIndexNum)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid group index for invoice generation"
+          });
+        }
+        
+        const groupTreatment = treatment.groupTreatmentDetails[groupIndexNum];
+        if (!groupTreatment) {
+          return res.status(404).json({
+            success: false,
+            message: "Group treatment not found for invoice generation"
+          });
+        }
+        
         const dailyTreatment = groupTreatment.dailyTreatments.find(d => d._id.toString() === dailyTreatmentId);
+        if (!dailyTreatment) {
+          return res.status(404).json({
+            success: false,
+            message: "Daily treatment not found for invoice generation"
+          });
+        }
         
         const treatmentDetails = {
           procedure: groupTreatment.procedure || dailyTreatment.procedure || `${groupTreatment.groupName} Treatment`,
@@ -1259,25 +1377,25 @@ router.post("/send-email", async (req, res) => {
     function convertTextToHtml(text) {
       // Check if the input is a multiline string
       if (!text || typeof text !== 'string') return '';
-
-      // Replace section headers with styled headers
-      let html = text
-        .replace(/===== (.*?) =====/g, '<h2>$1</h2><div class="section">')
-        .replace(/\n\n(?=====)/g, '</div>\n\n') // Close section divs before new sections
-        .replace(/\n\n(?!.*?=====)/g, '</div>\n\n'); // Close the last section
-
-      // Process treatment entries
-      html = html.replace(/Treatment #(\d+): (.*?)(?:\n|$)/g, 
+      
+      // Simple HTML conversion - replace newlines with <br> tags
+      let html = text.replace(/\n/g, '<br>');
+      
+      // Convert section headers
+      html = html.replace(/===== (.*?) =====/g, '<h2>$1</h2>');
+      
+      // Convert treatment entries
+      html = html.replace(/Treatment #(\d+): (.*?)(?:<br>|$)/g, 
         '<div class="treatment"><div class="treatment-title">Treatment #$1: $2</div>');
-
-      // Process tooth details
-      html = html.replace(/\s\s- Tooth #(.*?): (.*?)(?:\n|$)/g,
+      
+      // Convert tooth details
+      html = html.replace(/\s\s- Tooth #(.*?): (.*?)(?:<br>|$)/g,
         '<div class="tooth-detail"><strong>Tooth #$1:</strong> $2');
-
-      // Process sessions
-      html = html.replace(/\s\s\s\s(\d+)\. (.*?)(?:\n|$)/g,
+      
+      // Convert sessions
+      html = html.replace(/\s\s\s\s(\d+)\. (.*?)(?:<br>|$)/g,
         '<div class="session"><strong>Session $1:</strong> $2');
-
+      
       // Style various data points
       html = html
         // Format status
@@ -1287,17 +1405,10 @@ router.post("/send-email", async (req, res) => {
         .replace(/(Amount: ₹|Total Amount: ₹|Advance Paid: ₹|Balance: ₹|Remaining: ₹|Paid: ₹)(\d+)/g, 
           '$1<span class="price">$2</span>')
         // Add proper detail formatting
-        .replace(/([A-Za-z\s]+): ([^\n]+)(?:\n|$)/g, 
+        .replace(/([A-Za-z\s]+): ([^<]+)(?:<br>|$)/g, 
           '<div class="detail-row"><span class="detail-label">$1:</span> $2</div>');
-
-      // Additional cleanup - close divs
-      html = html
-        .replace(/(?=\s\s- Tooth #)/g, '</div>') // Close treatment before new tooth
-        .replace(/(?=<\/div>\n\n)/g, '</div>') // Close treatments before section end
-        .replace(/\n\n/g, '\n') // Remove double line breaks
-        .replace(/\n/g, '<br>'); // Convert line breaks to HTML
-
-      // Final wrapping paragraph
+      
+      // Wrap in paragraph
       return `<p>${html}</p>`;
     }
     

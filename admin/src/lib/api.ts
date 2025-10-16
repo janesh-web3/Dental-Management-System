@@ -245,7 +245,7 @@ export const getPatients = async (
   endDate = "",
   followUpFilter = ""
 ) => {
-  let url = `/patient/get-patients?page=${page}&limit=${limit}`;
+  let url = `/patient/get-pagination-patient?page=${page}&limit=${limit}`;
 
   if (search) url += `&search=${search}`;
   if (dateFilter && dateFilter !== "all") url += `&dateFilter=${dateFilter}`;

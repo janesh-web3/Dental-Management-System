@@ -46,6 +46,11 @@ const SMSHistorySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'SMSTemplate'
     },
+    // Reference to the template used (duplicate of templateUsed for consistency)
+    templateId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SMSTemplate'
+    },
     scheduledFor: {
       type: Date
     },
@@ -80,10 +85,19 @@ const SMSHistorySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'PatientGroup'
     },
+    // Reference to a patient visit if linked to a doctor visit
+    visitReference: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Patient'
+    },
     // Cost estimation
     estimatedCost: {
       type: Number,
       default: 0
+    },
+    // Group name for display purposes
+    groupName: {
+      type: String
     }
   },
   {

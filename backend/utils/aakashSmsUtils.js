@@ -228,8 +228,11 @@ const sendBulkSMS = async (phoneNumbers, messages) => {
             invalidRecipients
         };
         
+        console.log('Aakash SMS API response data:', JSON.stringify(response.data, null, 2));
+        
         // Process valid messages
         if (response.data.data && response.data.data.valid) {
+            console.log('Processing valid messages:', response.data.data.valid);
             results.validMessages = response.data.data.valid.map(result => ({
                 messageId: result.id,
                 status: result.status,
@@ -238,16 +241,19 @@ const sendBulkSMS = async (phoneNumbers, messages) => {
                 network: result.network
             }));
             results.totalSent = results.validMessages.length;
+            console.log('Total valid messages:', results.totalSent);
         }
         
         // Process invalid messages
         if (response.data.data && response.data.data.invalid) {
+            console.log('Processing invalid messages:', response.data.data.invalid);
             results.invalidMessages = response.data.data.invalid.map(result => ({
                 recipient: result.mobile,
                 status: result.status,
                 reason: result.network
             }));
             results.totalFailed = results.invalidMessages.length;
+            console.log('Total invalid messages:', results.totalFailed);
         }
         
         return results;

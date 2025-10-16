@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { crudRequest } from '@/lib/api';
 import { toast } from 'react-toastify';
 import {
@@ -45,6 +46,43 @@ interface SMSTemplate {
   totalSent?: number;
 }
 
+interface TemplateGroup {
+  _id: string;
+  templateId: string;
+  groupId: {
+    _id: string;
+    name: string;
+    patientCount: number;
+  };
+  sendDate: string;
+  sentBy: {
+    _id: string;
+    name: string;
+  };
+  patientCount: number;
+}
+
+interface TemplatePatient {
+  _id: string;
+  recipient: string;
+  message: string;
+  status: string;
+  createdAt: string;
+  patient: {
+    _id: string;
+    personalDetails: {
+      name: string;
+      contactNumber: string;
+    };
+    lastVisitDate?: string;
+  };
+  groupId: {
+    _id: string;
+    name: string;
+  };
+  lastVisitDate?: string;
+}
+
 const TEMPLATE_CATEGORIES = [
   'Appointment',
   'Reminder',
@@ -71,6 +109,10 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<SMSTemplate | null>(null);
+  const [templateGroups, setTemplateGroups] = useState<TemplateGroup[]>([]);
+  const [templatePatients, setTemplatePatients] = useState<TemplatePatient[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [loadingPatients, setLoadingPatients] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -303,6 +345,36 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
     return selectedTemplate.content;
   };
 
+  const fetchTemplateGroups = async (templateId: string) => {
+    try {
+      setLoadingGroups(true);
+      const response = await crudRequest<any>('GET', `/sms/template/${templateId}/groups`);
+      if (response?.success && response?.data) {
+        setTemplateGroups(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching template groups:', error);
+      toast.error('Failed to fetch template groups');
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
+  const fetchTemplatePatients = async (templateId: string) => {
+    try {
+      setLoadingPatients(true);
+      const response = await crudRequest<any>('GET', `/sms/template/${templateId}/patients`);
+      if (response?.success && response?.data?.history) {
+        setTemplatePatients(response.data.history);
+      }
+    } catch (error) {
+      console.error('Error fetching template patients:', error);
+      toast.error('Failed to fetch template patients');
+    } finally {
+      setLoadingPatients(false);
+    }
+  };
+
   const exportTemplates = () => {
     const dataStr = JSON.stringify(templates, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
@@ -463,6 +535,8 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
                           size="sm"
                           onClick={() => {
                             setSelectedTemplate(template);
+                            fetchTemplateGroups(template._id);
+                            fetchTemplatePatients(template._id);
                             setIsPreviewDialogOpen(true);
                           }}
                         >
@@ -787,56 +861,167 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
 
       {/* Preview Dialog */}
       <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Template Preview</DialogTitle>
+            <DialogTitle>Template Details</DialogTitle>
             <DialogDescription>
-              See how your template will look when sent
+              View template information and engagement metrics
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Message Preview</Label>
-              <div className="border rounded-lg p-3 bg-muted text-sm">
-                {selectedTemplate?.content}
-              </div>
-            </div>
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>{placeholderWarningMessage}</strong>
-              </AlertDescription>
-            </Alert>
-            <div className="grid grid-cols-2 gap-4 text-xs">
+          <Tabs defaultValue="preview" className="w-full">
+            <TabsList>
+              <TabsTrigger value="preview">Message Preview</TabsTrigger>
+              <TabsTrigger value="groups">Groups Sent To</TabsTrigger>
+              <TabsTrigger value="patients">Patients Sent</TabsTrigger>
+            </TabsList>
+            <TabsContent value="preview" className="space-y-4 py-4">
               <div>
-                <Label>Template Info:</Label>
-                <div className="space-y-1 mt-2">
-                  <div>Category: <Badge variant="outline">{selectedTemplate?.category}</Badge></div>
-                  <div>Length: {selectedTemplate?.content.length || 0} chars</div>
-                  <div>SMS Units: {Math.ceil((selectedTemplate?.content.length || 0) / 160)}</div>
-                  {selectedTemplate?.isAutoTriggered && (
-                    <div className="mt-2">
-                      <div>Auto-trigger: <Badge variant="default">Enabled</Badge></div>
-                      <div>Event: <Badge variant="secondary">{selectedTemplate?.triggerEvent}</Badge></div>
-                      <div>Status: 
-                        {selectedTemplate?.isActive !== false ? (
-                          <Badge variant="default" className="ml-1">Active</Badge>
-                        ) : (
-                          <Badge variant="secondary" className="ml-1">Inactive</Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {selectedTemplate?.lastUsed && (
-                    <div>Last Used: {new Date(selectedTemplate.lastUsed).toLocaleDateString()}</div>
-                  )}
-                  {selectedTemplate?.totalSent !== undefined && (
-                    <div>Total Sent: {selectedTemplate.totalSent}</div>
-                  )}
+                <Label>Message Preview</Label>
+                <div className="border rounded-lg p-3 bg-muted text-sm">
+                  {selectedTemplate?.content}
                 </div>
               </div>
-            </div>
-          </div>
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>{placeholderWarningMessage}</strong>
+                </AlertDescription>
+              </Alert>
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <Label>Template Info:</Label>
+                  <div className="space-y-1 mt-2">
+                    <div>Category: <Badge variant="outline">{selectedTemplate?.category}</Badge></div>
+                    <div>Length: {selectedTemplate?.content.length || 0} chars</div>
+                    <div>SMS Units: {Math.ceil((selectedTemplate?.content.length || 0) / 160)}</div>
+                    {selectedTemplate?.isAutoTriggered && (
+                      <div className="mt-2">
+                        <div>Auto-trigger: <Badge variant="default">Enabled</Badge></div>
+                        <div>Event: <Badge variant="secondary">{selectedTemplate?.triggerEvent}</Badge></div>
+                        <div>Status: 
+                          {selectedTemplate?.isActive !== false ? (
+                            <Badge variant="default" className="ml-1">Active</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="ml-1">Inactive</Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {selectedTemplate?.lastUsed && (
+                      <div>Last Used: {new Date(selectedTemplate.lastUsed).toLocaleDateString()}</div>
+                    )}
+                    {selectedTemplate?.totalSent !== undefined && (
+                      <div>Total Sent: {selectedTemplate.totalSent}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+            <TabsContent value="groups" className="space-y-4 py-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">Groups Sent To</h3>
+                <Button variant="outline" size="sm" onClick={() => selectedTemplate && fetchTemplateGroups(selectedTemplate._id)}>
+                  Refresh
+                </Button>
+              </div>
+              {loadingGroups ? (
+                <div className="text-center py-4">Loading groups...</div>
+              ) : templateGroups.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  This template has not been sent to any groups yet.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Group Name</TableHead>
+                      <TableHead>Patients Count</TableHead>
+                      <TableHead>Date Sent</TableHead>
+                      <TableHead>Sent By</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {templateGroups.map((group) => (
+                      <TableRow key={group._id}>
+                        <TableCell className="font-medium cursor-pointer text-blue-600 hover:underline" 
+                          onClick={() => {
+                            // TODO: Implement navigation to view group members
+                            console.log(`Viewing members of group: ${group.groupId.name}`);
+                          }}>
+                          {group.groupId.name}
+                        </TableCell>
+                        <TableCell>{group.patientCount}</TableCell>
+                        <TableCell>{new Date(group.sendDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{group.sentBy.name}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </TabsContent>
+            <TabsContent value="patients" className="space-y-4 py-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">Patients Sent</h3>
+                <Button variant="outline" size="sm" onClick={() => selectedTemplate && fetchTemplatePatients(selectedTemplate._id)}>
+                  Refresh
+                </Button>
+              </div>
+              {loadingPatients ? (
+                <div className="text-center py-4">Loading patients...</div>
+              ) : templatePatients.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  This template has not been sent to any patients yet.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Patient Name</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Last Visit Date</TableHead>
+                      <TableHead>Group</TableHead>
+                      <TableHead>Date Sent</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {templatePatients.map((patient) => (
+                      <TableRow key={patient._id}>
+                        <TableCell className="font-medium">
+                          {patient.patient?.personalDetails?.name || 'Unknown'}
+                          {!patient.lastVisitDate && patient.createdAt && (
+                            <Badge variant="destructive" className="ml-2">Not Visited</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>{patient.patient?.personalDetails?.contactNumber || patient.recipient}</TableCell>
+                        <TableCell>
+                          {patient.lastVisitDate 
+                            ? new Date(patient.lastVisitDate).toLocaleDateString()
+                            : 'No visit recorded'}
+                        </TableCell>
+                        <TableCell>{patient.groupId?.name || 'N/A'}</TableCell>
+                        <TableCell>{new Date(patient.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge variant={patient.status === 'sent' ? 'default' : patient.status === 'failed' ? 'destructive' : 'secondary'}>
+                            {patient.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="outline" size="sm" onClick={() => {
+                            // Navigate to patient profile
+                            window.location.hash = `#/patient/${patient.patient?._id || 'unknown'}`;
+                          }}>
+                            View Profile
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </TabsContent>
+          </Tabs>
           <DialogFooter>
             <Button onClick={() => setIsPreviewDialogOpen(false)}>
               Close

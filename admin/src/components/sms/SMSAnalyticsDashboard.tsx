@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { crudRequest } from '@/lib/api';
 import { toast } from 'react-toastify';
@@ -19,33 +19,7 @@ import {
   Cell
 } from 'recharts';
 
-interface TemplateAnalytics {
-  template: {
-    _id: string;
-    name: string;
-    category: string;
-    totalSent: number;
-  };
-  totalSends: number;
-  successfulSends: number;
-  groupsSentTo: number;
-  uniquePatients: number;
-  recentSends: Array<{
-    _id: string;
-    createdAt: string;
-    status: string;
-    patient: {
-      personalDetails: {
-        name: string;
-      };
-    };
-  }>;
-  groupDistribution: Array<{
-    _id: string;
-    count: number;
-    patientCount: number;
-  }>;
-}
+// Removed unused interface TemplateAnalytics
 
 interface TemplateGroupDistribution {
   name: string;
@@ -62,7 +36,7 @@ interface VisitStatusSummary {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 export const SMSAnalyticsDashboard: React.FC = () => {
-  const [analytics, setAnalytics] = useState<TemplateAnalytics[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [visitSummary, setVisitSummary] = useState<VisitStatusSummary>({
     totalSent: 0,
@@ -80,7 +54,7 @@ export const SMSAnalyticsDashboard: React.FC = () => {
       setLoading(true);
       // This would need to be implemented in the backend
       // For now, we'll simulate the data
-      const response = await crudRequest<any>('GET', '/sms/analytics');
+      await crudRequest<any>('GET', '/sms/analytics');
       
       // Calculate visit summary
       const summary: VisitStatusSummary = {
@@ -204,7 +178,7 @@ export const SMSAnalyticsDashboard: React.FC = () => {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {visitData.map((entry, index) => (
+                  {visitData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

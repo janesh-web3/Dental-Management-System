@@ -13,7 +13,6 @@ import {
   Users,
   Activity,
   TrendingUp,
-  Calendar,
   MessageSquare
 } from 'lucide-react';
 
@@ -330,14 +329,14 @@ export const FullScreenPopupDemo: React.FC = () => {
               // Simulate refresh
               await new Promise(resolve => setTimeout(resolve, 1000));
             },
-            icon: <RefreshCw className="h-4 w-4" />,
-            loading: true
+            // icon: <RefreshCw className="h-4 w-4" />, // Removed unsupported property
+            // loading: true // Removed unsupported property
           },
           {
             label: 'Close',
             variant: 'default',
-            onClick: () => setIsSystemCheck(false),
-            icon: <CheckCircle2 className="h-4 w-4" />
+            onClick: () => setIsSystemCheck(false)
+            // icon: <CheckCircle2 className="h-4 w-4" /> // Removed unsupported property
           }
         ]}
       />
@@ -353,8 +352,8 @@ export const FullScreenPopupDemo: React.FC = () => {
           {
             label: 'Mark All Read',
             variant: 'outline',
-            onClick: () => console.log('Marking all as read'),
-            icon: <CheckCircle2 className="h-4 w-4" />
+            onClick: () => console.log('Marking all as read')
+            // icon: <CheckCircle2 className="h-4 w-4" /> // Removed unsupported property
           },
           {
             label: 'Close',
@@ -378,9 +377,9 @@ export const FullScreenPopupDemo: React.FC = () => {
             onClick: async () => {
               // Simulate save
               await new Promise(resolve => setTimeout(resolve, 1000));
-            },
-            icon: <CheckCircle2 className="h-4 w-4" />,
-            loading: true
+            }
+            // icon: <CheckCircle2 className="h-4 w-4" />, // Removed unsupported property
+            // loading: true // Removed unsupported property
           },
           {
             label: 'Cancel',

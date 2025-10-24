@@ -304,7 +304,7 @@ export default function IncomePage() {
                     <TableCell className="font-medium">{income.title}</TableCell>
                     <TableCell>{income.category}</TableCell>
                     <TableCell>{income.paymentMethod || "Cash"}</TableCell>
-                    <TableCell>{formatDate(income.date)}</TableCell>
+                    <TableCell>{formatDate(income.date.toString())}</TableCell>
                     <TableCell className="text-right font-medium">
                       Rs.{income.amount.toFixed(2)}
                     </TableCell>

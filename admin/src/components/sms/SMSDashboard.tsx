@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "react-toastify";
 import {
@@ -28,10 +28,8 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  AlertCircle,
   Calendar,
   Search,
-  Filter,
   Download,
   RefreshCw,
   X
@@ -93,10 +91,7 @@ export const SMSDashboard: React.FC = () => {
   const [templateUsage, setTemplateUsage] = useState<TemplateUsage[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<{ from: string; to: string }>({
-    from: '',
-    to: ''
-  });
+
 
   useEffect(() => {
     fetchDashboardData();
@@ -312,7 +307,7 @@ export const SMSDashboard: React.FC = () => {
                   dataKey="value"
                   label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                 >
-                  {stats.statusBreakdown.map((entry, index) => (
+                  {stats.statusBreakdown.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

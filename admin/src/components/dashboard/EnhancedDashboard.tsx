@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,28 +15,15 @@ import {
   Calendar as CalendarIcon,
   Users,
   DollarSign,
-  TrendingUp,
-  TrendingDown,
-  Activity,
-  CreditCard,
-  Phone,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  UserPlus,
-  Receipt,
-  PieChart,
-  BarChart3,
   Download,
   RefreshCw,
   Filter,
   Eye,
-  FileText,
   MessageSquare,
-  Stethoscope,
-  Calendar as CalendarView
+  Calendar as CalendarView,
+  AlertCircle
 } from 'lucide-react';
-import { Bar, Line, Pie, Doughnut } from 'react-chartjs-2';
+import { Bar, Line, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -560,7 +547,7 @@ export const EnhancedDashboard: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {dashboardData.breakdown.treatmentTypes.slice(0, 5).map((treatment, index) => (
+                  {dashboardData.breakdown.treatmentTypes.slice(0, 5).map((treatment) => (
                     <div key={treatment.treatment} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-2 h-2 rounded-full bg-primary" />

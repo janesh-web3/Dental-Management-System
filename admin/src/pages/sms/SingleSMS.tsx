@@ -48,7 +48,7 @@ export default function SingleSMSPage() {
   const [message, setMessage] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [isSending, setIsSending] = useState(false);
-  const [isScheduling, setIsScheduling] = useState(false);
+
   const [templates, setTemplates] = useState<SMSTemplate[]>([]);
   const [isSchedulerOpen, setIsSchedulerOpen] = useState(false);
 

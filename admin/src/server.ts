@@ -1,6 +1,6 @@
 
 // local 
-export const server = "http://localhost:8080/api";
+export const server = "http://localhost:5000/api";
 export const  dentalName = "Crown Dental Clinic";
 export const socket = "http://localhost:8080";
 export const dentalAddress = "Taranagar, Dhangadhi, Nepal"; 

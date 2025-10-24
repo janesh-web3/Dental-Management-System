@@ -71,7 +71,33 @@ router.get("/get-pagination-doctor", authenticateUser, authorizePermission('doct
 router.get("/get-doctor", authenticateUser, authorizePermission('doctors', 'read'), getDoctor);
 router.delete("/delete-doctor/:id", authenticateUser, authorizePermission('doctors', 'delete'), deleteDoctor);
 router.put("/update-doctor/:id", authenticateUser, authorizePermission('doctors', 'update'), upload.single('image'), updateDoctor);
-router.put("/update-password/:id", authenticateUser, authorizePermission('doctors', 'update'), updateDoctorPassword);
+// Allow both doctors (updating their own password) and admins (updating any doctor's password)
+router.put("/update-password/:id", async (req, res, next) => {
+  // Try to authenticate as doctor first
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token) {
+    try {
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key");
+
+      // If it's a doctor token and they're updating their own password
+      if (decoded.role === 'doctor' && decoded.id === req.params.id) {
+        return protectDoctorRoute(req, res, () => {
+          updateDoctorPassword(req, res);
+        });
+      }
+    } catch (err) {
+      // Token verification failed, fall through to admin auth
+    }
+  }
+
+  // Otherwise, require admin authentication
+  authenticateUser(req, res, () => {
+    authorizePermission('doctors', 'update')(req, res, () => {
+      updateDoctorPassword(req, res);
+    });
+  });
+});
 
 router.post("/doctors/:id/reviews", authenticateUser, authorizePermission('doctors', 'update'), async (req, res) => {
   try {

@@ -540,7 +540,7 @@ export function ViewPatientDrawer({
         throw new Error("Failed to update patient status");
       }
 
-      const result = await response.json();
+      await response.json();
 
       // Update local patient data
       setLocalPatient(prev => ({

@@ -106,7 +106,7 @@ app.use("/api/patient-groups", patientGroupRouter);
 app.use("/api/sms-dashboard", smsDashboardRouter);
 app.use("/api/sms-schedule", smsScheduleRouter);
 
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 5000;
 
 server.listen(process.env.PORT, () => {
   console.log(`Server is running on port ${process.env.PORT}`);

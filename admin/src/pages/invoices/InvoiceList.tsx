@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { 
   Search, 
-  Mail,
   Download,
   Filter,
   Plus,
@@ -422,35 +421,7 @@ const InvoiceList: React.FC = () => {
     }
   };
 
-  const handleSendEmail = async (invoiceId: string, invoiceNumber: string) => {
-    const recipientEmail = prompt(`Enter email address to send invoice ${invoiceNumber}:`);
-    
-    if (!recipientEmail) {
-      return; // User cancelled
-    }
 
-    if (!recipientEmail.includes('@')) {
-      alert('Please enter a valid email address');
-      return;
-    }
-
-    try {
-      const response = await crudRequest<any>("POST", `/invoices/${invoiceId}/email`, {
-        recipientEmail,
-        subject: `Invoice ${invoiceNumber}`,
-        message: `Please find attached your invoice ${invoiceNumber}.`
-      });
-
-      if (response.success) {
-        alert(`Invoice sent successfully to ${recipientEmail}`);
-      } else {
-        throw new Error(response.error || 'Failed to send email');
-      }
-    } catch (error: any) {
-      console.error('Error sending invoice email:', error);
-      alert(`Failed to send email: ${error.message || 'Unknown error'}`);
-    }
-  };
 
   const totalPages = Math.ceil(totalInvoices / rowsPerPage);
 

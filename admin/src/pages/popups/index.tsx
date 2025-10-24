@@ -1072,8 +1072,7 @@ const PopupManagement: React.FC = () => {
             label: 'Refresh Data',
             variant: 'outline',
             onClick: handleFullScreenCheck,
-            icon: <RefreshCw className="h-4 w-4" />,
-            loading: loadingReminderAction
+            // loading: loadingReminderAction // Removed unsupported property
           },
           {
             label: 'Close Dashboard',

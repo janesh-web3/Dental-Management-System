@@ -626,7 +626,6 @@ const UpdatePatientModal: React.FC<UpdatePatientModalProps> = ({
                     notes: dt.notes || "",
                     procedure: dt.procedure || "",
                     isCompleted: dt.isCompleted || false,
-                    paymentMethod: dt.paymentMethod || 'Cash',
                   })) || []
                 };
               }) || [];

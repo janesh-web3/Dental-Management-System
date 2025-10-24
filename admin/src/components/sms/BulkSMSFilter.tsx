@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Filter, X } from "lucide-react";
 import { format } from 'date-fns';
 import { cn } from "@/lib/utils";
-import { useQuery } from '@tanstack/react-query';
+
 import { crudRequest } from '@/lib/api';
 
 interface DateRange {

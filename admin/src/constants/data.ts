@@ -116,7 +116,7 @@ export const navGroups: NavGroup[] = [
       {
         title: "Popups",
         href: "/popups",
-        icon: "notification",
+        icon: "bell",
         label: "Popup Notifications",
         notificationEnabled: false,
       },

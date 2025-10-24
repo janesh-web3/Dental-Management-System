@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,13 +16,11 @@ import {
   Edit,
   Trash2,
   Eye,
-  MessageSquare,
   Search,
   Filter,
   X,
   Copy,
   Download,
-  Upload,
   AlertTriangle
 } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -125,18 +123,7 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
     isActive: true
   });
 
-  const [previewData, setPreviewData] = useState({
-    patientName: 'John Doe',
-    clinicName: 'Dental Clinic',
-    doctorName: 'Dr. Smith',
-    appointmentDate: '2024-01-15',
-    appointmentTime: '2:00 PM',
-    amount: '5000',
-    dueDate: '2024-01-20',
-    contactNumber: '9876543210',
-    treatmentType: 'Root Canal',
-    followUpDate: '2024-01-22'
-  });
+
 
   // State for validation errors
   const [validationError, setValidationError] = useState('');
@@ -338,12 +325,7 @@ export const EnhancedSMSTemplateManager: React.FC = () => {
     setIsCreateDialogOpen(true);
   };
 
-  const renderPreview = () => {
-    if (!selectedTemplate) return '';
 
-    // In Plain SMS Mode, we show the message exactly as it is without any replacements
-    return selectedTemplate.content;
-  };
 
   const fetchTemplateGroups = async (templateId: string) => {
     try {

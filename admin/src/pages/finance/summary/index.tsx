@@ -298,7 +298,7 @@ export default function FinancialSummaryPage() {
                           <TableRow key={income._id}>
                             <TableCell className="font-medium">{income.title}</TableCell>
                             <TableCell>{income.category}</TableCell>
-                            <TableCell>{formatDate(income.date)}</TableCell>
+                            <TableCell>{formatDate(income.date.toString())}</TableCell>
                             <TableCell className="text-right">Rs. {income.amount.toLocaleString()}</TableCell>
                           </TableRow>
                         ))
@@ -395,7 +395,7 @@ export default function FinancialSummaryPage() {
                           <TableRow key={expense._id}>
                             <TableCell className="font-medium">{expense.title}</TableCell>
                             <TableCell>{expense.category}</TableCell>
-                            <TableCell>{formatDate(expense.date)}</TableCell>
+                            <TableCell>{formatDate(expense.date.toString())}</TableCell>
                             <TableCell className="text-right">Rs. {expense.amount.toLocaleString()}</TableCell>
                           </TableRow>
                         ))

@@ -13,7 +13,7 @@ interface PopupDisplayProps {
 }
 
 export const PopupDisplay: React.FC<PopupDisplayProps> = ({ className }) => {
-  const [popups, setPopups] = useState<Popup[]>([]);
+  const [, setPopups] = useState<Popup[]>([]);
   const [currentModal, setCurrentModal] = useState<Popup | null>(null);
   const [bannerPopup, setBannerPopup] = useState<Popup | null>(null);
   const [toastPopups, setToastPopups] = useState<Popup[]>([]);

@@ -1,9 +1,8 @@
-import { useState } from "react";
+// Removed unused useState import
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { toast } from "react-toastify";
+
 import { 
   MessageSquare, 
   Users, 
@@ -19,7 +18,7 @@ import SMSDashboard from "@/components/sms/SMSDashboard";
 import SMSAnalyticsDashboard from "@/components/sms/SMSAnalyticsDashboard";
 
 const SMS = () => {
-  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+
 
   const navigate = useNavigate();
 

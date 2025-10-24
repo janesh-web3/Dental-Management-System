@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { crudRequest } from '@/lib/api';
+
 import {
   getPatients,
   getSMSTemplates,
@@ -23,7 +23,7 @@ import {
 import { toast } from 'react-toastify';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { cn } from "@/lib/utils";
+
 import {
   Send,
   Users,
@@ -147,7 +147,9 @@ export const EnhancedBulkSMS: React.FC = () => {
   const [templates, setTemplates] = useState<SMSTemplate[]>([]);
   const [campaigns, setCampaigns] = useState<SMSCampaign[]>([]);
   const [loading, setLoading] = useState(false);
-  const [sendingProgress, setSendingProgress] = useState(0);
+  const [, setSendingProgress] = useState(0);
+  const [, setIsPreviewDialogOpen] = useState(false);
+
 
   // Form state
   const [message, setMessage] = useState('');
@@ -173,16 +175,16 @@ export const EnhancedBulkSMS: React.FC = () => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Dialogs
-  const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
+
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
 
   // Fetch data
-  const { data: patientsData, isLoading: patientsLoading, refetch: refetchPatients } = useQuery<PatientsApiResponse>({
+  const { data: patientsData, isLoading: patientsLoading } = useQuery<PatientsApiResponse>({
     queryKey: ['patients-bulk-sms'],
     queryFn: fetchPatients,
   });
 
-  const { data: templatesData, isLoading: templatesLoading, refetch: refetchTemplates } = useQuery<TemplatesApiResponse>({
+  const { data: templatesData } = useQuery<TemplatesApiResponse>({
     queryKey: ['sms-templates'],
     queryFn: fetchTemplates,
   });
@@ -332,7 +334,7 @@ export const EnhancedBulkSMS: React.FC = () => {
       setLoading(true);
       setSendingProgress(0);
 
-      const response = await sendBulkSMS({
+      await sendBulkSMS({
         patientIds: selectedPatients,
         message,
         campaignName: campaignNameToUse,

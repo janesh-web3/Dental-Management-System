@@ -8,7 +8,7 @@ const initSocket = (server) => {
     cors: {
       origin: [
         "http://localhost:5173",
-        // "http://localhost:5174",
+        "http://localhost:5174",
         // "https://order.crownagi.com",
         // "https://dms.crownagi.com",
         // "https://admin.om-shreenagar-dental-clinic.com",

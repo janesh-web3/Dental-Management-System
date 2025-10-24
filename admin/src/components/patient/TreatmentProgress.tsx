@@ -29,13 +29,82 @@ export function TreatmentProgress({
 
   if (compact) {
     return (
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
-          <span>Treatment Progress</span>
-          <span>{Math.round(progressPercentage)}%</span>
-        </div>
-        <Progress value={progressPercentage} className="h-2" />
-      </div>
+      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
+        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
+          <CardTitle className="text-sm flex items-center gap-2 text-gray-800 dark:text-gray-100">
+            <div className="p-1 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+              <PieChart className="h-3.5 w-3.5" />
+            </div>
+            <span className="text-sm font-semibold">Progress Overview</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-2 space-y-3">
+          {/* Treatment Progress */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-medium text-gray-700 dark:text-gray-300">Treatment Progress</span>
+              <span className="font-semibold text-indigo-600 dark:text-indigo-400">{Math.round(progressPercentage)}%</span>
+            </div>
+            <Progress value={progressPercentage} className="h-2" />
+            <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400">
+              <span className="flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-green-600" />
+                {completedTreatments} done
+              </span>
+              <span className="flex items-center gap-1">
+                <Circle className="w-3 h-3 text-orange-600" />
+                {treatments.length - completedTreatments} pending
+              </span>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Payment Progress */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-medium text-gray-700 dark:text-gray-300">Payment Progress</span>
+              <span className="font-semibold text-blue-600 dark:text-blue-400">{Math.round(paymentPercentage)}%</span>
+            </div>
+            <Progress value={paymentPercentage} className="h-2 [&>div]:bg-blue-500" />
+            <div className="grid grid-cols-3 gap-1 text-xs">
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-1 rounded text-center">
+                <p className="text-blue-600 dark:text-blue-400 font-medium">
+                  {new Intl.NumberFormat('en-IN', {
+                    style: 'currency',
+                    currency: 'NPR',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                  }).format(totalAmount)}
+                </p>
+                <p className="text-gray-600 dark:text-gray-400">Total</p>
+              </div>
+              <div className="bg-green-50 dark:bg-green-900/20 p-1 rounded text-center">
+                <p className="text-green-600 dark:text-green-400 font-medium">
+                  {new Intl.NumberFormat('en-IN', {
+                    style: 'currency',
+                    currency: 'NPR',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                  }).format(paidAmount)}
+                </p>
+                <p className="text-gray-600 dark:text-gray-400">Paid</p>
+              </div>
+              <div className="bg-orange-50 dark:bg-orange-900/20 p-1 rounded text-center">
+                <p className="text-orange-600 dark:text-orange-400 font-medium">
+                  {new Intl.NumberFormat('en-IN', {
+                    style: 'currency',
+                    currency: 'NPR',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                  }).format(remainingAmount !== undefined ? remainingAmount : totalAmount - paidAmount)}
+                </p>
+                <p className="text-gray-600 dark:text-gray-400">Due</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 

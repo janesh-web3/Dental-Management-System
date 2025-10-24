@@ -429,18 +429,6 @@ export function ViewPatientDrawer({
   // Calculate remaining amount
   const remainingAmount = totalAmount - paidAmount;
 
-  console.log("Treatment totals breakdown:", {
-    selectedTeethTotalAmount,
-    selectedTeethPaidAmount,
-    groupTreatmentTotalAmount,
-    groupTreatmentPaidAmount,
-    servicePaymentsTotalAmount,
-    totalAmount,
-    paidAmount,
-    remainingAmount,
-    dailyTreatmentsCount: allDailyTreatments.length,
-  });
-
   // Get all documents for comparison
   const allTreatmentDocuments = localPatient.medicalDetails.flatMap((record) =>
     record.treatmentPlanning.flatMap(
@@ -1391,18 +1379,12 @@ export function ViewPatientDrawer({
           <div className="flex-1 overflow-y-auto custom-scrollbar px-2 py-1">
             <Tabs defaultValue="overview" className="space-y-2">
               <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm py-1 -mx-2 px-2 border-b border-gray-100 dark:border-gray-800">
-                <TabsList className="w-full h-auto grid grid-cols-6 bg-gray-100 dark:bg-gray-800/50 p-0.5 rounded-md gap-0.5">
+                <TabsList className="w-full h-auto grid grid-cols-5 bg-gray-100 dark:bg-gray-800/50 p-0.5 rounded-md gap-0.5">
                   <TabsTrigger
                     value="overview"
                     className="text-xs whitespace-nowrap px-1 py-1.5"
                   >
                     Overview
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="medical"
-                    className="text-xs whitespace-nowrap px-1 py-1.5"
-                  >
-                    Medical
                   </TabsTrigger>
                   <TabsTrigger
                     value="timeline"
@@ -1626,30 +1608,441 @@ export function ViewPatientDrawer({
                       </Card>
                     </motion.div>
 
-                    {/* Treatment Progress */}
+                    {/* Patient Group & Check-up Date */}
+                    {localPatient.medicalDetails.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.2 }}
+                      >
+                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
+                          <CardContent className="p-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              {localPatient.medicalDetails[0] && (
+                                <div className="border border-green-200 dark:border-green-800/50 bg-green-50 dark:bg-green-900/10 p-2 rounded-md">
+                                  <div className="flex items-center gap-1 mb-1">
+                                    <Users className="w-3 h-3 text-green-600 dark:text-green-400" />
+                                    <h4 className="text-xs font-medium text-green-800 dark:text-green-200">Patient Group</h4>
+                                  </div>
+                                  <p className="text-xs text-gray-700 dark:text-gray-300 font-semibold">
+                                    {localPatient.medicalDetails[0].group || "General"}
+                                  </p>
+                                </div>
+                              )}
+                              {localPatient.personalDetails.checkUpDate && (
+                                <div className="border border-blue-200 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-900/10 p-2 rounded-md">
+                                  <div className="flex items-center gap-1 mb-1">
+                                    <CalendarCheck className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                    <h4 className="text-xs font-medium text-blue-800 dark:text-blue-200">Check-up Date</h4>
+                                  </div>
+                                  <p className="text-xs text-gray-700 dark:text-gray-300">
+                                    {formatSafeDate(localPatient.personalDetails.checkUpDate)}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )}
+
+                    {/* Chief Complaint & Diagnosis */}
+                    {localPatient.medicalDetails.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.25 }}
+                      >
+                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
+                          <CardContent className="p-2 space-y-2">
+                            {localPatient.medicalDetails.map((record, index) => (
+                              <div key={`chief-left-${record._id}`} className="space-y-2">
+                                {record.chiefComplaint && (
+                                  <div className="border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/10 p-2 rounded">
+                                    <div className="flex items-start gap-2">
+                                      <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                                      <div className="flex-1 min-w-0">
+                                        <h4 className="text-xs font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
+                                          Chief Complaint {localPatient.medicalDetails.length > 1 ? `#${index + 1}` : ''}
+                                        </h4>
+                                        <p className="text-xs text-gray-700 dark:text-gray-300">{record.chiefComplaint}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                                {record.diagnosis && (
+                                  <div className="border-l-4 border-l-green-500 bg-green-50 dark:bg-green-900/10 p-2 rounded">
+                                    <div className="flex items-start gap-2">
+                                      <CheckCircle className="w-3.5 h-3.5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                                      <div className="flex-1 min-w-0">
+                                        <h4 className="text-xs font-semibold text-green-800 dark:text-green-200 mb-1">
+                                          Diagnosis {localPatient.medicalDetails.length > 1 ? `#${index + 1}` : ''}
+                                        </h4>
+                                        <p className="text-xs text-gray-700 dark:text-gray-300">{record.diagnosis}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )}
+
+                    {/* Investigation Details */}
+                    {localPatient.medicalDetails.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.3 }}
+                      >
+                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
+                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
+                            <CardTitle className="text-sm flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                              <div className="p-1 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 text-white">
+                                <Microscope className="h-3.5 w-3.5" />
+                              </div>
+                              <span className="text-sm font-semibold">Investigation Results</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-2 space-y-2">
+                            {localPatient.medicalDetails.map((record, index) => (
+                              record.investigation && (
+                                <div key={`investigation-${record._id}`} className="space-y-1.5">
+                                  {index > 0 && <div className="border-t border-gray-200 dark:border-gray-700 pt-2" />}
+
+                                  {record.investigation.blood && (
+                                    <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-200 dark:border-red-800/30">
+                                      <div className="flex items-center gap-1 mb-1">
+                                        <Droplets className="w-3 h-3 text-red-600 dark:text-red-400" />
+                                        <p className="text-xs font-semibold text-red-700 dark:text-red-300">Blood Test</p>
+                                      </div>
+                                      <p className="text-xs text-gray-700 dark:text-gray-300">{record.investigation.blood}</p>
+                                      {record.investigation.bloodTestDate && (
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                          Date: {formatSafeDate(record.investigation.bloodTestDate)}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {record.investigation.xray && (
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-800/30">
+                                      <div className="flex items-center gap-1 mb-1">
+                                        <Scan className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                        <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">X-Ray</p>
+                                      </div>
+                                      <p className="text-xs text-gray-700 dark:text-gray-300">{record.investigation.xray}</p>
+                                      {record.investigation.xrayDate && (
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                          Date: {formatSafeDate(record.investigation.xrayDate)}
+                                        </p>
+                                      )}
+                                      {record.investigation.xrayImages && record.investigation.xrayImages.length > 0 && (
+                                        <div className="mt-1.5 flex flex-wrap gap-1">
+                                          {record.investigation.xrayImages.map((img: any, idx: number) => (
+                                            <a
+                                              key={idx}
+                                              href={img.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
+                                            >
+                                              <ImageIcon className="w-2.5 h-2.5" />
+                                              Image {idx + 1}
+                                            </a>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {record.investigation.otherTests && Array.isArray(record.investigation.otherTests) && record.investigation.otherTests.length > 0 && (
+                                    <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded border border-purple-200 dark:border-purple-800/30">
+                                      <div className="flex items-center gap-1 mb-1">
+                                        <ClipboardList className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                                        <p className="text-xs font-semibold text-purple-700 dark:text-purple-300">Other Tests</p>
+                                      </div>
+                                      <div className="space-y-1">
+                                        {record.investigation.otherTests.map((test: any, idx: number) => (
+                                          <div key={idx} className="bg-white dark:bg-gray-800 p-1.5 rounded">
+                                            <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{test.name}</p>
+                                            {test.results && (
+                                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{test.results}</p>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            ))}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )}
+
+                    {/* Compact Medical Information */}
+                    {localPatient.medicalDetails.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.3 }}
+                      >
+                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
+                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-3">
+                            <CardTitle className="text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                              <div className="p-1.5 rounded-lg bg-gradient-to-br from-red-500 to-pink-600 text-white">
+                                <Heart className="h-4 w-4" />
+                              </div>
+                              <span className="bg-gradient-to-r from-red-600 to-pink-600 dark:from-red-400 dark:to-pink-400 bg-clip-text text-transparent font-semibold">
+                                Medical History
+                              </span>
+                              <Badge className="ml-auto bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-xs px-2 py-1">
+                                {localPatient.medicalDetails.length} Record{localPatient.medicalDetails.length > 1 ? 's' : ''}
+                              </Badge>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
+                            <CardTitle className="text-sm flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                              <div className="p-1 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
+                                <ClipboardList className="h-3.5 w-3.5" />
+                              </div>
+                              <span className="text-sm font-semibold">Treatment Plans</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-2 space-y-2">
+                            {localPatient.medicalDetails.map((record, index) => (
+                              <div key={record._id}>
+                                {index > 0 && <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mb-2" />}
+
+                                {/* Treatment Planning */}
+                                {record.treatmentPlanning && record.treatmentPlanning.length > 0 && (
+                                  <div className="space-y-3 pt-2">
+                                    {record.treatmentPlanning.map((treatment, treatmentIndex) => {
+                                      // Create a map of selected teeth for the dental chart
+                                      const selectedTeethMap: Record<string, any> = {};
+                                      if (treatment.selectedTeethDetails) {
+                                        treatment.selectedTeethDetails.forEach((tooth) => {
+                                          selectedTeethMap[tooth.number] = tooth;
+                                        });
+                                      }
+
+                                      return (
+                                        <div key={treatment._id} className="border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50 dark:bg-indigo-900/10 p-2 rounded-md space-y-2">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1">
+                                              <ClipboardList className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                                              <h4 className="text-xs font-semibold text-indigo-800 dark:text-indigo-200">
+                                                Treatment Plan #{treatmentIndex + 1}
+                                              </h4>
+                                            </div>
+                                            {treatment.isCompleted && (
+                                              <Badge className="bg-green-100 text-green-700 text-xs px-1.5 py-0">
+                                                <CheckCircle className="w-2.5 h-2.5 mr-0.5" />
+                                                Completed
+                                              </Badge>
+                                            )}
+                                          </div>
+
+                                          {/* Dental Chart */}
+                                          {treatment.selectedTeethDetails && treatment.selectedTeethDetails.length > 0 && (
+                                            <div className="bg-white dark:bg-gray-800 p-2 rounded border border-indigo-200 dark:border-indigo-800/30">
+                                              <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Dental Chart</p>
+                                              <div className="scale-75 origin-top-left w-[133%]">
+                                                {treatment.isChildDentition ? (
+                                                  <ChildDentalChart
+                                                    selectedTeeth={selectedTeethMap}
+                                                    onToothClick={() => {}}
+                                                    readOnly={true}
+                                                  />
+                                                ) : (
+                                                  <DentalChart
+                                                    selectedTeeth={selectedTeethMap}
+                                                    onToothClick={() => {}}
+                                                    readOnly={true}
+                                                  />
+                                                )}
+                                              </div>
+
+                                                  {/* Selected Teeth Details - Comprehensive */}
+                                              <div className="mt-2 space-y-1.5">
+                                                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">Selected Teeth Details:</p>
+                                                <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar">
+                                                  {treatment.selectedTeethDetails.map((tooth) => {
+                                                    // Get all unique doctors from daily treatments
+                                                    const doctors = tooth.dailyTreatments
+                                                      ?.filter((dt: any) => dt.treatedByDoctor)
+                                                      .map((dt: any) => dt.treatedByDoctor)
+                                                      .filter((value: string, index: number, self: string[]) => self.indexOf(value) === index) || [];
+
+                                                    // Get all notes from daily treatments
+                                                    const allNotes = tooth.dailyTreatments
+                                                      ?.filter((dt: any) => dt.notes)
+                                                      .map((dt: any) => dt.notes) || [];
+
+                                                    return (
+                                                      <div key={tooth.number} className="bg-white dark:bg-gray-700 p-2 rounded border border-gray-200 dark:border-gray-600 space-y-1">
+                                                        {/* Tooth Number, Position, Side */}
+                                                        <div className="flex items-center justify-between">
+                                                          <div className="flex items-center gap-1.5">
+                                                            <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">Tooth #{tooth.number}</span>
+                                                            {tooth.position && (
+                                                              <Badge variant="outline" className="text-xs px-1 py-0 bg-gray-100 dark:bg-gray-800">
+                                                                {tooth.position}
+                                                              </Badge>
+                                                            )}
+                                                          </div>
+                                                          {tooth.side && (
+                                                            <Badge variant="outline" className="text-xs px-1 py-0 bg-blue-50 dark:bg-blue-900/30">
+                                                              {tooth.side}
+                                                            </Badge>
+                                                          )}
+                                                        </div>
+
+                                                        {/* Procedure */}
+                                                        {tooth.procedure && (
+                                                          <div className="bg-indigo-50 dark:bg-indigo-900/20 p-1.5 rounded">
+                                                            <span className="text-xs text-gray-500 dark:text-gray-400">Procedure: </span>
+                                                            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{tooth.procedure}</span>
+                                                          </div>
+                                                        )}
+
+                                                        {/* Doctor(s) */}
+                                                        {doctors.length > 0 && (
+                                                          <div className="bg-green-50 dark:bg-green-900/20 p-1.5 rounded">
+                                                            <div className="flex items-start gap-1">
+                                                              <UserCheck className="w-3 h-3 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                                                              <div className="flex-1 min-w-0">
+                                                                <span className="text-xs text-gray-500 dark:text-gray-400">Treated by: </span>
+                                                                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                                  {doctors.join(", ")}
+                                                                </span>
+                                                              </div>
+                                                            </div>
+                                                          </div>
+                                                        )}
+
+                                                        {/* Financial Details */}
+                                                        <div className="grid grid-cols-3 gap-1">
+                                                          {tooth.totalTreatmentAmount !== undefined && (
+                                                            <div className="bg-blue-50 dark:bg-blue-900/20 p-1.5 rounded">
+                                                              <p className="text-xs text-blue-600 dark:text-blue-400 mb-0.5">Total</p>
+                                                              <p className="text-xs font-bold text-blue-700 dark:text-blue-300">
+                                                                Rs. {tooth.totalTreatmentAmount.toLocaleString()}
+                                                              </p>
+                                                            </div>
+                                                          )}
+                                                          {tooth.totalPaidAmount !== undefined && (
+                                                            <div className="bg-green-50 dark:bg-green-900/20 p-1.5 rounded">
+                                                              <p className="text-xs text-green-600 dark:text-green-400 mb-0.5">Paid</p>
+                                                              <p className="text-xs font-bold text-green-700 dark:text-green-300">
+                                                                Rs. {tooth.totalPaidAmount.toLocaleString()}
+                                                              </p>
+                                                            </div>
+                                                          )}
+                                                          {tooth.totalRemainingAmount !== undefined && (
+                                                            <div className="bg-orange-50 dark:bg-orange-900/20 p-1.5 rounded">
+                                                              <p className="text-xs text-orange-600 dark:text-orange-400 mb-0.5">Due</p>
+                                                              <p className="text-xs font-bold text-orange-700 dark:text-orange-300">
+                                                                Rs. {tooth.totalRemainingAmount.toLocaleString()}
+                                                              </p>
+                                                            </div>
+                                                          )}
+                                                        </div>
+
+                                                        {/* Details/Notes */}
+                                                        {tooth.details && (
+                                                          <div className="bg-gray-50 dark:bg-gray-800/50 p-1.5 rounded border border-gray-200 dark:border-gray-700">
+                                                            <span className="text-xs text-gray-600 dark:text-gray-400">Details: </span>
+                                                            <span className="text-xs text-gray-700 dark:text-gray-300">{tooth.details}</span>
+                                                          </div>
+                                                        )}
+
+                                                        {/* Treatment Notes */}
+                                                        {allNotes.length > 0 && (
+                                                          <div className="bg-yellow-50 dark:bg-yellow-900/10 p-1.5 rounded border border-yellow-200 dark:border-yellow-800/30">
+                                                            <p className="text-xs font-medium text-yellow-700 dark:text-yellow-300 mb-0.5">Treatment Notes:</p>
+                                                            <div className="space-y-0.5">
+                                                              {allNotes.map((note: string, idx: number) => (
+                                                                <p key={idx} className="text-xs text-gray-700 dark:text-gray-300">• {note}</p>
+                                                              ))}
+                                                            </div>
+                                                          </div>
+                                                        )}
+
+                                                        {/* Daily Treatments Count */}
+                                                        {tooth.dailyTreatments && tooth.dailyTreatments.length > 0 && (
+                                                          <div className="pt-1 border-t border-gray-200 dark:border-gray-600">
+                                                            <Badge variant="outline" className="text-xs">
+                                                              {tooth.dailyTreatments.length} treatment session{tooth.dailyTreatments.length > 1 ? 's' : ''}
+                                                            </Badge>
+                                                          </div>
+                                                        )}
+                                                      </div>
+                                                    );
+                                                  })}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {/* Treatment Details */}
+                                          {(treatment.treatmentName || treatment.treatmentDescription) && (
+                                            <div className="bg-white dark:bg-gray-800 p-2 rounded border border-indigo-200 dark:border-indigo-800/30">
+                                              {treatment.treatmentName && (
+                                                <div className="mb-1">
+                                                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Treatment:</p>
+                                                  <p className="text-xs text-gray-600 dark:text-gray-400">{treatment.treatmentName}</p>
+                                                </div>
+                                              )}
+                                              {treatment.treatmentDescription && (
+                                                <div>
+                                                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Description:</p>
+                                                  <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{treatment.treatmentDescription}</p>
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )}
+
+                    {/* Treatment Progress - Compact View */}
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.2 }}
+                      transition={{ duration: 0.3, delay: 0.4 }}
                     >
                       <TreatmentProgress
                         totalAmount={totalAmount}
                         paidAmount={paidAmount}
                         remainingAmount={remainingAmount}
                         treatments={allTreatments}
+                        compact={true}
                       />
                     </motion.div>
                   </div>
 
-                  {/* Right column - Important Dates (20-30% width) */}
-                  <div className="lg:col-span-1">
+                  {/* Right column - Important Information (20-30% width) */}
+                  <div className="lg:col-span-1 space-y-3">
+                    {/* Important Dates Card */}
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: 0.1 }}
-                      className="h-full"
                     >
-                      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden h-full flex flex-col">
+                      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
                         <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
                           <CardTitle className="text-sm flex items-center gap-1.5 text-gray-800 dark:text-gray-100">
                             <div className="p-1 rounded-md bg-gradient-to-br from-green-500 to-emerald-600 text-white">
@@ -1660,7 +2053,7 @@ export function ViewPatientDrawer({
                             </span>
                           </CardTitle>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 gap-2 p-2 flex-grow overflow-y-auto custom-scrollbar max-h-[calc(100vh-250px)]">
+                        <CardContent className="space-y-2 p-2">
                           <DateDisplay
                             englishDate={localPatient.personalDetails.dob}
                             nepaliDate=""
@@ -1684,1494 +2077,104 @@ export function ViewPatientDrawer({
                             icon={CalendarPlus}
                             color="text-green-500"
                           />
-
-                          {/* Follow-ups Section - Scrollable container for many follow-ups */}
-                          {localPatient.medicalDetails.length > 0 && 
-                           localPatient.medicalDetails[0].treatmentPlanning.length > 0 && (
-                            <div className="flex-grow min-h-0">
-                              <Card className="h-full flex flex-col">
-                                <CardHeader className="pb-2 pt-2 px-2">
-                                  <CardTitle className="text-sm flex items-center gap-1">
-                                    <CalendarCheck className="w-3.5 h-3.5 text-blue-500" />
-                                    Follow-ups
-                                  </CardTitle>
-                                </CardHeader>
-                                <CardContent className="flex-grow min-h-0 px-2 py-1">
-                                  <FollowUpDisplay 
-                                    followUps={
-                                      localPatient.medicalDetails[0].treatmentPlanning
-                                        .flatMap(plan => plan.followUps || [])
-                                    } 
-                                  />
-                                </CardContent>
-                              </Card>
-                            </div>
-                          )}
                         </CardContent>
                       </Card>
                     </motion.div>
-                  </div>
-                </div>
-              </TabsContent>
 
-              <TabsContent value="medical" className="pb-3">
-                <motion.div
-                  className="space-y-3"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {/* Individual Medical Records */}
-                  {localPatient.medicalDetails.length === 0 ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.5 }}
-                      className="text-center py-12"
-                    >
-                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                        <XCircle className="w-8 h-8 text-gray-400 dark:text-gray-500" />
-                      </div>
-                      <p className="text-gray-600 dark:text-gray-300 text-lg font-medium">
-                        No Medical Records
-                      </p>
-                      <p className="text-gray-500 dark:text-gray-400 text-sm">
-                        Medical records will appear here once added
-                      </p>
-                    </motion.div>
-                  ) : (
-                    localPatient.medicalDetails.map((record, index) => (
+                    {/* Follow-ups Card */}
+                    {localPatient.medicalDetails.length > 0 &&
+                     localPatient.medicalDetails[0].treatmentPlanning.length > 0 && (
                       <motion.div
-                        key={record._id}
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: index * 0.1 }}
+                        transition={{ duration: 0.3, delay: 0.2 }}
                       >
                         <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
-                          <CardHeader className="border-b border-gray-100 dark:border-gray-800 p-3">
-                            <CardTitle className="flex items-center gap-2 text-base">
-                              <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
-                                <Calendar className="h-4 w-4" />
-                              </div>
-                              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent font-semibold">
-                                Medical Record #{index + 1}
-                              </span>
-                              <Badge className="ml-auto bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs px-2 py-1">
-                                {formatSafeDate(record.checkUpDate)}
-                              </Badge>
+                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
+                            <CardTitle className="text-sm flex items-center gap-1">
+                              <CalendarCheck className="w-3.5 h-3.5 text-blue-500" />
+                              Follow-ups
                             </CardTitle>
                           </CardHeader>
-                          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 p-3">
-                            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-2">
-                              <motion.div
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ duration: 0.3, delay: 0.05 }}
-                                className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-3 rounded-lg"
-                              >
-                                <div className="flex items-start gap-2">
-                                  <div className="p-1.5 rounded-full bg-yellow-100 text-yellow-600">
-                                    <AlertTriangle className="w-3 h-3" />
-                                  </div>
-                                  <div className="flex-1">
-                                    <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                                      Chief Complaint
-                                    </h4>
-                                    <p className="text-xs text-gray-700 dark:text-gray-200">
-                                      {record.chiefComplaint || "Not provided"}
-                                    </p>
-                                  </div>
-                                </div>
-                              </motion.div>
-
-                              <motion.div
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ duration: 0.3, delay: 0.1 }}
-                                className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-3 rounded-lg"
-                              >
-                                <div className="flex items-start gap-2">
-                                  <div className="p-1.5 rounded-full bg-green-100 text-green-600">
-                                    <CheckCircle className="w-3 h-3" />
-                                  </div>
-                                  <div className="flex-1">
-                                    <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                                      Diagnosis
-                                    </h4>
-                                    <p className="text-xs text-gray-700 dark:text-gray-200">
-                                      {record.diagnosis || "Not provided"}
-                                    </p>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            </div>
-
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ duration: 0.3 }}
-                              className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-2"
-                            >
-                              {record.group === "Ortho" ? (
-                                <DateDisplay
-                                  englishDate={
-                                    localPatient.personalDetails.checkUpDate
-                                  }
-                                  nepaliDate={
-                                    localPatient.personalDetails.checkUpDateNp
-                                  }
-                                  label="Check-up Date"
-                                  icon={CalendarCheck}
-                                  color="text-blue-500"
-                                />
-                              ) : (
-                                <DateDisplay
-                                  englishDate={
-                                    localPatient.personalDetails.checkUpDate
-                                  }
-                                  nepaliDate={
-                                    localPatient.personalDetails.checkUpDateNp
-                                  }
-                                  label="Check-up Date"
-                                  icon={CalendarCheck}
-                                  color="text-blue-500"
-                                />
-                              )}
-
-                              <div className="flex items-start gap-2 p-2 rounded-lg bg-white/80 dark:bg-gray-800/80 border border-gray-100 dark:border-gray-700">
-                                <div className="p-1.5 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
-                                  <User className="w-3 h-3" />
-                                </div>
-                                <div className="flex-1">
-                                  <h4 className="text-xs text-gray-500 dark:text-gray-400">
-                                    Patient Group
-                                  </h4>
-                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                    {record.group || "General"}
-                                  </p>
-                                </div>
-                              </div>
-
-                              {/* Display follow-ups for this treatment */}
-                              {record.treatmentPlanning[0]?.followUps && 
-                               record.treatmentPlanning[0].followUps.length > 0 && (
-                                <div className="mt-4">
-                                  <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                                    <Calendar className="w-4 h-4" />
-                                    Follow-ups
-                                  </h4>
-                                  <div className="space-y-2">
-                                    {record.treatmentPlanning[0].followUps.slice(0, 2).map((followUp) => (
-                                      <div key={followUp._id} className="text-xs p-2 bg-gray-50 rounded">
-                                        <div className="flex items-center justify-between">
-                                          <span className="font-medium">{followUp.type}</span>
-                                          <span className="text-gray-500">
-                                            {new Date(followUp.date).toLocaleDateString()}
-                                          </span>
-                                        </div>
-                                        {followUp.reason && (
-                                          <p className="text-gray-600 mt-1">{followUp.reason}</p>
-                                        )}
-                                      </div>
-                                    ))}
-                                    {record.treatmentPlanning[0].followUps.length > 2 && (
-                                      <div className="text-xs text-gray-500 text-center">
-                                        +{record.treatmentPlanning[0].followUps.length - 2} more
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </motion.div>
-
-                            {/* Investigation Details */}
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ duration: 0.3, delay: 0.15 }}
-                              className="space-y-3 col-span-2 mt-4"
-                            >
-                              <div className="flex items-center justify-between w-full">
-                                <div className="flex items-center gap-2">
-                                  <Microscope className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                  <span className="text-sm font-medium">
-                                    Investigation & Test Results
-                                  </span>
-                                  {record.investigation && (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-xs"
-                                    >
-                                      {
-                                        Object.keys(
-                                          record.investigation
-                                        ).filter(
-                                          (k) => record.investigation?.[k]
-                                        ).length
-                                      }{" "}
-                                      Tests
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="space-y-3">
-                                {record.investigation ? (
-                                  <div className="grid md:grid-cols-3 gap-3">
-                                    {/* Blood Test */}
-                                    {record.investigation.blood && (
-                                      <div className="bg-gradient-to-r from-red-50 to-red-50/50 dark:from-red-900/10 dark:to-red-900/5 p-3 rounded-lg border border-red-200 dark:border-red-800/50">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <div className="p-1.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300">
-                                            <Droplets className="w-3 h-3" />
-                                          </div>
-                                          <h4 className="text-sm font-medium text-red-800 dark:text-red-100">
-                                            Blood Test
-                                          </h4>
-                                        </div>
-                                        <div className="bg-white dark:bg-gray-900/30 p-2 rounded border border-red-100 dark:border-red-900/50">
-                                          <p className="text-xs text-gray-700 dark:text-gray-300">
-                                            {record.investigation.blood}
-                                          </p>
-                                        </div>
-                                        {record.investigation.bloodTestDate && (
-                                          <div className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
-                                            <Calendar className="w-2 h-2" />
-                                            {formatSafeDate(
-                                              record.investigation.bloodTestDate
-                                            )}
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-
-                                    {/* X-Ray */}
-                                    {record.investigation.xray && (
-                                      <div className="bg-gradient-to-r from-blue-50 to-blue-50/50 dark:from-blue-900/10 dark:to-blue-900/5 p-4 rounded-lg border border-blue-200 dark:border-blue-800/50 shadow-sm">
-                                        <div className="flex items-center gap-3 mb-3">
-                                          <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">
-                                            <Scan className="w-5 h-5" />
-                                          </div>
-                                          <h4 className="font-medium text-blue-800 dark:text-blue-100">
-                                            Radiology Report
-                                          </h4>
-                                          <Badge
-                                            variant="secondary"
-                                            className="ml-auto bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200"
-                                          >
-                                            X-Ray
-                                          </Badge>
-                                        </div>
-                                        <div className="bg-white dark:bg-gray-900/30 p-3 rounded border border-blue-100 dark:border-blue-900/50">
-                                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                                            {record.investigation.xray}
-                                          </p>
-                                          {record.investigation.xrayDate && (
-                                            <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
-                                              <Calendar className="w-3 h-3" />
-                                              Test Date:{" "}
-                                              {formatSafeDate(
-                                                record.investigation.xrayDate
-                                              )}
-                                            </div>
-                                          )}
-                                          {record.investigation.xrayImages &&
-                                            record.investigation.xrayImages
-                                              .length > 0 && (
-                                              <div className="mt-3">
-                                                <p className="text-xs font-medium text-muted-foreground mb-2">
-                                                  Attached Images:
-                                                </p>
-                                                <div className="flex flex-wrap gap-2">
-                                                  {record.investigation.xrayImages.map(
-                                                    (img, idx) => (
-                                                      <a
-                                                        key={idx}
-                                                        href={img.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                                                      >
-                                                        <ImageIcon className="w-3 h-3" />
-                                                        View Image {idx + 1}
-                                                      </a>
-                                                    )
-                                                  )}
-                                                </div>
-                                              </div>
-                                            )}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Other Tests */}
-                                    {record.investigation.otherTests && (
-                                      <div className="bg-gradient-to-r from-purple-50 to-purple-50/50 dark:from-purple-900/10 dark:to-purple-900/5 p-4 rounded-lg border border-purple-200 dark:border-purple-800/50 shadow-sm">
-                                        <div className="flex items-center gap-3 mb-3">
-                                          <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300">
-                                            <ClipboardList className="w-5 h-5" />
-                                          </div>
-                                          <h4 className="font-medium text-purple-800 dark:text-purple-100">
-                                            Additional Tests
-                                          </h4>
-                                        </div>
-                                        <div className="space-y-3">
-                                          {record.investigation.otherTests &&
-                                            Array.isArray(
-                                              record.investigation.otherTests
-                                            ) &&
-                                            record.investigation.otherTests.map(
-                                              (test, idx) => (
-                                                <div
-                                                  key={idx}
-                                                  className="bg-white dark:bg-gray-900/30 p-3 rounded border border-purple-100 dark:border-purple-900/50"
-                                                >
-                                                  <div className="flex justify-between items-start">
-                                                    <div>
-                                                      <h5 className="font-medium text-sm">
-                                                        {test.name}
-                                                      </h5>
-                                                      {test.date && (
-                                                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                                                          <Calendar className="w-3 h-3" />
-                                                          {formatSafeDate(
-                                                            test.date
-                                                          )}
-                                                        </p>
-                                                      )}
-                                                    </div>
-                                                    <Badge
-                                                      variant="outline"
-                                                      className="text-xs"
-                                                    >
-                                                      {test.type || "Test"}
-                                                    </Badge>
-                                                  </div>
-                                                  {test.results && (
-                                                    <div className="mt-2">
-                                                      <p className="text-xs font-medium text-muted-foreground mb-1">
-                                                        Results:
-                                                      </p>
-                                                      <p className="text-sm">
-                                                        {test.results}
-                                                      </p>
-                                                    </div>
-                                                  )}
-                                                  {test.notes && (
-                                                    <div className="mt-2">
-                                                      <p className="text-xs font-medium text-muted-foreground mb-1">
-                                                        Notes:
-                                                      </p>
-                                                      <p className="text-sm text-muted-foreground">
-                                                        {test.notes}
-                                                      </p>
-                                                    </div>
-                                                  )}
-                                                </div>
-                                              )
-                                            )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="text-center py-6 text-muted-foreground">
-                                    <TestTube2 className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                                    <p>No investigation records found</p>
-                                  </div>
-                                )}
-                              </div>
-                            </motion.div>
-
-                            {/* Medical History Overview */}
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ duration: 0.3, delay: 0.4 }}
-                              className="col-span-2 mt-6"
-                            >
-                              <div className="flex items-center justify-between w-full pr-4">
-                                <div className="flex items-center gap-2">
-                                  <div className="p-2 rounded-xl bg-gradient-to-br from-red-500 to-pink-600 text-white shadow-md">
-                                    <Heart className="h-5 w-5" />
-                                  </div>
-                                  <span className="bg-gradient-to-r from-red-600 to-pink-600 dark:from-red-400 dark:to-pink-400 bg-clip-text text-transparent">
-                                    Medical History Overview
-                                  </span>
-                                  {record.medicalHistory && (
-                                    <Badge
-                                      variant="outline"
-                                      className="ml-2 text-xs"
-                                    >
-                                      {
-                                        Object.keys(
-                                          record.medicalHistory
-                                        ).filter(
-                                          (
-                                            k
-                                          ): k is keyof typeof record.medicalHistory =>
-                                            k in record.medicalHistory &&
-                                            Boolean(
-                                              record.medicalHistory[
-                                                k as keyof typeof record.medicalHistory
-                                              ]
-                                            )
-                                        ).length
-                                      }{" "}
-                                      Records
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="space-y-4 mt-4">
-                                {record.medicalHistory ? (
-                                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                                    {/* Allergies */}
-                                    {record.medicalHistory.allergies && (
-                                      <div className="bg-yellow-50 dark:bg-yellow-900/10 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800/50">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-                                          <h4 className="font-medium text-yellow-800 dark:text-yellow-200">
-                                            Allergies
-                                          </h4>
-                                        </div>
-                                        <p className="text-sm">
-                                          {record.medicalHistory.allergies}
-                                        </p>
-                                      </div>
-                                    )}
-
-                                    {/* Blood Pressure */}
-                                    {record.medicalHistory.bloodPressure && (
-                                      <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-200 dark:border-blue-800/50">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                          <h4 className="font-medium text-blue-800 dark:text-blue-200">
-                                            Blood Pressure
-                                          </h4>
-                                        </div>
-                                        <p className="text-sm">
-                                          {record.medicalHistory.bloodPressure}
-                                        </p>
-                                      </div>
-                                    )}
-
-                                    {/* Other Conditions */}
-                                    {record.medicalHistory.otherConditions && (
-                                      <div className="bg-purple-50 dark:bg-purple-900/10 p-3 rounded-lg border border-purple-200 dark:border-purple-800/50">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <ClipboardList className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                          <h4 className="font-medium text-purple-800 dark:text-purple-200">
-                                            Other Conditions
-                                          </h4>
-                                        </div>
-                                        <p className="text-sm">
-                                          {
-                                            record.medicalHistory
-                                              .otherConditions
-                                          }
-                                        </p>
-                                      </div>
-                                    )}
-
-                                    {/* Medical Conditions */}
-                                    {(record.medicalHistory.diabetes ||
-                                      record.medicalHistory.thyroid ||
-                                      record.medicalHistory.bleedingDisorder ||
-                                      record.medicalHistory.pregnancy ||
-                                      record.medicalHistory.asthma) && (
-                                      <div className="bg-green-50 dark:bg-green-900/10 p-3 rounded-lg border border-green-200 dark:border-green-800/50">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <HeartPulse className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                          <h4 className="font-medium text-green-800 dark:text-green-200">
-                                            Medical Conditions
-                                          </h4>
-                                        </div>
-                                        <div className="space-y-1">
-                                          {record.medicalHistory.diabetes && (
-                                            <p className="text-sm">
-                                              • Diabetes
-                                            </p>
-                                          )}
-                                          {record.medicalHistory.thyroid && (
-                                            <p className="text-sm">
-                                              • Thyroid Disorder
-                                            </p>
-                                          )}
-                                          {record.medicalHistory
-                                            .bleedingDisorder && (
-                                            <p className="text-sm">
-                                              • Bleeding Disorder
-                                            </p>
-                                          )}
-                                          {record.medicalHistory.pregnancy && (
-                                            <p className="text-sm">
-                                              • Pregnancy
-                                            </p>
-                                          )}
-                                          {record.medicalHistory.asthma && (
-                                            <p className="text-sm">• Asthma</p>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Additional Notes */}
-                                    {record.medicalHistory.otherConditions && (
-                                      <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-200 dark:border-blue-800/50">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                          <h4 className="font-medium text-blue-800 dark:text-blue-200">
-                                            Additional Notes
-                                          </h4>
-                                        </div>
-                                        <p className="text-sm">
-                                          {
-                                            record.medicalHistory
-                                              .otherConditions
-                                          }
-                                        </p>
-                                      </div>
-                                    )}
-
-                                    {/* No Medical Issues */}
-                                    {record.medicalHistory.noMedicalIssues && (
-                                      <div className="bg-green-50 dark:bg-green-900/10 p-3 rounded-lg border border-green-200 dark:border-green-800/50">
-                                        <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
-                                          <CheckCircle className="w-4 h-4" />
-                                          <span className="font-medium">
-                                            No significant medical issues
-                                            reported
-                                          </span>
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Additional medical information can be added here in the future */}
-
-                                    {/* Additional Notes */}
-                                    {record.medicalHistory.additionalNotes && (
-                                      <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                                          <h4 className="font-medium text-gray-800 dark:text-gray-200">
-                                            Additional Notes
-                                          </h4>
-                                        </div>
-                                        <p className="text-sm text-gray-700 dark:text-gray-300">
-                                          {
-                                            record.medicalHistory
-                                              .additionalNotes
-                                          }
-                                        </p>
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="text-center py-6 text-muted-foreground">
-                                    <ClipboardX className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                                    <p>No medical history records found</p>
-                                  </div>
-                                )}
-                              </div>
-                            </motion.div>
-
-                            {/* Treatment Planning */}
-                            {record.treatmentPlanning &&
-                              record.treatmentPlanning.length > 0 && (
-                                <motion.div
-                                  initial={{ opacity: 0, scale: 0.9 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  transition={{ duration: 0.3, delay: 0.4 }}
-                                  className="col-span-2"
-                                >
-                                  <div className="space-y-4">
-                                    {record.treatmentPlanning.map(
-                                      (treatment, treatmentIndex) => {
-                                        // Create a map of selected teeth for the dental chart
-                                        const selectedTeethMap: Record<
-                                          string,
-                                          any
-                                        > = {};
-                                        if (treatment.selectedTeethDetails) {
-                                          treatment.selectedTeethDetails.forEach(
-                                            (tooth) => {
-                                              selectedTeethMap[tooth.number] =
-                                                tooth;
-                                            }
-                                          );
-                                        }
-
-                                        return (
-                                          <motion.div
-                                            key={treatment._id}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{
-                                              duration: 0.3,
-                                              delay: treatmentIndex * 0.1,
-                                            }}
-                                            className="border rounded-lg overflow-hidden bg-card shadow-sm mb-4"
-                                          >
-                                            {/* Treatment Plan Header */}
-                                            <div className="bg-muted/30 px-4 py-3 border-b">
-                                              <div className="flex items-center justify-between w-full">
-                                                <h5 className="font-medium text-sm flex items-center gap-2">
-                                                  <span className="h-6 w-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
-                                                    {treatmentIndex + 1}
-                                                  </span>
-                                                  Treatment Plan{" "}
-                                                  {treatmentIndex + 1}:{" "}
-                                                  {treatment.treatmentDetails ||
-                                                    "General Treatment"}
-                                                </h5>
-                                                <Badge
-                                                  variant={
-                                                    treatment.isCompleted
-                                                      ? "default"
-                                                      : "outline"
-                                                  }
-                                                  className={
-                                                    treatment.isCompleted
-                                                      ? "bg-green-100 text-green-800 border-none dark:bg-green-900 dark:text-green-100"
-                                                      : "border-orange-200 text-orange-800 dark:border-orange-800 dark:text-orange-200"
-                                                  }
-                                                >
-                                                  {treatment.isCompleted
-                                                    ? "Completed"
-                                                    : "In Progress"}
-                                                </Badge>
-                                              </div>
-                                            </div>
-                                            <div className="p-0">
-                                              {/* Treatment Details Summary */}
-                                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border-b bg-muted/10">
-                                                <div>
-                                                  <p className="text-xs text-muted-foreground font-medium">
-                                                    Treatment Date
-                                                  </p>
-                                                  <p className="font-medium text-sm">
-                                                    {formatSafeDate(
-                                                      treatment.treatmentDate
-                                                    )}
-                                                  </p>
-                                                </div>
-                                                {treatment.treatedByDoctor && (
-                                                  <div>
-                                                    <p className="text-xs text-muted-foreground font-medium">
-                                                      Treated By
-                                                    </p>
-                                                    <p className="font-medium text-sm">
-                                                      {typeof treatment.treatedByDoctor ===
-                                                        "object" &&
-                                                      treatment.treatedByDoctor !==
-                                                        null &&
-                                                      "name" in
-                                                        treatment.treatedByDoctor
-                                                        ? (
-                                                            treatment.treatedByDoctor as {
-                                                              name: string;
-                                                            }
-                                                          ).name
-                                                        : typeof treatment.treatedByDoctor ===
-                                                            "string"
-                                                          ? treatment.treatedByDoctor
-                                                          : "N/A"}
-                                                    </p>
-                                                  </div>
-                                                )}
-                                                {treatment.completionDate && (
-                                                  <div>
-                                                    <p className="text-xs text-muted-foreground font-medium">
-                                                      Completion Date
-                                                    </p>
-                                                    <p className="font-medium text-sm">
-                                                      {formatSafeDate(
-                                                        treatment.completionDate
-                                                      )}
-                                                    </p>
-                                                  </div>
-                                                )}
-                                                <div>
-                                                  <p className="text-xs text-muted-foreground font-medium">
-                                                    Amount
-                                                  </p>
-                                                  <p className="font-medium text-sm">
-                                                    ₹
-                                                    {treatment.totalPlanAmount ||
-                                                      0}
-                                                  </p>
-                                                </div>
-                                              </div>
-
-                                              {/* Treatment Details */}
-                                              {record.group !== "Ortho" && (
-                                                <div className="p-4 border-b">
-                                                  <p className="text-xs text-muted-foreground font-medium mb-2">
-                                                    Treatment Details
-                                                  </p>
-                                                  <div className="bg-muted/20 p-3 rounded-md text-sm">
-                                                    {treatment.treatmentDetails ||
-                                                      "No details provided"}
-                                                  </div>
-                                                </div>
-                                              )}
-
-                                              {/* General Patient details */}
-                                              {/* Dental Chart Visualization */}
-                                              {treatment.selectedTeethDetails &&
-                                                treatment.selectedTeethDetails
-                                                  .length > 0 && (
-                                                  <div className="p-6 border-b">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                      <h6 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                                        <Thermometer className="h-4 w-4" />
-                                                        Dental Chart
-                                                      </h6>
-                                                      <div className="flex items-center gap-2">
-                                                        <div className="flex items-center">
-                                                          <div className="h-2.5 w-2.5 rounded-full bg-blue-500 mr-1.5"></div>
-                                                          <span className="text-xs text-muted-foreground">
-                                                            Selected
-                                                          </span>
-                                                        </div>
-                                                        <div className="flex items-center">
-                                                          <div className="h-2.5 w-2.5 rounded-full bg-green-500 mr-1.5"></div>
-                                                          <span className="text-xs text-muted-foreground">
-                                                            Treated
-                                                          </span>
-                                                        </div>
-                                                        <div className="flex items-center">
-                                                          <div className="h-2.5 w-2.5 rounded-full bg-amber-500 mr-1.5"></div>
-                                                          <span className="text-xs text-muted-foreground">
-                                                            In Progress
-                                                          </span>
-                                                        </div>
-                                                      </div>
-                                                    </div>
-                                                    <div className="bg-white dark:bg-gray-900/50 p-6 rounded-xl border border-muted shadow-sm">
-                                                      {record.patientType ===
-                                                      "Child" ? (
-                                                        <ChildDentalChart
-                                                          selectedTeeth={
-                                                            selectedTeethMap
-                                                          }
-                                                          onToothSelect={() => {}}
-                                                          readOnly={true}
-                                                        />
-                                                      ) : (
-                                                        <DentalChart
-                                                          selectedTeeth={
-                                                            selectedTeethMap
-                                                          }
-                                                          onToothSelect={() => {}}
-                                                          readOnly={true}
-                                                        />
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                )}
-
-                                              {/* Selected Teeth Details */}
-                                              {treatment.selectedTeethDetails &&
-                                                treatment.selectedTeethDetails
-                                                  .length > 0 && (
-                                                  <div className="p-4">
-                                                    <p className="text-xs text-muted-foreground font-medium mb-3">
-                                                      Selected Teeth Details
-                                                    </p>
-                                                    <div className="space-y-4">
-                                                      {treatment.selectedTeethDetails.map(
-                                                        (tooth) => (
-                                                          <motion.div
-                                                            key={tooth.number}
-                                                            initial={{
-                                                              opacity: 0,
-                                                              x: -20,
-                                                            }}
-                                                            animate={{
-                                                              opacity: 1,
-                                                              x: 0,
-                                                            }}
-                                                            transition={{
-                                                              duration: 0.3,
-                                                            }}
-                                                            className="border rounded-md overflow-hidden bg-card"
-                                                          >
-                                                            <div className="bg-muted/30 px-4 py-2 border-b flex items-center justify-between">
-                                                              <h6 className="font-medium text-sm">
-                                                                Tooth{" "}
-                                                                {tooth.number} -{" "}
-                                                                {tooth.procedure ||
-                                                                  "General Treatment"}
-                                                              </h6>
-                                                              <Badge
-                                                                variant={
-                                                                  (tooth as any)
-                                                                    .isCompleted
-                                                                    ? "default"
-                                                                    : "outline"
-                                                                }
-                                                                className={`text-xs ${
-                                                                  (tooth as any)
-                                                                    .isCompleted
-                                                                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                                                                    : "border-orange-200 text-orange-800 dark:border-orange-800 dark:text-orange-200"
-                                                                }`}
-                                                              >
-                                                                {(tooth as any)
-                                                                  .isCompleted
-                                                                  ? "Completed"
-                                                                  : "In Progress"}
-                                                              </Badge>
-                                                            </div>
-
-                                                            <div className="p-3">
-                                                              {/* Tooth details */}
-                                                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3 text-sm">
-                                                                <div>
-                                                                  <span className="text-xs text-muted-foreground">
-                                                                    Position:{" "}
-                                                                  </span>
-                                                                  <span className="font-medium">
-                                                                    {tooth.position ||
-                                                                      "N/A"}
-                                                                  </span>
-                                                                </div>
-                                                                <div>
-                                                                  <span className="text-xs text-muted-foreground">
-                                                                    Side:{" "}
-                                                                  </span>
-                                                                  <span className="font-medium">
-                                                                    {tooth.side ||
-                                                                      "N/A"}
-                                                                  </span>
-                                                                </div>
-                                                                {tooth.details && (
-                                                                  <div className="col-span-full">
-                                                                    <span className="text-xs text-muted-foreground">
-                                                                      Details:{" "}
-                                                                    </span>
-                                                                    <span className="font-medium">
-                                                                      {
-                                                                        tooth.details
-                                                                      }
-                                                                    </span>
-                                                                  </div>
-                                                                )}
-                                                              </div>
-
-                                                              {/* Daily Treatments Table */}
-                                                              {tooth.dailyTreatments &&
-                                                                tooth
-                                                                  .dailyTreatments
-                                                                  .length >
-                                                                  0 && (
-                                                                  <div className="mt-3">
-                                                                    <p className="text-xs font-medium mb-2">
-                                                                      Treatment
-                                                                      History
-                                                                    </p>
-                                                                    <div className="rounded-md border overflow-hidden">
-                                                                      <Table>
-                                                                        <TableHeader className="bg-muted/50">
-                                                                          <TableRow>
-                                                                            <TableHead className="text-xs">
-                                                                              Date
-                                                                            </TableHead>
-                                                                            <TableHead className="text-xs">
-                                                                              Procedure
-                                                                            </TableHead>
-                                                                            <TableHead className="text-xs">
-                                                                              Doctor
-                                                                            </TableHead>
-                                                                            <TableHead className="text-xs text-right">
-                                                                              Amount
-                                                                            </TableHead>
-                                                                            <TableHead className="text-xs text-right">
-                                                                              Paid
-                                                                            </TableHead>
-                                                                            <TableHead className="text-xs">
-                                                                              Payment Date
-                                                                            </TableHead>
-                                                                            <TableHead className="text-xs">
-                                                                              Notes
-                                                                            </TableHead>
-                                                                            <TableHead className="text-xs text-right">
-                                                                              Status
-                                                                            </TableHead>
-                                                                          </TableRow>
-                                                                        </TableHeader>
-                                                                        <TableBody>
-                                                                          {tooth.dailyTreatments.map(
-                                                                            (
-                                                                              dailyTreatment,
-                                                                              idx
-                                                                            ) => (
-                                                                              <TableRow
-                                                                                key={
-                                                                                  idx
-                                                                                }
-                                                                                className={
-                                                                                  (
-                                                                                    dailyTreatment as any
-                                                                                  )
-                                                                                    .isCompleted
-                                                                                    ? "bg-green-50/30 dark:bg-green-900/20"
-                                                                                    : ""
-                                                                                }
-                                                                              >
-                                                                                <TableCell className="text-xs py-2">
-                                                                                  {formatSafeDate(
-                                                                                    dailyTreatment.date
-                                                                                  )}
-                                                                                </TableCell>
-                                                                                <TableCell className="text-xs py-2">
-                                                                                  {dailyTreatment.procedure ||
-                                                                                    "General"}
-                                                                                </TableCell>
-                                                                                <TableCell className="text-xs py-2">
-                                                                                  {typeof dailyTreatment.treatedByDoctor ===
-                                                                                    "object" &&
-                                                                                  dailyTreatment.treatedByDoctor !==
-                                                                                    null &&
-                                                                                  "name" in
-                                                                                    dailyTreatment.treatedByDoctor
-                                                                                    ? (
-                                                                                        dailyTreatment.treatedByDoctor as {
-                                                                                          name: string;
-                                                                                        }
-                                                                                      )
-                                                                                        .name
-                                                                                    : typeof dailyTreatment.treatedByDoctor ===
-                                                                                        "string"
-                                                                                      ? dailyTreatment.treatedByDoctor
-                                                                                      : "N/A"}
-                                                                                </TableCell>
-                                                                                <TableCell className="text-xs py-2 text-right">
-                                                                                  ₹
-                                                                                  {dailyTreatment.treatmentAmount ||
-                                                                                    0}
-                                                                                </TableCell>
-                                                                                <TableCell className="text-xs py-2 text-right">
-                                                                                  ₹
-                                                                                  {dailyTreatment.paidAmount ||
-                                                                                    0}
-                                                                                </TableCell>
-                                                                                <TableCell className="text-xs py-2">
-                                                                                  {dailyTreatment.paymentDate
-                                                                                    ? formatSafeDate(dailyTreatment.paymentDate)
-                                                                                    : "Not paid"}
-                                                                                </TableCell>
-                                                                                <TableCell className="text-xs py-2 max-w-[150px]">
-                                                                                  {dailyTreatment.notes ? (
-                                                                                    <div 
-                                                                                      className="truncate" 
-                                                                                      title={dailyTreatment.notes}
-                                                                                    >
-                                                                                      {dailyTreatment.notes}
-                                                                                    </div>
-                                                                                  ) : (
-                                                                                    <span className="text-muted-foreground">No notes</span>
-                                                                                  )}
-                                                                                </TableCell>
-                                                                                <TableCell className="text-xs py-2 text-right">
-                                                                                  <Badge
-                                                                                    variant={
-                                                                                      (
-                                                                                        dailyTreatment as any
-                                                                                      )
-                                                                                        .isCompleted
-                                                                                        ? "default"
-                                                                                        : "outline"
-                                                                                    }
-                                                                                    className={`text-xs ${
-                                                                                      (
-                                                                                        dailyTreatment as any
-                                                                                      )
-                                                                                        .isCompleted
-                                                                                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                                                                                        : "border-orange-200 text-orange-800 dark:border-orange-800 dark:text-orange-200"
-                                                                                    }`}
-                                                                                  >
-                                                                                    {(
-                                                                                      dailyTreatment as any
-                                                                                    )
-                                                                                      .isCompleted
-                                                                                      ? "Done"
-                                                                                      : "Pending"}
-                                                                                  </Badge>
-                                                                                </TableCell>
-                                                                              </TableRow>
-                                                                            )
-                                                                          )}
-                                                                        </TableBody>
-                                                                      </Table>
-                                                                    </div>
-                                                                  </div>
-                                                                )}
-                                                            </div>
-                                                          </motion.div>
-                                                        )
-                                                      )}
-                                                    </div>
-
-                                                    {/* Financial Summary Section */}
-                                                    <div className="mt-6 p-4 bg-muted/10 rounded-md">
-                                                      <div className="flex justify-between items-center mb-3">
-                                                        <h3 className="text-sm font-medium">
-                                                          Financial Summary
-                                                        </h3>
-                                                        <Button
-                                                          variant="outline"
-                                                          size="sm"
-                                                          onClick={() => setIsPaymentDialogOpen(true)}
-                                                          className="h-7 px-2 text-xs"
-                                                        >
-                                                          Edit Payment
-                                                        </Button>
-                                                      </div>
-                                                      <div className="grid grid-cols-3 gap-4">
-                                                        {(() => {
-                                                          // Calculate totals from daily treatments
-                                                          const dailyTreatments =
-                                                            treatment.selectedTeethDetails.flatMap(
-                                                              (tooth) =>
-                                                                tooth.dailyTreatments ||
-                                                                []
-                                                            );
-
-                                                          const totalDailyAmount =
-                                                            dailyTreatments.reduce(
-                                                              (sum, dt) =>
-                                                                sum +
-                                                                Number(
-                                                                  dt.treatmentAmount ||
-                                                                    0
-                                                                ),
-                                                              0
-                                                            );
-
-                                                          const totalDailyPaid =
-                                                            dailyTreatments.reduce(
-                                                              (sum, dt) =>
-                                                                sum +
-                                                                Number(
-                                                                  dt.paidAmount ||
-                                                                    0
-                                                                ),
-                                                              0
-                                                            );
-
-                                                          const totalDailyBalance =
-                                                            totalDailyAmount -
-                                                            totalDailyPaid;
-
-                                                          return (
-                                                            <>
-                                                              <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
-                                                                <p className="text-xs text-muted-foreground">
-                                                                  Total Amount
-                                                                </p>
-                                                                <p className="font-bold text-lg text-blue-600 dark:text-blue-400">
-                                                                  ₹
-                                                                  {
-                                                                    totalDailyAmount
-                                                                  }
-                                                                </p>
-                                                              </div>
-                                                              <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-md">
-                                                                <p className="text-xs text-muted-foreground">
-                                                                  Total Paid
-                                                                </p>
-                                                                <p className="font-bold text-lg text-green-600 dark:text-green-400">
-                                                                  ₹
-                                                                  {
-                                                                    totalDailyPaid
-                                                                  }
-                                                                </p>
-                                                              </div>
-                                                              <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-md">
-                                                                <p className="text-xs text-muted-foreground">
-                                                                  Balance
-                                                                </p>
-                                                                <p className="font-bold text-lg text-orange-600 dark:text-orange-400">
-                                                                  ₹
-                                                                  {
-                                                                    totalDailyBalance
-                                                                  }
-                                                                </p>
-                                                              </div>
-                                                            </>
-                                                          );
-                                                        })()}
-                                                      </div>
-                                                    </div>
-                                                  </div>
-                                                )}
-
-                                              {/* Ortho Patient Details  */}
-                                              {treatment.groupTreatmentDetails &&
-                                                treatment.groupTreatmentDetails
-                                                  .length > 0 && (
-                                                  <div>
-                                                    <div className="space-y-4">
-                                                      {treatment.groupTreatmentDetails.map(
-                                                        (ortho, index) => (
-                                                          <motion.div
-                                                            key={index}
-                                                            initial={{
-                                                              opacity: 0,
-                                                              x: -20,
-                                                            }}
-                                                            animate={{
-                                                              opacity: 1,
-                                                              x: 0,
-                                                            }}
-                                                            transition={{
-                                                              duration: 0.3,
-                                                            }}
-                                                            className="border rounded-md overflow-hidden bg-card"
-                                                          >
-                                                            <div className="flex items-center justify-between bg-muted/30 px-4 py-2 border-b">
-                                                              <span className="flex gap-4 bg-gradient-to-r from-red-600 to-pink-600 dark:from-red-400 dark:to-pink-400 bg-clip-text text-transparent font-bold">
-                                                                <div className="p-2 rounded-xl bg-gradient-to-br from-red-500 to-pink-600 text-white shadow-md w-8 h-8 flex items-center justify-center">
-                                                                  <Heart className="h-5 w-5" />
-                                                                </div>
-                                                                Ortho Patient
-                                                                Details
-                                                              </span>
-                                                              <Badge
-                                                                variant={
-                                                                  ortho.isCompleted
-                                                                    ? "default"
-                                                                    : "outline"
-                                                                }
-                                                                className={
-                                                                  ortho.isCompleted
-                                                                    ? "bg-green-100 text-green-800 border-none dark:bg-green-900 dark:text-green-100"
-                                                                    : "border-orange-200 text-orange-800 dark:border-orange-800 dark:text-orange-200"
-                                                                }
-                                                              >
-                                                                {ortho.isCompleted
-                                                                  ? "Completed"
-                                                                  : "In Progress"}
-                                                              </Badge>
-                                                            </div>
-
-                                                            <div className="bg-muted/30 px-4 py-2 border-b flex flex-wrap items-center justify-between">
-                                                              <DateDisplay
-                                                                englishDate={
-                                                                  ortho.startDate
-                                                                }
-                                                                label="Start Date"
-                                                                icon={
-                                                                  CalendarCheck
-                                                                }
-                                                                color="text-blue-500"
-                                                              />
-
-                                                              <motion.div
-                                                                className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
-                                                                initial={{
-                                                                  opacity: 0,
-                                                                  y: 10,
-                                                                }}
-                                                                animate={{
-                                                                  opacity: 1,
-                                                                  y: 0,
-                                                                }}
-                                                                whileHover={{
-                                                                  scale: 1.01,
-                                                                }}
-                                                                transition={{
-                                                                  duration: 0.3,
-                                                                }}
-                                                              >
-                                                                <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
-                                                                  <User className="w-4 h-4" />
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                  <h4 className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                                                    Toatal
-                                                                    Treatment
-                                                                    Amount
-                                                                  </h4>
-                                                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
-                                                                    {
-                                                                      ortho.totalTreatmentAmount
-                                                                    }
-                                                                  </p>
-                                                                </div>
-                                                              </motion.div>
-
-                                                              <motion.div
-                                                                className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
-                                                                initial={{
-                                                                  opacity: 0,
-                                                                  y: 10,
-                                                                }}
-                                                                animate={{
-                                                                  opacity: 1,
-                                                                  y: 0,
-                                                                }}
-                                                                whileHover={{
-                                                                  scale: 1.01,
-                                                                }}
-                                                                transition={{
-                                                                  duration: 0.3,
-                                                                }}
-                                                              >
-                                                                <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
-                                                                  <User className="w-4 h-4" />
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                  <h4 className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                                                    Toatal Paid
-                                                                    Amount
-                                                                  </h4>
-                                                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
-                                                                    {
-                                                                      ortho.totalPaidAmount
-                                                                    }
-                                                                  </p>
-                                                                </div>
-                                                              </motion.div>
-
-                                                              <motion.div
-                                                                className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
-                                                                initial={{
-                                                                  opacity: 0,
-                                                                  y: 10,
-                                                                }}
-                                                                animate={{
-                                                                  opacity: 1,
-                                                                  y: 0,
-                                                                }}
-                                                                whileHover={{
-                                                                  scale: 1.01,
-                                                                }}
-                                                                transition={{
-                                                                  duration: 0.3,
-                                                                }}
-                                                              >
-                                                                <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
-                                                                  <User className="w-4 h-4" />
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                  <h4 className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                                                    Total
-                                                                    Remaining
-                                                                    Amount
-                                                                  </h4>
-                                                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
-                                                                    {
-                                                                      ortho.totalRemainingAmount
-                                                                    }
-                                                                  </p>
-                                                                </div>
-                                                              </motion.div>
-
-                                                              <motion.div
-                                                                className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
-                                                                initial={{
-                                                                  opacity: 0,
-                                                                  y: 10,
-                                                                }}
-                                                                animate={{
-                                                                  opacity: 1,
-                                                                  y: 0,
-                                                                }}
-                                                                whileHover={{
-                                                                  scale: 1.01,
-                                                                }}
-                                                                transition={{
-                                                                  duration: 0.3,
-                                                                }}
-                                                              >
-                                                                <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
-                                                                  <User className="w-4 h-4" />
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                  <h4 className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                                                    Procedure
-                                                                  </h4>
-                                                                  <p className="font-semibold text-gray-900 dark:text-gray-100">
-                                                                    {
-                                                                      ortho.procedure
-                                                                    }
-                                                                  </p>
-                                                                </div>
-                                                              </motion.div>
-                                                            </div>
-                                                            {/* ortho daily treatment */}
-                                                            {ortho.dailyTreatments &&
-                                                              ortho
-                                                                .dailyTreatments
-                                                                .length > 0 && (
-                                                                <div className="mt-3 space-x-4 space-y-4">
-                                                                  <p className="text-xs font-medium mb-2 px-4">
-                                                                    Daily
-                                                                    Treatments
-                                                                    History
-                                                                  </p>
-                                                                  <div className="rounded-md border overflow-hidden">
-                                                                    <Table>
-                                                                      <TableHeader className="bg-muted/50">
-                                                                        <TableRow>
-                                                                          <TableHead className="text-xs">
-                                                                            Date
-                                                                          </TableHead>
-                                                                          <TableHead className="text-xs">
-                                                                            Procedure
-                                                                          </TableHead>
-                                                                          <TableHead className="text-xs">
-                                                                            Doctor
-                                                                          </TableHead>
-                                                                          <TableHead className="text-xs text-right">
-                                                                            Amount
-                                                                          </TableHead>
-                                                                          <TableHead className="text-xs text-right">
-                                                                            Paid
-                                                                          </TableHead>
-                                                                          <TableHead className="text-xs">
-                                                                            Payment Date
-                                                                          </TableHead>
-                                                                          <TableHead className="text-xs">
-                                                                            Notes
-                                                                          </TableHead>
-                                                                          <TableHead className="text-xs text-right">
-                                                                            Status
-                                                                          </TableHead>
-                                                                        </TableRow>
-                                                                      </TableHeader>
-                                                                      <TableBody>
-                                                                        {ortho.dailyTreatments.map(
-                                                                          (
-                                                                            dailyTreatment,
-                                                                            idx
-                                                                          ) => (
-                                                                            <TableRow
-                                                                              key={
-                                                                                idx
-                                                                              }
-                                                                              className={
-                                                                                (
-                                                                                  dailyTreatment as any
-                                                                                )
-                                                                                  .isCompleted
-                                                                                  ? "bg-green-50/30 dark:bg-green-900/20"
-                                                                                  : ""
-                                                                              }
-                                                                            >
-                                                                              <TableCell className="text-xs py-2">
-                                                                                {formatSafeDate(
-                                                                                  dailyTreatment.date
-                                                                                )}
-                                                                              </TableCell>
-                                                                              <TableCell className="text-xs py-2">
-                                                                                {dailyTreatment.procedure ||
-                                                                                  "General"}
-                                                                              </TableCell>
-                                                                              <TableCell className="text-xs py-2">
-                                                                                {typeof dailyTreatment.treatedByDoctor ===
-                                                                                  "object" &&
-                                                                                dailyTreatment.treatedByDoctor !==
-                                                                                  null &&
-                                                                                "name" in
-                                                                                  dailyTreatment.treatedByDoctor
-                                                                                  ? (
-                                                                                      dailyTreatment.treatedByDoctor as {
-                                                                                        name: string;
-                                                                                      }
-                                                                                    )
-                                                                                      .name
-                                                                                  : typeof dailyTreatment.treatedByDoctor ===
-                                                                                      "string"
-                                                                                    ? dailyTreatment.treatedByDoctor
-                                                                                    : "N/A"}
-                                                                              </TableCell>
-                                                                              <TableCell className="text-xs py-2 text-right">
-                                                                                ₹
-                                                                                {dailyTreatment.treatmentAmount ||
-                                                                                  0}
-                                                                              </TableCell>
-                                                                              <TableCell className="text-xs py-2 text-right">
-                                                                                ₹
-                                                                                {dailyTreatment.paidAmount ||
-                                                                                  0}
-                                                                              </TableCell>
-                                                                              <TableCell className="text-xs py-2">
-                                                                                {dailyTreatment.paymentDate
-                                                                                  ? formatSafeDate(dailyTreatment.paymentDate)
-                                                                                  : "Not paid"}
-                                                                              </TableCell>
-                                                                              <TableCell className="text-xs py-2 max-w-[150px]">
-                                                                                {dailyTreatment.notes ? (
-                                                                                  <div 
-                                                                                    className="truncate" 
-                                                                                    title={dailyTreatment.notes}
-                                                                                  >
-                                                                                    {dailyTreatment.notes}
-                                                                                  </div>
-                                                                                ) : (
-                                                                                  <span className="text-muted-foreground">No notes</span>
-                                                                                )}
-                                                                              </TableCell>
-                                                                              <TableCell className="text-xs py-2 text-right">
-                                                                                <Badge
-                                                                                  variant={
-                                                                                    (
-                                                                                      dailyTreatment as any
-                                                                                    )
-                                                                                      .isCompleted
-                                                                                      ? "default"
-                                                                                      : "outline"
-                                                                                  }
-                                                                                  className={`text-xs ${
-                                                                                    (
-                                                                                      dailyTreatment as any
-                                                                                    )
-                                                                                      .isCompleted
-                                                                                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                                                                                      : "border-orange-200 text-orange-800 dark:border-orange-800 dark:text-orange-200"
-                                                                                  }`}
-                                                                                >
-                                                                                  {(
-                                                                                    dailyTreatment as any
-                                                                                  )
-                                                                                    .isCompleted
-                                                                                    ? "Done"
-                                                                                    : "Pending"}
-                                                                                </Badge>
-                                                                              </TableCell>
-                                                                            </TableRow>
-                                                                          )
-                                                                        )}
-                                                                      </TableBody>
-                                                                    </Table>
-                                                                  </div>
-                                                                </div>
-                                                              )}
-                                                          </motion.div>
-                                                        )
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                )}
-                                            </div>
-                                          </motion.div>
-                                        );
-                                      }
-                                    )}
-                                  </div>
-                                </motion.div>
-                              )}
+                          <CardContent className="p-2 max-h-64 overflow-y-auto custom-scrollbar">
+                            <FollowUpDisplay
+                              followUps={
+                                localPatient.medicalDetails[0].treatmentPlanning
+                                  .flatMap(plan => plan.followUps || [])
+                              }
+                            />
                           </CardContent>
                         </Card>
                       </motion.div>
-                    ))
-                  )}
-                </motion.div>
+                    )}
+
+                    {/* Medical Conditions Cards */}
+                    {localPatient.medicalDetails.length > 0 && localPatient.medicalDetails.map((record, index) => (
+                      record.medicalHistory && (
+                        <motion.div
+                          key={`medical-motion-${record._id}`}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: 0.4 + index * 0.1 }}
+                        >
+                          <Card className="border-l-4 border-l-red-500 border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50">
+                            <CardHeader className="pb-2 pt-2 px-2 border-b border-gray-100 dark:border-gray-800">
+                              <CardTitle className="text-sm flex items-center gap-1">
+                                <HeartPulse className="w-3.5 h-3.5 text-red-500" />
+                                Medical Conditions {localPatient.medicalDetails.length > 1 ? `#${index + 1}` : ''}
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-2 space-y-1.5">
+                              {record.medicalHistory.allergies && (
+                                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-1.5 rounded border border-yellow-200 dark:border-yellow-800/30">
+                                  <p className="text-xs font-medium text-yellow-700 dark:text-yellow-300">Allergies</p>
+                                  <p className="text-xs text-gray-700 dark:text-gray-300">{record.medicalHistory.allergies}</p>
+                                </div>
+                              )}
+                              {record.medicalHistory.bloodPressure && (
+                                <div className="bg-blue-50 dark:bg-blue-900/20 p-1.5 rounded border border-blue-200 dark:border-blue-800/30">
+                                  <p className="text-xs font-medium text-blue-700 dark:text-blue-300">Blood Pressure</p>
+                                  <p className="text-xs text-gray-700 dark:text-gray-300">{record.medicalHistory.bloodPressure}</p>
+                                </div>
+                              )}
+                              <div className="flex flex-wrap gap-1">
+                                {record.medicalHistory.diabetes && (
+                                  <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">Diabetes</Badge>
+                                )}
+                                {record.medicalHistory.thyroid && (
+                                  <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-700">Thyroid</Badge>
+                                )}
+                                {record.medicalHistory.bleedingDisorder && (
+                                  <Badge variant="secondary" className="text-xs bg-red-100 text-red-700">Bleeding Disorder</Badge>
+                                )}
+                                {record.medicalHistory.asthma && (
+                                  <Badge variant="secondary" className="text-xs bg-cyan-100 text-cyan-700">Asthma</Badge>
+                                )}
+                                {record.medicalHistory.pregnancy && (
+                                  <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-700">Pregnancy</Badge>
+                                )}
+                              </div>
+                              {record.medicalHistory.otherConditions && (
+                                <div className="bg-gray-50 dark:bg-gray-800/50 p-1.5 rounded border border-gray-200 dark:border-gray-700">
+                                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Other Conditions</p>
+                                  <p className="text-xs text-gray-600 dark:text-gray-400">{record.medicalHistory.otherConditions}</p>
+                                </div>
+                              )}
+                              {record.medicalHistory.noMedicalIssues && (
+                                <div className="bg-green-50 dark:bg-green-900/20 p-1.5 rounded border border-green-200 dark:border-green-800/30">
+                                  <div className="flex items-center gap-1">
+                                    <CheckCircle className="w-3 h-3 text-green-600" />
+                                    <p className="text-xs font-medium text-green-700 dark:text-green-300">No significant medical issues</p>
+                                  </div>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      )
+                    ))}
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="timeline" className="pb-3">

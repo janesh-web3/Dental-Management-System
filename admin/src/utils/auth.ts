@@ -15,7 +15,11 @@ const api = axios.create({
 // Add axios interceptor to include auth token in requests
 api.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem('doctorToken');
+    // Check for admin token first, then fall back to doctor token
+    const adminToken = sessionStorage.getItem('token');
+    const doctorToken = sessionStorage.getItem('doctorToken');
+    const token = adminToken || doctorToken;
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

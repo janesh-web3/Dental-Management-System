@@ -64,10 +64,13 @@ exports.getFilteredPatients = async (req, res) => {
       hasFilters = true;
     }
 
-    // Apply group filter - Need to fix the path if group field is in a different location
+    // Apply group filter - Check both medicalDetails.group and groupTreatmentDetails.groupName
     if (group && group !== 'all') {
-      // Check if group exists in the first medical detail
-      query['medicalDetails.0.group'] = group;
+      query['$or'] = query['$or'] || [];
+      query['$or'].push(
+        { 'medicalDetails.group': group },
+        { 'medicalDetails.treatmentPlanning.groupTreatmentDetails.groupName': group }
+      );
       hasFilters = true;
     }
 

@@ -1674,7 +1674,12 @@ const getFilteredPatients = async (req, res) => {
     }
 
     if (group && group !== "all") {
-      andConditions.push({ "medicalDetails.group": group });
+      andConditions.push({ 
+        $or: [
+          { "medicalDetails.group": group },
+          { "medicalDetails.treatmentPlanning.groupTreatmentDetails.groupName": group }
+        ]
+      });
     }
 
     if (gender && gender !== "all") {

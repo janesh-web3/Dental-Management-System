@@ -325,7 +325,10 @@ const buildPatientQueryFromFilters = (filters) => {
   
   // Add group filter
   if (filters.group && filters.group !== 'all') {
-    query['medicalDetails.group'] = filters.group;
+    query['$or'] = [
+      { 'medicalDetails.group': filters.group },
+      { 'medicalDetails.treatmentPlanning.groupTreatmentDetails.groupName': filters.group }
+    ];
   }
   
   // Add treatment procedure filter

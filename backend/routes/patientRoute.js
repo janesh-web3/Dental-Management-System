@@ -624,6 +624,302 @@ router.patch(
   }
 );
 
+// Add this new route for updating initial group treatment payment (when no daily treatments exist)
+router.patch(
+  "/update-group-payment/:patientId/:medicalDetailId/:treatmentId/:groupIndex/initial",
+  async (req, res) => {
+    try {
+      const { patientId, medicalDetailId, treatmentId, groupIndex } = req.params;
+      let { paidAmount, paymentDate, paymentMethod } = req.body;
+
+      // Validate required parameters
+      if (!patientId || !medicalDetailId || !treatmentId || groupIndex === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required parameters"
+        });
+      }
+
+      // Ensure paidAmount is a proper number with 2 decimal places for precision
+      paidAmount = parseFloat(paidAmount);
+      if (paidAmount === undefined || isNaN(paidAmount) || paidAmount < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid payment amount"
+        });
+      }
+
+      // Round to 2 decimal places to avoid floating point precision issues
+      paidAmount = Math.round(paidAmount * 100) / 100;
+
+      // Get the original paid amount BEFORE any updates for correct invoice calculation
+      let originalPaidAmount = 0;
+      try {
+        const originalPatient = await Patient.findById(patientId);
+        if (!originalPatient) {
+          return res.status(404).json({
+            success: false,
+            message: "Patient not found"
+          });
+        }
+
+        const originalMedicalDetail = originalPatient.medicalDetails.find(md => md._id.toString() === medicalDetailId);
+        if (!originalMedicalDetail) {
+          return res.status(404).json({
+            success: false,
+            message: "Medical detail not found"
+          });
+        }
+
+        const originalTreatment = originalMedicalDetail.treatmentPlanning.find(t => t._id.toString() === treatmentId);
+        if (!originalTreatment) {
+          return res.status(404).json({
+            success: false,
+            message: "Treatment not found"
+          });
+        }
+
+        // Validate groupIndex is a valid number
+        const groupIndexNum = Number(groupIndex);
+        if (isNaN(groupIndexNum)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid group index"
+          });
+        }
+
+        const originalGroup = originalTreatment.groupTreatmentDetails[groupIndexNum];
+        if (!originalGroup) {
+          return res.status(404).json({
+            success: false,
+            message: "Group treatment not found"
+          });
+        }
+
+        originalPaidAmount = parseFloat(originalGroup.totalPaidAmount) || 0;
+        console.log(`Initial group payment update - Original: ${originalPaidAmount}, New: ${paidAmount}, Additional: ${paidAmount - originalPaidAmount}`);
+      } catch (err) {
+        console.error("Error getting original group paid amount:", err);
+        originalPaidAmount = 0;
+      }
+
+      // Get the patient document
+      const patient = await Patient.findOne(
+        {
+          _id: patientId,
+          "medicalDetails._id": medicalDetailId
+        },
+        { "medicalDetails.$": 1 }
+      );
+
+      if (!patient || !patient.medicalDetails[0]) {
+        return res.status(404).json({
+          success: false,
+          message: "Patient or treatment not found"
+        });
+      }
+
+      // Find the treatment amount manually in JavaScript
+      let totalTreatmentAmount = 0;
+      try {
+        const medicalDetail = patient.medicalDetails[0];
+        const treatment = medicalDetail.treatmentPlanning.find(t =>
+          t._id.toString() === treatmentId
+        );
+        if (!treatment) throw new Error("Treatment not found");
+
+        // Validate groupIndex is a valid number
+        const groupIndexNum = Number(groupIndex);
+        if (isNaN(groupIndexNum)) {
+          throw new Error("Invalid group index");
+        }
+
+        const groupTreatment = treatment.groupTreatmentDetails[groupIndexNum];
+        if (!groupTreatment) throw new Error("Group treatment not found");
+
+        totalTreatmentAmount = parseFloat(groupTreatment.totalTreatmentAmount) || 0;
+      } catch (err) {
+        console.error("Error finding group treatment amount:", err);
+        return res.status(404).json({
+          success: false,
+          message: "Group treatment details could not be found: " + err.message
+        });
+      }
+
+      // Calculate remaining amount
+      const remainingAmount = Math.round((totalTreatmentAmount - paidAmount) * 100) / 100;
+
+      // Update group treatment totals directly
+      const groupIndexNum = Number(groupIndex);
+      const updatedPatient = await Patient.findOneAndUpdate(
+        {
+          _id: patientId,
+          "medicalDetails._id": medicalDetailId,
+          "medicalDetails.treatmentPlanning._id": treatmentId
+        },
+        {
+          $set: {
+            [`medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.${groupIndexNum}.totalPaidAmount`]: paidAmount,
+            [`medicalDetails.$[med].treatmentPlanning.$[treat].groupTreatmentDetails.${groupIndexNum}.totalRemainingAmount`]: remainingAmount
+          }
+        },
+        {
+          arrayFilters: [
+            { "med._id": medicalDetailId },
+            { "treat._id": treatmentId }
+          ],
+          new: true
+        }
+      );
+
+      if (!updatedPatient) {
+        return res.status(404).json({
+          success: false,
+          message: "Failed to update initial group payment information"
+        });
+      }
+
+      // Update treatment-level totals as well
+      try {
+        // Calculate treatment totals from both selected teeth and group treatments
+        const treatmentData = await Patient.aggregate([
+          { $match: { _id: new mongoose.Types.ObjectId(patientId) } },
+          { $unwind: "$medicalDetails" },
+          { $match: { "medicalDetails._id": new mongoose.Types.ObjectId(medicalDetailId) } },
+          { $unwind: "$medicalDetails.treatmentPlanning" },
+          { $match: { "medicalDetails.treatmentPlanning._id": new mongoose.Types.ObjectId(treatmentId) } },
+          {
+            $facet: {
+              teethTotals: [
+                { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails" },
+                { $unwind: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments" },
+                {
+                  $group: {
+                    _id: null,
+                    totalTreatmentAmount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatmentAmount" },
+                    totalPaidAmount: { $sum: "$medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.paidAmount" }
+                  }
+                }
+              ],
+              groupTotals: [
+                { $unwind: "$medicalDetails.treatmentPlanning.groupTreatmentDetails" },
+                {
+                  $group: {
+                    _id: null,
+                    totalTreatmentAmount: { $sum: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.totalTreatmentAmount" },
+                    totalPaidAmount: { $sum: "$medicalDetails.treatmentPlanning.groupTreatmentDetails.totalPaidAmount" }
+                  }
+                }
+              ]
+            }
+          }
+        ]);
+
+        if (treatmentData.length > 0) {
+          const teethTotals = treatmentData[0].teethTotals[0] || { totalTreatmentAmount: 0, totalPaidAmount: 0 };
+          const groupTotals = treatmentData[0].groupTotals[0] || { totalTreatmentAmount: 0, totalPaidAmount: 0 };
+
+          const totalTreatmentAmountAll = teethTotals.totalTreatmentAmount + groupTotals.totalTreatmentAmount;
+          const totalPaidAmountAll = teethTotals.totalPaidAmount + groupTotals.totalPaidAmount;
+          const totalRemainingAmountAll = Math.round((totalTreatmentAmountAll - totalPaidAmountAll) * 100) / 100;
+
+          await Patient.updateOne(
+            {
+              _id: patientId,
+              "medicalDetails._id": medicalDetailId
+            },
+            {
+              $set: {
+                "medicalDetails.$[med].treatmentPlanning.$[treat].totalPlanAmount": Math.round(totalTreatmentAmountAll * 100) / 100,
+                "medicalDetails.$[med].treatmentPlanning.$[treat].totalPaidAmount": Math.round(totalPaidAmountAll * 100) / 100,
+                "medicalDetails.$[med].treatmentPlanning.$[treat].totalRemainingAmount": totalRemainingAmountAll
+              }
+            },
+            {
+              arrayFilters: [
+                { "med._id": medicalDetailId },
+                { "treat._id": treatmentId }
+              ]
+            }
+          );
+        }
+      } catch (treatmentTotalError) {
+        console.error("Error updating treatment totals for initial group payment:", treatmentTotalError);
+      }
+
+      // Generate invoice for the initial group payment update
+      try {
+        // Calculate the actual new payment amount (the additional payment made)
+        const newPaymentAmount = paidAmount - originalPaidAmount;
+
+        console.log(`Initial group invoice generation - Original: ${originalPaidAmount}, New Total: ${paidAmount}, Additional Payment: ${newPaymentAmount}`);
+
+        // Only generate invoice if there's an actual additional payment
+        if (newPaymentAmount <= 0) {
+          console.log("No additional initial group payment made, skipping invoice generation");
+          return res.status(200).json({
+            success: true,
+            message: "Initial group payment updated successfully",
+            data: updatedPatient
+          });
+        }
+
+        // Create invoice via centralized system
+        const invoice = await createTreatmentInvoice(
+          patientId,
+          treatmentId,
+          newPaymentAmount,
+          paymentMethod || "cash"
+        );
+
+        // Add invoice information to the response
+        const response = {
+          success: true,
+          message: "Initial group payment updated successfully",
+          data: updatedPatient
+        };
+
+        if (invoice) {
+          response.data = {
+            ...response.data,
+            invoice: {
+              invoiceNumber: invoice.invoiceNumber
+            }
+          };
+        } else {
+          response.data = {
+            ...response.data,
+            invoiceError: "Failed to generate invoice"
+          };
+        }
+
+        res.status(200).json(response);
+      } catch (invoiceError) {
+        console.error("Error generating invoice for initial group payment update:", invoiceError);
+        // Log more detailed error information
+        if (invoiceError.stack) {
+          console.error("Error stack:", invoiceError.stack);
+        }
+        // Still return success but with invoice generation error info
+        res.status(200).json({
+          success: true,
+          message: "Initial group payment updated successfully, but invoice generation failed",
+          data: updatedPatient,
+          invoiceError: invoiceError.message
+        });
+      }
+
+    } catch (error) {
+      console.error("Error updating initial group payment:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update initial group payment",
+        error: error.message
+      });
+    }
+  }
+);
+
 // Add this new route for updating group treatment payments
 router.patch(
   "/update-group-payment/:patientId/:medicalDetailId/:treatmentId/:groupIndex/:dailyTreatmentId",
@@ -1739,12 +2035,26 @@ router.get("/:patientId/payment-info", protectAdminRoute, async (req, res) => {
       for (const medicalDetail of patient.medicalDetails) {
         if (medicalDetail.treatmentPlanning && medicalDetail.treatmentPlanning.length > 0) {
           for (const treatment of medicalDetail.treatmentPlanning) {
+            // Calculate from selectedTeethDetails (individual teeth treatments)
             if (treatment.selectedTeethDetails && treatment.selectedTeethDetails.length > 0) {
               for (const tooth of treatment.selectedTeethDetails) {
                 const remaining = (tooth.totalTreatmentAmount || 0) - (tooth.totalPaidAmount || 0);
                 totalRemainingAmount += remaining;
                 
                 // Set hasPendingPayment to true if any tooth has a remaining amount
+                if (remaining > 0) {
+                  hasPendingPayment = true;
+                }
+              }
+            }
+            
+            // Calculate from groupTreatmentDetails (group treatments like Ortho)
+            if (treatment.groupTreatmentDetails && treatment.groupTreatmentDetails.length > 0) {
+              for (const group of treatment.groupTreatmentDetails) {
+                const remaining = (group.totalTreatmentAmount || 0) - (group.totalPaidAmount || 0);
+                totalRemainingAmount += remaining;
+                
+                // Set hasPendingPayment to true if any group has a remaining amount
                 if (remaining > 0) {
                   hasPendingPayment = true;
                 }

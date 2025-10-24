@@ -96,22 +96,44 @@ export function PaymentHistoryDialog({
   // Extract group-based treatments with remaining amounts
   Object.entries(groupTreatmentMaps).forEach(([mapKey, groupTreatments]) => {
     groupTreatments?.forEach((groupTreatment, groupIndex) => {
-      groupTreatment.dailyTreatments?.forEach((treatment: any, treatmentIndex: number) => {
-        if (treatment.remainingAmount > 0) {
-          treatmentsWithBalance.push({
-            type: 'group',
-            mapKey,
-            groupIndex,
-            treatmentIndex,
-            date: treatment.date,
-            groupTreatment,
-            treatment: {
-              ...treatment,
-              _id: treatment._id
-            },
-          });
-        }
-      });
+      // Check if group treatment has daily treatments with remaining amounts
+      if (groupTreatment.dailyTreatments && groupTreatment.dailyTreatments.length > 0) {
+        groupTreatment.dailyTreatments.forEach((treatment: any, treatmentIndex: number) => {
+          if (treatment.remainingAmount > 0) {
+            treatmentsWithBalance.push({
+              type: 'group',
+              mapKey,
+              groupIndex,
+              treatmentIndex,
+              date: treatment.date,
+              groupTreatment,
+              treatment: {
+                ...treatment,
+                _id: treatment._id
+              },
+            });
+          }
+        });
+      }
+      // If no daily treatments but group has total remaining amount, create a virtual entry
+      else if (groupTreatment.totalRemainingAmount > 0) {
+        treatmentsWithBalance.push({
+          type: 'group',
+          mapKey,
+          groupIndex,
+          treatmentIndex: -1, // Virtual entry indicator
+          date: groupTreatment.startDate || new Date().toISOString(),
+          groupTreatment,
+          treatment: {
+            date: groupTreatment.startDate || new Date().toISOString(),
+            treatmentAmount: groupTreatment.totalTreatmentAmount,
+            paidAmount: groupTreatment.totalPaidAmount,
+            remainingAmount: groupTreatment.totalRemainingAmount,
+            procedure: groupTreatment.procedure || groupTreatment.groupName,
+            notes: `Initial ${groupTreatment.groupName} Treatment`
+          },
+        });
+      }
     });
   });
 
@@ -252,49 +274,71 @@ export function PaymentHistoryDialog({
     dailyTreatmentId?: string
   ) => {
     const key = `group-${mapKey}-${groupIndex}-${treatmentIndex}`;
-    
+
     if (processingPayment === key) return;
-    
+
     const newAmount = newPayments[key] || 0;
     const remainingAmount = treatmentAmount - currentPaid;
-    
+
     if (newAmount <= 0) {
       toast.error("Please enter a valid payment amount");
       return;
     }
-    
+
     if (newAmount > remainingAmount) {
       toast.error("Payment cannot exceed the remaining balance of ₹" + remainingAmount);
       return;
     }
-    
+
     try {
       setProcessingPayment(key);
-      
+
       // Extract treatment ID from mapKey
       const [_, treatmentPlanIndex] = mapKey.split("-");
-      
+
       // Get the treatment ID directly from patient data
       const treatmentId = patient.medicalDetails[0]?.treatmentPlanning[parseInt(treatmentPlanIndex)]?._id;
-      
-      if (!dailyTreatmentId || !treatmentId) {
-        toast.error(`Missing required treatment information: ${!dailyTreatmentId ? 'Treatment Entry ID' : 'Treatment Plan ID'}`);
-        console.error("Missing IDs:", { dailyTreatmentId, treatmentId, mapKey, groupIndex });
+
+      if (!treatmentId) {
+        toast.error('Treatment Plan ID not found');
+        console.error("Missing IDs:", { treatmentId, mapKey, groupIndex });
         return;
       }
-      
+
       const paymentMethod = paymentMethods[key] || "Cash";
-      
-      // Call backend API to update group treatment payment
-      await crudRequest(
-        "PATCH",
-        `/patient/update-group-payment/${patientId}/${medicalDetailId}/${treatmentId}/${groupIndex}/${dailyTreatmentId}`,
-        { 
-          paidAmount: currentPaid + newAmount,
-          paymentMethod: paymentMethod,
-          paymentDate: new Date().toISOString()
+
+      // If treatmentIndex is -1, this is a virtual entry for initial payment
+      // We need to add the payment directly to the group treatment totals
+      if (treatmentIndex === -1) {
+        // For virtual entries, we update the group's total paid amount
+        await crudRequest(
+          "PATCH",
+          `/patient/update-group-payment/${patientId}/${medicalDetailId}/${treatmentId}/${groupIndex}/initial`,
+          {
+            paidAmount: currentPaid + newAmount,
+            paymentMethod: paymentMethod,
+            paymentDate: new Date().toISOString()
+          }
+        );
+      } else {
+        // Regular update for existing daily treatment
+        if (!dailyTreatmentId) {
+          toast.error('Treatment Entry ID not found');
+          console.error("Missing dailyTreatmentId:", { dailyTreatmentId, treatmentId, mapKey, groupIndex });
+          return;
         }
-      );
+
+        // Call backend API to update group treatment payment
+        await crudRequest(
+          "PATCH",
+          `/patient/update-group-payment/${patientId}/${medicalDetailId}/${treatmentId}/${groupIndex}/${dailyTreatmentId}`,
+          {
+            paidAmount: currentPaid + newAmount,
+            paymentMethod: paymentMethod,
+            paymentDate: new Date().toISOString()
+          }
+        );
+      }
 
       // Create invoice via centralized API
       try {

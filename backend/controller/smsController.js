@@ -276,7 +276,10 @@ const sendBulkSMS = async (req, res) => {
             
             // Procedure group filter
             if (filters.group && filters.group !== "all") {
-                query["medicalDetails.group"] = filters.group;
+                query["$or"] = [
+                    { "medicalDetails.group": filters.group },
+                    { "medicalDetails.treatmentPlanning.groupTreatmentDetails.groupName": filters.group }
+                ];
             }
             
             // Treatment procedure filter
@@ -1794,7 +1797,10 @@ const createSMSCampaign = async (req, res) => {
                 query["personalDetails.gender"] = filters.gender;
             }
             if (filters.group && filters.group !== "all") {
-                query["medicalDetails.group"] = filters.group;
+                query["$or"] = [
+                    { "medicalDetails.group": filters.group },
+                    { "medicalDetails.treatmentPlanning.groupTreatmentDetails.groupName": filters.group }
+                ];
             }
             if (filters.procedure && filters.procedure !== "all") {
                 query["medicalDetails.treatmentPlanning.selectedTeethDetails"] = {
@@ -2407,7 +2413,10 @@ const sendSMSToGroup = async (req, res) => {
         
         // Add group filter
         if (filters.group && filters.group !== 'all') {
-          query['medicalDetails.group'] = filters.group;
+          query['$or'] = [
+            { 'medicalDetails.group': filters.group },
+            { 'medicalDetails.treatmentPlanning.groupTreatmentDetails.groupName': filters.group }
+          ];
         }
         
         // Add treatment procedure filter

@@ -1299,17 +1299,17 @@ export function ViewPatientDrawer({
     <Drawer open={isOpen} onOpenChange={() => onClose()}>
       <DrawerContent className="h-[95vh] max-h-[95vh]">
         <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-950">
-          <DrawerHeader className="border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm p-2">
+          <DrawerHeader className="border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm p-2 sm:p-3">
             <div className="flex flex-row items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Avatar className="h-8 w-8 border border-primary/20 shrink-0">
+                <Avatar className="h-7 w-7 sm:h-8 sm:w-8 border border-primary/20 shrink-0">
                   <AvatarFallback className="bg-primary/10 text-primary text-xs">
                     {getInitials(localPatient.personalDetails.name)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
                       {localPatient.personalDetails.name}
                     </h2>
                     <Button
@@ -1331,24 +1331,24 @@ export function ViewPatientDrawer({
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5 sm:gap-2">
                 <Button
                   variant="default"
                   size="sm"
                   onClick={exportPatientPDF}
-                  className="h-8 px-2 text-xs bg-primary hover:bg-primary/90"
+                  className="h-7 sm:h-8 px-2 text-xs bg-primary hover:bg-primary/90"
                 >
-                  <Download className="w-3 h-3 mr-1" />
-                  PDF
+                  <Download className="w-3 h-3 sm:mr-1" />
+                  <span className="hidden sm:inline">PDF</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={onClose}
-                  className="h-8 px-2 text-xs"
+                  className="h-7 sm:h-8 px-2 text-xs"
                 >
-                  <X className="w-3 h-3 mr-1" />
-                  Close
+                  <X className="w-3 h-3 sm:mr-1" />
+                  <span className="hidden sm:inline">Close</span>
                 </Button>
               </div>
             </div>
@@ -1360,31 +1360,31 @@ export function ViewPatientDrawer({
                 <TabsList className="w-full h-auto grid grid-cols-5 bg-gray-100 dark:bg-gray-800/50 p-0.5 rounded-md gap-0.5">
                   <TabsTrigger
                     value="overview"
-                    className="text-xs whitespace-nowrap px-1 py-1.5"
+                    className="text-[10px] sm:text-xs whitespace-nowrap px-0.5 sm:px-1 py-1.5"
                   >
                     Overview
                   </TabsTrigger>
                   <TabsTrigger
                     value="timeline"
-                    className="text-xs whitespace-nowrap px-1 py-1.5"
+                    className="text-[10px] sm:text-xs whitespace-nowrap px-0.5 sm:px-1 py-1.5"
                   >
                     Timeline
                   </TabsTrigger>
                   <TabsTrigger
                     value="prescriptions"
-                    className="text-xs whitespace-nowrap px-1 py-1.5"
+                    className="text-[10px] sm:text-xs whitespace-nowrap px-0.5 sm:px-1 py-1.5"
                   >
                     Rx
                   </TabsTrigger>
                   <TabsTrigger
                     value="service-payments"
-                    className="text-xs whitespace-nowrap px-1 py-1.5"
+                    className="text-[10px] sm:text-xs whitespace-nowrap px-0.5 sm:px-1 py-1.5"
                   >
                     Payments
                   </TabsTrigger>
                   <TabsTrigger
                     value="documents"
-                    className="text-xs whitespace-nowrap px-1 py-1.5"
+                    className="text-[10px] sm:text-xs whitespace-nowrap px-0.5 sm:px-1 py-1.5"
                   >
                     Docs
                   </TabsTrigger>
@@ -1392,18 +1392,18 @@ export function ViewPatientDrawer({
               </div>
 
               <TabsContent value="overview" className="pb-3">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 lg:gap-4">
                   {/* Left column - Personal Info and Treatment Progress (70-80% width) */}
-                  <div className="lg:col-span-3 space-y-4">
+                  <div className="lg:col-span-3 space-y-3 sm:space-y-4">
                     {/* Enhanced Personal Information */}
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
-                        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-3">
-                          <CardTitle className="text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200">
+                        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2 sm:p-3">
+                          <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
                             <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
                               <User className="h-4 w-4" />
                             </div>
@@ -1412,10 +1412,10 @@ export function ViewPatientDrawer({
                             </span>
                           </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-3">
+                        <CardContent className="p-2 sm:p-3">
                           {/* Personal Information Cards */}
                           <motion.div
-                            className="grid grid-cols-2 lg:grid-cols-3 gap-2"
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ staggerChildren: 0.05 }}
@@ -1593,9 +1593,9 @@ export function ViewPatientDrawer({
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: 0.3 }}
                       >
-                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
+                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200">
                           <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-3">
-                            <CardTitle className="text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                            <CardTitle className="text-base sm:text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
                               <div className="p-1.5 rounded-lg bg-gradient-to-br from-red-500 to-pink-600 text-white">
                                 <Heart className="h-4 w-4" />
                               </div>
@@ -1633,7 +1633,7 @@ export function ViewPatientDrawer({
                                       }
 
                                       return (
-                                        <div key={treatment._id} className="border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50 dark:bg-indigo-900/10 p-2 rounded-md space-y-2">
+                                        <div key={treatment._id} className="border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50 dark:bg-indigo-900/10 p-2.5 rounded-lg space-y-2 hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-200">
                                           <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-1">
                                               <ClipboardList className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
@@ -1651,9 +1651,12 @@ export function ViewPatientDrawer({
 
                                           {/* Dental Chart */}
                                           {treatment.selectedTeethDetails && treatment.selectedTeethDetails.length > 0 && (
-                                            <div className="bg-white dark:bg-gray-800 p-2 rounded border border-indigo-200 dark:border-indigo-800/30">
-                                              <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Dental Chart</p>
-                                              <div className="scale-75 origin-top-left w-[133%]">
+                                            <div className="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-indigo-200 dark:border-indigo-800/30 shadow-sm">
+                                              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5">
+                                                <div className="w-1 h-4 bg-indigo-500 rounded-full"></div>
+                                                Dental Chart
+                                              </p>
+                                              <div className="scale-[0.6] sm:scale-75 origin-top-left w-[167%] sm:w-[133%]">
                                                 {treatment.isChildDentition ? (
                                                   <ChildDentalChart
                                                     selectedTeeth={selectedTeethMap}
@@ -1670,8 +1673,11 @@ export function ViewPatientDrawer({
                                               </div>
 
                                                   {/* Selected Teeth Details - Comprehensive */}
-                                              <div className="mt-2 space-y-1.5">
-                                                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">Selected Teeth Details:</p>
+                                              <div className="mt-2 space-y-2">
+                                                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                                                  <div className="w-1 h-4 bg-indigo-500 rounded-full"></div>
+                                                  Selected Teeth Details:
+                                                </p>
                                                 <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar">
                                                   {treatment.selectedTeethDetails.map((tooth) => {
                                                     // Get all unique doctors from daily treatments
@@ -1683,9 +1689,16 @@ export function ViewPatientDrawer({
                                                     const allNotes = tooth.dailyTreatments
                                                       ?.filter((dt: any) => dt.notes)
                                                       .map((dt: any) => dt.notes) || [];
+                                                    // Get treatment dates from daily treatments
+                                                    const treatmentDates = tooth.dailyTreatments
+                                                      ?.filter((dt: any) => dt.date)
+                                                      .map((dt: any) => dt.date)
+                                                      .sort((a: string, b: string) => new Date(a).getTime() - new Date(b).getTime()) || [];
+                                                    const firstTreatmentDate = treatmentDates[0];
+                                                    const lastTreatmentDate = treatmentDates[treatmentDates.length - 1];
 
                                                     return (
-                                                      <div key={tooth.number} className="bg-white dark:bg-gray-700 p-2 rounded border border-gray-200 dark:border-gray-600 space-y-1">
+                                                      <div key={tooth.number} className="bg-white dark:bg-gray-700 p-2.5 rounded-lg border border-gray-200 dark:border-gray-600 space-y-1.5 hover:shadow-md transition-shadow duration-200">
                                                         {/* Tooth Number, Position, Side */}
                                                         <div className="flex items-center justify-between">
                                                           <div className="flex items-center gap-1.5">
@@ -1711,6 +1724,34 @@ export function ViewPatientDrawer({
                                                           </div>
                                                         )}
 
+                                                        {/* Treatment Dates */}
+                                                        {treatmentDates.length > 0 && (
+                                                          <div className="bg-purple-50 dark:bg-purple-900/20 p-1.5 rounded space-y-1">
+                                                            {firstTreatmentDate && (
+                                                              <div className="flex items-start gap-1">
+                                                                <Calendar className="w-3 h-3 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                                                                <div className="flex-1 min-w-0">
+                                                                  <span className="text-xs text-gray-500 dark:text-gray-400">First Treatment: </span>
+                                                                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                                    {formatSafeDate(firstTreatmentDate)}
+                                                                  </span>
+                                                                </div>
+                                                              </div>
+                                                            )}
+                                                            {lastTreatmentDate && lastTreatmentDate !== firstTreatmentDate && (
+                                                              <div className="flex items-start gap-1">
+                                                                <Calendar className="w-3 h-3 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                                                                <div className="flex-1 min-w-0">
+                                                                  <span className="text-xs text-gray-500 dark:text-gray-400">Latest Treatment: </span>
+                                                                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                                    {formatSafeDate(lastTreatmentDate)}
+                                                                  </span>
+                                                                </div>
+                                                              </div>
+                                                            )}
+                                                          </div>
+                                                        )}
+
                                                         {/* Doctor(s) */}
                                                         {doctors && (
                                                           <div className="bg-green-50 dark:bg-green-900/20 p-1.5 rounded">
@@ -1727,7 +1768,7 @@ export function ViewPatientDrawer({
                                                         )}
 
                                                         {/* Financial Details */}
-                                                        <div className="grid grid-cols-3 gap-1">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
                                                           {tooth.totalTreatmentAmount !== undefined && (
                                                             <div className="bg-blue-50 dark:bg-blue-900/20 p-1.5 rounded">
                                                               <p className="text-xs text-blue-600 dark:text-blue-400 mb-0.5">Total</p>
@@ -1835,8 +1876,8 @@ export function ViewPatientDrawer({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: 0.1 }}
                     >
-                      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
-                        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
+                      <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200">
+                        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2.5">
                           <CardTitle className="text-sm flex items-center gap-1.5 text-gray-800 dark:text-gray-100">
                             <div className="p-1 rounded-md bg-gradient-to-br from-green-500 to-emerald-600 text-white">
                               <Calendar className="h-3.5 w-3.5" />
@@ -1881,8 +1922,8 @@ export function ViewPatientDrawer({
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: 0.15 }}
                       >
-                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
-                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
+                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200">
+                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2.5">
                             <CardTitle className="text-sm flex items-center gap-1.5 text-gray-800 dark:text-gray-100">
                               <div className="p-1 rounded-md bg-gradient-to-br from-purple-500 to-pink-600 text-white">
                                 <Users className="h-3.5 w-3.5" />
@@ -1925,8 +1966,8 @@ export function ViewPatientDrawer({
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: 0.18 }}
                       >
-                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
-                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
+                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200">
+                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2.5">
                             <CardTitle className="text-sm flex items-center gap-1.5 text-gray-800 dark:text-gray-100">
                               <div className="p-1 rounded-md bg-gradient-to-br from-yellow-500 to-orange-600 text-white">
                                 <AlertTriangle className="h-3.5 w-3.5" />
@@ -1977,8 +2018,8 @@ export function ViewPatientDrawer({
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: 0.2 }}
                       >
-                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
-                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
+                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200">
+                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2.5">
                             <CardTitle className="text-sm flex items-center gap-2 text-gray-800 dark:text-gray-100">
                               <div className="p-1 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 text-white">
                                 <Microscope className="h-3.5 w-3.5" />
@@ -2072,11 +2113,13 @@ export function ViewPatientDrawer({
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: 0.2 }}
                       >
-                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
-                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
-                            <CardTitle className="text-sm flex items-center gap-1">
-                              <CalendarCheck className="w-3.5 h-3.5 text-blue-500" />
-                              Follow-ups
+                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200">
+                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2.5">
+                            <CardTitle className="text-sm flex items-center gap-1.5">
+                              <div className="p-1 rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                                <CalendarCheck className="w-3.5 h-3.5" />
+                              </div>
+                              <span className="text-sm font-semibold">Follow-ups</span>
                             </CardTitle>
                           </CardHeader>
                           <CardContent className="p-2 max-h-64 overflow-y-auto custom-scrollbar">
@@ -2100,11 +2143,13 @@ export function ViewPatientDrawer({
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.3, delay: 0.4 + index * 0.1 }}
                         >
-                          <Card className="border-l-4 border-l-red-500 border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50">
-                            <CardHeader className="pb-2 pt-2 px-2 border-b border-gray-100 dark:border-gray-800">
-                              <CardTitle className="text-sm flex items-center gap-1">
-                                <HeartPulse className="w-3.5 h-3.5 text-red-500" />
-                                Medical Conditions {localPatient.medicalDetails.length > 1 ? `#${index + 1}` : ''}
+                          <Card className="border-l-4 border-l-red-500 border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg hover:shadow-md transition-shadow duration-200">
+                            <CardHeader className="pb-2 pt-2.5 px-2.5 border-b border-gray-100 dark:border-gray-800">
+                              <CardTitle className="text-sm flex items-center gap-1.5">
+                                <div className="p-1 rounded-md bg-gradient-to-br from-red-500 to-pink-600 text-white">
+                                  <HeartPulse className="w-3.5 h-3.5" />
+                                </div>
+                                <span className="text-sm font-semibold">Medical Conditions {localPatient.medicalDetails.length > 1 ? `#${index + 1}` : ''}</span>
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="p-2 space-y-1.5">

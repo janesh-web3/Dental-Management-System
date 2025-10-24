@@ -15,13 +15,11 @@ import {
   CheckCircle,
   Clock,
   ClipboardList,
-  ClipboardX,
   Droplets,
   FileText,
   Heart,
   HeartPulse,
   Image as ImageIcon,
-  Activity,
   Mail,
   MapPin,
   Microscope,
@@ -29,9 +27,6 @@ import {
   Pill,
   Scan,
   Star,
-  Info,
-  TestTube2,
-  Thermometer,
   User,
   UserCheck,
   X,
@@ -104,24 +99,7 @@ const Download = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const XCircle = ({ className }: { className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <circle cx="12" cy="12" r="10" />
-    <line x1="15" y1="9" x2="9" y2="15" />
-    <line x1="9" y1="9" x2="15" y2="15" />
-  </svg>
-);
+
 
 const FolderOpen = ({ className }: { className?: string }) => (
   <svg
@@ -1608,182 +1586,6 @@ export function ViewPatientDrawer({
                       </Card>
                     </motion.div>
 
-                    {/* Patient Group & Check-up Date */}
-                    {localPatient.medicalDetails.length > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.2 }}
-                      >
-                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
-                          <CardContent className="p-2">
-                            <div className="grid grid-cols-2 gap-2">
-                              {localPatient.medicalDetails[0] && (
-                                <div className="border border-green-200 dark:border-green-800/50 bg-green-50 dark:bg-green-900/10 p-2 rounded-md">
-                                  <div className="flex items-center gap-1 mb-1">
-                                    <Users className="w-3 h-3 text-green-600 dark:text-green-400" />
-                                    <h4 className="text-xs font-medium text-green-800 dark:text-green-200">Patient Group</h4>
-                                  </div>
-                                  <p className="text-xs text-gray-700 dark:text-gray-300 font-semibold">
-                                    {localPatient.medicalDetails[0].group || "General"}
-                                  </p>
-                                </div>
-                              )}
-                              {localPatient.personalDetails.checkUpDate && (
-                                <div className="border border-blue-200 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-900/10 p-2 rounded-md">
-                                  <div className="flex items-center gap-1 mb-1">
-                                    <CalendarCheck className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                                    <h4 className="text-xs font-medium text-blue-800 dark:text-blue-200">Check-up Date</h4>
-                                  </div>
-                                  <p className="text-xs text-gray-700 dark:text-gray-300">
-                                    {formatSafeDate(localPatient.personalDetails.checkUpDate)}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    )}
-
-                    {/* Chief Complaint & Diagnosis */}
-                    {localPatient.medicalDetails.length > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.25 }}
-                      >
-                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
-                          <CardContent className="p-2 space-y-2">
-                            {localPatient.medicalDetails.map((record, index) => (
-                              <div key={`chief-left-${record._id}`} className="space-y-2">
-                                {record.chiefComplaint && (
-                                  <div className="border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/10 p-2 rounded">
-                                    <div className="flex items-start gap-2">
-                                      <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-                                      <div className="flex-1 min-w-0">
-                                        <h4 className="text-xs font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
-                                          Chief Complaint {localPatient.medicalDetails.length > 1 ? `#${index + 1}` : ''}
-                                        </h4>
-                                        <p className="text-xs text-gray-700 dark:text-gray-300">{record.chiefComplaint}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-                                {record.diagnosis && (
-                                  <div className="border-l-4 border-l-green-500 bg-green-50 dark:bg-green-900/10 p-2 rounded">
-                                    <div className="flex items-start gap-2">
-                                      <CheckCircle className="w-3.5 h-3.5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                                      <div className="flex-1 min-w-0">
-                                        <h4 className="text-xs font-semibold text-green-800 dark:text-green-200 mb-1">
-                                          Diagnosis {localPatient.medicalDetails.length > 1 ? `#${index + 1}` : ''}
-                                        </h4>
-                                        <p className="text-xs text-gray-700 dark:text-gray-300">{record.diagnosis}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    )}
-
-                    {/* Investigation Details */}
-                    {localPatient.medicalDetails.length > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.3 }}
-                      >
-                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
-                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
-                            <CardTitle className="text-sm flex items-center gap-2 text-gray-800 dark:text-gray-100">
-                              <div className="p-1 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 text-white">
-                                <Microscope className="h-3.5 w-3.5" />
-                              </div>
-                              <span className="text-sm font-semibold">Investigation Results</span>
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="p-2 space-y-2">
-                            {localPatient.medicalDetails.map((record, index) => (
-                              record.investigation && (
-                                <div key={`investigation-${record._id}`} className="space-y-1.5">
-                                  {index > 0 && <div className="border-t border-gray-200 dark:border-gray-700 pt-2" />}
-
-                                  {record.investigation.blood && (
-                                    <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-200 dark:border-red-800/30">
-                                      <div className="flex items-center gap-1 mb-1">
-                                        <Droplets className="w-3 h-3 text-red-600 dark:text-red-400" />
-                                        <p className="text-xs font-semibold text-red-700 dark:text-red-300">Blood Test</p>
-                                      </div>
-                                      <p className="text-xs text-gray-700 dark:text-gray-300">{record.investigation.blood}</p>
-                                      {record.investigation.bloodTestDate && (
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                          Date: {formatSafeDate(record.investigation.bloodTestDate)}
-                                        </p>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {record.investigation.xray && (
-                                    <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-800/30">
-                                      <div className="flex items-center gap-1 mb-1">
-                                        <Scan className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                                        <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">X-Ray</p>
-                                      </div>
-                                      <p className="text-xs text-gray-700 dark:text-gray-300">{record.investigation.xray}</p>
-                                      {record.investigation.xrayDate && (
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                          Date: {formatSafeDate(record.investigation.xrayDate)}
-                                        </p>
-                                      )}
-                                      {record.investigation.xrayImages && record.investigation.xrayImages.length > 0 && (
-                                        <div className="mt-1.5 flex flex-wrap gap-1">
-                                          {record.investigation.xrayImages.map((img: any, idx: number) => (
-                                            <a
-                                              key={idx}
-                                              href={img.url}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
-                                            >
-                                              <ImageIcon className="w-2.5 h-2.5" />
-                                              Image {idx + 1}
-                                            </a>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {record.investigation.otherTests && Array.isArray(record.investigation.otherTests) && record.investigation.otherTests.length > 0 && (
-                                    <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded border border-purple-200 dark:border-purple-800/30">
-                                      <div className="flex items-center gap-1 mb-1">
-                                        <ClipboardList className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                                        <p className="text-xs font-semibold text-purple-700 dark:text-purple-300">Other Tests</p>
-                                      </div>
-                                      <div className="space-y-1">
-                                        {record.investigation.otherTests.map((test: any, idx: number) => (
-                                          <div key={idx} className="bg-white dark:bg-gray-800 p-1.5 rounded">
-                                            <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{test.name}</p>
-                                            {test.results && (
-                                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{test.results}</p>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            ))}
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    )}
-
                     {/* Compact Medical Information */}
                     {localPatient.medicalDetails.length > 0 && (
                       <motion.div
@@ -1855,13 +1657,13 @@ export function ViewPatientDrawer({
                                                 {treatment.isChildDentition ? (
                                                   <ChildDentalChart
                                                     selectedTeeth={selectedTeethMap}
-                                                    onToothClick={() => {}}
+                                                    onToothSelect={() => {}}
                                                     readOnly={true}
                                                   />
                                                 ) : (
                                                   <DentalChart
                                                     selectedTeeth={selectedTeethMap}
-                                                    onToothClick={() => {}}
+                                                    onToothSelect={() => {}}
                                                     readOnly={true}
                                                   />
                                                 )}
@@ -1877,7 +1679,6 @@ export function ViewPatientDrawer({
                                                       ?.filter((dt: any) => dt.treatedByDoctor)
                                                       .map((dt: any) => dt.treatedByDoctor)
                                                       .filter((value: string, index: number, self: string[]) => self.indexOf(value) === index) || [];
-
                                                     // Get all notes from daily treatments
                                                     const allNotes = tooth.dailyTreatments
                                                       ?.filter((dt: any) => dt.notes)
@@ -1911,14 +1712,14 @@ export function ViewPatientDrawer({
                                                         )}
 
                                                         {/* Doctor(s) */}
-                                                        {doctors.length > 0 && (
+                                                        {doctors && (
                                                           <div className="bg-green-50 dark:bg-green-900/20 p-1.5 rounded">
                                                             <div className="flex items-start gap-1">
                                                               <UserCheck className="w-3 h-3 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                                                               <div className="flex-1 min-w-0">
                                                                 <span className="text-xs text-gray-500 dark:text-gray-400">Treated by: </span>
                                                                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                                                                  {doctors.join(", ")}
+                                                                  {doctors[0]?.name}
                                                                 </span>
                                                               </div>
                                                             </div>
@@ -1990,20 +1791,12 @@ export function ViewPatientDrawer({
                                           )}
 
                                           {/* Treatment Details */}
-                                          {(treatment.treatmentName || treatment.treatmentDescription) && (
+                                          {treatment.treatmentDetails && (
                                             <div className="bg-white dark:bg-gray-800 p-2 rounded border border-indigo-200 dark:border-indigo-800/30">
-                                              {treatment.treatmentName && (
-                                                <div className="mb-1">
-                                                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Treatment:</p>
-                                                  <p className="text-xs text-gray-600 dark:text-gray-400">{treatment.treatmentName}</p>
-                                                </div>
-                                              )}
-                                              {treatment.treatmentDescription && (
-                                                <div>
-                                                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Description:</p>
-                                                  <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{treatment.treatmentDescription}</p>
-                                                </div>
-                                              )}
+                                              <div>
+                                                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Treatment Details:</p>
+                                                <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{treatment.treatmentDetails}</p>
+                                              </div>
                                             </div>
                                           )}
                                         </div>
@@ -2080,6 +1873,196 @@ export function ViewPatientDrawer({
                         </CardContent>
                       </Card>
                     </motion.div>
+
+                    {/* Patient Group & Check-up Date */}
+                    {localPatient.medicalDetails.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.15 }}
+                      >
+                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
+                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
+                            <CardTitle className="text-sm flex items-center gap-1.5 text-gray-800 dark:text-gray-100">
+                              <div className="p-1 rounded-md bg-gradient-to-br from-purple-500 to-pink-600 text-white">
+                                <Users className="h-3.5 w-3.5" />
+                              </div>
+                              <span className="text-sm font-semibold">Patient Info</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-2 space-y-2">
+                            {localPatient.medicalDetails[0] && (
+                              <div className="border border-green-200 dark:border-green-800/50 bg-green-50 dark:bg-green-900/10 p-2 rounded-md">
+                                <div className="flex items-center gap-1 mb-1">
+                                  <Users className="w-3 h-3 text-green-600 dark:text-green-400" />
+                                  <h4 className="text-xs font-medium text-green-800 dark:text-green-200">Patient Group</h4>
+                                </div>
+                                <p className="text-xs text-gray-700 dark:text-gray-300 font-semibold">
+                                  {localPatient.medicalDetails[0].group || "General"}
+                                </p>
+                              </div>
+                            )}
+                            {localPatient.personalDetails.checkUpDate && (
+                              <div className="border border-blue-200 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-900/10 p-2 rounded-md">
+                                <div className="flex items-center gap-1 mb-1">
+                                  <CalendarCheck className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                  <h4 className="text-xs font-medium text-blue-800 dark:text-blue-200">Check-up Date</h4>
+                                </div>
+                                <p className="text-xs text-gray-700 dark:text-gray-300">
+                                  {formatSafeDate(localPatient.personalDetails.checkUpDate)}
+                                </p>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )}
+
+                    {/* Chief Complaint & Diagnosis */}
+                    {localPatient.medicalDetails.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.18 }}
+                      >
+                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
+                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
+                            <CardTitle className="text-sm flex items-center gap-1.5 text-gray-800 dark:text-gray-100">
+                              <div className="p-1 rounded-md bg-gradient-to-br from-yellow-500 to-orange-600 text-white">
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                              </div>
+                              <span className="text-sm font-semibold">Clinical Findings</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-2 space-y-2">
+                            {localPatient.medicalDetails.map((record, index) => (
+                              <div key={`chief-right-${record._id}`} className="space-y-2">
+                                {record.chiefComplaint && (
+                                  <div className="border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/10 p-2 rounded">
+                                    <div className="flex items-start gap-2">
+                                      <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                                      <div className="flex-1 min-w-0">
+                                        <h4 className="text-xs font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
+                                          Chief Complaint {localPatient.medicalDetails.length > 1 ? `#${index + 1}` : ''}
+                                        </h4>
+                                        <p className="text-xs text-gray-700 dark:text-gray-300">{record.chiefComplaint}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                                {record.diagnosis && (
+                                  <div className="border-l-4 border-l-green-500 bg-green-50 dark:bg-green-900/10 p-2 rounded">
+                                    <div className="flex items-start gap-2">
+                                      <CheckCircle className="w-3.5 h-3.5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                                      <div className="flex-1 min-w-0">
+                                        <h4 className="text-xs font-semibold text-green-800 dark:text-green-200 mb-1">
+                                          Diagnosis {localPatient.medicalDetails.length > 1 ? `#${index + 1}` : ''}
+                                        </h4>
+                                        <p className="text-xs text-gray-700 dark:text-gray-300">{record.diagnosis}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )}
+
+                    {/* Investigation Details */}
+                    {localPatient.medicalDetails.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.2 }}
+                      >
+                        <Card className="border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900/50 rounded-lg overflow-hidden">
+                          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800 p-2">
+                            <CardTitle className="text-sm flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                              <div className="p-1 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 text-white">
+                                <Microscope className="h-3.5 w-3.5" />
+                              </div>
+                              <span className="text-sm font-semibold">Investigation Results</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-2 space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
+                            {localPatient.medicalDetails.map((record, index) => (
+                              record.investigation && (
+                                <div key={`investigation-right-${record._id}`} className="space-y-1.5">
+                                  {index > 0 && <div className="border-t border-gray-200 dark:border-gray-700 pt-2" />}
+
+                                  {record.investigation.blood && (
+                                    <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-200 dark:border-red-800/30">
+                                      <div className="flex items-center gap-1 mb-1">
+                                        <Droplets className="w-3 h-3 text-red-600 dark:text-red-400" />
+                                        <p className="text-xs font-semibold text-red-700 dark:text-red-300">Blood Test</p>
+                                      </div>
+                                      <p className="text-xs text-gray-700 dark:text-gray-300">{record.investigation.blood}</p>
+                                      {record.investigation.bloodTestDate && (
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                          Date: {formatSafeDate(record.investigation.bloodTestDate)}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {record.investigation.xray && (
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-800/30">
+                                      <div className="flex items-center gap-1 mb-1">
+                                        <Scan className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                        <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">X-Ray</p>
+                                      </div>
+                                      <p className="text-xs text-gray-700 dark:text-gray-300">{record.investigation.xray}</p>
+                                      {record.investigation.xrayDate && (
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                          Date: {formatSafeDate(record.investigation.xrayDate)}
+                                        </p>
+                                      )}
+                                      {record.investigation.xrayImages && record.investigation.xrayImages.length > 0 && (
+                                        <div className="mt-1.5 flex flex-wrap gap-1">
+                                          {record.investigation.xrayImages.map((img: any, idx: number) => (
+                                            <a
+                                              key={idx}
+                                              href={img.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
+                                            >
+                                              <ImageIcon className="w-2.5 h-2.5" />
+                                              Image {idx + 1}
+                                            </a>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {record.investigation.otherTests && Array.isArray(record.investigation.otherTests) && record.investigation.otherTests.length > 0 && (
+                                    <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded border border-purple-200 dark:border-purple-800/30">
+                                      <div className="flex items-center gap-1 mb-1">
+                                        <ClipboardList className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                                        <p className="text-xs font-semibold text-purple-700 dark:text-purple-300">Other Tests</p>
+                                      </div>
+                                      <div className="space-y-1">
+                                        {record.investigation.otherTests.map((test: any, idx: number) => (
+                                          <div key={idx} className="bg-white dark:bg-gray-800 p-1.5 rounded">
+                                            <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{test.name}</p>
+                                            {test.results && (
+                                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{test.results}</p>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            ))}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )}
 
                     {/* Follow-ups Card */}
                     {localPatient.medicalDetails.length > 0 &&

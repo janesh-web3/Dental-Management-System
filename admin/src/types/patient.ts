@@ -58,6 +58,7 @@ export interface FollowUp {
 }
 
 export type TreatmentPlanning = {
+  isChildDentition: any;
   _id: string;
   patientType : "Child" | "Adult";
   isCompleted: boolean;

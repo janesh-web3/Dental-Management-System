@@ -89,23 +89,47 @@ const getDashboardOverview = async (req, res) => {
 
     // Helper function to count treatments by date range
     const countTreatmentsByDateRange = async (startDate) => {
+      // Find patients with either general or ortho daily treatments by this doctor
       const patients = await Patient.find({
-        'medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments': {
-          $elemMatch: {
-            treatedByDoctor: new mongoose.Types.ObjectId(doctorId),
-            treatmentDate: { $gte: startDate }
+        $or: [
+          {
+            'medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments': {
+              $elemMatch: {
+                treatedByDoctor: new mongoose.Types.ObjectId(doctorId),
+                date: { $gte: startDate }
+              }
+            }
+          },
+          {
+            'medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments': {
+              $elemMatch: {
+                treatedByDoctor: new mongoose.Types.ObjectId(doctorId),
+                date: { $gte: startDate }
+              }
+            }
           }
-        }
+        ]
       });
 
       let count = 0;
       patients.forEach(patient => {
         patient.medicalDetails?.forEach(md => {
           md.treatmentPlanning?.forEach(tp => {
+            // Count general/tooth-based treatments
             tp.selectedTeethDetails?.forEach(std => {
               std.dailyTreatments?.forEach(dt => {
                 if (dt.treatedByDoctor?.toString() === doctorId.toString() &&
-                    new Date(dt.treatmentDate) >= startDate) {
+                    new Date(dt.date) >= startDate) {
+                  count++;
+                }
+              });
+            });
+
+            // Count ortho/group treatments
+            tp.groupTreatmentDetails?.forEach(gtd => {
+              gtd.dailyTreatments?.forEach(dt => {
+                if (dt.treatedByDoctor?.toString() === doctorId.toString() &&
+                    new Date(dt.date) >= startDate) {
                   count++;
                 }
               });
@@ -128,12 +152,64 @@ const getDashboardOverview = async (req, res) => {
 
     // Helper function to calculate revenue by date range
     const calculateRevenueByDateRange = async (startDate) => {
+      // Calculate revenue from ServicePayment
       const payments = await ServicePayment.find({
         treatedByDoctor: doctorId,
         createdAt: { $gte: startDate }
       });
 
-      return payments.reduce((total, payment) => total + (payment.paidAmount || 0), 0);
+      let servicePaymentRevenue = payments.reduce((total, payment) => total + (payment.paidAmount || 0), 0);
+
+      // Calculate revenue from daily treatments (both general and ortho)
+      const patients = await Patient.find({
+        $or: [
+          {
+            'medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments': {
+              $elemMatch: {
+                treatedByDoctor: new mongoose.Types.ObjectId(doctorId),
+                date: { $gte: startDate }
+              }
+            }
+          },
+          {
+            'medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments': {
+              $elemMatch: {
+                treatedByDoctor: new mongoose.Types.ObjectId(doctorId),
+                date: { $gte: startDate }
+              }
+            }
+          }
+        ]
+      });
+
+      let dailyTreatmentRevenue = 0;
+      patients.forEach(patient => {
+        patient.medicalDetails?.forEach(md => {
+          md.treatmentPlanning?.forEach(tp => {
+            // Revenue from general/tooth-based treatments
+            tp.selectedTeethDetails?.forEach(std => {
+              std.dailyTreatments?.forEach(dt => {
+                if (dt.treatedByDoctor?.toString() === doctorId.toString() &&
+                    new Date(dt.date) >= startDate) {
+                  dailyTreatmentRevenue += parseFloat(dt.paidAmount || 0);
+                }
+              });
+            });
+
+            // Revenue from ortho/group treatments
+            tp.groupTreatmentDetails?.forEach(gtd => {
+              gtd.dailyTreatments?.forEach(dt => {
+                if (dt.treatedByDoctor?.toString() === doctorId.toString() &&
+                    new Date(dt.date) >= startDate) {
+                  dailyTreatmentRevenue += parseFloat(dt.paidAmount || 0);
+                }
+              });
+            });
+          });
+        });
+      });
+
+      return servicePaymentRevenue + dailyTreatmentRevenue;
     };
 
     const revenueToday = await calculateRevenueByDateRange(today);
@@ -147,6 +223,7 @@ const getDashboardOverview = async (req, res) => {
       const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const nextMonthDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
 
+      // Revenue from ServicePayment
       const monthRevenue = await ServicePayment.aggregate([
         {
           $match: {
@@ -162,9 +239,62 @@ const getDashboardOverview = async (req, res) => {
         }
       ]);
 
+      let servicePaymentRevenue = monthRevenue[0]?.total || 0;
+
+      // Revenue from daily treatments (both general and ortho)
+      const patients = await Patient.find({
+        $or: [
+          {
+            'medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments': {
+              $elemMatch: {
+                treatedByDoctor: new mongoose.Types.ObjectId(doctorId),
+                date: { $gte: monthDate, $lt: nextMonthDate }
+              }
+            }
+          },
+          {
+            'medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments': {
+              $elemMatch: {
+                treatedByDoctor: new mongoose.Types.ObjectId(doctorId),
+                date: { $gte: monthDate, $lt: nextMonthDate }
+              }
+            }
+          }
+        ]
+      });
+
+      let dailyTreatmentRevenue = 0;
+      patients.forEach(patient => {
+        patient.medicalDetails?.forEach(md => {
+          md.treatmentPlanning?.forEach(tp => {
+            // Revenue from general/tooth-based treatments
+            tp.selectedTeethDetails?.forEach(std => {
+              std.dailyTreatments?.forEach(dt => {
+                if (dt.treatedByDoctor?.toString() === doctorId.toString() &&
+                    new Date(dt.date) >= monthDate &&
+                    new Date(dt.date) < nextMonthDate) {
+                  dailyTreatmentRevenue += parseFloat(dt.paidAmount || 0);
+                }
+              });
+            });
+
+            // Revenue from ortho/group treatments
+            tp.groupTreatmentDetails?.forEach(gtd => {
+              gtd.dailyTreatments?.forEach(dt => {
+                if (dt.treatedByDoctor?.toString() === doctorId.toString() &&
+                    new Date(dt.date) >= monthDate &&
+                    new Date(dt.date) < nextMonthDate) {
+                  dailyTreatmentRevenue += parseFloat(dt.paidAmount || 0);
+                }
+              });
+            });
+          });
+        });
+      });
+
       revenueTrend.push({
         month: monthDate.toLocaleString('default', { month: 'short' }),
-        revenue: monthRevenue[0]?.total || 0
+        revenue: servicePaymentRevenue + dailyTreatmentRevenue
       });
     }
 
@@ -175,23 +305,47 @@ const getDashboardOverview = async (req, res) => {
       const nextMonthDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
 
       const patients = await Patient.find({
-        'medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments': {
-          $elemMatch: {
-            treatedByDoctor: new mongoose.Types.ObjectId(doctorId),
-            treatmentDate: { $gte: monthDate, $lt: nextMonthDate }
+        $or: [
+          {
+            'medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments': {
+              $elemMatch: {
+                treatedByDoctor: new mongoose.Types.ObjectId(doctorId),
+                date: { $gte: monthDate, $lt: nextMonthDate }
+              }
+            }
+          },
+          {
+            'medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments': {
+              $elemMatch: {
+                treatedByDoctor: new mongoose.Types.ObjectId(doctorId),
+                date: { $gte: monthDate, $lt: nextMonthDate }
+              }
+            }
           }
-        }
+        ]
       });
 
       let monthCount = 0;
       patients.forEach(patient => {
         patient.medicalDetails?.forEach(md => {
           md.treatmentPlanning?.forEach(tp => {
+            // Count general/tooth-based treatments
             tp.selectedTeethDetails?.forEach(std => {
               std.dailyTreatments?.forEach(dt => {
                 if (dt.treatedByDoctor?.toString() === doctorId.toString() &&
-                    new Date(dt.treatmentDate) >= monthDate &&
-                    new Date(dt.treatmentDate) < nextMonthDate) {
+                    new Date(dt.date) >= monthDate &&
+                    new Date(dt.date) < nextMonthDate) {
+                  monthCount++;
+                }
+              });
+            });
+
+            // Count ortho/group treatments
+            tp.groupTreatmentDetails?.forEach(gtd => {
+              gtd.dailyTreatments?.forEach(dt => {
+                if (dt.treatedByDoctor?.toString() === doctorId.toString() &&
+                    new Date(dt.date) >= monthDate &&
+                    new Date(dt.date) < nextMonthDate) {
                   monthCount++;
                 }
               });

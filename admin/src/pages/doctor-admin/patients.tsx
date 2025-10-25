@@ -573,6 +573,7 @@ const Patients: React.FC = () => {
             setIsViewDrawerOpen(false);
             setSelectedPatient(null);
           }}
+          isDoctorView={true}
         />
       )}
     </div>

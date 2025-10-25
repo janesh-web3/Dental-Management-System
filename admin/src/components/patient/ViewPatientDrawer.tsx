@@ -153,6 +153,7 @@ interface ViewPatientDrawerProps {
   patient: Patient;
   isOpen: boolean;
   onClose: () => void;
+  isDoctorView?: boolean; // Skip fetching service payments when in doctor view
 }
 
 // Enhanced DateDisplay component with improved styling
@@ -300,6 +301,7 @@ export function ViewPatientDrawer({
   patient,
   isOpen,
   onClose,
+  isDoctorView = false,
 }: ViewPatientDrawerProps) {
   console.log("Rendering ViewPatientDrawer for patient:", patient);
   const [localPatient, setLocalPatient] = useState<Patient>(patient);
@@ -433,9 +435,12 @@ export function ViewPatientDrawer({
   useEffect(() => {
     if (isOpen && patient._id) {
       fetchPatientPrescriptions(patient._id);
-      fetchPatientServicePayments(patient._id);
+      // Only fetch service payments if not in doctor view (doctors don't have payment permissions)
+      if (!isDoctorView) {
+        fetchPatientServicePayments(patient._id);
+      }
     }
-  }, [isOpen, patient._id]);
+  }, [isOpen, patient._id, isDoctorView]);
 
   const fetchPatientPrescriptions = async (patientId: string) => {
     try {
@@ -1376,12 +1381,14 @@ export function ViewPatientDrawer({
                   >
                     Rx
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="service-payments"
-                    className="text-[10px] sm:text-xs whitespace-nowrap px-0.5 sm:px-1 py-1.5"
-                  >
-                    Payments
-                  </TabsTrigger>
+                  {!isDoctorView && (
+                    <TabsTrigger
+                      value="service-payments"
+                      className="text-[10px] sm:text-xs whitespace-nowrap px-0.5 sm:px-1 py-1.5"
+                    >
+                      Payments
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger
                     value="documents"
                     className="text-[10px] sm:text-xs whitespace-nowrap px-0.5 sm:px-1 py-1.5"
@@ -2567,7 +2574,8 @@ export function ViewPatientDrawer({
                 </Card>
               </TabsContent>
 
-              <TabsContent value="service-payments" className="pb-3">
+              {!isDoctorView && (
+                <TabsContent value="service-payments" className="pb-3">
                 <Card className="border-none shadow-sm bg-card">
                   <CardHeader className="pb-2 p-3">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -2804,6 +2812,7 @@ export function ViewPatientDrawer({
                   </CardContent>
                 </Card>
               </TabsContent>
+              )}
             </Tabs>
           </div>
         </div>

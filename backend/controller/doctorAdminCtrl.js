@@ -801,17 +801,43 @@ const getDoctorPatientHistory = async (req, res) => {
       };
     }
 
+    // Find patients with either general or ortho treatments by this doctor
     const patients = await Patient.find({
       ...searchQuery,
-      'medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor': new mongoose.Types.ObjectId(doctorId)
+      $or: [
+        {
+          'medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor': new mongoose.Types.ObjectId(doctorId)
+        },
+        {
+          'medicalDetails.treatmentPlanning.groupTreatmentDetails.dailyTreatments.treatedByDoctor': new mongoose.Types.ObjectId(doctorId)
+        }
+      ]
     });
 
     // Build patient history array
     const patientHistory = [];
 
+    // Helper function to get next follow-up date
+    const getNextFollowUp = (treatmentPlanning) => {
+      if (!treatmentPlanning || !treatmentPlanning.followUps || treatmentPlanning.followUps.length === 0) {
+        return null;
+      }
+
+      // Filter for incomplete follow-ups and sort by date
+      const upcomingFollowUps = treatmentPlanning.followUps
+        .filter(fu => !fu.completed && fu.date)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      return upcomingFollowUps.length > 0 ? upcomingFollowUps[0].date : null;
+    };
+
     for (const patient of patients) {
       patient.medicalDetails?.forEach(md => {
         md.treatmentPlanning?.forEach(tp => {
+          // Get next follow-up for this treatment plan
+          const nextFollowUpDate = getNextFollowUp(tp);
+
+          // General/Tooth-based treatments
           tp.selectedTeethDetails?.forEach(std => {
             std.dailyTreatments?.forEach(dt => {
               if (dt.treatedByDoctor?.toString() === doctorId.toString()) {
@@ -819,11 +845,37 @@ const getDoctorPatientHistory = async (req, res) => {
                   patientId: patient._id,
                   patientName: patient.personalDetails?.name || "N/A",
                   treatmentName: dt.procedure || std.procedure || "N/A",
-                  treatmentDate: dt.treatmentDate || dt.createdAt || new Date().toISOString(),
+                  treatmentDate: dt.date || dt.createdAt || new Date().toISOString(),
                   status: dt.isCompleted ? "Completed" : "In Progress",
-                  toothNumber: std.toothNumber || "N/A",
+                  toothNumber: std.number || std.toothNumber || "N/A",
                   notes: dt.notes || "",
-                  nextAppointment: patient.personalDetails?.followUpDate || null
+                  amountPaid: parseFloat(dt.paidAmount || 0),
+                  remainingAmount: parseFloat(dt.remainingAmount || 0),
+                  nextFollowUp: nextFollowUpDate,
+                  nextAppointment: null, // Will be populated from appointments if needed
+                  patient: patient // Include full patient object for drawer
+                });
+              }
+            });
+          });
+
+          // Ortho/Group treatments
+          tp.groupTreatmentDetails?.forEach(gtd => {
+            gtd.dailyTreatments?.forEach(dt => {
+              if (dt.treatedByDoctor?.toString() === doctorId.toString()) {
+                patientHistory.push({
+                  patientId: patient._id,
+                  patientName: patient.personalDetails?.name || "N/A",
+                  treatmentName: dt.procedure || gtd.procedure || gtd.groupName || "N/A",
+                  treatmentDate: dt.date || dt.createdAt || new Date().toISOString(),
+                  status: dt.isCompleted ? "Completed" : "In Progress",
+                  toothNumber: gtd.groupName || "Group Treatment",
+                  notes: dt.notes || "",
+                  amountPaid: parseFloat(dt.paidAmount || 0),
+                  remainingAmount: parseFloat(dt.remainingAmount || 0),
+                  nextFollowUp: nextFollowUpDate,
+                  nextAppointment: null,
+                  patient: patient
                 });
               }
             });
@@ -831,35 +883,6 @@ const getDoctorPatientHistory = async (req, res) => {
         });
       });
     }
-
-    // Get payment information for each patient
-    const patientIds = [...new Set(patientHistory.map(ph => ph.patientId.toString()))];
-    const payments = await ServicePayment.find({
-      treatedByDoctor: doctorId,
-      patient: { $in: patientIds }
-    });
-
-    // Map payments to patients
-    const paymentMap = {};
-    payments.forEach(payment => {
-      const patientIdStr = payment.patient?.toString();
-      if (!paymentMap[patientIdStr]) {
-        paymentMap[patientIdStr] = {
-          totalPaid: 0,
-          totalAmount: 0
-        };
-      }
-      paymentMap[patientIdStr].totalPaid += payment.paidAmount || 0;
-      paymentMap[patientIdStr].totalAmount += payment.totalAmount || 0;
-    });
-
-    // Add payment info to patient history
-    patientHistory.forEach(ph => {
-      const patientIdStr = ph.patientId.toString();
-      const paymentInfo = paymentMap[patientIdStr] || { totalPaid: 0, totalAmount: 0 };
-      ph.amountPaid = paymentInfo.totalPaid;
-      ph.remainingAmount = paymentInfo.totalAmount - paymentInfo.totalPaid;
-    });
 
     // Sort patient history
     patientHistory.sort((a, b) => {

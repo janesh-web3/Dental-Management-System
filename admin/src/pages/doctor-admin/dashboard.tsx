@@ -11,6 +11,8 @@ import { Loader2, Calendar, Users, Activity, Clock, DollarSign, TrendingUp, Sear
 import { useDoctorAuthContext } from '@/contexts/doctorAuthContext';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
+import { ViewPatientDrawer } from '@/components/patient/ViewPatientDrawer';
+import type { Patient } from '@/types/patient';
 
 interface Appointment {
   _id: string;
@@ -32,7 +34,9 @@ interface PatientHistoryItem {
   notes: string;
   amountPaid: number;
   remainingAmount: number;
+  nextFollowUp: string | null;
   nextAppointment: string | null;
+  patient: any;
 }
 
 interface DashboardData {
@@ -85,6 +89,10 @@ const Dashboard: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'amount'>('date');
+
+  // ViewPatientDrawer State
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [isViewDrawerOpen, setIsViewDrawerOpen] = useState<boolean>(false);
 
   const { toast } = useToast();
 
@@ -371,13 +379,26 @@ const Dashboard: React.FC = () => {
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Amount Paid</TableHead>
                     <TableHead className="text-right">Remaining</TableHead>
+                    <TableHead>Next Follow-Up</TableHead>
                     <TableHead>Next Appointment</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {patientHistory.map((item, index) => (
                     <TableRow key={`${item.patientId}-${index}`}>
-                      <TableCell className="font-medium">{item.patientName || 'N/A'}</TableCell>
+                      <TableCell className="font-medium">
+                        <button
+                          onClick={() => {
+                            if (item.patient) {
+                              setSelectedPatient(item.patient);
+                              setIsViewDrawerOpen(true);
+                            }
+                          }}
+                          className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-left"
+                        >
+                          {item.patientName || 'N/A'}
+                        </button>
+                      </TableCell>
                       <TableCell>
                         <div>
                           <div className="font-medium">{item.treatmentName || 'N/A'}</div>
@@ -403,6 +424,11 @@ const Dashboard: React.FC = () => {
                         <span className={(item.remainingAmount || 0) > 0 ? "text-red-600" : "text-green-600"}>
                           {formatCurrency(item.remainingAmount || 0)}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {formatDate(item.nextFollowUp)}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
@@ -518,6 +544,19 @@ const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* ViewPatientDrawer component */}
+      {selectedPatient && (
+        <ViewPatientDrawer
+          patient={selectedPatient}
+          isOpen={isViewDrawerOpen}
+          onClose={() => {
+            setIsViewDrawerOpen(false);
+            setSelectedPatient(null);
+          }}
+          isDoctorView={true}
+        />
+      )}
     </div>
   );
 };

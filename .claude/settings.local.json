@@ -46,7 +46,9 @@
       "Read(/E:\\DMS\\backend\\controller/**)",
       "Read(/E:\\DMS\\backend\\controller/**)",
       "Read(/E:\\DMS\\admin\\src\\components\\patient/**)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)"
     ],
     "deny": []
   }

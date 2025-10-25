@@ -6,11 +6,11 @@ const TreatmentPlan = require("../model/TreatmentPlan.js");
 const Invoice = require("../model/Invoice.js");
 const mongoose = require("mongoose");
 
-// Dashboard Overview
+// Dashboard Overview with Enhanced Metrics
 const getDashboardOverview = async (req, res) => {
   try {
     const { doctorId } = req.params;
-    
+
     // Validate doctorId
     if (!mongoose.Types.ObjectId.isValid(doctorId)) {
       return res.status(400).json({
@@ -29,13 +29,23 @@ const getDashboardOverview = async (req, res) => {
     }
 
     // Set up date ranges
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     const nextWeek = new Date(today);
     nextWeek.setDate(nextWeek.getDate() + 7);
-    
+
+    // Week start (Monday)
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
+
+    // Month start
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Year start
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+
     const todayDateStr = today.toISOString().split('T')[0];
     const tomorrowDateStr = tomorrow.toISOString().split('T')[0];
     const nextWeekDateStr = nextWeek.toISOString().split('T')[0];
@@ -57,7 +67,7 @@ const getDashboardOverview = async (req, res) => {
 
     // Get patient summary
     const patientCount = doctor.totalPatients ? doctor.totalPatients.length : 0;
-    
+
     // Treatments in progress
     const treatmentsInProgress = await TreatmentPlan.find({
       doctor: doctorId,
@@ -73,6 +83,128 @@ const getDashboardOverview = async (req, res) => {
     const totalAppointments = await Appointment.find({
       doctor: doctorId
     }).countDocuments();
+
+    // Enhanced Metrics: Treatments Done (Today, Week, Month, Year)
+    const Patient = require("../model/Patient.js");
+
+    // Helper function to count treatments by date range
+    const countTreatmentsByDateRange = async (startDate) => {
+      const patients = await Patient.find({
+        'medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments': {
+          $elemMatch: {
+            treatedByDoctor: new mongoose.Types.ObjectId(doctorId),
+            treatmentDate: { $gte: startDate }
+          }
+        }
+      });
+
+      let count = 0;
+      patients.forEach(patient => {
+        patient.medicalDetails?.forEach(md => {
+          md.treatmentPlanning?.forEach(tp => {
+            tp.selectedTeethDetails?.forEach(std => {
+              std.dailyTreatments?.forEach(dt => {
+                if (dt.treatedByDoctor?.toString() === doctorId.toString() &&
+                    new Date(dt.treatmentDate) >= startDate) {
+                  count++;
+                }
+              });
+            });
+          });
+        });
+      });
+
+      return count;
+    };
+
+    // Count treatments for each period
+    const treatmentsDoneToday = await countTreatmentsByDateRange(today);
+    const treatmentsDoneWeek = await countTreatmentsByDateRange(weekStart);
+    const treatmentsDoneMonth = await countTreatmentsByDateRange(monthStart);
+    const treatmentsDoneYear = await countTreatmentsByDateRange(yearStart);
+
+    // Enhanced Metrics: Revenue (Today, Week, Month, Year)
+    const ServicePayment = require("../model/ServicePayment.js");
+
+    // Helper function to calculate revenue by date range
+    const calculateRevenueByDateRange = async (startDate) => {
+      const payments = await ServicePayment.find({
+        treatedByDoctor: doctorId,
+        createdAt: { $gte: startDate }
+      });
+
+      return payments.reduce((total, payment) => total + (payment.paidAmount || 0), 0);
+    };
+
+    const revenueToday = await calculateRevenueByDateRange(today);
+    const revenueWeek = await calculateRevenueByDateRange(weekStart);
+    const revenueMonth = await calculateRevenueByDateRange(monthStart);
+    const revenueYear = await calculateRevenueByDateRange(yearStart);
+
+    // Revenue trend data for charts (last 12 months)
+    const revenueTrend = [];
+    for (let i = 11; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const nextMonthDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+
+      const monthRevenue = await ServicePayment.aggregate([
+        {
+          $match: {
+            treatedByDoctor: new mongoose.Types.ObjectId(doctorId),
+            createdAt: { $gte: monthDate, $lt: nextMonthDate }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: "$paidAmount" }
+          }
+        }
+      ]);
+
+      revenueTrend.push({
+        month: monthDate.toLocaleString('default', { month: 'short' }),
+        revenue: monthRevenue[0]?.total || 0
+      });
+    }
+
+    // Treatment trend data for charts (last 12 months)
+    const treatmentTrend = [];
+    for (let i = 11; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const nextMonthDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+
+      const patients = await Patient.find({
+        'medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments': {
+          $elemMatch: {
+            treatedByDoctor: new mongoose.Types.ObjectId(doctorId),
+            treatmentDate: { $gte: monthDate, $lt: nextMonthDate }
+          }
+        }
+      });
+
+      let monthCount = 0;
+      patients.forEach(patient => {
+        patient.medicalDetails?.forEach(md => {
+          md.treatmentPlanning?.forEach(tp => {
+            tp.selectedTeethDetails?.forEach(std => {
+              std.dailyTreatments?.forEach(dt => {
+                if (dt.treatedByDoctor?.toString() === doctorId.toString() &&
+                    new Date(dt.treatmentDate) >= monthDate &&
+                    new Date(dt.treatmentDate) < nextMonthDate) {
+                  monthCount++;
+                }
+              });
+            });
+          });
+        });
+      });
+
+      treatmentTrend.push({
+        month: monthDate.toLocaleString('default', { month: 'short' }),
+        treatments: monthCount
+      });
+    }
 
     // Format the appointment data to match frontend expectations
     const formattedTodayAppointments = todayAppointments.map(appointment => ({
@@ -94,7 +226,7 @@ const getDashboardOverview = async (req, res) => {
       subject: appointment.subject,
       status: appointment.status
     }));
-    
+
     // Use actual data from the database
     const totalPatients = patientCount || 0;
     const checkedPatients = doctor.totalPatientChecked || 0;
@@ -114,6 +246,23 @@ const getDashboardOverview = async (req, res) => {
           completedTreatments: completedTreatments,
           appointmentsToday: formattedTodayAppointments.length,
           upcomingAppointmentsCount: formattedUpcomingAppointments.length
+        },
+        // Enhanced metrics
+        treatmentMetrics: {
+          today: treatmentsDoneToday,
+          week: treatmentsDoneWeek,
+          month: treatmentsDoneMonth,
+          year: treatmentsDoneYear
+        },
+        revenueMetrics: {
+          today: revenueToday,
+          week: revenueWeek,
+          month: revenueMonth,
+          year: revenueYear
+        },
+        charts: {
+          revenueTrend,
+          treatmentTrend
         }
       }
     });
@@ -427,7 +576,7 @@ const getDoctorPatients = async (req, res) => {
 const getPatientDetails = async (req, res) => {
   try {
     const { patientId, doctorId } = req.params;
-    
+
     const patient = await Patient.findById(patientId);
     if (!patient) {
       return res.status(404).json({
@@ -435,25 +584,25 @@ const getPatientDetails = async (req, res) => {
         message: "Patient not found"
       });
     }
-    
+
     // Get patient's appointments with this doctor
     const appointments = await Appointment.find({
       doctor: doctorId,
       patientId: patientId
     }).sort({ appointmentDate: -1 });
-    
+
     // Get patient's treatment plans with this doctor
     const treatmentPlans = await TreatmentPlan.find({
       doctor: doctorId,
       patient: patientId
     }).sort({ createdAt: -1 });
-    
+
     // Get patient's prescriptions from this doctor
     const prescriptions = await Prescription.find({
       doctor: doctorId,
       patient: patientId
     }).sort({ createdAt: -1 });
-    
+
     res.status(200).json({
       success: true,
       data: {
@@ -468,6 +617,140 @@ const getPatientDetails = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error fetching patient details",
+      error: error.message
+    });
+  }
+};
+
+// Get Patient Treatment History for Doctor Dashboard
+const getDoctorPatientHistory = async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+    const { page = 1, limit = 10, search = "", sortBy = "date", sortOrder = "desc" } = req.query;
+
+    // Validate doctorId
+    if (!mongoose.Types.ObjectId.isValid(doctorId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid doctor ID format"
+      });
+    }
+
+    // Find all patients with treatments by this doctor
+    const Patient = require("../model/Patient.js");
+    const ServicePayment = require("../model/ServicePayment.js");
+
+    let searchQuery = {};
+    if (search) {
+      searchQuery = {
+        'personalDetails.name': { $regex: search, $options: 'i' }
+      };
+    }
+
+    const patients = await Patient.find({
+      ...searchQuery,
+      'medicalDetails.treatmentPlanning.selectedTeethDetails.dailyTreatments.treatedByDoctor': new mongoose.Types.ObjectId(doctorId)
+    });
+
+    // Build patient history array
+    const patientHistory = [];
+
+    for (const patient of patients) {
+      patient.medicalDetails?.forEach(md => {
+        md.treatmentPlanning?.forEach(tp => {
+          tp.selectedTeethDetails?.forEach(std => {
+            std.dailyTreatments?.forEach(dt => {
+              if (dt.treatedByDoctor?.toString() === doctorId.toString()) {
+                patientHistory.push({
+                  patientId: patient._id,
+                  patientName: patient.personalDetails?.name || "N/A",
+                  treatmentName: dt.procedure || std.procedure || "N/A",
+                  treatmentDate: dt.treatmentDate || dt.createdAt || new Date().toISOString(),
+                  status: dt.isCompleted ? "Completed" : "In Progress",
+                  toothNumber: std.toothNumber || "N/A",
+                  notes: dt.notes || "",
+                  nextAppointment: patient.personalDetails?.followUpDate || null
+                });
+              }
+            });
+          });
+        });
+      });
+    }
+
+    // Get payment information for each patient
+    const patientIds = [...new Set(patientHistory.map(ph => ph.patientId.toString()))];
+    const payments = await ServicePayment.find({
+      treatedByDoctor: doctorId,
+      patient: { $in: patientIds }
+    });
+
+    // Map payments to patients
+    const paymentMap = {};
+    payments.forEach(payment => {
+      const patientIdStr = payment.patient?.toString();
+      if (!paymentMap[patientIdStr]) {
+        paymentMap[patientIdStr] = {
+          totalPaid: 0,
+          totalAmount: 0
+        };
+      }
+      paymentMap[patientIdStr].totalPaid += payment.paidAmount || 0;
+      paymentMap[patientIdStr].totalAmount += payment.totalAmount || 0;
+    });
+
+    // Add payment info to patient history
+    patientHistory.forEach(ph => {
+      const patientIdStr = ph.patientId.toString();
+      const paymentInfo = paymentMap[patientIdStr] || { totalPaid: 0, totalAmount: 0 };
+      ph.amountPaid = paymentInfo.totalPaid;
+      ph.remainingAmount = paymentInfo.totalAmount - paymentInfo.totalPaid;
+    });
+
+    // Sort patient history
+    patientHistory.sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case 'date':
+          const dateA = a.treatmentDate ? new Date(a.treatmentDate).getTime() : 0;
+          const dateB = b.treatmentDate ? new Date(b.treatmentDate).getTime() : 0;
+          comparison = dateB - dateA;
+          break;
+        case 'name':
+          comparison = a.patientName.localeCompare(b.patientName);
+          break;
+        case 'amount':
+          comparison = b.amountPaid - a.amountPaid;
+          break;
+        default:
+          const defaultDateA = a.treatmentDate ? new Date(a.treatmentDate).getTime() : 0;
+          const defaultDateB = b.treatmentDate ? new Date(b.treatmentDate).getTime() : 0;
+          comparison = defaultDateB - defaultDateA;
+      }
+      return sortOrder === 'asc' ? -comparison : comparison;
+    });
+
+    // Paginate results
+    const startIndex = (parseInt(page) - 1) * parseInt(limit);
+    const endIndex = startIndex + parseInt(limit);
+    const paginatedHistory = patientHistory.slice(startIndex, endIndex);
+
+    const totalPages = Math.ceil(patientHistory.length / parseInt(limit));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        patientHistory: paginatedHistory,
+        totalPages,
+        currentPage: parseInt(page),
+        totalRecords: patientHistory.length
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching doctor patient history:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching doctor patient history",
       error: error.message
     });
   }
@@ -1033,6 +1316,7 @@ module.exports = {
   cancelDoctorAppointment,
   getDoctorPatients,
   getPatientDetails,
+  getDoctorPatientHistory,
   createTreatmentPlan,
   updateTreatmentPlan,
   updateTreatmentStep,

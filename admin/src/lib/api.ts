@@ -13,17 +13,14 @@ const axiosInstance = axios.create({
 
 // Add request interceptor to dynamically set auth token
 axiosInstance.interceptors.request.use((config) => {
-  // if (config.url?.startsWith("/doctor")) {
-  //   const doctorToken = sessionStorage.getItem("doctorToken");
-  //   if (doctorToken) {
-  //     config.headers.Authorization = `Bearer ${doctorToken}`;
-  //   }
-  // } else {
-    // }
-    const token = sessionStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+  // Check for admin token first, then fall back to doctor token
+  const adminToken = sessionStorage.getItem("token");
+  const doctorToken = sessionStorage.getItem("doctorToken");
+  const token = adminToken || doctorToken;
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 

@@ -8,6 +8,7 @@ const {
   cancelDoctorAppointment,
   getDoctorPatients,
   getPatientDetails,
+  getDoctorPatientHistory,
   createTreatmentPlan,
   updateTreatmentPlan,
   updateTreatmentStep,
@@ -38,6 +39,7 @@ router.put("/appointments/:doctorId/:appointmentId/cancel", cancelDoctorAppointm
 // Patients Management
 router.get("/patients/:doctorId", getDoctorPatients);
 router.get("/patients/:doctorId/:patientId", getPatientDetails);
+router.get("/patient-history/:doctorId", getDoctorPatientHistory);
 
 // Treatment Management
 router.post("/treatments/:doctorId", createTreatmentPlan);

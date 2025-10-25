@@ -70,11 +70,6 @@ app.use(
 // Apply multer error handling middleware
 app.use(handleMulterError);
 
-mongoose
-  .connect(process.env.DB_URL)
-  .then(() => console.log("MongoDB connected successfully"))
-  .catch((err) => console.error("MongoDB connection error:", err));
-
 app.get("/", (req, res) => {
   res.json("Server is running !");
 });
@@ -108,16 +103,29 @@ app.use("/api/sms-schedule", smsScheduleRouter);
 
 const port = process.env.PORT || 5000;
 
-server.listen(process.env.PORT, () => {
-  console.log(`Server is running on port ${process.env.PORT}`);
+// Connect to MongoDB and start server only after connection is successful
+mongoose
+  .connect(process.env.DB_URL)
+  .then(() => {
+    console.log("MongoDB connected successfully");
 
-  // Make io accessible in other files
-  app.set("io", io);
-  // Schedule automatic updates of doctor patient counts
-  // Update every 30 minutes by default
-  scheduleDoctorPatientCountUpdates(30);
-  console.log("Scheduled automatic doctor patient count updates");
-  
-  // Initialize payment reminder service
-  initializePaymentReminderService();
-});
+    // Start server only after MongoDB connection is established
+    server.listen(process.env.PORT, () => {
+      console.log(`Server is running on port ${process.env.PORT}`);
+
+      // Make io accessible in other files
+      app.set("io", io);
+      // Schedule automatic updates of doctor patient counts
+      // Update every 30 minutes by default
+      scheduleDoctorPatientCountUpdates(30);
+      console.log("Scheduled automatic doctor patient count updates");
+
+      // Initialize payment reminder service
+      initializePaymentReminderService();
+    });
+  })
+  .catch((err) => {
+    console.error("MongoDB connection error:", err);
+    console.error("Server not started due to database connection failure");
+    process.exit(1);
+  });

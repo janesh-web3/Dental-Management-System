@@ -514,10 +514,10 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     field: keyof GroupTreatmentDetail,
     value: any
   ) => {
-    setGroupTreatmentDetails((prev) =>
-      prev.map((gt) => {
+    setGroupTreatmentDetails((prev) => {
+      const updatedDetails = prev.map((gt) => {
         if (gt.id === groupTreatmentId) {
-          return {
+          const updatedGt = {
             ...gt,
             [field]: value,
             // Auto-calculate remaining amount when total treatment amount or total paid amount changes
@@ -532,10 +532,63 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                 }
               : {}),
           };
+
+          // Check if user has filled in meaningful data
+          const hasMeaningfulData =
+            updatedGt.procedure ||
+            (parseFloat(updatedGt.totalTreatmentAmount) > 0) ||
+            (parseFloat(updatedGt.totalPaidAmount) > 0) ||
+            updatedGt.treatedByDoctor;
+
+          // Auto-create or auto-sync first daily treatment entry
+          if (hasMeaningfulData) {
+            if (updatedGt.dailyTreatments.length === 0) {
+              // Create the first daily treatment entry
+              const firstDailyTreatment = {
+                id: uuidv4(),
+                date: updatedGt.startDate || format(new Date(), "yyyy-MM-dd"),
+                procedure: updatedGt.procedure || "",
+                treatmentAmount: updatedGt.totalTreatmentAmount || "",
+                paidAmount: updatedGt.totalPaidAmount || "",
+                remainingAmount: updatedGt.totalRemainingAmount || "0",
+                paymentDate: format(new Date(), "yyyy-MM-dd"),
+                paymentMethod: "Cash",
+                notes: "",
+                treatedByDoctor: updatedGt.treatedByDoctor || "",
+                isCompleted: false,
+              };
+
+              return {
+                ...updatedGt,
+                dailyTreatments: [firstDailyTreatment],
+              };
+            } else if (updatedGt.dailyTreatments.length === 1) {
+              // Auto-sync the first (and only) daily treatment with parent ortho plan values
+              // This ensures all fields stay in sync as user fills the form
+              const syncedDailyTreatment = {
+                ...updatedGt.dailyTreatments[0],
+                date: updatedGt.startDate || updatedGt.dailyTreatments[0].date,
+                procedure: updatedGt.procedure || updatedGt.dailyTreatments[0].procedure,
+                treatmentAmount: updatedGt.totalTreatmentAmount || updatedGt.dailyTreatments[0].treatmentAmount,
+                paidAmount: updatedGt.totalPaidAmount || updatedGt.dailyTreatments[0].paidAmount,
+                remainingAmount: updatedGt.totalRemainingAmount || updatedGt.dailyTreatments[0].remainingAmount,
+                treatedByDoctor: updatedGt.treatedByDoctor || updatedGt.dailyTreatments[0].treatedByDoctor,
+              };
+
+              return {
+                ...updatedGt,
+                dailyTreatments: [syncedDailyTreatment],
+              };
+            }
+          }
+
+          return updatedGt;
         }
         return gt;
-      })
-    );
+      });
+
+      return updatedDetails;
+    });
   };
 
   // Function to calculate totals for a group treatment based on daily treatments
@@ -2096,16 +2149,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                           {/* Daily Treatment Section */}
                           <div className="col-span-1 md:col-span-2 mt-2">
                             <div className="flex justify-between items-center mb-2">
-                              <h6 className="font-medium">Daily Treatments</h6>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => addDailyTreatment(groupTreatment.id)}
-                                className="flex items-center gap-1"
-                              >
-                                <Plus className="w-3 h-3" />
-                                <span>Add Treatment Entry</span>
-                              </Button>
+                              <h6 className="font-medium">First Daily Treatment (Auto-synced)</h6>
+                              {/* "Add Treatment Entry" button hidden - first daily treatment is automatically created and synced */}
                             </div>
 
                             {/* Daily Treatment Grid View */}
@@ -2129,8 +2174,8 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                                         />
                                       </svg>
                                     </div>
-                                    <h3 className="text-sm font-medium text-gray-900 mb-1">No Daily Treatments</h3>
-                                    <p>No daily treatments added yet. Click "Add Treatment Entry" to add one.</p>
+                                    <h3 className="text-sm font-medium text-gray-900 mb-1">First Daily Treatment (Auto-synced)</h3>
+                                    <p>Fill in the ortho plan details above (procedure, doctor, amounts) and the first daily treatment will be automatically created below.</p>
                                   </div>
                                 </Card>
                               ) : (
@@ -2159,24 +2204,27 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
                                           <div className="flex items-center gap-2 ml-3">
                                             <Checkbox
                                               checked={treatment.isCompleted}
-                                              onCheckedChange={(checked) => 
+                                              onCheckedChange={(checked) =>
                                                 updateDailyTreatment(
-                                                  groupTreatment.id, 
-                                                  treatment.id, 
-                                                  'isCompleted', 
+                                                  groupTreatment.id,
+                                                  treatment.id,
+                                                  'isCompleted',
                                                   checked === true
                                                 )
                                               }
                                             />
                                             <Label className="text-xs">Done</Label>
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              onClick={() => removeDailyTreatment(groupTreatment.id, treatment.id)}
-                                              className="h-8 w-8 text-red-500 hover:text-red-700"
-                                            >
-                                              <Trash2 className="w-4 h-4" />
-                                            </Button>
+                                            {/* Hide delete button for the auto-synced first daily treatment */}
+                                            {groupTreatment.dailyTreatments.length > 1 && (
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => removeDailyTreatment(groupTreatment.id, treatment.id)}
+                                                className="h-8 w-8 text-red-500 hover:text-red-700"
+                                              >
+                                                <Trash2 className="w-4 h-4" />
+                                              </Button>
+                                            )}
                                           </div>
                                         </div>
 

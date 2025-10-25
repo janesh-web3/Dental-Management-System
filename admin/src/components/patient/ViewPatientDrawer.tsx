@@ -1632,6 +1632,15 @@ export function ViewPatientDrawer({
                                         });
                                       }
 
+                                      // Check if treatment has either selectedTeeth or groupTreatment details
+                                      const hasSelectedTeeth = treatment.selectedTeethDetails && treatment.selectedTeethDetails.length > 0;
+                                      const hasGroupTreatment = treatment.groupTreatmentDetails && treatment.groupTreatmentDetails.length > 0;
+
+                                      // Only render if treatment has either type of details
+                                      if (!hasSelectedTeeth && !hasGroupTreatment) {
+                                        return null;
+                                      }
+
                                       return (
                                         <div key={treatment._id} className="border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50 dark:bg-indigo-900/10 p-2.5 rounded-lg space-y-2 hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-200">
                                           <div className="flex items-center justify-between">
@@ -1639,6 +1648,11 @@ export function ViewPatientDrawer({
                                               <ClipboardList className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                                               <h4 className="text-xs font-semibold text-indigo-800 dark:text-indigo-200">
                                                 Treatment Plan #{treatmentIndex + 1}
+                                                {hasGroupTreatment && treatment.groupTreatmentDetails && treatment.groupTreatmentDetails.length > 0 && (
+                                                  <span className="ml-1 text-xs text-purple-600 dark:text-purple-400">
+                                                    ({treatment.groupTreatmentDetails[0].groupName})
+                                                  </span>
+                                                )}
                                               </h4>
                                             </div>
                                             {treatment.isCompleted && (
@@ -1649,8 +1663,122 @@ export function ViewPatientDrawer({
                                             )}
                                           </div>
 
+                                          {/* Group Treatment Details (Ortho, etc.) */}
+                                          {hasGroupTreatment && (
+                                            <div className="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-purple-200 dark:border-purple-800/30 shadow-sm">
+                                              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5">
+                                                <div className="w-1 h-4 bg-purple-500 rounded-full"></div>
+                                                Group Treatment Details
+                                              </p>
+                                              <div className="space-y-2">
+                                                {treatment.groupTreatmentDetails!.map((groupTreatment, groupIndex) => (
+                                                  <div key={groupIndex} className="bg-purple-50 dark:bg-purple-900/10 p-2 rounded-lg border border-purple-200 dark:border-purple-800/30">
+                                                    <div className="flex items-center justify-between mb-1.5">
+                                                      <Badge className="bg-purple-100 text-purple-700 text-xs px-1.5 py-0.5">
+                                                        {groupTreatment.groupName}
+                                                      </Badge>
+                                                      {groupTreatment.isCompleted && (
+                                                        <Badge className="bg-green-100 text-green-700 text-xs px-1.5 py-0">
+                                                          <CheckCircle className="w-2.5 h-2.5 mr-0.5" />
+                                                          Completed
+                                                        </Badge>
+                                                      )}
+                                                    </div>
+
+                                                    {groupTreatment.procedure && (
+                                                      <div className="bg-white dark:bg-gray-700 p-1.5 rounded mb-1.5">
+                                                        <span className="text-xs text-gray-500 dark:text-gray-400">Procedure: </span>
+                                                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{groupTreatment.procedure}</span>
+                                                      </div>
+                                                    )}
+
+                                                    {/* Treatment Dates */}
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-1.5">
+                                                      {groupTreatment.startDate && (
+                                                        <div className="bg-white dark:bg-gray-700 p-1.5 rounded">
+                                                          <div className="flex items-center gap-1">
+                                                            <Calendar className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
+                                                            <span className="text-xs text-gray-500 dark:text-gray-400">Start: </span>
+                                                          </div>
+                                                          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                            {formatSafeDate(groupTreatment.startDate)}
+                                                          </span>
+                                                        </div>
+                                                      )}
+                                                      {groupTreatment.completionDate && (
+                                                        <div className="bg-white dark:bg-gray-700 p-1.5 rounded">
+                                                          <div className="flex items-center gap-1">
+                                                            <CalendarCheck className="w-2.5 h-2.5 text-green-600 dark:text-green-400" />
+                                                            <span className="text-xs text-gray-500 dark:text-gray-400">Completed: </span>
+                                                          </div>
+                                                          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                            {formatSafeDate(groupTreatment.completionDate)}
+                                                          </span>
+                                                        </div>
+                                                      )}
+                                                    </div>
+
+                                                    {/* Doctor */}
+                                                    {groupTreatment.treatedByDoctor && (
+                                                      <div className="bg-green-50 dark:bg-green-900/20 p-1.5 rounded mb-1.5">
+                                                        <div className="flex items-start gap-1">
+                                                          <UserCheck className="w-3 h-3 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                                                          <div className="flex-1 min-w-0">
+                                                            <span className="text-xs text-gray-500 dark:text-gray-400">Treated by: </span>
+                                                            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                              {typeof groupTreatment.treatedByDoctor === 'object'
+                                                                ? groupTreatment.treatedByDoctor.name
+                                                                : groupTreatment.treatedByDoctor}
+                                                            </span>
+                                                          </div>
+                                                        </div>
+                                                      </div>
+                                                    )}
+
+                                                    {/* Financial Details */}
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                                                      {groupTreatment.totalTreatmentAmount !== undefined && (
+                                                        <div className="bg-blue-50 dark:bg-blue-900/20 p-1.5 rounded">
+                                                          <p className="text-xs text-blue-600 dark:text-blue-400 mb-0.5">Total</p>
+                                                          <p className="text-xs font-bold text-blue-700 dark:text-blue-300">
+                                                            Rs. {groupTreatment.totalTreatmentAmount.toLocaleString()}
+                                                          </p>
+                                                        </div>
+                                                      )}
+                                                      {groupTreatment.totalPaidAmount !== undefined && (
+                                                        <div className="bg-green-50 dark:bg-green-900/20 p-1.5 rounded">
+                                                          <p className="text-xs text-green-600 dark:text-green-400 mb-0.5">Paid</p>
+                                                          <p className="text-xs font-bold text-green-700 dark:text-green-300">
+                                                            Rs. {groupTreatment.totalPaidAmount.toLocaleString()}
+                                                          </p>
+                                                        </div>
+                                                      )}
+                                                      {groupTreatment.totalRemainingAmount !== undefined && (
+                                                        <div className="bg-orange-50 dark:bg-orange-900/20 p-1.5 rounded">
+                                                          <p className="text-xs text-orange-600 dark:text-orange-400 mb-0.5">Due</p>
+                                                          <p className="text-xs font-bold text-orange-700 dark:text-orange-300">
+                                                            Rs. {groupTreatment.totalRemainingAmount.toLocaleString()}
+                                                          </p>
+                                                        </div>
+                                                      )}
+                                                    </div>
+
+                                                    {/* Daily Treatments Count */}
+                                                    {groupTreatment.dailyTreatments && groupTreatment.dailyTreatments.length > 0 && (
+                                                      <div className="pt-1.5 border-t border-purple-200 dark:border-purple-800/30 mt-1.5">
+                                                        <Badge variant="outline" className="text-xs">
+                                                          {groupTreatment.dailyTreatments.length} treatment session{groupTreatment.dailyTreatments.length > 1 ? 's' : ''}
+                                                        </Badge>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+
                                           {/* Dental Chart */}
-                                          {treatment.selectedTeethDetails && treatment.selectedTeethDetails.length > 0 && (
+                                          {hasSelectedTeeth && (
                                             <div className="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-indigo-200 dark:border-indigo-800/30 shadow-sm">
                                               <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5">
                                                 <div className="w-1 h-4 bg-indigo-500 rounded-full"></div>

@@ -13,8 +13,8 @@ export const dentalAddress = "Taranagar, Dhangadhi, Nepal";
 // export const dentalAddress = "Parkmod, Dhangadhi, Nepal";
 
 // crown dental clinic
-// export const server = "https://server3.crownagi.com/api"; 
-// export const socket = "https://server3.crownagi.com";
+// export const server = "https://om.crownagi.com/api"; 
+// export const socket = "https://om.crownagi.com";
 // export const dentalAddress = "Taranagar, Dhangadhi, Nepal";
 // export const  dentalName = "Crown Dental Clinic";
 
@@ -23,5 +23,6 @@ export const dentalAddress = "Taranagar, Dhangadhi, Nepal";
 // export const socket = "https://muskanserver.crownagi.com";
 // export const  dentalName = "Muskan Dental Clinic";
 // export const dentalAddress = "Parkmod, Dhangadhi, Nepal";
+
 
 

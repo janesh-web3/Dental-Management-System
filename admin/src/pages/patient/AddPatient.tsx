@@ -413,39 +413,6 @@ const AddPatient: React.FC<AddPatientProps> = ({ modalClose }) => {
     },
   ]);
 
-  // Function to add a new daily treatment to a group treatment
-  const addDailyTreatment = (groupTreatmentId: string) => {
-    setGroupTreatmentDetails((prev) =>
-      prev.map((gt) => {
-        if (gt.id === groupTreatmentId) {
-          // Prefill from group treatment if values exist, else empty string/0
-          const treatmentAmount = gt.totalTreatmentAmount !== undefined && gt.totalTreatmentAmount !== "" ? gt.totalTreatmentAmount : "";
-          const paidAmount = gt.totalPaidAmount !== undefined && gt.totalPaidAmount !== "" ? gt.totalPaidAmount : "";
-          const remainingAmount = gt.totalRemainingAmount !== undefined && gt.totalRemainingAmount !== "" ? gt.totalRemainingAmount : "0";
-          return {
-            ...gt,
-            dailyTreatments: [
-              ...gt.dailyTreatments,
-              {
-                id: uuidv4(),
-                date: format(new Date(), "yyyy-MM-dd"),
-                procedure: gt.procedure || "", // Inherit procedure from group treatment
-                treatmentAmount,
-                paidAmount,
-                remainingAmount,
-                paymentDate: format(new Date(), "yyyy-MM-dd"), // Default to today's date
-                paymentMethod: "Cash", // Default payment method
-                notes: "",
-                treatedByDoctor: gt.treatedByDoctor || "",
-                isCompleted: false,
-              },
-            ],
-          };
-        }
-        return gt;
-      })
-    );
-  };
 
   // Function to remove a daily treatment from a group treatment
   const removeDailyTreatment = (groupTreatmentId: string, dailyTreatmentId: string) => {

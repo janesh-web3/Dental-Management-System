@@ -10,6 +10,8 @@ import {
   Image as ImageIcon,
   TrendingUp,
   TrendingDown,
+  Wallet,
+  TrendingUpIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { crudRequest } from "@/lib/api";
@@ -597,7 +599,7 @@ const Dashboard = () => {
           }
           className="bg-purple-50 dark:bg-purple-900 border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-800"
         />
-        {/* <StatCard
+        <StatCard
           title={t("Total Income")}
           value={`रु${(revenueData?.financialAnalysis?.total || 0) }`}
           description={t("Total income ")}
@@ -605,7 +607,7 @@ const Dashboard = () => {
             <TrendingUp className="h-4 w-4 md:h-8 md:w-8 text-emerald-200" />
           }
           className="bg-emerald-50 dark:bg-emerald-900 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-800"
-        /> */}
+        />
         <StatCard
           title={t("Total Expense")}
           value={`रु${financialSummary?.summary.expense.toLocaleString() || 0}`}
@@ -615,7 +617,7 @@ const Dashboard = () => {
           }
           className="bg-rose-50 dark:bg-rose-900 border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-800"
         />
-        {/* <StatCard
+        <StatCard
           title={t("Net Balance")}
           value={`रु${((revenueData?.financialAnalysis?.total || 0) - (financialSummary?.summary.expense || 0)).toLocaleString()}`}
           description={t("Total balance after expenses")}
@@ -623,7 +625,7 @@ const Dashboard = () => {
             <Wallet className="h-4 w-4 md:h-8 md:w-8 text-blue-200 dark:text-blue-400" />
           }
           className="bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-800"
-        /> */}
+        />
       </motion.div>
 
       <Tabs defaultValue="overview" className="space-y-4">
@@ -640,12 +642,12 @@ const Dashboard = () => {
           >
             {t("Transactions")}
           </TabsTrigger>
-          {/* <TabsTrigger
+          <TabsTrigger
             value="analytics"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950"
           >
             {t("Analytics")}
-          </TabsTrigger> */}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-2 md:space-y-4">
@@ -671,7 +673,7 @@ const Dashboard = () => {
                     }
                     className="bg-emerald-50 dark:bg-red-900 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-800"
                   />
-                  {/* <StatCard
+                  <StatCard
                     title={t("Weekly Revenue")}
                     value={
                       revenueData?.financialAnalysis
@@ -683,8 +685,8 @@ const Dashboard = () => {
                       <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
                     }
                     className="bg-emerald-50 dark:bg-lime-900 border-lime-200 dark:border-lime-800 hover:bg-lime-100 dark:hover:bg-lime-800"
-                  /> */}
-                  {/* <StatCard
+                  />
+                  <StatCard
                     title={t("Monthly Revenue")}
                     value={
                       revenueData?.financialAnalysis
@@ -696,8 +698,8 @@ const Dashboard = () => {
                       <TrendingUpIcon className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
                     }
                     className="bg-fuchsia-50 dark:bg-fuchsia-900 border-fuchsia-200 dark:border-fuchsia-800 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-800"
-                  /> */}
-                  {/* <StatCard
+                  />
+                  <StatCard
                     title={t("Total Revenue")}
                     value={
                       revenueData?.financialAnalysis
@@ -709,7 +711,7 @@ const Dashboard = () => {
                       <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-emerald-200" />
                     }
                     className="bg-emerald-50 dark:bg-cyan-900 border-cyan-200 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-800"
-                  /> */}
+                  />
                 </div>
               </CardContent>
             </Card>

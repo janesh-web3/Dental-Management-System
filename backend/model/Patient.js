@@ -30,8 +30,6 @@ const followUpSchema = new mongoose.Schema({
 });
 
 // Create a schema for daily treatments
-
-
 const dailyTreatmentSchema = new mongoose.Schema({
   date: { type: Date, required: true },
   treatmentAmount: { type: Number, default: 0 },

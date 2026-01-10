@@ -11,7 +11,6 @@ import Appointment from "@/pages/appointment";
 import User from "@/pages/user";
 import Setting from "@/pages/setting";
 import Dashboard from "@/pages/dashboard";
-import { Dashboard2 } from "@/pages/dashboard/Dashboard.tsx";
 import Testimonials from "@/pages/testimonials";
 import Contacts from "@/pages/contact";
 import LandingPage from "@/pages/landing";
@@ -60,7 +59,6 @@ const AppRouter: React.FC = () => {
       ),
       children: [
         { path: "/", element: <Dashboard />, index: true },
-        { path: "/advanced-dashboard", element: <Dashboard2 />, index: true },
         { path: "/patients", element: <Patient /> },
         { path: "/scan-patient", element: <ScanPatient /> },
         { path: "/doctors", element: <Doctor /> },

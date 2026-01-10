@@ -10,7 +10,7 @@ const initSocket = (server) => {
         "http://localhost:5173",
         "http://localhost:5174",
         // "https://order.crownagi.com",
-        // "https://dms.crownagi.com",
+        "https://dms.crownagi.com",
         // "https://admin.om-shreenagar-dental-clinic.com",
         // "https://om-shreenagar-dental-clinic.com",
         // "https://muskan.crownagi.com",

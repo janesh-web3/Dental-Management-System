@@ -60,8 +60,8 @@ app.use(
       "http://localhost:5174",
       // "https://dms.crownagi.com",
       // "https://order.crownagi.com",
-      // "https://admin.om-shreenagar-dental-clinic.com",
-      // "https://om-shreenagar-dental-clinic.com",
+      "https://admin.om-shreenagar-dental-clinic.com",
+      "https://om-shreenagar-dental-clinic.com",
       // "https://muskan.crownagi.com",
     ],
   })

@@ -5263,6 +5263,82 @@ const getPatientsForNewAgainReview = async (req, res) => {
   }
 };
 
+// Export patient contacts to Excel
+const exportPatientContacts = async (req, res) => {
+  try {
+    const XLSX = require('xlsx');
+    
+    // Fetch all patients with only necessary fields for performance
+    const patients = await Patient.find(
+      { isDeleted: { $ne: true } },
+      {
+        'personalDetails.name': 1,
+        'personalDetails.contactNumber': 1,
+        'personalDetails.emailAddress': 1,
+        'personalDetails.address': 1,
+        'personalDetails.gender': 1,
+        'personalDetails.registrationDate': 1,
+        'createdAt': 1
+      }
+    ).sort({ 'personalDetails.name': 1 });
+
+    // Format data for Excel export
+    const exportData = patients.map((patient, index) => ({
+      'S.No': index + 1,
+      'Name': patient.personalDetails.name || '',
+      'Contact Number': patient.personalDetails.contactNumber || '',
+      'Email': patient.personalDetails.emailAddress || '',
+      'Address': patient.personalDetails.address || '',
+      'Gender': patient.personalDetails.gender || '',
+      'Registration Date': patient.personalDetails.registrationDate 
+        ? new Date(patient.personalDetails.registrationDate).toLocaleDateString('en-GB')
+        : (patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('en-GB') : '')
+    }));
+
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+    // Set column widths for better formatting
+    const columnWidths = [
+      { wch: 8 },   // S.No
+      { wch: 25 },  // Name
+      { wch: 15 },  // Contact Number
+      { wch: 30 },  // Email
+      { wch: 40 },  // Address
+      { wch: 10 },  // Gender
+      { wch: 15 }   // Registration Date
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Patient Contacts');
+
+    // Generate Excel file buffer
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: 'xlsx',
+      type: 'buffer'
+    });
+
+    // Set response headers for file download
+    const fileName = `patient_contacts_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Length', excelBuffer.length);
+
+    // Send the Excel file
+    res.send(excelBuffer);
+
+  } catch (error) {
+    console.error('Error exporting patient contacts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export patient contacts',
+      error: error.message
+    });
+  }
+};
+
 // Export the new function
 module.exports = {
   addPatient,
@@ -5281,12 +5357,7 @@ module.exports = {
   getNextSerialNumber,
   getFinancialInsights,
   getDashboardMetrics,
-  getSimplifiedDashboardMetrics, // Add the new function
-  getPatientDemographics,
-  getFilteredPatients,
-  getFinancialInsights,
-  getDashboardMetrics,
-  getSimplifiedDashboardMetrics, // Add the new function
+  getSimplifiedDashboardMetrics,
   getPatientDemographics,
   getFilteredPatients,
   getProcedureTypes,
@@ -5294,4 +5365,5 @@ module.exports = {
   addTreatmentPlan,
   updateTreatmentPlan,
   getPatientById,
+  exportPatientContacts, // Add the new export function
 };

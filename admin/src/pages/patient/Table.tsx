@@ -334,6 +334,7 @@ export function PatientTable() {
   const {} = useAdminContext();
 
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isContactExportLoading, setIsContactExportLoading] = useState(false);
   const [selectedColumns, setSelectedColumns] =
     useState<ColumnConfig[]>(defaultColumns);
 
@@ -975,6 +976,45 @@ export function PatientTable() {
     const fileName = `patient_data_${new Date().toISOString().slice(0, 10)}.xlsx`;
     saveAs(data, fileName);
     setIsExportDialogOpen(false);
+  };
+
+  const exportContactsToExcel = async () => {
+    try {
+      setIsContactExportLoading(true);
+      
+      // Make API call to backend export endpoint
+      const response = await fetch('http://localhost:5000/api/patient/export-contacts', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token') || localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to export contacts');
+      }
+
+      // Get the blob from response
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `patient_contacts_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Patient contacts exported successfully!');
+    } catch (error) {
+      console.error('Error exporting contacts:', error);
+      toast.error('Failed to export patient contacts');
+    } finally {
+      setIsContactExportLoading(false);
+    }
   };
 
   const renderDateFilter = () => {
@@ -2417,6 +2457,21 @@ export function PatientTable() {
                 >
                   <FileSpreadsheet className="h-4 w-4" />
                   Export
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportContactsToExcel}
+                  disabled={isContactExportLoading}
+                  className="gap-2"
+                >
+                  {isContactExportLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Phone className="h-4 w-4" />
+                  )}
+                  {isContactExportLoading ? 'Exporting...' : 'Export Contacts'}
                 </Button>
               </div>
               <div className="flex flex-wrap gap-1 ml-2">

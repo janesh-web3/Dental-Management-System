@@ -31,6 +31,7 @@ const {
   getSimplifiedDashboardMetrics,
   searchPatients,
   getPatientsCount,
+  exportPatientContacts, // Add the new export function
 } = require("../controller/patientCtrl.js");
 const cloudinary = require("../config/cloudinary");
 const Patient = require("../model/Patient");
@@ -2081,5 +2082,8 @@ router.get("/:patientId/payment-info", protectAdminRoute, async (req, res) => {
     });
   }
 });
+
+// Export patient contacts to Excel
+router.get("/export-contacts", authenticateUser, authorizePermission('patients', 'read'), exportPatientContacts);
 
 module.exports = router;

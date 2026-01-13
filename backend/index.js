@@ -39,6 +39,7 @@ const smsScheduleRouter = require("./routes/smsScheduleRoutes.js");
 // Import utilities
 const { scheduleDoctorPatientCountUpdates } = require("./utils/doctorUtils.js");
 const { initializePaymentReminderService } = require("./controller/paymentReminderController.js");
+const { createIndexes } = require("./config/database-indexes.js");
 
 // Import multer error handling middleware
 const { handleMulterError } = require("./middleware/multer");
@@ -106,8 +107,17 @@ const port = process.env.PORT || 5000;
 // Connect to MongoDB and start server only after connection is successful
 mongoose
   .connect(process.env.DB_URL)
-  .then(() => {
+  .then(async () => {
     console.log("MongoDB connected successfully");
+    
+    // Create database indexes for performance optimization
+    try {
+      await createIndexes();
+      console.log("✅ Database indexes initialized successfully");
+    } catch (error) {
+      console.error("❌ Error creating database indexes:", error);
+      // Don't fail startup if index creation fails
+    }
 
     // Start server only after MongoDB connection is established
     server.listen(process.env.PORT, () => {

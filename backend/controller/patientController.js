@@ -1,6 +1,7 @@
 const Patient = require("../model/patientModel");
+const { optimizedPatientSearch, optimizedPatientFilter } = require("../utils/queryOptimizer");
 
-// Search patients by name, phone, or email
+// Search patients by name, phone, or email - OPTIMIZED
 exports.searchPatients = async (req, res) => {
   try {
     const { query, limit = 10 } = req.body;
@@ -9,75 +10,69 @@ exports.searchPatients = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Search query is required' });
     }
 
-    const searchRegex = new RegExp(query, 'i');
-    
-    const patients = await Patient.find({
-      $or: [
-        { 'personalDetails.name': { $regex: searchRegex } },
-        { 'personalDetails.contactNumber': { $regex: searchRegex } },
-        { 'personalDetails.emailAddress': { $regex: searchRegex } }
-      ]
-    })
-    .limit(Number(limit))
-    .select('personalDetails name contactNumber emailAddress lastAppointment')
-    .lean();
+    // Use optimized search with caching and text indexes
+    const patients = await optimizedPatientSearch(Patient, query, limit);
 
     res.json({ success: true, data: patients });
   } catch (error) {
     console.error('Error searching patients:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    
+    // Fallback to regex search if text search fails
+    try {
+      const searchRegex = new RegExp(query, 'i');
+      const patients = await Patient.find({
+        $or: [
+          { 'personalDetails.name': { $regex: searchRegex } },
+          { 'personalDetails.contactNumber': { $regex: searchRegex } },
+          { 'personalDetails.emailAddress': { $regex: searchRegex } }
+        ]
+      })
+      .limit(Number(limit))
+      .select('personalDetails.name personalDetails.contactNumber personalDetails.emailAddress lastAppointment')
+      .lean();
+
+      res.json({ success: true, data: patients });
+    } catch (fallbackError) {
+      console.error('Fallback search also failed:', fallbackError);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    }
   }
 };
 
-// Get filtered patients
+// Get filtered patients - OPTIMIZED
 exports.getFilteredPatients = async (req, res) => {
   try {
     // Get filters from query parameters
-    const {
-      treatmentStatus,
-      procedure,
-      group,
-      from,
-      to,
-      gender,
-      patientStatus,
-      limit = 1000,
-      page = 1
-    } = req.query;
-    
-    // Convert procedure to array if it exists
-    const procedures = procedure ? [procedure] : [];
-    const dateRange = from || to ? { from, to } : {};
+    const filters = {
+      treatmentStatus: req.query.treatmentStatus,
+      procedure: req.query.procedure,
+      group: req.query.group,
+      from: req.query.from,
+      to: req.query.to,
+      gender: req.query.gender,
+      patientStatus: req.query.patientStatus,
+      limit: parseInt(req.query.limit) || 100,
+      page: parseInt(req.query.page) || 1,
+      skip: (parseInt(req.query.page) || 1 - 1) * (parseInt(req.query.limit) || 100)
+    };
 
-    const query = {};
-    let hasFilters = false;
+    // Use optimized filtering with early pipeline optimization
+    const patients = await optimizedPatientFilter(Patient, filters);
 
-    // Apply gender filter - Correct path for gender
-    if (gender && gender !== 'all') {
-      query['personalDetails.gender'] = gender;
-      hasFilters = true;
-    }
-
-    // Apply patient status filter
-    if (patientStatus && patientStatus !== 'all') {
-      query['patientStatus'] = patientStatus;
-      hasFilters = true;
-    }
-
-    // Apply group filter - Check both medicalDetails.group and groupTreatmentDetails.groupName
-    if (group && group !== 'all') {
-      query['$or'] = query['$or'] || [];
-      query['$or'].push(
-        { 'medicalDetails.group': group },
-        { 'medicalDetails.treatmentPlanning.groupTreatmentDetails.groupName': group }
-      );
-      hasFilters = true;
-    }
-
-    // Apply procedures filter - Fixed to match actual data structure
-    if (procedures.length > 0 && procedures[0] !== 'all') {
-      query['$or'] = [
-        // Match procedure in selectedTeethDetails
+    res.json({
+      success: true,
+      data: patients,
+      pagination: {
+        page: filters.page,
+        limit: filters.limit,
+        total: patients.length
+      }
+    });
+  } catch (error) {
+    console.error('Error filtering patients:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
         {
           'medicalDetails.treatmentPlanning.selectedTeethDetails.procedure': { $in: procedures }
         },

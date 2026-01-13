@@ -360,7 +360,7 @@ export function Analytics() {
           </TabsContent>
 
           <TabsContent value="doctors" className="space-y-4 overflow-x-auto">
-            <DoctorPerformance dateRange={dateRange} />
+            <DoctorPerformance dateRange={dateRange} period={period} />
           </TabsContent>
 
           <TabsContent value="patients" className="space-y-4 overflow-x-auto">

@@ -3,9 +3,10 @@ const Doctor = require("../model/Doctor");
 const Patient = require("../model/Patient");
 const mongoose = require("mongoose");
 const { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, parseISO, subDays, subMonths } = require('date-fns');
+const { optimizedAnalyticsQuery, queryCache } = require("../utils/queryOptimizer");
 
 /**
- * Get appointment analytics with various filters
+ * Get appointment analytics with various filters - OPTIMIZED
  * @route GET /api/analytics/appointments
  * @access Private (Admin only)
  */
@@ -17,124 +18,107 @@ const getAppointmentAnalytics = async (req, res) => {
     const end = endDate ? endOfDay(new Date(endDate)) : endOfDay(new Date());
     const start = startDate ? startOfDay(new Date(startDate)) : startOfDay(subDays(end, 30));
     
+    // Check cache first
+    const cacheKey = `appointment_analytics_${start.getTime()}_${end.getTime()}_${period}`;
+    const cached = queryCache.get(cacheKey);
+    if (cached) {
+      return res.status(200).json({
+        success: true,
+        data: cached,
+        cached: true
+      });
+    }
+
     // Base match condition for date range and exclude soft deleted
     const dateMatchCondition = {
       createdAt: { $gte: start, $lte: end },
       isDeleted: { $ne: true }
     };
     
-    // Get total appointments in the date range
-    const totalAppointments = await Appointment.countDocuments(dateMatchCondition);
-    
-    // Get appointments by status
-    const appointmentsByStatus = await Appointment.aggregate([
-      { $match: dateMatchCondition },
-      { $group: {
-          _id: "$status",
-          count: { $sum: 1 }
+    // Run optimized parallel queries
+    const [
+      totalAppointments,
+      appointmentsByStatus,
+      genderDistribution,
+      doctorAppointments,
+      noShowStats,
+      appointmentsOverTime
+    ] = await Promise.all([
+      // Total appointments count
+      Appointment.countDocuments(dateMatchCondition),
+      
+      // Appointments by status
+      Appointment.aggregate([
+        { $match: dateMatchCondition },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 } // Limit results
+      ]),
+      
+      // Gender distribution
+      Appointment.aggregate([
+        { $match: dateMatchCondition },
+        { $group: { _id: "$gender", count: { $sum: 1 } } },
+        { $limit: 5 } // Limit results
+      ]),
+      
+      // Doctor-wise appointment count (optimized with early limit)
+      Appointment.aggregate([
+        { $match: dateMatchCondition },
+        { $group: { _id: "$doctor", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 },
+        { $lookup: {
+            from: "doctors",
+            localField: "_id",
+            foreignField: "_id",
+            as: "doctorInfo",
+            pipeline: [{ $project: { name: 1 } }] // Project only needed fields
+          }
+        },
+        { $unwind: { path: "$doctorInfo", preserveNullAndEmptyArrays: true } },
+        { $project: {
+            _id: 1,
+            doctorName: "$doctorInfo.name",
+            count: 1
+          }
         }
-      },
-      { $sort: { count: -1 } }
-    ]);
-    
-    // Get gender distribution
-    const genderDistribution = await Appointment.aggregate([
-      { $match: dateMatchCondition },
-      { $group: {
-          _id: "$gender",
-          count: { $sum: 1 }
+      ]),
+      
+      // No-show rate calculation
+      Appointment.aggregate([
+        { $match: dateMatchCondition },
+        { $group: {
+            _id: null,
+            total: { $sum: 1 },
+            noShows: { $sum: { $cond: [{ $eq: ["$hasVisited", false] }, 1, 0] } }
+          }
         }
-      }
-    ]);
-    
-    // Get doctor-wise appointment count
-    const doctorAppointments = await Appointment.aggregate([
-      { $match: dateMatchCondition },
-      { $lookup: {
-          from: "doctors",
-          localField: "doctor",
-          foreignField: "_id",
-          as: "doctorInfo"
-        }
-      },
-      { $unwind: { path: "$doctorInfo", preserveNullAndEmptyArrays: true } },
-      { $group: {
-          _id: "$doctor",
-          doctorName: { $first: "$doctorInfo.name" },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { count: -1 } },
-      { $limit: 10 }
-    ]);
-    
-    // Calculate no-show rate
-    const noShowStats = await Appointment.aggregate([
-      { $match: dateMatchCondition },
-      { $group: {
-          _id: null,
-          total: { $sum: 1 },
-          noShows: { $sum: { $cond: [{ $eq: ["$hasVisited", false] }, 1, 0] } }
-        }
-      }
+      ]),
+      
+      // Appointments over time (optimized grouping)
+      getAppointmentsOverTime(dateMatchCondition, period)
     ]);
     
     const noShowRate = noShowStats.length > 0 
       ? (noShowStats[0].noShows / noShowStats[0].total) * 100 
       : 0;
-    
-    // Get appointments over time (daily, weekly, monthly)
-    let timeGrouping;
-    let timeFormat;
-    
-    switch(period) {
-      case 'weekly':
-        timeGrouping = { $week: "$createdAt" };
-        timeFormat = "%Y-W%U"; // Year-Week format
-        break;
-      case 'monthly':
-        timeGrouping = { 
-          year: { $year: "$createdAt" },
-          month: { $month: "$createdAt" }
-        };
-        timeFormat = "%Y-%m"; // Year-Month format
-        break;
-      default: // daily
-        timeGrouping = { 
-          year: { $year: "$createdAt" },
-          month: { $month: "$createdAt" },
-          day: { $dayOfMonth: "$createdAt" }
-        };
-        timeFormat = "%Y-%m-%d"; // Year-Month-Day format
-    }
-    
-    const appointmentsOverTime = await Appointment.aggregate([
-      { $match: dateMatchCondition },
-      { $group: {
-          _id: timeGrouping,
-          count: { $sum: 1 },
-          date: { $first: "$createdAt" }
-        }
-      },
-      { $sort: { date: 1 } },
-      { $project: {
-          _id: 0,
-          date: { $dateToString: { format: timeFormat, date: "$date" } },
-          count: 1
-        }
-      }
-    ]);
+
+    const result = {
+      totalAppointments,
+      appointmentsByStatus,
+      genderDistribution,
+      doctorAppointments,
+      noShowRate,
+      appointmentsOverTime
+    };
+
+    // Cache the results for 5 minutes
+    queryCache.set(cacheKey, result, 300);
     
     res.status(200).json({
       success: true,
-      data: {
-        totalAppointments,
-        appointmentsByStatus,
-        genderDistribution,
-        doctorAppointments,
-        noShowRate,
-        appointmentsOverTime
-      }
+      data: result
     });
   } catch (error) {
     console.error("Error in getAppointmentAnalytics:", error);
@@ -144,6 +128,60 @@ const getAppointmentAnalytics = async (req, res) => {
       error: error.message
     });
   }
+};
+
+// Helper function for appointments over time with optimized grouping
+const getAppointmentsOverTime = async (dateMatchCondition, period) => {
+  let groupStage;
+  
+  switch(period) {
+    case 'weekly':
+      groupStage = {
+        _id: {
+          year: { $year: "$createdAt" },
+          week: { $week: "$createdAt" }
+        },
+        count: { $sum: 1 },
+        date: { $first: "$createdAt" }
+      };
+      break;
+    case 'monthly':
+      groupStage = {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" }
+        },
+        count: { $sum: 1 },
+        date: { $first: "$createdAt" }
+      };
+      break;
+    default: // daily
+      groupStage = {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" },
+          day: { $dayOfMonth: "$createdAt" }
+        },
+        count: { $sum: 1 },
+        date: { $first: "$createdAt" }
+      };
+  }
+
+  return await Appointment.aggregate([
+    { $match: dateMatchCondition },
+    { $group: groupStage },
+    { $sort: { date: 1 } },
+    { $limit: 100 }, // Limit to prevent excessive data
+    { $project: {
+        _id: 0,
+        date: { $dateToString: { 
+          format: period === 'monthly' ? "%Y-%m" : period === 'weekly' ? "%Y-W%U" : "%Y-%m-%d", 
+          date: "$date" 
+        } },
+        count: 1
+      }
+    }
+  ]);
 };
 
 /**

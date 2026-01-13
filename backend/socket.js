@@ -3,21 +3,85 @@ const jwt = require("jsonwebtoken");
 
 let io;
 
+// Notification queue for batch processing
+const notificationQueue = [];
+const BATCH_SIZE = 10;
+const BATCH_INTERVAL = 1000; // 1 second
+
+// Simple notification function (placeholder)
+const createAndEmitNotification = async (userId, userType, type, data, io) => {
+  try {
+    // Emit notification directly for now
+    if (io) {
+      io.to(userType).emit('notification', {
+        userId,
+        type,
+        data,
+        timestamp: new Date()
+      });
+    }
+  } catch (error) {
+    console.error('Error creating notification:', error);
+  }
+};
+
+// Process notifications in batches
+const processBatchNotifications = async () => {
+  if (notificationQueue.length === 0) return;
+  
+  const batch = notificationQueue.splice(0, BATCH_SIZE);
+  
+  try {
+    // Process notifications in parallel
+    await Promise.all(batch.map(async (notification) => {
+      try {
+        await createAndEmitNotification(
+          notification.userId,
+          notification.userType,
+          notification.type,
+          notification.data,
+          notification.io
+        );
+      } catch (error) {
+        console.error("Error processing notification:", error);
+      }
+    }));
+  } catch (error) {
+    console.error("Error processing notification batch:", error);
+  }
+};
+
+// Start batch processing interval
+setInterval(processBatchNotifications, BATCH_INTERVAL);
+
+// Optimized notification helper
+const queueNotification = (userId, userType, type, data, io) => {
+  notificationQueue.push({ userId, userType, type, data, io });
+  
+  // Process immediately if queue is getting full
+  if (notificationQueue.length >= BATCH_SIZE) {
+    processBatchNotifications();
+  }
+};
+
 const initSocket = (server) => {
   io = socketIO(server, {
     cors: {
       origin: [
         "http://localhost:5173",
         "http://localhost:5174",
-        // "https://order.crownagi.com",
         "https://dms.crownagi.com",
-        // "https://admin.om-shreenagar-dental-clinic.com",
-        // "https://om-shreenagar-dental-clinic.com",
-        // "https://muskan.crownagi.com",
+        "https://admin.om-shreenagar-dental-clinic.com",
+        "https://om-shreenagar-dental-clinic.com",
       ],
       methods: ["GET", "POST", "DELETE", "PUT", "PATCH"],
       credentials: true,
     },
+    // Performance optimizations
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    transports: ['websocket', 'polling'],
+    allowEIO3: true
   });
 
   // Add JWT authentication middleware

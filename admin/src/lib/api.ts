@@ -2,10 +2,17 @@ import { server } from "@/server";
 import axios, { AxiosRequestConfig, Method } from "axios";
 import { Expense, ServicePayment } from "@/types/finance";
 
-// Create axios instance without default headers
+// Request cache for API responses
+const requestCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Request deduplication map
+const pendingRequests = new Map();
+
+// Create axios instance with optimized settings
 const axiosInstance = axios.create({
   baseURL: server,
-  timeout: 50000,
+  timeout: 15000, // Reduced from 50s to 15s
   headers: {
     "Content-Type": "application/json",
   },
@@ -24,37 +31,128 @@ axiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
+// Response interceptor for caching
+axiosInstance.interceptors.response.use(
+  (response) => {
+    // Cache GET requests only
+    if (response.config.method === 'get') {
+      const cacheKey = `${response.config.method}:${response.config.url}:${JSON.stringify(response.config.params)}`;
+      requestCache.set(cacheKey, {
+        data: response.data,
+        timestamp: Date.now()
+      });
+    }
+    return response;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Cache cleanup function
+const cleanupCache = () => {
+  const now = Date.now();
+  for (const [key, value] of requestCache.entries()) {
+    if (now - value.timestamp > CACHE_DURATION) {
+      requestCache.delete(key);
+    }
+  }
+};
+
+// Run cache cleanup every 5 minutes
+setInterval(cleanupCache, 5 * 60 * 1000);
+
 export const crudRequest = async <T>(
   method: Method,
   url: string,
   data?: any,
-  config?: AxiosRequestConfig
+  config?: AxiosRequestConfig & { useCache?: boolean, cacheDuration?: number }
 ): Promise<T> => {
   try {
-    const response = await axiosInstance.request<T>({
+    // Generate cache key for GET requests
+    const cacheKey = `${method}:${url}:${JSON.stringify(config?.params)}`;
+    
+    // Check cache for GET requests
+    if (method === 'GET' && config?.useCache !== false) {
+      const cached = requestCache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp) < (config?.cacheDuration || CACHE_DURATION)) {
+        return cached.data;
+      }
+    }
+
+    // Request deduplication for GET requests
+    if (method === 'GET') {
+      if (pendingRequests.has(cacheKey)) {
+        return await pendingRequests.get(cacheKey);
+      }
+    }
+
+    // Create the request promise
+    const requestPromise = axiosInstance.request<T>({
       method,
       url,
       data,
       ...config,
+    }).then(response => {
+      // Remove from pending requests
+      if (method === 'GET') {
+        pendingRequests.delete(cacheKey);
+      }
+      return response.data;
+    }).catch(error => {
+      // Remove from pending requests on error
+      if (method === 'GET') {
+        pendingRequests.delete(cacheKey);
+      }
+      throw error;
     });
-    return response.data;
+
+    // Store pending request for deduplication
+    if (method === 'GET') {
+      pendingRequests.set(cacheKey, requestPromise);
+    }
+
+    const result = await requestPromise;
+    return result;
   } catch (error: any) {
     // Improved error handling
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
       console.error(`API Error ${error.response.status} for ${method} ${url}:`, error.response.data);
       throw error.response.data;
     } else if (error.request) {
-      // The request was made but no response was received
       console.error(`No response received for ${method} ${url}:`, error.request);
       throw new Error("No response received from server");
     } else {
-      // Something happened in setting up the request that triggered an Error
       console.error(`Error setting up request for ${method} ${url}:`, error.message);
       throw new Error(error.message);
     }
   }
+};
+
+// Utility function to clear cache
+export const clearApiCache = (pattern?: string) => {
+  if (pattern) {
+    for (const key of requestCache.keys()) {
+      if (key.includes(pattern)) {
+        requestCache.delete(key);
+      }
+    }
+  } else {
+    requestCache.clear();
+  }
+};
+
+// Utility function to prefetch data
+export const prefetchData = async (requests: Array<{ method: Method, url: string, config?: AxiosRequestConfig }>) => {
+  const promises = requests.map(req => 
+    crudRequest(req.method, req.url, undefined, { ...req.config, useCache: true })
+      .catch(error => {
+        console.warn(`Prefetch failed for ${req.method} ${req.url}:`, error);
+        return null;
+      })
+  );
+  
+  return await Promise.allSettled(promises);
 };
 
 // ********************* FINANCE API SERVICES *********************

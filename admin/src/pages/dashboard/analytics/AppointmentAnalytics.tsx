@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { crudRequest } from '@/lib/api';
 import { toast } from "@/components/ui/use-toast";
 import { 
@@ -19,7 +18,7 @@ import {
   LineChart,
   Line
 } from 'recharts';
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Users } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface AppointmentAnalyticsProps {
@@ -84,25 +83,26 @@ const AppointmentAnalytics: React.FC<AppointmentAnalyticsProps> = ({ dateRange, 
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'completed': return 'text-green-600';
-      case 'cancelled': return 'text-red-600';
-      case 'scheduled': return 'text-blue-600';
-      case 'no-show': return 'text-orange-600';
-      default: return 'text-gray-600';
-    }
-  };
+  // Commented out unused helper functions
+  // const getStatusColor = (status: string) => {
+  //   switch (status.toLowerCase()) {
+  //     case 'completed': return 'text-green-600';
+  //     case 'cancelled': return 'text-red-600';
+  //     case 'scheduled': return 'text-blue-600';
+  //     case 'no-show': return 'text-orange-600';
+  //     default: return 'text-gray-600';
+  //   }
+  // };
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'completed': return 'default';
-      case 'cancelled': return 'destructive';
-      case 'scheduled': return 'secondary';
-      case 'no-show': return 'outline';
-      default: return 'secondary';
-    }
-  };
+  // const getStatusBadgeVariant = (status: string) => {
+  //   switch (status.toLowerCase()) {
+  //     case 'completed': return 'default';
+  //     case 'cancelled': return 'destructive';
+  //     case 'scheduled': return 'secondary';
+  //     case 'no-show': return 'outline';
+  //     default: return 'secondary';
+  //   }
+  // };
 
   if (loading) {
     return (
@@ -272,7 +272,7 @@ const AppointmentAnalytics: React.FC<AppointmentAnalyticsProps> = ({ dateRange, 
                   fill="#8884d8"
                   dataKey="count"
                 >
-                  {appointmentData.appointmentsByStatus.map((entry, index) => (
+                  {appointmentData.appointmentsByStatus.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -322,7 +322,7 @@ const AppointmentAnalytics: React.FC<AppointmentAnalyticsProps> = ({ dateRange, 
                   fill="#8884d8"
                   dataKey="count"
                 >
-                  {appointmentData.genderDistribution.map((entry, index) => (
+                  {appointmentData.genderDistribution.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

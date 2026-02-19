@@ -3,7 +3,7 @@ const http = require("http");
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const path = require("path");
-require("dotenv").config({ path: path.resolve(__dirname, '.env') });
+require('dotenv').config();
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const { initSocket } = require("./socket"); 
@@ -61,9 +61,9 @@ app.use(
       "http://localhost:5174",
       // "https://dms.crownagi.com",
       // "https://order.crownagi.com",
-      "https://admin.om-shreenagar-dental-clinic.com",
-      "https://om-shreenagar-dental-clinic.com",
-      // "https://muskan.crownagi.com",
+      // "https://admin.om-shreenagar-dental-clinic.com",
+      // "https://om-shreenagar-dental-clinic.com",
+      "https://muskan.crownagi.com",
     ],
   })
 );

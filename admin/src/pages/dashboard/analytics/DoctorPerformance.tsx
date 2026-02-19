@@ -18,12 +18,9 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
-  Radar,
-  LineChart,
-  Line
+  Radar
 } from 'recharts';
-import { UserCheck, Star, TrendingUp, Users, Calendar, DollarSign, Award } from 'lucide-react';
-import { format } from 'date-fns';
+import { UserCheck, Star, TrendingUp, Users } from 'lucide-react';
 
 interface DoctorPerformanceProps {
   dateRange: any;
@@ -54,8 +51,6 @@ interface DoctorPerformanceData {
     completionRate: number;
   }>;
 }
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82ca9d'];
 
 const DoctorPerformance: React.FC<DoctorPerformanceProps> = ({ dateRange, period }) => {
   const [loading, setLoading] = useState(true);
@@ -279,12 +274,15 @@ const DoctorPerformance: React.FC<DoctorPerformanceProps> = ({ dateRange, period
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={400}>
-            <RadarChart data={doctorData.doctorActivity.map(doctor => ({
-              doctorName: doctor.doctorName,
-              completionRate: doctor.completionRate,
-              patientSatisfaction: doctorData.doctorRatings.find(r => r.doctorId === doctor.doctorId)?.averageRating * 20 || 0,
-              appointmentCount: (doctor.appointmentCount / Math.max(...doctorData.doctorActivity.map(d => d.appointmentCount))) * 100
-            }))}>
+            <RadarChart data={doctorData.doctorActivity.map(doctor => {
+              const rating = doctorData.doctorRatings.find(r => r.doctorId === doctor.doctorId);
+              return {
+                doctorName: doctor.doctorName,
+                completionRate: doctor.completionRate,
+                patientSatisfaction: rating ? rating.averageRating * 20 : 0,
+                appointmentCount: (doctor.appointmentCount / Math.max(...doctorData.doctorActivity.map(d => d.appointmentCount))) * 100
+              };
+            })}>
               <PolarGrid />
               <PolarAngleAxis dataKey="doctorName" />
               <PolarRadiusAxis angle={90} domain={[0, 100]} />

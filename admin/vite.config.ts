@@ -46,7 +46,12 @@ const manifestForPlugIn = {
 };
 
 export default defineConfig({
-  plugins: [react(), VitePWA(manifestForPlugIn as any)],
+  plugins: [react(), VitePWA({
+    ...manifestForPlugIn,
+    workbox: {
+      maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MB limit
+    }
+  } as any)],
   
   // Performance optimizations
   build: {

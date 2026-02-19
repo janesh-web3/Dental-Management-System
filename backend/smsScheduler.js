@@ -1,6 +1,5 @@
 const cron = require("node-cron");
 const axios = require("axios");
-const dotenv = require("dotenv");
 const aakashSmsConfig = require("./config/aakashSms");
 dotenv.config();
 

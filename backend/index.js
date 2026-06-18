@@ -3,6 +3,12 @@ const http = require("http");
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const path = require("path");
+const dns = require("dns");
+
+// Force Google DNS to resolve MongoDB Atlas SRV records
+// (required when local/ISP DNS does not support SRV lookups)
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+
 require('dotenv').config();
 const bodyParser = require("body-parser");
 const cors = require("cors");
@@ -106,7 +112,10 @@ const port = process.env.PORT || 5000;
 
 // Connect to MongoDB and start server only after connection is successful
 mongoose
-  .connect(process.env.DB_URL)
+  .connect(process.env.DB_URL, {
+    serverSelectionTimeoutMS: 30000,
+    family: 4, // Force IPv4
+  })
   .then(async () => {
     console.log("MongoDB connected successfully");
     

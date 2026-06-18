@@ -101,13 +101,6 @@ export const navGroups: NavGroup[] = [
         label: "Contacts",
         notificationEnabled: true,
       },
-      {
-        title: "Testimonials",
-        href: "/testimonials",
-        icon: "kanban",
-        label: "Testimonials",
-        notificationEnabled: true,
-      },
     ]
   },
   {

@@ -5,8 +5,7 @@
     "dashboard": "ड्यासबोर्ड",
     "patients": "बिरामीहरू",
     "appointments": "अपोइन्टमेन्टहरू",
-    "doctors": "डाक्टरहरू",
-    "testimonials": "प्रशंसापत्रहरू"
+    "doctors": "डाक्टरहरू"
   },
   "patient": {
     "details": "बिरामीको विवरण",

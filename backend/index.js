@@ -22,7 +22,7 @@ const publicPatientRouter = require("./routes/publicPatientRoute.js");
 const appointmentRouter = require("./routes/appointmentRoute.js");
 const doctorRouter = require("./routes/doctorRoute.js");
 const doctorAdminRouter = require("./routes/doctorAdminRoute.js");
-const testimonialRouter = require("./routes/testimonials.js");
+
 const contactRouter = require("./routes/contactRoute.js");
 const prescriptionRouter = require("./routes/prescriptionRoutes.js");
 const analyticsRouter = require("./routes/analyticsRoutes.js");
@@ -88,7 +88,7 @@ app.use("/api/patients", publicPatientRouter); // Public patient routes (for QR 
 app.use("/api/appointment", appointmentRouter);
 app.use("/api/doctor", doctorRouter);
 app.use("/api/doctor-admin", doctorAdminRouter);
-app.use("/api/testimonials", testimonialRouter);
+
 app.use("/api/contact", contactRouter);
 app.use("/api/prescription", prescriptionRouter);
 app.use("/api/analytics", analyticsRouter); // Advanced analytics routes

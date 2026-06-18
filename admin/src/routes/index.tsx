@@ -11,7 +11,6 @@ import Appointment from "@/pages/appointment";
 import User from "@/pages/user";
 import Setting from "@/pages/setting";
 import Dashboard from "@/pages/dashboard";
-import Contacts from "@/pages/contact";
 import LandingPage from "@/pages/landing";
 import TermsOfServicePage from "@/pages/legal/terms";
 import PrivacyPolicyPage from "@/pages/legal/privacy";
@@ -65,7 +64,6 @@ const AppRouter: React.FC = () => {
         { path: "/calendar", element: <Calendar /> },
         { path: "/user", element: <User /> },
         { path: "/settings", element: <Setting /> },
-        { path: "/contacts", element: <Contacts /> },
         { path: "/sms", element: <SMS /> },
         { path: "/sms/single", element: <SingleSMS /> },
         { path: "/sms/bulk", element: <BulkSMS /> },

@@ -23,7 +23,6 @@ const appointmentRouter = require("./routes/appointmentRoute.js");
 const doctorRouter = require("./routes/doctorRoute.js");
 const doctorAdminRouter = require("./routes/doctorAdminRoute.js");
 
-const contactRouter = require("./routes/contactRoute.js");
 const prescriptionRouter = require("./routes/prescriptionRoutes.js");
 const analyticsRouter = require("./routes/analyticsRoutes.js");
 const smsRouter = require("./routes/smsRoutes.js");
@@ -89,7 +88,6 @@ app.use("/api/appointment", appointmentRouter);
 app.use("/api/doctor", doctorRouter);
 app.use("/api/doctor-admin", doctorAdminRouter);
 
-app.use("/api/contact", contactRouter);
 app.use("/api/prescription", prescriptionRouter);
 app.use("/api/analytics", analyticsRouter); // Advanced analytics routes
 app.use("/api/sms", smsRouter);

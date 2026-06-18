@@ -94,13 +94,6 @@ export const navGroups: NavGroup[] = [
         label: "SMS",
         notificationEnabled: true,
       },
-      {
-        title: "Contacts",
-        href: "/contacts",
-        icon: "profile",
-        label: "Contacts",
-        notificationEnabled: true,
-      },
     ]
   },
   {
